@@ -2,7 +2,7 @@
 This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include "Analysis/include/LightBaseFlatTreeAnalyzer.h"
-#include "h-tautau/Analysis/include/FlatAnalyzerData.h"
+#include "hh-bbtautau/Analysis/include/FlatAnalyzerData.h"
 
 class BjetSelectionStudyData : public root_ext::AnalyzerData {
 public:
@@ -41,7 +41,7 @@ public:
     }
 
 protected:
-    virtual PairSelectionMap SelectBjetPairs(const ntuple::Flat& event) override
+    virtual PairSelectionMap SelectBjetPairs(const ntuple::Sync& event) override
     {
         PairSelectionMap pairMap;
         pairMap["CSV"] = SelectBestCsvPair(event);
@@ -88,7 +88,7 @@ protected:
         return subCategoriesToProcess;
     }
 
-    virtual void AnalyzeEvent(const analysis::FlatEventInfo& eventInfo, const MetaId& metaId,
+    virtual void AnalyzeEvent(const analysis::SyncEventInfo& eventInfo, const MetaId& metaId,
                               const std::string& selectionLabel) override
     {
         std::ostringstream ss_label;
@@ -98,13 +98,13 @@ protected:
         anaData.MET(label).Fill(eventInfo.MET.Pt());
 
         anaData.csv_b1_vs_ptb1(label).Fill(eventInfo.bjet_momentums.at(eventInfo.selected_bjets.first).Pt(),
-                                           eventInfo.event->csv_Bjets.at(eventInfo.selected_bjets.first));
+                                           eventInfo.event->csv_bjets.at(eventInfo.selected_bjets.first));
 
         size_t totalMatchedBjets = 0;
         std::vector<size_t> indexes;
         TLorentzVector Hbb_true, Hbb_false;
 
-        for (size_t k = 0; k < eventInfo.event->energy_Bjets.size(); ++k) {
+        for (size_t k = 0; k < eventInfo.event->energy_bjets.size(); ++k) {
             if (eventInfo.event->isBjet_MC_Bjet.at(k)){
                 Hbb_true += eventInfo.bjet_momentums.at(k);
                 ++totalMatchedBjets;
@@ -138,7 +138,7 @@ protected:
     }
 
 private:
-    static size_t N_SelectedMatchedBjets(const ntuple::Flat& event, const analysis::FlatEventInfo::BjetPair& bjet_pair)
+    static size_t N_SelectedMatchedBjets(const ntuple::Sync& event, const analysis::SyncEventInfo::BjetPair& bjet_pair)
     {
         size_t matchedBjets = 0;
         const std::vector<size_t> bjet_indexes = { bjet_pair.first, bjet_pair.second };
@@ -158,10 +158,10 @@ private:
         return indexes;
     }
 
-    static analysis::FlatEventInfo::BjetPair DefaultPair() { return analysis::FlatEventInfo::BjetPair(0, 1); }
+    static analysis::SyncEventInfo::BjetPair DefaultPair() { return analysis::SyncEventInfo::BjetPair(0, 1); }
 
     template<typename Comparator>
-    static analysis::FlatEventInfo::BjetPair SelectBestPair(const ntuple::Flat& event, const Comparator& comparator,
+    static analysis::SyncEventInfo::BjetPair SelectBestPair(const ntuple::Sync& event, const Comparator& comparator,
                                                             bool sort_pairs)
     {
         using analysis::FlatEventInfo;
@@ -173,7 +173,7 @@ private:
                           : FlatEventInfo::BjetPair(indexes.at(0), indexes.at(1));
     }
 
-    analysis::FlatEventInfo::BjetPair SelectBestCsvPair(const ntuple::Flat& event)
+    analysis::SyncEventInfo::BjetPair SelectBestCsvPair(const ntuple::Sync& event)
     {
         const auto comparator = [&] (size_t first, size_t second) -> bool
         {
@@ -183,7 +183,7 @@ private:
         return SelectBestPair(event, comparator, false);
     }
 
-    analysis::FlatEventInfo::BjetPair SelectBestPtPair(const ntuple::Flat& event)
+    analysis::SyncEventInfo::BjetPair SelectBestPtPair(const ntuple::Sync& event)
     {
         const auto comparator = [&] (size_t first, size_t second) -> bool
         {
@@ -193,7 +193,7 @@ private:
         return SelectBestPair(event, comparator, false);
     }
 
-    analysis::FlatEventInfo::BjetPair SelectBestChi2Pair(const ntuple::Flat& event)
+    analysis::SyncEventInfo::BjetPair SelectBestChi2Pair(const ntuple::Sync& event)
     {
         using analysis::FlatEventInfo;
         using analysis::kinematic_fit::four_body::FitResults;
@@ -217,7 +217,7 @@ private:
         return SelectBestPair(event, comparator, true);
     }
 
-    analysis::FlatEventInfo::BjetPair SelectBestCsvPairWithMassWindow(const ntuple::Flat& event)
+    analysis::SyncEventInfo::BjetPair SelectBestCsvPairWithMassWindow(const ntuple::Sync& event)
     {
         using analysis::FlatEventInfo;
         using analysis::kinematic_fit::four_body::FitResults;
@@ -250,7 +250,7 @@ private:
         return SelectBestPair(event, comparator, true);
     }
 
-    analysis::FlatEventInfo::BjetPair SelectBestPtPairWithMassWindow(const ntuple::Flat& event)
+    analysis::SyncEventInfo::BjetPair SelectBestPtPairWithMassWindow(const ntuple::Sync& event)
     {
 
         using analysis::FlatEventInfo;
@@ -284,7 +284,7 @@ private:
         return SelectBestPair(event, comparator, true);
     }
 
-    analysis::FlatEventInfo::BjetPair SelectBestChi2PairWithMassWindow(const ntuple::Flat& event)
+    analysis::SyncEventInfo::BjetPair SelectBestChi2PairWithMassWindow(const ntuple::Sync& event)
     {
         using analysis::FlatEventInfo;
         using analysis::kinematic_fit::four_body::FitResults;
@@ -314,10 +314,6 @@ private:
 
         return SelectBestPair(event, comparator, true);
     }
-
-
-
-
 
 private:
     BjetSelectionStudyData anaData;

@@ -22,14 +22,14 @@ public:
     double GetScaleFactor(const std::string& data_name) const
     {
         if(!HasScaleFactor(data_name))
-            throw exception("Postfit SF for '") << data_name << "' not found.";
+            throw exception("Postfit SF for '%1%' not found.") % data_name;
         return scale_factors.at(data_name);
     }
 
     void AddScaleFactor(const std::string& data_name, double sf)
     {
         if(HasScaleFactor(data_name))
-            throw exception("Postfit SF for '") << data_name << "' already defined.";
+            throw exception("Postfit SF for '%1%' already defined.") % data_name;
         scale_factors[data_name] = sf;
     }
 
@@ -54,8 +54,7 @@ public:
                                              EventSubCategory sub_category) const
     {
         if(!HasCorrections(channel, category, sub_category))
-            throw exception("Corrections for ") << channel << "/" << category << "/" << sub_category
-                                                << " are not defined.";
+            throw exception("Corrections for %1%/%2%/%3% are not defined.") % channel % category % sub_category;
         return corrections_map.at(channel).at(sub_category).at(category);
     }
 
@@ -63,8 +62,7 @@ public:
                         const PostfitCorrections& corrections)
     {
         if(HasCorrections(channel, category, sub_category))
-            throw exception("Corrections for ") << channel << "/" << category << "/" << sub_category
-                                                << " are already defined.";
+            throw exception("Corrections for %1%/%2%/%3% are already defined.") % channel % category % sub_category;
         corrections_map[channel][sub_category][category] = corrections;
     }
 
@@ -72,11 +70,10 @@ public:
                          Channel channel, EventCategory category, EventSubCategory sub_category)
     {
         if(HasCorrections(channel, category, sub_category))
-            throw exception("Corrections for ") << channel << "/" << category << "/" << sub_category
-                                                << " are already defined.";
+            throw exception("Corrections for %1%/%2%/%3% are already defined.") % channel % category % sub_category;
         if(!HasCorrections(ref_channel, ref_category, ref_sub_category))
-            throw exception("Corrections for ") << ref_channel << "/" << ref_category << "/" << ref_sub_category
-                                                << " are not defined.";
+            throw exception("Corrections for %1%/%2%/%3% are not defined.") % ref_channel % ref_category
+                                                                            % ref_sub_category;
 
         corrections_map[channel][sub_category][category] =
                 corrections_map.at(ref_channel).at(ref_sub_category).at(ref_category);
@@ -86,9 +83,9 @@ public:
                          Channel channel, EventSubCategory sub_category)
     {
         if(corrections_map.count(channel) && corrections_map.at(channel).count(sub_category))
-            throw exception("Corrections for ") << channel << "/*/" << sub_category << " are already defined.";
+            throw exception("Corrections for %1%/*/%2% are already defined.") % channel % sub_category;
         if(!corrections_map.count(ref_channel) || !corrections_map.at(ref_channel).count(ref_sub_category))
-            throw exception("Corrections for ") << ref_channel << "/*/" << ref_sub_category << " are not defined.";
+            throw exception("Corrections for %1%/*/%2% are not defined.") % ref_channel % ref_sub_category;
 
         corrections_map[channel][sub_category] = corrections_map.at(ref_channel).at(ref_sub_category);
     }
@@ -130,7 +127,7 @@ public:
 
         static CorrectionsId Parse(const std::string& path)
         {
-            std::vector<std::string> params = ConfigReader::ParseOrderedParameterList(path, true, '/');
+            std::vector<std::string> params = ParseOrderedParameterList(path, true, "/");
             if(params.size() < 2 || params.size() > 3)
                 throw exception("Bad postfit corrections id.");
             std::istringstream ss_channel(params.at(0));
@@ -150,7 +147,7 @@ public:
 
     PostfitCorrectionsCollectionReader(PostfitCorrectionsCollection& _output) : output(&_output) {}
 
-    virtual void StartEntry(const std::string& /*name*/) override
+    virtual void StartEntry(const std::string& /*name*/, const std::string& /*reference_name*/) override
     {
         current_id = CorrectionsId();
         reference_id = CorrectionsId();
@@ -181,10 +178,9 @@ public:
         }
     }
 
-    virtual void ReadParameter(const std::string& param_name, const std::string& param_value) override
+    virtual void ReadParameter(const std::string& param_name, const std::string& param_value,
+                               std::istringstream& ss) override
     {
-        std::istringstream ss(param_value);
-        ss >> std::boolalpha;
         if(param_name == "channel") {
             Channel channel;
             ss >> channel;
@@ -202,11 +198,11 @@ public:
             ss >> uncertainty;
             current_corrections.SetUncertainty(uncertainty);
         } else if(param_name == "scale_factors") {
-            const std::vector<std::string> sf_vector = ConfigReader::ParseOrderedParameterList(param_value);
+            const std::vector<std::string> sf_vector = ParseOrderedParameterList(param_value);
             for(const std::string& sf_entry : sf_vector) {
-                const std::vector<std::string> sf_value = ConfigReader::ParseOrderedParameterList(sf_entry, false, ':');
+                const std::vector<std::string> sf_value = ParseOrderedParameterList(sf_entry, false, ":");
                 if(sf_value.size() != 2)
-                    throw exception("Bad postfit sf definition '") << sf_entry << "'.";
+                    throw exception("Bad postfit sf definition '%1%'.") % sf_entry;
                 std::istringstream ss_sf(sf_value.at(1));
                 double sf;
                 ss_sf >> sf;
@@ -215,7 +211,7 @@ public:
         } else if(param_name == "reference") {
             reference_id = CorrectionsId::Parse(param_value);
         } else
-            throw exception("Unsupported parameter '") << param_name << "'.";
+            throw exception("Unsupported parameter '%1%'.") % param_name;
 
     }
 

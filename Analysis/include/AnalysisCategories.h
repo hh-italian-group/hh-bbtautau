@@ -22,7 +22,7 @@ typedef std::map<std::string, double> DataSourceScaleFactorMap;
 
 enum class DataCategoryType { Signal, Background, Data, DYJets, DYJets_incl, DYJets_excl, ZL, ZJ, ZL_MC, ZJ_MC, ZTT,
                               ZTT_MC, ZTT_L, Embedded, TT_Embedded, Limits, Composit, QCD, QCD_alternative, WJets,
-                              WJets_MC, DiBoson_MC, DiBoson};
+                              WJets_MC, DiBoson_MC, DiBoson, TTbar};
 static const std::map<DataCategoryType, std::string> dataCategoryTypeNameMap = {
     { DataCategoryType::Signal, "SIGNAL" }, { DataCategoryType::Background, "BACKGROUND" },
     { DataCategoryType::Data, "DATA" }, { DataCategoryType::DYJets, "DY_JETS" },
@@ -34,7 +34,8 @@ static const std::map<DataCategoryType, std::string> dataCategoryTypeNameMap = {
     { DataCategoryType::Limits, "LIMITS" }, { DataCategoryType::Composit, "COMPOSIT" },
     { DataCategoryType::QCD, "QCD" }, { DataCategoryType::QCD_alternative, "QCD_alternative" },
     { DataCategoryType::WJets, "W_JETS" }, { DataCategoryType::WJets_MC, "W_JETS_MC" },
-    { DataCategoryType::DiBoson, "DiBoson" }, { DataCategoryType::DiBoson_MC, "DiBoson_MC" }
+    { DataCategoryType::DiBoson, "DiBoson" }, { DataCategoryType::DiBoson_MC, "DiBoson_MC" },
+    { DataCategoryType::TTbar, "TTbar"}
 };
 
 std::ostream& operator<< (std::ostream& s, const DataCategoryType& dataCategoryType) {
@@ -50,7 +51,7 @@ std::istream& operator>> (std::istream& s, DataCategoryType& dataCategoryType) {
             return s;
         }
     }
-    throw exception("Unknown data category type '") << name << "'.";
+    throw exception("Unknown data category type '%1%'.") % name;
 }
 
 struct DataCategory {
@@ -112,7 +113,7 @@ public:
         for(const auto& signal_name : signal_names) {
             if(!signal_name.size()) continue;
             if(!categories.count(signal_name))
-                throw exception("Undefined signal '") << signal_name << "'.";
+                throw exception("Undefined signal '%1%'.") % signal_name;
             categories[signal_name].draw = true;
         }
     }
@@ -140,23 +141,23 @@ public:
     const DataCategory& GetUniqueCategory(DataCategoryType dataCategoryType) const
     {
         if(!categories_by_type.at(dataCategoryType).size())
-            throw exception("Unique category for data category type '") << dataCategoryType << "' not found.";
+            throw exception("Unique category for data category type '%1%' not found.") % dataCategoryType;
         if(categories_by_type.at(dataCategoryType).size() != 1)
-            throw exception("More than one category for data category type '") << dataCategoryType << "'.";
+            throw exception("More than one category for data category type '%1%'.") % dataCategoryType;
         return *(*categories_by_type.at(dataCategoryType).begin());
     }
 
     const DataCategory& FindCategory(const std::string& name) const
     {
         if(!categories.count(name))
-            throw exception("Data category '") << name << "' not found.";
+            throw exception("Data category '%1%' not found.") % name;
         return categories.at(name);
     }
 
     const DataCategory& FindCategoryForDatacard(const std::string& datacard) const
     {
         if(!categories_by_datacard.count(datacard))
-            throw exception("Data category for datacard '") << datacard << "' not found.";
+            throw exception("Data category for datacard '%1%' not found.") % datacard;
         return *categories_by_datacard.at(datacard);
     }
 
@@ -164,25 +165,24 @@ private:
     void CheckCategoryValidity(const DataCategory& category) const
     {
         if(categories.count(category.name))
-            throw exception("Category with name '") << category.name << "' is already defined.";
+            throw exception("Category with name '%1%' is already defined.") % category.name;
         if(category.sub_categories.size() && !category.types.count(DataCategoryType::Composit))
-            throw exception("Not composit category '") << category.name << "' may not contain sub-categories.";
+            throw exception("Not composit category '%1%' may not contain sub-categories.") % category.name;
         if(category.types.count(DataCategoryType::Composit) && category.sources_sf.size())
-            throw exception("Composit category '") << category.name << "' may not contain direct file definitions.";
+            throw exception("Composit category '%1%' may not contain direct file definitions.") % category.name;
         for(const auto& sub_category : category.sub_categories) {
             if(!categories.count(sub_category))
-                throw exception("Sub-category '") << sub_category << "' for category '"
-                                                  << category.name << "' is not defined.";
+                throw exception("Sub-category '%1%' for category '%2%' is not defined.") % sub_category % category.name;
             if(categories.at(sub_category).types.count(DataCategoryType::Composit))
-                throw exception("Invalid sub-category '") << sub_category << "' for category '" << category.name
-                                                      << "'. Composit category hierarchy is not supported.";
+                throw exception("Invalid sub-category '%1%' for category '%2%'. Composit category hierarchy is not"
+                                " supported.") % sub_category % category.name;
         }
 //        for(const auto& source_entry : category.sources_sf) {
 //            if(all_sources.count(source_entry.first))
 //                throw exception("Source '") << source_entry.first << "' is already part of the other data category.";
 //        }
         if(category.datacard.size() && categories_by_datacard.count(category.datacard))
-            throw exception("Category for datacard '") << category.datacard << "' is already defined.";
+            throw exception("Category for datacard '%1%' is already defined.") % category.datacard;
     }
 
     static bool ReadNextCategory(std::istream& cfg, size_t& line_number, DataCategory& category)
@@ -199,13 +199,13 @@ private:
             if(!category_started && cfgLine.at(0) == '[') {
                 const size_t pos = cfgLine.find(']');
                 if(pos == std::string::npos)
-                    throw exception("bad source config syntax in line ") << line_number;
+                    throw exception("bad source config syntax in line %1%.") % line_number;
                 category.name = cfgLine.substr(1, pos - 1);
                 category_started = true;
             } else if(category_started) {
                 ReadParameterLine(cfgLine, line_number, category);
             } else
-                throw exception("bad source config syntax in line ") << line_number;
+                throw exception("bad source config syntax in line %1%.") % line_number;
         }
         return category_started;
     }
@@ -216,10 +216,10 @@ private:
 
         const size_t pos = cfgLine.find(separator);
         if(pos == std::string::npos)
-            throw exception("bad source config syntax for a parameter in line ") << line_number;
+            throw exception("bad source config syntax for a parameter in line %1%.") % line_number;
         const std::string param_name = cfgLine.substr(0, pos);
         if(pos + 2 >= cfgLine.size())
-            throw exception("empty parameter value in source config in line ") << line_number;
+            throw exception("empty parameter value in source config in line %1%.") % line_number;
         const std::string param_value = cfgLine.substr(pos + 2);
         std::istringstream ss(param_value);
         ss >> std::boolalpha;
@@ -262,7 +262,7 @@ private:
             ss >> scale_factor;
             category.exclusive_sf[n_jets] = scale_factor;
         } else
-            throw exception("Unsupported parameter '") << param_name << "' in configuration line " << line_number;
+            throw exception("Unsupported parameter '%1%' in configuration line %2%.") % param_name % line_number;
     }
 
     static std::set<std::string> ParseSignalList(const std::string& signal_list)
@@ -311,7 +311,8 @@ std::ostream& operator<<(std::ostream& s, const DataCategoryPtrSet& dataCategori
 }
 
 enum class EventRegion { Unknown = 0, OS_Isolated = 1, OS_AntiIsolated = 2, SS_Isolated = 3, SS_AntiIsolated = 4,
-                         OS_Iso_HighMt = 5, SS_Iso_HighMt = 6, OS_AntiIso_HighMt = 7, SS_AntiIso_HighMt = 8 };
+                         OS_Iso_HighMt = 5, SS_Iso_HighMt = 6, OS_AntiIso_HighMt = 7, SS_AntiIso_HighMt = 8,
+                         OS_Iso_LowMt = 9, SS_Iso_LowMt = 10, OS_AntiIso_LowMt = 11, SS_AntiIso_LowMt = 12  };
 
 enum class EventCategory { Inclusive = 0, TwoJets_Inclusive = 1, TwoJets_ZeroBtag = 2, TwoJets_OneBtag = 3,
                            TwoJets_TwoBtag = 4, TwoJets_ZeroLooseBtag = 5, TwoJets_OneLooseBtag = 6,
@@ -336,9 +337,11 @@ static const std::map<EventCategory, std::string> eventCategoryNamesMap =
 static const std::map<EventRegion, std::string> eventRegionNamesMap =
           { { EventRegion::Unknown, "Unknown"}, { EventRegion::OS_Isolated, "OS_Isolated"},
             { EventRegion::OS_AntiIsolated, "OS_AntiIsolated"}, { EventRegion::SS_Isolated, "SS_Isolated"},
-            { EventRegion::SS_AntiIsolated, "SS_AntiIsolated"}, { EventRegion::OS_Iso_HighMt, "OS_Iso_HighMt"},
+            { EventRegion::SS_AntiIsolated, "SS_AntiIsolated"},  { EventRegion::OS_Iso_HighMt, "OS_Iso_HighMt"},
             { EventRegion::SS_Iso_HighMt, "SS_Iso_HighMt"} , { EventRegion::OS_AntiIso_HighMt, "OS_AntiIso_HighMt"},
-            { EventRegion::SS_AntiIso_HighMt, "SS_AntiIso_HighMt"} };
+            { EventRegion::SS_AntiIso_HighMt, "SS_AntiIso_HighMt"} , { EventRegion::OS_Iso_LowMt, "OS_Iso_LowMt"},
+            { EventRegion::SS_Iso_LowMt, "SS_Iso_LowMt"} , { EventRegion::OS_AntiIso_LowMt, "OS_AntiIso_LowMt"},
+            { EventRegion::SS_AntiIso_LowMt, "SS_AntiIso_LowMt"} };
 
 static const std::map<EventSubCategory, std::string> eventSubCategoryNamesMap =
           { { EventSubCategory::NoCuts, "NoCuts" }, { EventSubCategory::KinematicFitConverged, "KinFitConverged" },
@@ -406,7 +409,7 @@ std::istream& operator>> (std::istream& s, EventCategory& eventCategory)
             return s;
         }
     }
-    throw exception("Unknown event category '") << name << "'.";
+    throw exception("Unknown event category '%1%'.") % name;
 }
 
 std::ostream& operator<<(std::ostream& s, const EventRegion& eventRegion) {
@@ -424,7 +427,7 @@ std::istream& operator>> (std::istream& s, EventRegion& eventRegion)
             return s;
         }
     }
-    throw exception("Unknown event region '") << name << "'.";
+    throw exception("Unknown event region '%1%'.") % name;
 }
 
 std::ostream& operator<<(std::ostream& s, const EventSubCategory& eventSubCategory) {
@@ -442,11 +445,11 @@ std::istream& operator>> (std::istream& s, EventSubCategory& eventSubCategory)
             return s;
         }
     }
-    throw exception("Unknown event sub-category '") << name << "'.";
+    throw exception("Unknown event sub-category '%1%'.") % name;
 }
 
 EventCategoryVector DetermineEventCategories(const std::vector<float>& csv_Bjets,
-                                             const FlatEventInfo::BjetPair& selected_bjets, Int_t nBjets_retagged,
+                                             const SyncEventInfo::BjetPair& selected_bjets, Int_t nBjets_retagged,
                                              double CSVL, double CSVM, bool doRetag = false)
 {
     EventCategoryVector categories;

@@ -7,11 +7,139 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include <TRandom3.h>
 #include <TH1.h>
 
-#include "h-tautau/TreeProduction/interface/Jet.h"
+#include "AnalyzerData.h"
+#include "h-tautau/Analysis/include/FlatEventInfo.h"
+#include "AnalysisMath.h"
+#include "exception.h"
+#include "h-tautau/Analysis/include/Particles.h"
+#include "h-tautau/Analysis/include/Htautau_2015.h"
+#include "h-tautau/Analysis/include/SyncTree.h"
+#include "BTagCalibrationStandalone.h"
 
 namespace analysis {
 namespace btag {
 
+// namespace Run2{
+
+  struct jetEffInfo{
+    float pt, eta, CSV;
+    int   partonFlavour;
+    float eff, SF;
+
+    jetEffInfo(const ntuple::Sync& event, int jetIndex):eff(0.),SF(0.){
+        pt  = event.pt_jets.at(jetIndex);
+        eta = event.eta_jets.at(jetIndex);
+        CSV = event.csv_jets.at(jetIndex);
+        partonFlavour = event.partonFlavour_jets.at(jetIndex);
+    }
+
+  };
+
+  typedef std::vector<jetEffInfo>    jetEffInfoVector;
+  typedef std::pair<bool,jetEffInfo> bTagOutcome;
+  typedef std::vector<bTagOutcome>   bTagMap;
+
+  class BjetEffWeight {
+
+  public:
+    BjetEffWeight(const std::string& bTagEffName = "Analysis/data/bTagEff_Loose.root",
+                  const std::string& bjetSFName = "Analysis/data/CSVv2.csv")
+    :bTagEffFile(root_ext::OpenRootFile(bTagEffName))
+    {
+       using namespace btag_calibration;
+       calib        = new BTagCalibration("CSVv2", bjetSFName);
+       reader       = new BTagCalibrationReader(calib, BTagEntry::OP_MEDIUM, "mujets", "central");
+       reader_light = new BTagCalibrationReader(calib, BTagEntry::OP_MEDIUM, "incl", "central");
+
+       eff_b = (TH2F*) bTagEffFile->Get("eff_b");
+       eff_c = (TH2F*) bTagEffFile->Get("eff_c");
+       eff_l = (TH2F*) bTagEffFile->Get("eff_l");
+     }
+
+     double Compute(const ntuple::Sync& event){
+           //std::cout<<" SyncTree Entry :   "<<current_entry<<"\n";
+           using namespace cuts::Htautau_2015;
+
+           bTagMap bTagMedium;
+           for (int jetIndex = 0; jetIndex < event.njets; jetIndex++){
+             jetEffInfo jetInfo(event, jetIndex);
+             if      (abs (jetInfo.partonFlavour) == 5 ) {
+               jetInfo.SF  = reader->eval(btag_calibration::BTagEntry::FLAV_B, jetInfo.eta, jetInfo.pt);
+               jetInfo.eff = GetEfficiency(eff_b,jetInfo.pt,TMath::Abs(jetInfo.eta));
+             }
+             else if (abs (jetInfo.partonFlavour) == 4 ) {
+               jetInfo.SF = reader->eval(btag_calibration::BTagEntry::FLAV_C, jetInfo.eta, jetInfo.pt);
+               jetInfo.eff = GetEfficiency(eff_c,jetInfo.pt,TMath::Abs(jetInfo.eta));
+             }
+             else {
+               jetInfo.SF = reader_light->eval(btag_calibration::BTagEntry::FLAV_UDSG, jetInfo.eta, jetInfo.pt);
+               jetInfo.eff = GetEfficiency(eff_l,jetInfo.pt,TMath::Abs(jetInfo.eta));
+             }
+
+             bTagOutcome jetOutcome(false,jetInfo);
+             if ( jetOutcome.second.CSV > cuts::Htautau_2015::btag::CSVM ) jetOutcome.first = true;
+             bTagMedium.push_back(jetOutcome);
+
+             // std::cout<<"\t  jet number "<<jetIndex<<" Flavour : "<<jetOutcome.second.partonFlavour
+             //                                       <<" ---->   pt = "<<jetOutcome.second.pt
+             //                                              <<" eta = "<<jetOutcome.second.eta
+             //                                              <<" CSV = "<<jetOutcome.second.CSV
+             //                                              <<" eff = "<<jetOutcome.second.eff
+             //                                              <<"  SF = "<<jetOutcome.second.SF<<std::endl;
+           }
+           return GetBtagWeight(bTagMedium);
+   }
+
+    ~BjetEffWeight() {}
+
+  private:
+    double GetEfficiency (const TH2F* h, const double pt, const double eta){
+      int xBin = h->GetXaxis()->FindFixBin(pt);
+      int yBin = h->GetYaxis()->FindFixBin(eta);
+
+      return h->GetBinContent(xBin,yBin);
+    }
+
+    double GetBtagWeight (const bTagMap map){
+      double MC=1;
+      double Data=1;
+//      std::cout<<"  -------------   Weight Computation ------------ "<<std::endl;
+      for (auto element : map){
+        // std::cout<<"\t\t\t Flavour : "<<element.second.partonFlavour
+        //                                       <<" ---->   pt = "<<element.second.pt
+        //                                              <<" eta = "<<element.second.eta
+        //                                              <<" CSV = "<<element.second.CSV
+        //                                              <<" eff = "<<element.second.eff
+        //                                              <<"  SF = "<<element.second.SF<<std::endl;
+
+        if(element.first){
+          MC=MC*element.second.eff;
+          Data=Data*(element.second.eff*element.second.SF);
+        }
+        if(!(element.first)){
+          MC=MC*(1-element.second.eff);
+          Data=Data*(1-(element.second.eff*element.second.SF));
+        }
+      }
+//      std::cout<<"   Data Weight = "<< Data <<"   MC Weight  = "<<MC<<std::endl;
+      if (!MC) return 0;
+      return Data/MC;
+    }
+
+
+  private:
+    std::shared_ptr<TFile> bTagEffFile;
+    btag_calibration::BTagCalibration *calib;
+    btag_calibration::BTagCalibrationReader *reader, *reader_light;
+
+    TH2F* eff_b = 0;
+    TH2F* eff_c = 0;
+    TH2F* eff_l = 0;
+  };
+//}
+
+
+namespace Run1{
 enum class payload { ALL2011, MORIOND2013, EPS13 };
 enum class tagger { SSVHEM, SSVHPT, CSVM };
 
@@ -216,23 +344,6 @@ inline double SF(payload set, unsigned flavour, tagger algo, double pt, double e
     return sf;
 }
 
-inline bool ReTag(const ntuple::Jet& jet, payload set, tagger algo, int Btag_mode, int Bfake_mode, double csv)
-{
-    const double eff = BEff(std::abs(jet.partonFlavour), algo, jet.pt, jet.eta);
-    const double sf = SF(set, std::abs(jet.partonFlavour), algo, jet.pt, jet.eta, Btag_mode, Bfake_mode);
-    double demoteProb_btag = 0;
-    double promoteProb_btag = 0;
-    if(sf < 1)
-        demoteProb_btag = std::abs(1.0 - sf);
-    else
-        promoteProb_btag = std::abs(sf - 1.0)/( sf/eff - 1.0 );
-
-    TRandom3 rand( (jet.eta + 5) * 100000 );
-    const double randVal = rand.Uniform();
-
-    return jet.combinedSecondaryVertexBJetTags > csv ?
-           !(demoteProb_btag > 0. && randVal < demoteProb_btag) :
-           (promoteProb_btag > 0. && randVal < promoteProb_btag);
 }
 
 } // btag

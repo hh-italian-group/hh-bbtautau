@@ -17,22 +17,6 @@ public:
     }
 
 protected:
-    static bool IsHighMtRegion(const ntuple::Flat& event, analysis::EventCategory eventCategory)
-    {
-        using namespace cuts;
-        if (eventCategory == analysis::EventCategory::TwoJets_TwoBtag)
-            return event.mt_1 > WjetsBackgroundEstimation::HighMtRegion_low &&
-                    event.mt_1 < WjetsBackgroundEstimation::HighMtRegion_high;
-        else
-            return event.mt_1 > WjetsBackgroundEstimation::HighMtRegion;
-    }
-
-    static bool IsAntiIsolatedRegion(const ntuple::Flat& event)
-    {
-        using namespace cuts;        
-        return event.pfRelIso_1 > IsolationRegionForLeptonicChannel::isolation_low &&
-                event.pfRelIso_1 < IsolationRegionForLeptonicChannel::isolation_high;
-    }
 
     virtual void CreateHistogramForZTT(const FlatAnalyzerDataMetaId_noRegion_noName& anaDataMetaId,
                                        const std::string& hist_name, const PhysicalValueMap& ztt_yield_map,
@@ -112,7 +96,8 @@ protected:
                              const analysis::PhysicalValue& scale_factor, DataCategoryType dataCategoryType) override
     {
         static const EventCategorySet categories=
-            { EventCategory::TwoJets_OneBtag, EventCategory::TwoJets_TwoBtag, EventCategory::TwoJets_AtLeastOneBtag };
+            { EventCategory::TwoJets_AtLeastOneBtag };
+            //{ EventCategory::TwoJets_OneBtag, EventCategory::TwoJets_TwoBtag, EventCategory::TwoJets_AtLeastOneBtag };
         static const analysis::EventCategorySet inclusive_categories =
             { EventCategory::Inclusive, EventCategory::TwoJets_Inclusive};
 
@@ -192,8 +177,8 @@ protected:
             const PhysicalValue yield = data_yield - bkg_yield;
             if(yield.GetValue() < 0) {
                 std::cout << bkg_yield_debug << "\nData yield = " << data_yield << std::endl;
-                throw exception("Negative Wjets yield for histogram '")
-                        << hist_name << "' in " << anaDataMetaId.eventCategory << " " << eventRegion.first << ".";
+                throw exception("Negative Wjets yield for histogram '%1%' in %2% %3%.")
+                        % hist_name % anaDataMetaId.eventCategory % eventRegion.first;
             }
 
             const PhysicalValue n_HighMt_mc =
