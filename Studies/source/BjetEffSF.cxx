@@ -1,8 +1,6 @@
 /*! Study of the b-jet efficiency scale factor properties.
 This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
-#pragma once
-
 #include <iostream>
 #include <cmath>
 #include <set>
@@ -12,6 +10,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include <TColor.h>
 #include <TLorentzVector.h>
 
+#include "AnalysisTools/Run/include/program_main.h"
 #include "AnalyzerData.h"
 #include "h-tautau/Analysis/include/FlatEventInfo.h"
 #include "AnalysisMath.h"
@@ -41,7 +40,7 @@ struct jetEffInfo{
       pt  = event.pt_jets.at(jetIndex);
       eta = event.eta_jets.at(jetIndex);
       CSV = event.csv_jets.at(jetIndex);
-      partonFlavour = event.partonFlavour_jets.at(jetIndex);
+      partonFlavour = 0;/*event.partonFlavour_jets.at(jetIndex);*/
   }
 
 };
@@ -50,18 +49,23 @@ typedef std::vector<jetEffInfo>    jetEffInfoVector;
 typedef std::pair<bool,jetEffInfo> bTagOutcome;
 typedef std::vector<bTagOutcome>   bTagMap;
 
+struct Arguments {
+    REQ_ARG(std::string, inputFileName);
+    REQ_ARG(std::string, outputFileName);
+    REQ_ARG(std::string, bTagEffName);
+    REQ_ARG(std::string, bjetSFName);
+};
 
 class BjetEffSF {
 
 public:
-  BjetEffSF(const std::string& inputFileName, const std::string& outputFileName,
-            const std::string& bTagEffName, const std::string& bjetSFName)
-  :inputFile(root_ext::OpenRootFile(inputFileName)),
-   outputFile(root_ext::CreateRootFile(outputFileName)),
-   bTagEffFile(root_ext::OpenRootFile(bTagEffName)),
-   syncTree(new ntuple::SyncTree("sync", inputFile.get(), true)),anaData(outputFile){
+    BjetEffSF(const Arguments& args)
+        : inputFile(root_ext::OpenRootFile(args.inputFileName())),
+          outputFile(root_ext::CreateRootFile(args.outputFileName())),
+          bTagEffFile(root_ext::OpenRootFile(args.bTagEffName())),
+          syncTree(new ntuple::SyncTree("sync", inputFile.get(), true)), anaData(outputFile) {
 
-     calib        = new btag_calibration::BTagCalibration("CSVv2", bjetSFName);
+     calib        = new btag_calibration::BTagCalibration("CSVv2", args.bjetSFName());
      reader       = new btag_calibration::BTagCalibrationReader(calib, btag_calibration::BTagEntry::OP_LOOSE, "mujets",
                                                                 "central");
      reader_light = new btag_calibration::BTagCalibrationReader(calib, btag_calibration::BTagEntry::OP_LOOSE, "incl",
@@ -171,3 +175,5 @@ private:
 
   std::shared_ptr<analysis::tools::ProgressReporter> progressReporter;
 };
+
+PROGRAM_MAIN(BjetEffSF, Arguments)

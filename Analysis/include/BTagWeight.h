@@ -30,7 +30,7 @@ namespace btag {
         pt  = event.pt_jets.at(jetIndex);
         eta = event.eta_jets.at(jetIndex);
         CSV = event.csv_jets.at(jetIndex);
-        partonFlavour = event.partonFlavour_jets.at(jetIndex);
+        partonFlavour = 0;/*event.partonFlavour_jets.at(jetIndex);*/
     }
 
   };
@@ -42,8 +42,8 @@ namespace btag {
   class BjetEffWeight {
 
   public:
-    BjetEffWeight(const std::string& bTagEffName = "Analysis/data/bTagEff_Loose.root",
-                  const std::string& bjetSFName = "Analysis/data/CSVv2.csv")
+    BjetEffWeight(const std::string& bTagEffName = "hh-bbtautau/Analysis/data/bTagEff_Loose.root",
+                  const std::string& bjetSFName = "hh-bbtautau/Analysis/data/CSVv2.csv")
     :bTagEffFile(root_ext::OpenRootFile(bTagEffName))
     {
        using namespace btag_calibration;

@@ -12,7 +12,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include <TColor.h>
 #include <TLorentzVector.h>
 
-
+#include "AnalysisTools/Run/include/program_main.h"
 #include "h-tautau/Analysis/include/FlatEventInfo.h"
 #include "AnalysisTools/Core/include/AnalysisMath.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
@@ -24,13 +24,21 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "FlatAnalyzerDataCollection.h"
 #include "PostfitConfiguration.h"
 
-/*  Run2 include */
 #include "BTagWeight.h"
 #include "h-tautau/Analysis/include/Htautau_2015.h"
 #include "h-tautau/Analysis/include/SyncTree.h"
 #include "h-tautau/Analysis/include/PUWeights.h"
 
 namespace analysis {
+
+struct AnalyzerArguments {
+    REQ_ARG(std::string, source_cfg);
+    REQ_ARG(std::string, inputPath);
+    REQ_ARG(std::string, outputFileName);
+    REQ_ARG(std::string, signal_list);
+    OPT_ARG(bool, applyPostFitCorrections, false);
+    OPT_ARG(bool, saveFullOutput, false);
+};
 
 class BaseFlatTreeAnalyzer {
 public:
@@ -60,16 +68,12 @@ public:
 
     const DataCategoryTypeSet& DataCategoryTypeToProcessForQCD() const { return dataCategoryTypeForQCD; }
 
-    BaseFlatTreeAnalyzer(const DataCategoryCollection& _dataCategoryCollection, const std::string& _inputPath,
-                         const std::string& _outputFileName, bool _applyPostFitCorrections, bool saveFullOutput)
-        : inputPath(_inputPath), outputFileName(_outputFileName), dataCategoryCollection(_dataCategoryCollection),
-          anaDataCollection(outputFileName + "_full.root", saveFullOutput),
-          applyPostFitCorrections(_applyPostFitCorrections),
-          puReWeight(false,false,true,false,"../data/reWeight_Fall.root",60.0,0.0)
+    BaseFlatTreeAnalyzer(const AnalyzerArguments& _args, Channel channel_id)
+        : args(_args), dataCategoryCollection(args.source_cfg(), args.signal_list(), channel_id),
+          anaDataCollection(args.outputFileName() + "_full.root", args.saveFullOutput()),
+          puReWeight(false,false,true,false,"hh-bbtautau/Analysis/data/reWeight_Fall.root",60.0,0.0)
     {
-        TH1::SetDefaultSumw2();
-        gROOT->SetMustClean(kFALSE);
-        if(applyPostFitCorrections) {
+        if(args.applyPostFitCorrections()) {
             ConfigReader configReader;
             postfitCorrectionsCollection =
                     std::shared_ptr<PostfitCorrectionsCollection>(new PostfitCorrectionsCollection());
@@ -81,14 +85,19 @@ public:
 
     void Run()
     {
+        static const std::set<std::string> disabled_branches = {
+            "partonFlavour_jets"
+        };
+
         std::cout << "Processing data categories... " << std::endl;
         for(const DataCategory* dataCategory : dataCategoryCollection.GetAllCategories()) {
             if(!dataCategory->sources_sf.size()) continue;
             std::cout << *dataCategory << "   isData: "<<dataCategory->IsData()<<std::endl;
             for(const auto& source_entry : dataCategory->sources_sf) {
-                const std::string fullFileName = inputPath + "/" + source_entry.first;
+                const std::string fullFileName = args.inputPath() + "/" + source_entry.first;
                 auto file = root_ext::OpenRootFile(fullFileName);
-                std::shared_ptr<ntuple::SyncTree> tree(new ntuple::SyncTree("sync", file.get(), true));
+                std::shared_ptr<ntuple::SyncTree> tree(new ntuple::SyncTree("sync", file.get(), true,
+                                                                            disabled_branches));
                 ProcessDataSource(*dataCategory, tree, source_entry.second);
             }
         }
@@ -673,7 +682,7 @@ protected:
         const std::string blindCondition = isBlind ? "_blind" : "_noBlind";
         const std::string ratioCondition = drawRatio ? "_ratio" : "_noRatio";
         std::ostringstream eventRegionName;
-        eventRegionName << outputFileName << blindCondition << ratioCondition << "_" << eventRegion << ".pdf";
+        eventRegionName << args.outputFileName() << blindCondition << ratioCondition << "_" << eventRegion << ".pdf";
         root_ext::PdfPrinter printer(eventRegionName.str());
 
         for(EventCategory eventCategory : EventCategoriesToProcess()) {
@@ -763,7 +772,7 @@ protected:
         static const double tiny_value_error = tiny_value;
 
         std::ostringstream s_file_name;
-        s_file_name << outputFileName << "_" << hist_name;
+        s_file_name << args.outputFileName() << "_" << hist_name;
         if(eventSubCategory != EventSubCategory::NoCuts)
             s_file_name << "_" << eventSubCategory;
         s_file_name << ".root";
@@ -999,7 +1008,7 @@ private:
 
     void PrintTables(const std::string& name_suffix, const std::wstring& sep)
     {
-        std::wofstream of(outputFileName + "_" + name_suffix + ".csv");
+        std::wofstream of(args.outputFileName() + "_" + name_suffix + ".csv");
 
         static const std::set< std::pair<std::string, EventSubCategory> > interesting_histograms = {
             { FlatAnalyzerData_semileptonic::m_sv_Name(), EventSubCategory::NoCuts },
@@ -1100,11 +1109,9 @@ private:
     }
 
 protected:
-    std::string inputPath;
-    std::string outputFileName;
+    AnalyzerArguments args;
     DataCategoryCollection dataCategoryCollection;
     FlatAnalyzerDataCollection anaDataCollection;
-    bool applyPostFitCorrections;
     std::shared_ptr<PostfitCorrectionsCollection> postfitCorrectionsCollection;
     analysis::btag::BjetEffWeight bTagLooseWeight;
     analysis::PUWeights puReWeight;

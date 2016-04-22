@@ -9,12 +9,7 @@ namespace analysis {
 
 class SemileptonicFlatTreeAnalyzer : public BaseFlatTreeAnalyzer {
 public:
-    SemileptonicFlatTreeAnalyzer(const DataCategoryCollection& _dataCategoryCollection, const std::string& _inputPath,
-                                 const std::string& _outputFileName, bool applyPostFitCorrections, bool saveFullOutput)
-         : BaseFlatTreeAnalyzer(_dataCategoryCollection, _inputPath, _outputFileName, applyPostFitCorrections,
-                                saveFullOutput)
-    {
-    }
+    using BaseFlatTreeAnalyzer::BaseFlatTreeAnalyzer;
 
 protected:
 

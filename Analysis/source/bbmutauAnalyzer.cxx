@@ -5,13 +5,8 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 class bbmutauAnalyzer : public analysis::SemileptonicFlatTreeAnalyzer {
 public:
-    bbmutauAnalyzer(const std::string& source_cfg, const std::string& _inputPath,
-                           const std::string& outputFileName, const std::string& signal_list,
-                           bool applyPostFitCorrections, bool saveFullOutput)
-         : SemileptonicFlatTreeAnalyzer(analysis::DataCategoryCollection(source_cfg, signal_list, ChannelId()),
-                                        _inputPath, outputFileName, applyPostFitCorrections, saveFullOutput)
-    {
-    }
+    bbmutauAnalyzer(const analysis::AnalyzerArguments& _args)
+         : SemileptonicFlatTreeAnalyzer(_args, ChannelId()) {}
 
 private:
   static bool IsAntiIsolatedRegion(const ntuple::Sync& event)
@@ -23,8 +18,6 @@ private:
 protected:
     virtual analysis::Channel ChannelId() const override { return analysis::Channel::MuTau; }
 
-    // virtual analysis::EventRegion DetermineEventRegion(const Run2::Sync& event,
-    //                                                    analysis::EventCategory eventCategory) override
     virtual analysis::EventRegionSet DetermineEventRegion(const ntuple::Sync& event,
                                                        analysis::EventCategory eventCategory) override
     {
@@ -41,7 +34,6 @@ protected:
               /*|| (event.mt_1 >= muonID::mt && event.mt_1<=70 && event.mt_1>140) || event.pt_2 <= 30*/ ){
             tmpSet.insert(EventRegion::Unknown);
             return tmpSet;
-            //return EventRegion::Unknown;
           }
 
         const bool os = event.q_1 * event.q_2 == -1;
@@ -73,3 +65,5 @@ protected:
         return tmpSet;
     }
 };
+
+PROGRAM_MAIN(bbmutauAnalyzer, analysis::AnalyzerArguments)
