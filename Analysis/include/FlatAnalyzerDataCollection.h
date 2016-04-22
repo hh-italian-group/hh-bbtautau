@@ -5,6 +5,7 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 
 #include "FlatAnalyzerData.h"
 #include "h-tautau/Analysis/include/Htautau_2015.h"
+#include "custom_cuts.h"
 
 namespace analysis {
 
