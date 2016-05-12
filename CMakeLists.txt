@@ -6,7 +6,7 @@ include("${AnalysisTools_DIR}/cmake/include/common.cmake")
 
 add_library("hh-bbtautau" OBJECT ${HEADER_LIST})
 
-file(GLOB_RECURSE HTT_UTILITIES_SRC "${CMSSW_BASE_SRC}/HTT-utilities/*.cc" "${CMSSW_BASE_SRC}/HTT-utilities/*.h")
+file(GLOB_RECURSE HTT_UTILITIES_SRC "${CMSSW_BASE_SRC}/HTT-utilities/*.cc")
 add_library(HTT-utilities STATIC "${HTT_UTILITIES_SRC}")
 
 foreach(exe_name ${EXE_LIST})
