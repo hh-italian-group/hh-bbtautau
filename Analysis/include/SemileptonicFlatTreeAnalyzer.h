@@ -51,11 +51,11 @@ protected:
                                                       std::ostream& s_out) override
     {
         static const PhysicalValue sf(1.06, 0.001);
-        static const EventCategorySet categories = { EventCategory::TwoJets_TwoBtag };
+//        static const EventCategorySet categories = { EventCategory::TwoJets_TwoBtag };
 
         analysis::EventCategory refEventCategory = anaDataMetaId.eventCategory;
-        if(categories.count(anaDataMetaId.eventCategory))
-            refEventCategory = EventCategory::TwoJets_Inclusive;
+//        if(categories.count(anaDataMetaId.eventCategory))
+//            refEventCategory = EventCategory::TwoJets_Inclusive;
 
         const FlatAnalyzerDataMetaId_noRegion_noName anaDataMetaId_ref(refEventCategory,
                                                                        anaDataMetaId.eventSubCategory,
@@ -133,74 +133,6 @@ protected:
         }
         RenormalizeHistogram(histogram, scale_factor, true);
     }
-
-    virtual PhysicalValueMap CalculateWjetsYields(const FlatAnalyzerDataMetaId_noRegion_noName& anaDataMetaId,
-                                                  const std::string& hist_name,
-                                                  bool /*fullEstimate*/) override
-    {
-        PhysicalValueMap valueMap;
-
-        const DataCategory& wjets = dataCategoryCollection.GetUniqueCategory(DataCategoryType::WJets);
-        const DataCategoryPtrSet& wjets_mc_categories =
-                dataCategoryCollection.GetCategories(DataCategoryType::WJets_MC);
-        const DataCategory& data = dataCategoryCollection.GetUniqueCategory(DataCategoryType::Data);
-
-        static const EventCategorySet categoriesToRelax = { EventCategory::TwoJets_TwoBtag };
-        EventCategory refEventCategory = anaDataMetaId.eventCategory;
-        if(categoriesToRelax.count(anaDataMetaId.eventCategory))
-            refEventCategory = MediumToLoose_EventCategoryMap.at(anaDataMetaId.eventCategory);
-
-        const FlatAnalyzerDataMetaId_noRegion_noName anaDataMetaId_ref(refEventCategory,
-                                                                       anaDataMetaId.eventSubCategory,
-                                                                       anaDataMetaId.eventEnergyScale);
-
-        static const EventRegionMap HighMt_LowMt_RegionMap_forW =
-                { { EventRegion::OS_Iso_HighMt, EventRegion::OS_Isolated },
-                  { EventRegion::SS_Iso_HighMt, EventRegion::SS_Isolated }};
-
-        for (const auto& eventRegion : HighMt_LowMt_RegionMap_forW) {
-            std::string bkg_yield_debug;
-            const PhysicalValue bkg_yield = CalculateBackgroundIntegral(anaDataMetaId, eventRegion.first, hist_name,
-                                                                        wjets.name, false, bkg_yield_debug);
-
-            auto hist_data = GetHistogram(anaDataMetaId, eventRegion.first, data.name, hist_name);
-            if(!hist_data)
-                throw exception("Unable to find data histograms for Wjet scale factors estimation");
-            std::cout << "Data Integral in Wjets Yield: " << Integral(*hist_data, true) << std::endl;
-
-            const auto data_yield = Integral(*hist_data, true);
-            const PhysicalValue yield = data_yield - bkg_yield;
-            if(yield.GetValue() < 0) {
-                std::cout << bkg_yield_debug << "\nData yield = " << data_yield << std::endl;
-                throw exception("Negative Wjets yield for histogram '%1%' in %2% %3%.")
-                        % hist_name % anaDataMetaId.eventCategory % eventRegion.first;
-            }
-
-            const PhysicalValue n_HighMt_mc =
-                    CalculateFullIntegral(anaDataMetaId_ref, eventRegion.first, hist_name, wjets_mc_categories, true);
-            const PhysicalValue n_LowMt_mc =
-                    CalculateFullIntegral(anaDataMetaId_ref, eventRegion.second, hist_name, wjets_mc_categories, true);
-            const PhysicalValue ratio_LowToHighMt = n_LowMt_mc / n_HighMt_mc;
-            valueMap[eventRegion.second] = yield * ratio_LowToHighMt;
-        }
-
-        return valueMap;
-    }
-
-//    virtual PhysicalValueMap CalculateWjetsYields(const analysis::FlatAnalyzerDataMetaId_noRegion_noName& anaDataMetaId,
-//                                                  const std::string& hist_name, bool fullEstimate) override
-//    {
-//        using analysis::EventCategory;
-
-//        const analysis::DataCategoryPtrSet& wjets_mc_categories =
-//                dataCategoryCollection.GetCategories(analysis::DataCategoryType::WJets_MC);
-
-//        PhysicalValueMap valueMap;
-//        for (analysis::EventRegion eventRegion : analysis::QcdRegions)
-//            valueMap[eventRegion] = CalculateFullIntegral(anaDataMetaId, eventRegion, hist_name,
-//                                                          wjets_mc_categories);
-//        return valueMap;
-//    }
 
     virtual void CreateHistogramForVVcategory(const FlatAnalyzerDataMetaId_noRegion_noName& anaDataMetaId,
                                               const std::string& hist_name) override

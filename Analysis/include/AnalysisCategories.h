@@ -311,8 +311,7 @@ std::ostream& operator<<(std::ostream& s, const DataCategoryPtrSet& dataCategori
 }
 
 enum class EventRegion { Unknown = 0, OS_Isolated = 1, OS_AntiIsolated = 2, SS_Isolated = 3, SS_AntiIsolated = 4,
-                         OS_Iso_HighMt = 5, SS_Iso_HighMt = 6, OS_AntiIso_HighMt = 7, SS_AntiIso_HighMt = 8,
-                         OS_Iso_LowMt = 9, SS_Iso_LowMt = 10, OS_AntiIso_LowMt = 11, SS_AntiIso_LowMt = 12  };
+                         OS_Iso_HighMt = 5, SS_Iso_HighMt = 6, OS_AntiIso_HighMt = 7, SS_AntiIso_HighMt = 8 };
 
 enum class EventCategory { Inclusive = 0, TwoJets_Inclusive = 1, TwoJets_ZeroBtag = 2, TwoJets_OneBtag = 3,
                            TwoJets_TwoBtag = 4, TwoJets_ZeroLooseBtag = 5, TwoJets_OneLooseBtag = 6,
@@ -339,9 +338,7 @@ static const std::map<EventRegion, std::string> eventRegionNamesMap =
             { EventRegion::OS_AntiIsolated, "OS_AntiIsolated"}, { EventRegion::SS_Isolated, "SS_Isolated"},
             { EventRegion::SS_AntiIsolated, "SS_AntiIsolated"},  { EventRegion::OS_Iso_HighMt, "OS_Iso_HighMt"},
             { EventRegion::SS_Iso_HighMt, "SS_Iso_HighMt"} , { EventRegion::OS_AntiIso_HighMt, "OS_AntiIso_HighMt"},
-            { EventRegion::SS_AntiIso_HighMt, "SS_AntiIso_HighMt"} , { EventRegion::OS_Iso_LowMt, "OS_Iso_LowMt"},
-            { EventRegion::SS_Iso_LowMt, "SS_Iso_LowMt"} , { EventRegion::OS_AntiIso_LowMt, "OS_AntiIso_LowMt"},
-            { EventRegion::SS_AntiIso_LowMt, "SS_AntiIso_LowMt"} };
+            { EventRegion::SS_AntiIso_HighMt, "SS_AntiIso_HighMt"} };
 
 static const std::map<EventSubCategory, std::string> eventSubCategoryNamesMap =
           { { EventSubCategory::NoCuts, "NoCuts" }, { EventSubCategory::KinematicFitConverged, "KinFitConverged" },

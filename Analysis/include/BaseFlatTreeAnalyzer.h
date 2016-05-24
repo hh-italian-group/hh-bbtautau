@@ -36,57 +36,38 @@ struct AnalyzerArguments {
     REQ_ARG(std::string, inputPath);
     REQ_ARG(std::string, outputFileName);
     REQ_ARG(std::string, signal_list);
-    OPT_ARG(bool, applyPostFitCorrections, false);
     OPT_ARG(bool, saveFullOutput, false);
 };
 
 class BaseFlatTreeAnalyzer {
 public:
-    typedef std::map<EventRegion, PhysicalValue> PhysicalValueMap;
-
-//    virtual const EventCategorySet& EventCategoriesToProcess() const
-//    {
-//        static const EventCategorySet categories = {
-//            EventCategory::Inclusive, EventCategory::TwoJets_Inclusive, EventCategory::TwoJets_ZeroBtag,
-//            EventCategory::TwoJets_OneBtag, EventCategory::TwoJets_TwoBtag, EventCategory::TwoJets_OneLooseBtag,
-//            EventCategory::TwoJets_TwoLooseBtag
-//        };
-
-//        return categories;
-//    }
+    using PhysicalValueMap = std::map<EventRegion, PhysicalValue>;
 
     virtual const EventCategorySet& EventCategoriesToProcess() const
     {
         static const EventCategorySet categories = {
-            EventCategory::TwoJets_Inclusive, EventCategory::TwoJets_OneBtag,
-            EventCategory::TwoJets_OneLooseBtag,EventCategory::TwoJets_TwoLooseBtag,EventCategory::TwoJets_TwoBtag
+//            EventCategory::TwoJets_OneBtag, EventCategory::TwoJets_OneLooseBtag,
+            EventCategory::TwoJets_TwoBtag, EventCategory::TwoJets_TwoLooseBtag
         };
-
         return categories;
     }
-
-
-    const DataCategoryTypeSet& DataCategoryTypeToProcessForQCD() const { return dataCategoryTypeForQCD; }
 
     BaseFlatTreeAnalyzer(const AnalyzerArguments& _args, Channel channel_id)
         : args(_args), dataCategoryCollection(args.source_cfg(), args.signal_list(), channel_id),
           anaDataCollection(args.outputFileName() + "_full.root", args.saveFullOutput()),
           puReWeight(false,false,true,false,"hh-bbtautau/Analysis/data/reWeight_Fall.root",60.0,0.0)
     {
-        if(args.applyPostFitCorrections()) {
-            ConfigReader configReader;
-            postfitCorrectionsCollection =
-                    std::shared_ptr<PostfitCorrectionsCollection>(new PostfitCorrectionsCollection());
-            PostfitCorrectionsCollectionReader correctionsReader(*postfitCorrectionsCollection);
-            configReader.AddEntryReader("CORRECTIONS", correctionsReader);
-            configReader.ReadConfig("Analysis/config/postfit_sf.cfg");
-        }
     }
 
     void Run()
     {
         static const std::set<std::string> disabled_branches = {
-            "partonFlavour_jets"
+            "partonFlavour_bjets", "channelID", "eventEnergyScale", "byVLooseIsolationMVArun2v1DBoldDMwLT_1",
+            "byLooseIsolationMVArun2v1DBoldDMwLT_1", "byMediumIsolationMVArun2v1DBoldDMwLT_1",
+            "byTightIsolationMVArun2v1DBoldDMwLT_1", "byVTightIsolationMVArun2v1DBoldDMwLT_1",
+            "byVLooseIsolationMVArun2v1DBoldDMwLT_2", "byLooseIsolationMVArun2v1DBoldDMwLT_2",
+            "byMediumIsolationMVArun2v1DBoldDMwLT_2", "byTightIsolationMVArun2v1DBoldDMwLT_2",
+            "byVTightIsolationMVArun2v1DBoldDMwLT_2", "partonFlavour_jets"
         };
 
         std::cout << "Processing data categories... " << std::endl;
@@ -102,246 +83,66 @@ public:
             }
         }
 
-//        static const std::set< std::pair<std::string, EventSubCategory> > interesting_histograms = {
-//            { FlatAnalyzerData_semileptonic::m_sv_Name(), EventSubCategory::NoCuts },
-//            { FlatAnalyzerData_semileptonic::m_sv_Name(), EventSubCategory::MassWindow },
-//            { FlatAnalyzerData::m_ttbb_kinfit_Name(), EventSubCategory::KinematicFitConverged },
-//            { FlatAnalyzerData::m_ttbb_kinfit_Name(), EventSubCategory::KinematicFitConvergedWithMassWindow },
-//        };
-
-//        static const std::set<std::string> complete_histogram_names = {
-//            FlatAnalyzerData_semileptonic::m_sv_Name(), FlatAnalyzerData::m_ttbb_kinfit_Name()
-//        };
         for (const auto& hist_name : FlatAnalyzerData::GetOriginalHistogramNames<TH1D>()) {
-          EventSubCategory subCategory = EventSubCategory::NoCuts;
+            EventSubCategory subCategory = EventSubCategory::KinematicFitConvergedWithMassWindow;
             for(EventEnergyScale energyScale : AllEventEnergyScales) {
-              if(energyScale != EventEnergyScale::Central) continue;
-              std::cout << "Processing '" << hist_name << "' in " << subCategory << "/" << energyScale
-                        << "..." << std::endl;
+                if(energyScale != EventEnergyScale::Central) continue;
+                std::cout << "Processing '" << hist_name << "' in " << subCategory << "/" << energyScale
+                          << "..." << std::endl;
 
-             std::ostringstream ss_debug;
-             std::ostream& s_out = std::cout;
+                std::ostream& s_out = std::cout;
 
-            //  for (EventCategory eventCategory : EventCategoriesToProcess()) {
-            //     //if (eventCategory != EventCategory::Inclusive && eventCategory != EventCategory::TwoJets_OneLooseBtag) continue;
-            //     const FlatAnalyzerDataMetaId_noRegion_noName anaDataMetaId(eventCategory, subCategory,
-            //                                                                energyScale);
-            //
-            //     const auto wjets_yields = CalculateWjetsYields(anaDataMetaId, hist_name, false);
-            //     for (const auto yield_entry : wjets_yields){
-            //         s_out << eventCategory << ": W+jets yield in " << yield_entry.first << " = "
-            //               << yield_entry.second << ".\n";
-            //     }
-            //     EstimateWjets(anaDataMetaId, hist_name, wjets_yields);
-            // }
-
-              for (EventCategory eventCategory : EventCategoriesToProcess()) {
-                //if (eventCategory != EventCategory::Inclusive) continue;
-                const FlatAnalyzerDataMetaId_noRegion_noName anaDataMetaId(eventCategory, subCategory,
-                                                                                               energyScale);
-                //for (DataCategoryType dataCategoryType : DataCategoryTypeToProcessForQCD()) {
-                  DataCategoryType dataCategoryType = DataCategoryType::QCD;
-                  const auto qcd_yield = CalculateQCDYield(anaDataMetaId, hist_name, dataCategoryType, s_out);
-                  s_out << eventCategory << ": QCD yield = " << qcd_yield << ".\n";
-                  EstimateQCD(anaDataMetaId, hist_name, qcd_yield, dataCategoryType);
-                //}
-                  ProcessCompositDataCategories(anaDataMetaId, hist_name);
-              }
+                for (EventCategory eventCategory : EventCategoriesToProcess()) {
+                    const FlatAnalyzerDataMetaId_noRegion_noName anaDataMetaId(eventCategory, subCategory, energyScale);
+                    DataCategoryType dataCategoryType = DataCategoryType::QCD;
+                    const auto qcd_yield = CalculateQCDYield(anaDataMetaId, hist_name, dataCategoryType, s_out);
+                    s_out << eventCategory << ": QCD yield = " << qcd_yield << ".\n";
+                    EstimateQCD(anaDataMetaId, hist_name, qcd_yield, dataCategoryType);
+                    ProcessCompositDataCategories(anaDataMetaId, hist_name);
+                }
             }
         }
-//        for (const auto& hist_name : FlatAnalyzerData::GetOriginalHistogramNames<TH1D>()) {
-//            for(EventSubCategory subCategory : AllEventSubCategories) {
-//                for(EventEnergyScale energyScale : AllEventEnergyScales) {
-//                    if(energyScale != EventEnergyScale::Central && !complete_histogram_names.count(hist_name))
-//                        continue;
-//                    std::cout << "Processing '" << hist_name << "' in " << subCategory << "/" << energyScale
-//                              << "..." << std::endl;
-
-//                    std::ostringstream ss_debug;
-//                    std::ostream& s_out = interesting_histograms.count(std::make_pair(hist_name, subCategory))
-//                                        && energyScale == EventEnergyScale::Central ? std::cout : ss_debug;
-
-//                    for (EventCategory eventCategory : EventCategoriesToProcess()) {
-//                        const FlatAnalyzerDataMetaId_noRegion_noName anaDataMetaId(eventCategory, subCategory,
-//                                                                                   energyScale);
-//                        const auto ZTT_matched_yield = CalculateZTTmatchedYield(anaDataMetaId, hist_name, true);
-//                        for (const auto yield_entry : ZTT_matched_yield)
-//                            s_out << eventCategory << ": ZTT MC yield in " << yield_entry.first << " = "
-//                                  << yield_entry.second << ".\n";
-
-//                        CreateHistogramForZTT(anaDataMetaId, hist_name, ZTT_matched_yield, true);
-//                        CreateHistogramForZcategory(anaDataMetaId, hist_name);
-//                        CreateHistogramForVVcategory(anaDataMetaId, hist_name);
-//                    }
-
-//                    for (EventCategory eventCategory : EventCategoriesToProcess()) {
-//                        const FlatAnalyzerDataMetaId_noRegion_noName anaDataMetaId(eventCategory, subCategory,
-//                                                                                   energyScale);
-
-//                        const auto wjets_yields = CalculateWjetsYields(anaDataMetaId, hist_name, false);
-//                        for (const auto yield_entry : wjets_yields){
-//                            s_out << eventCategory << ": W+jets yield in " << yield_entry.first << " = "
-//                                  << yield_entry.second << ".\n";
-//                        }
-//                        EstimateWjets(anaDataMetaId, hist_name, wjets_yields);
-//                    }
-
-//                    for (EventCategory eventCategory : EventCategoriesToProcess()) {
-//                        const FlatAnalyzerDataMetaId_noRegion_noName anaDataMetaId(eventCategory, subCategory,
-//                                                                                   energyScale);
-
-//                        for (DataCategoryType dataCategoryType : DataCategoryTypeToProcessForQCD()) {
-//                            const auto qcd_yield = CalculateQCDYield(anaDataMetaId, hist_name, dataCategoryType, s_out);
-//                            s_out << eventCategory << ": QCD yield = " << qcd_yield << ".\n";
-//                            EstimateQCD(anaDataMetaId, hist_name, qcd_yield, dataCategoryType);
-//                        }
-//                        if(applyPostFitCorrections)
-//                            ApplyPostFitCorrections(anaDataMetaId, hist_name, false);
-//                        ProcessCompositDataCategories(anaDataMetaId, hist_name);
-//                        if(applyPostFitCorrections)
-//                            ApplyPostFitCorrections(anaDataMetaId, hist_name, true);
-//                    }
-//                    s_out << std::endl;
-//                }
-//            }
-//        }
 
         std::cout << "\nSaving tables... " << std::endl;
         PrintTables("comma", L",");
-//        PrintTables("semicolon", L";");
 
-//        std::cout << "Saving datacards... " << std::endl;
-//        ProduceFileForLimitsCalculation(FlatAnalyzerData_semileptonic::m_sv_Name(), EventSubCategory::NoCuts,
-//                                        &FlatAnalyzerData::m_sv_base);
-//        ProduceFileForLimitsCalculation(FlatAnalyzerData::m_ttbb_kinfit_Name(),
-//                                        EventSubCategory::KinematicFitConverged,
-//                                        &FlatAnalyzerData::m_ttbb_kinfit);
-//        ProduceFileForLimitsCalculation(FlatAnalyzerData::m_ttbb_kinfit_Name(),
-//                                        EventSubCategory::KinematicFitConvergedWithMassWindow,
-//                                        &FlatAnalyzerData::m_ttbb_kinfit);
+        std::cout << "Saving datacards... " << std::endl;
+        ProduceFileForLimitsCalculation(FlatAnalyzerData::m_ttbb_kinfit_Name(),
+                                        EventSubCategory::KinematicFitConvergedWithMassWindow,
+                                        &FlatAnalyzerData::m_ttbb_kinfit);
 
         std::cout << "Printing stacked plots... " << std::endl;
         PrintStackedPlots(EventRegion::OS_Isolated, false, true);
         PrintStackedPlots(EventRegion::OS_Isolated, false, false);
-        //PrintStackedPlots(EventRegion::OS_AntiIsolated, false, true);
-        //PrintStackedPlots(EventRegion::SS_AntiIsolated, false, true);
-
         std::cout << "Saving output file..." << std::endl;
     }
 
-//    void Run()
-//    {
-//        std::cout << "Processing data categories... " << std::endl;
-//        for(const DataCategory* dataCategory : dataCategoryCollection.GetAllCategories()) {
-//            if(!dataCategory->sources_sf.size()) continue;
-//            std::cout << *dataCategory << std::endl;
-//            for(const auto& source_entry : dataCategory->sources_sf) {
-//                const std::string fullFileName = inputPath + "/" + source_entry.first;
-//                auto file = root_ext::OpenRootFile(fullFileName);
-//                std::shared_ptr<ntuple::FlatTree> tree(new ntuple::FlatTree("flatTree", file.get(), true));
-//                ProcessDataSource(*dataCategory, tree, source_entry.second);
-//            }
-//        }
-
-//        static const std::set< std::pair<std::string, EventSubCategory> > interesting_histograms = {
-//            { FlatAnalyzerData_semileptonic::m_sv_Name(), EventSubCategory::NoCuts },
-//            { FlatAnalyzerData_semileptonic::m_sv_Name(), EventSubCategory::MassWindow },
-//            { FlatAnalyzerData::m_ttbb_kinfit_Name(), EventSubCategory::KinematicFitConverged },
-//            { FlatAnalyzerData::m_ttbb_kinfit_Name(), EventSubCategory::KinematicFitConvergedWithMassWindow },
-//        };
-
-//        static const std::set<std::string> complete_histogram_names = {
-//            FlatAnalyzerData_semileptonic::m_sv_Name(), FlatAnalyzerData::m_ttbb_kinfit_Name()
-//        };
-
-//        for (const auto& hist_name : FlatAnalyzerData::GetOriginalHistogramNames<TH1D>()) {
-//            for(EventSubCategory subCategory : AllEventSubCategories) {
-//                for(EventEnergyScale energyScale : AllEventEnergyScales) {
-//                    if(energyScale != EventEnergyScale::Central && !complete_histogram_names.count(hist_name))
-//                        continue;
-//                    std::cout << "Processing '" << hist_name << "' in " << subCategory << "/" << energyScale
-//                              << "..." << std::endl;
-
-//                    std::ostringstream ss_debug;
-//                    std::ostream& s_out = interesting_histograms.count(std::make_pair(hist_name, subCategory))
-//                                        && energyScale == EventEnergyScale::Central ? std::cout : ss_debug;
-
-//                    for (EventCategory eventCategory : EventCategoriesToProcess()) {
-//                        const FlatAnalyzerDataMetaId_noRegion_noName anaDataMetaId(eventCategory, subCategory,
-//                                                                                   energyScale);
-//                        const auto ZTT_matched_yield = CalculateZTTmatchedYield(anaDataMetaId, hist_name, true);
-//                        for (const auto yield_entry : ZTT_matched_yield)
-//                            s_out << eventCategory << ": ZTT MC yield in " << yield_entry.first << " = "
-//                                  << yield_entry.second << ".\n";
-
-//                        CreateHistogramForZTT(anaDataMetaId, hist_name, ZTT_matched_yield, true);
-//                        CreateHistogramForZcategory(anaDataMetaId, hist_name);
-//                        CreateHistogramForVVcategory(anaDataMetaId, hist_name);
-//                    }
-
-//                    for (EventCategory eventCategory : EventCategoriesToProcess()) {
-//                        const FlatAnalyzerDataMetaId_noRegion_noName anaDataMetaId(eventCategory, subCategory,
-//                                                                                   energyScale);
-
-//                        const auto wjets_yields = CalculateWjetsYields(anaDataMetaId, hist_name, false);
-//                        for (const auto yield_entry : wjets_yields){
-//                            s_out << eventCategory << ": W+jets yield in " << yield_entry.first << " = "
-//                                  << yield_entry.second << ".\n";
-//                        }
-//                        EstimateWjets(anaDataMetaId, hist_name, wjets_yields);
-//                    }
-
-//                    for (EventCategory eventCategory : EventCategoriesToProcess()) {
-//                        const FlatAnalyzerDataMetaId_noRegion_noName anaDataMetaId(eventCategory, subCategory,
-//                                                                                   energyScale);
-
-//                        for (DataCategoryType dataCategoryType : DataCategoryTypeToProcessForQCD()) {
-//                            const auto qcd_yield = CalculateQCDYield(anaDataMetaId, hist_name, dataCategoryType, s_out);
-//                            s_out << eventCategory << ": QCD yield = " << qcd_yield << ".\n";
-//                            EstimateQCD(anaDataMetaId, hist_name, qcd_yield, dataCategoryType);
-//                        }
-//                        if(applyPostFitCorrections)
-//                            ApplyPostFitCorrections(anaDataMetaId, hist_name, false);
-//                        ProcessCompositDataCategories(anaDataMetaId, hist_name);
-//                        if(applyPostFitCorrections)
-//                            ApplyPostFitCorrections(anaDataMetaId, hist_name, true);
-//                    }
-//                    s_out << std::endl;
-//                }
-//            }
-//        }
-
-//        std::cout << "\nSaving tables... " << std::endl;
-//        PrintTables("comma", L",");
-//        PrintTables("semicolon", L";");
-
-//        std::cout << "Saving datacards... " << std::endl;
-//        ProduceFileForLimitsCalculation(FlatAnalyzerData_semileptonic::m_sv_Name(), EventSubCategory::NoCuts,
-//                                        &FlatAnalyzerData::m_sv_base);
-//        ProduceFileForLimitsCalculation(FlatAnalyzerData::m_ttbb_kinfit_Name(),
-//                                        EventSubCategory::KinematicFitConverged,
-//                                        &FlatAnalyzerData::m_ttbb_kinfit);
-//        ProduceFileForLimitsCalculation(FlatAnalyzerData::m_ttbb_kinfit_Name(),
-//                                        EventSubCategory::KinematicFitConvergedWithMassWindow,
-//                                        &FlatAnalyzerData::m_ttbb_kinfit);
-
-//        std::cout << "Printing stacked plots... " << std::endl;
-//        PrintStackedPlots(EventRegion::OS_Isolated, false, true);
-
-//        std::cout << "Saving output file..." << std::endl;
-//    }
-
 protected:
     virtual Channel ChannelId() const = 0;
-    virtual EventRegionSet DetermineEventRegion(const ntuple::Sync&   event, EventCategory eventCategory) = 0;
+    virtual EventRegion DetermineEventRegion(const ntuple::Sync& event, EventCategory eventCategory) = 0;
+
+    static EventSubCategorySet DetermineEventSubCategories(const SyncEventInfo& eventInfo)
+    {
+        using namespace cuts::massWindow;
+
+        EventSubCategorySet sub_categories;
+        const double mass_tautau = eventInfo.event->m_sv;
+        sub_categories.insert(EventSubCategory::NoCuts);
+        if(mass_tautau > m_tautau_low && mass_tautau < m_tautau_high
+                && eventInfo.Hbb.M() > m_bb_low && eventInfo.Hbb.M() < m_bb_high) {
+            sub_categories.insert(EventSubCategory::MassWindow);
+            if(eventInfo.GetKinFitResults().HasMass())
+                sub_categories.insert(EventSubCategory::KinematicFitConvergedWithMassWindow);
+        } else
+            sub_categories.insert(EventSubCategory::OutsideMassWindow);
+        return sub_categories;
+    }
 
     virtual PhysicalValue CalculateQCDYield(const FlatAnalyzerDataMetaId_noRegion_noName& anaDataMetaId,
                                             const std::string& hist_name, DataCategoryType dataCategoryType,
                                             std::ostream& s_out) = 0;
     virtual void EstimateQCD(const FlatAnalyzerDataMetaId_noRegion_noName& anaDataMetaId, const std::string& hist_name,
                              const PhysicalValue& scale_factor, DataCategoryType dataCategoryType) = 0;
-    virtual PhysicalValueMap CalculateWjetsYields(const FlatAnalyzerDataMetaId_noRegion_noName& anaDataMetaId,
-                                                  const std::string& hist_name, bool fullEstimate) = 0;
     virtual void CreateHistogramForZTT(const FlatAnalyzerDataMetaId_noRegion_noName& anaDataMetaId,
                                        const std::string& hist_name, const PhysicalValueMap& ztt_yield,
                                        bool useEmbedded) = 0;
@@ -460,49 +261,12 @@ protected:
         const PhysicalValue yield = data_yield - bkg_yield;
         s_out << "Data yield = " << data_yield << "\nData-MC yield = " << yield << std::endl;
         if(yield.GetValue() < 0) {
-            std::cout << bkg_yield_debug << "\nData yield = " << data_yield << std::endl;
-            throw exception("Negative QCD yield for histogram '%' in %2% %3%.") % hist_name
+            if(&s_out != &std::cout)
+                std::cout << bkg_yield_debug << "\nData yield = " << data_yield << std::endl;
+            throw exception("Negative QCD yield for histogram '%1%' in %2% %3%.") % hist_name
                     % anaDataMetaId.eventCategory % eventRegion;
         }
         return yield;
-    }
-
-    virtual void EstimateWjets(const FlatAnalyzerDataMetaId_noRegion_noName& anaDataMetaId,
-                               const std::string& hist_name, const PhysicalValueMap& yield_map)
-    {
-        static const EventCategorySet categoriesToRelax =
-            { EventCategory::TwoJets_OneBtag, EventCategory::TwoJets_TwoBtag, EventCategory::TwoJets_AtLeastOneBtag };
-        const EventCategory shapeEventCategory = categoriesToRelax.count(anaDataMetaId.eventCategory)
-                ? MediumToLoose_EventCategoryMap.at(anaDataMetaId.eventCategory) : anaDataMetaId.eventCategory;
-        return EstimateWjetsEx(anaDataMetaId, shapeEventCategory, hist_name, yield_map);
-    }
-
-    void EstimateWjetsEx(const FlatAnalyzerDataMetaId_noRegion_noName& anaDataMetaId, EventCategory shapeEventCategory,
-                         const std::string& hist_name, const PhysicalValueMap& yield_map)
-    {
-        const DataCategory& wjets = dataCategoryCollection.GetUniqueCategory(DataCategoryType::WJets);
-        const DataCategoryPtrSet& wjets_mc_categories =
-                dataCategoryCollection.GetCategories(DataCategoryType::WJets_MC);
-
-        const FlatAnalyzerDataMetaId_noRegion_noName anaDataMetaId_shape(shapeEventCategory,
-                                                                         anaDataMetaId.eventSubCategory,
-                                                                         anaDataMetaId.eventEnergyScale);
-
-        for(const auto& yield_entry : yield_map) {
-            const EventRegion eventRegion = yield_entry.first;
-            const PhysicalValue& yield = yield_entry.second;
-            TH1D* hist = nullptr;
-            for (const DataCategory* wjets_category : wjets_mc_categories){
-                if(auto hist_mc = GetHistogram(anaDataMetaId_shape, eventRegion, wjets_category->name, hist_name)) {
-                    if (!hist)
-                        hist = &CloneHistogram(anaDataMetaId, eventRegion, wjets.name, *hist_mc);
-                    else
-                        hist->Add(hist_mc);
-                }
-            }
-            if (hist)
-                RenormalizeHistogram(*hist, yield, true);
-        }
     }
 
     const std::string& ChannelName() const { return detail::ChannelNameMap.at(ChannelId()); }
@@ -586,12 +350,9 @@ protected:
     void ProcessDataSource(const DataCategory& dataCategory, std::shared_ptr<ntuple::SyncTree> tree,
                            double scale_factor)
     {
-
-//        static const bool applyMVAcut = false;
-        static const bool applyPUreweight = false;
-        static const bool applybTagWeight = true;
-        static const bool order_bjet_by_csv = true;
-//        static const bool recalculate_kinFit = false;
+        static constexpr bool applyPUreweight = false;
+        static constexpr bool applybTagWeight = true;
+        static constexpr bool order_bjet_by_csv = true;
 
         const DataCategory& DYJets_incl = dataCategoryCollection.GetUniqueCategory(DataCategoryType::DYJets_incl);
         //const DataCategory& TTbar = dataCategoryCollection.GetUniqueCategory(DataCategoryType::TTbar);
@@ -644,35 +405,23 @@ protected:
                 if (!EventCategoriesToProcess().count(eventCategory)) continue;
                 // const EventRegion eventRegion = DetermineEventRegion(event, eventCategory);
                 // if(eventRegion == EventRegion::Unknown) continue;
-                const EventRegionSet eventRegions = DetermineEventRegion(event, eventCategory);
-                if(eventRegions.count(EventRegion::Unknown)) continue;
+                const EventRegion eventRegion = DetermineEventRegion(event, eventCategory);
+//                if(eventRegion == EventRegion::Unknown) continue;
+                if(eventRegion != EventRegion::OS_Isolated && eventRegion != EventRegion::SS_Isolated) continue;
                 if(!eventInfo)
                     eventInfo = std::shared_ptr<SyncEventInfo>(new SyncEventInfo(event,selected_bjet_pair));
 
-//                UpdateMvaInfo(*eventInfo, eventCategory, false, false, false);
-//                if(applyMVAcut && !PassMvaCut(*eventInfo, eventCategory)) continue;
+                const EventSubCategorySet subCategories = DetermineEventSubCategories(*eventInfo);
+                if(!subCategories.count(EventSubCategory::KinematicFitConvergedWithMassWindow)) continue;
 
-//                if(dataCategory.name == DYJets_excl.name || dataCategory.name == DYJets_incl.name)
-//                    FillDYjetHistograms(*eventInfo, eventCategory, eventRegion, weight);
-
-              for(auto eventRegion : eventRegions){
                 const FlatAnalyzerDataMetaId_noSub_noES metaId_noSub_noES(eventCategory, eventRegion,
                                                                           dataCategory.name);
-                const FlatAnalyzerDataMetaId_noSub metaId_noSub =
-                        metaId_noSub_noES.MakeMetaId(EventEnergyScale::Central);
-                //new
-                const FlatAnalyzerDataId metaId = metaId_noSub.MakeId(EventSubCategory::NoCuts);
-
+                const auto data_id = metaId_noSub_noES.MakeId(EventSubCategory::KinematicFitConvergedWithMassWindow,
+                                                              EventEnergyScale::Central);
                 if (dataCategory.IsData())
-                     anaDataCollection.Fill(metaId, ChannelId(), *eventInfo, weight);
-//                    anaDataCollection.FillAllEnergyScales(metaId_noSub_noES, ChannelId(), *eventInfo, weight);
-//                else if(dataCategory.name == DY_Embedded.name
-//                        && eventInfo->eventEnergyScale == EventEnergyScale::Central)
-//                    anaDataCollection.FillCentralAndJetRelatedScales(metaId_noSub_noES, ChannelId(),
-//                                                                     *eventInfo, weight);
+                     anaDataCollection.Fill(data_id, ChannelId(), *eventInfo, weight);
                 else
-                    anaDataCollection.Fill(metaId, ChannelId(), *eventInfo, weight);
-                }//loop on eventRegions Set
+                    anaDataCollection.Fill(data_id, ChannelId(), *eventInfo, weight);
             }
         }
     }
@@ -696,12 +445,9 @@ protected:
                         ss_title << " " << subCategory;
                     ss_title << ": " << hist_name;
 
-                    // StackedPlotDescriptor stackDescriptor(ss_title.str(), false, ChannelNameLatex(),
-                    //                                       detail::eventCategoryNamesMap.at(eventCategory), drawRatio,
-                    //                                       applyPostFitCorrections);
                     StackedPlotDescriptor stackDescriptor(ss_title.str(), false, ChannelNameLatex(),
                                                           detail::eventCategoryNamesMap.at(eventCategory), drawRatio,
-                                                          true);
+                                                          false);
 
                     for(const DataCategory* category : dataCategoryCollection.GetAllCategories()) {
                         if(!category->draw) continue;
@@ -1073,36 +819,6 @@ private:
                         composit_hist->Add(sub_hist);
                     else
                         CloneHistogram(anaDataMetaId, eventRegion, composit->name, *sub_hist);
-                }
-            }
-        }
-    }
-
-    void ApplyPostFitCorrections(const FlatAnalyzerDataMetaId_noRegion_noName& anaDataMetaId,
-                                 const std::string& hist_name, bool compositFlag)
-    {
-        const EventCategory eventCategory = anaDataMetaId.eventCategory;
-        const EventSubCategory subCategory = anaDataMetaId.eventSubCategory;
-
-        for (EventRegion eventRegion : AllEventRegions) {
-            for(const DataCategory* dataCategory : dataCategoryCollection.GetCategories(DataCategoryType::Limits)) {
-                if(dataCategory->IsComposit() != compositFlag) continue;
-                if(!postfitCorrectionsCollection
-                        || !postfitCorrectionsCollection->HasCorrections(ChannelId(), eventCategory, subCategory))
-                    continue;
-                const PostfitCorrections& corrections =
-                        postfitCorrectionsCollection->GetCorrections(ChannelId(), eventCategory, subCategory);
-                if(!corrections.HasScaleFactor(dataCategory->datacard)) continue;
-                const double uncertainty = corrections.GetUncertainty();
-                const double scaleFactor = corrections.GetScaleFactor(dataCategory->datacard);
-
-                if(auto hist = GetHistogram(anaDataMetaId, eventRegion, dataCategory->name, hist_name)) {
-                    hist->Scale(scaleFactor);
-                    for (Int_t n = 0; n <= hist->GetNbinsX() + 1; ++n) {
-                        const double error = std::sqrt(sqr(hist->GetBinError(n))
-                                                       + sqr(hist->GetBinContent(n) * uncertainty));
-                        hist->SetBinError(n, error);
-                    }
                 }
             }
         }

@@ -19,11 +19,11 @@ public:
 
     TH1D_ENTRY_EX(npv, 40, 0, 40,  "Number of Primary Vertex", "Events", false, 1.4, false, SaveAll)
     TH1D_ENTRY_EX(pt_b1, 25, 0, 500, "Leading selected jet p_{T} (GeV)", "Events", false, 1.4, false, SaveAll)
-    TH1D_ENTRY_EX(pt_b1_etaRange, 20, 0, 200, "Leading selected jet p_{T} (GeV), |#eta| < 1.5 ", "Events", false, 1.4, false, SaveAll)
+//    TH1D_ENTRY_EX(pt_b1_etaRange, 20, 0, 200, "Leading selected jet p_{T} (GeV), |#eta| < 1.5 ", "Events", false, 1.4, false, SaveAll)
     TH1D_ENTRY_EX(eta_b1, 25, -2.5, 2.5, "Leading selected jet #eta", "Events", false, 1.8, false, SaveAll)
     TH1D_ENTRY_EX(csv_b1, 25, 0, 1, "Leading selected jet CSV", "Events", false, 1.4, false, SaveAll)
     TH1D_ENTRY_EX(pt_b2, 25, 0, 500, "Subleading selected jet p_{T} (GeV)", "Events", false, 1.4, false, SaveAll)
-    TH1D_ENTRY_EX(pt_b2_etaRange, 20, 0, 200, "Subleading selected jet p_{T} (GeV), |#eta| < 1.5 ", "Events", false, 1.4, false, SaveAll)
+//    TH1D_ENTRY_EX(pt_b2_etaRange, 20, 0, 200, "Subleading selected jet p_{T} (GeV), |#eta| < 1.5 ", "Events", false, 1.4, false, SaveAll)
     TH1D_ENTRY_EX(eta_b2, 25, -2.5, 2.5, "Subleading selected jet #eta", "Events", false, 1.8, false, SaveAll)
     TH1D_ENTRY_EX(csv_b2, 25, 0, 1, "Subleading selected jet CSV", "Events", false, 1.4, false, SaveAll)
     TH1D_ENTRY_EX(pt_H_tt, 20, 0, 300, "P_{T}(GeV)", "Events", false, 1.2, false, SaveAll)
@@ -97,9 +97,11 @@ public:
 
         const ntuple::Sync& event = *eventInfo.event;
 
+        if(eventInfo.GetKinFitResults().HasMass())
+            m_ttbb_kinfit().Fill(eventInfo.GetKinFitResults().mass, weight);
         if(!fill_all) return;
 
-        npv().Fill(eventInfo.npv,weight);
+        npv().Fill(event.npv,weight);
       //  std::cout<<"  Filling number of primary vertex:   "<< eventInfo.npv<<std::endl;
         // DeltaPhi_tt().Fill(std::abs(eventInfo.lepton_momentums.at(0).DeltaPhi(eventInfo.lepton_momentums.at(1))), weight);
         // DeltaR_tt().Fill(eventInfo.lepton_momentums.at(0).DeltaR(eventInfo.lepton_momentums.at(1)), weight);
@@ -116,13 +118,13 @@ public:
         if(!eventInfo.has_bjet_pair) return;
         pt_b1().Fill(eventInfo.bjet_momentums.at(eventInfo.selected_bjets.first).Pt(), weight);
         eta_b1().Fill(eventInfo.bjet_momentums.at(eventInfo.selected_bjets.first).Eta(), weight);
-        const bool jet1_etaRange = std::abs(eventInfo.bjet_momentums.at(eventInfo.selected_bjets.first).Eta()) < 1.6 ;
-        if (jet1_etaRange) pt_b1_etaRange().Fill(eventInfo.bjet_momentums.at(eventInfo.selected_bjets.first).Pt(), weight);
+//        const bool jet1_etaRange = std::abs(eventInfo.bjet_momentums.at(eventInfo.selected_bjets.first).Eta()) < 1.6 ;
+//        if (jet1_etaRange) pt_b1_etaRange().Fill(eventInfo.bjet_momentums.at(eventInfo.selected_bjets.first).Pt(), weight);
         csv_b1().Fill(eventInfo.event->csv_jets.at(eventInfo.selected_bjets.first), weight);
 
         pt_b2().Fill(eventInfo.bjet_momentums.at(eventInfo.selected_bjets.second).Pt(), weight);
-        const bool jet2_etaRange = std::abs(eventInfo.bjet_momentums.at(eventInfo.selected_bjets.second).Eta()) < 1.6 ;
-        if (jet2_etaRange) pt_b2_etaRange().Fill(eventInfo.bjet_momentums.at(eventInfo.selected_bjets.second).Pt(), weight);
+//        const bool jet2_etaRange = std::abs(eventInfo.bjet_momentums.at(eventInfo.selected_bjets.second).Eta()) < 1.6 ;
+//        if (jet2_etaRange) pt_b2_etaRange().Fill(eventInfo.bjet_momentums.at(eventInfo.selected_bjets.second).Pt(), weight);
         eta_b2().Fill(eventInfo.bjet_momentums.at(eventInfo.selected_bjets.second).Eta(), weight);
         csv_b2().Fill(eventInfo.event->csv_jets.at(eventInfo.selected_bjets.second), weight);
         // DeltaPhi_bb().Fill(std::abs(eventInfo.bjet_momentums.at(eventInfo.selected_bjets.first).DeltaPhi(
