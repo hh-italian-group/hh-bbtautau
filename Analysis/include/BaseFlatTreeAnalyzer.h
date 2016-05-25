@@ -46,10 +46,35 @@ public:
     virtual const EventCategorySet& EventCategoriesToProcess() const
     {
         static const EventCategorySet categories = {
-//            EventCategory::TwoJets_OneBtag, EventCategory::TwoJets_OneLooseBtag,
+            EventCategory::TwoJets_ZeroBtag,
+            EventCategory::TwoJets_OneBtag, EventCategory::TwoJets_OneLooseBtag,
             EventCategory::TwoJets_TwoBtag, EventCategory::TwoJets_TwoLooseBtag
         };
         return categories;
+    }
+
+    virtual const EventSubCategorySet& EventSubCategoriesToProcess() const
+    {
+        static const EventSubCategorySet sub_categories = {
+            EventSubCategory::NoCuts, EventSubCategory::MassWindow
+        };
+        return sub_categories;
+    }
+
+    virtual const EventRegionSet& EventRegionsToProcess() const
+    {
+        static const EventRegionSet regions = {
+            EventRegion::OS_Isolated, EventRegion::SS_Isolated, EventRegion::SS_AntiIsolated
+        };
+        return regions;
+    }
+
+    virtual const EventEnergyScaleSet& EventEnergyScaleToProcess() const
+    {
+        static const EventEnergyScaleSet scales = {
+            EventEnergyScale::Central
+        };
+        return scales;
     }
 
     BaseFlatTreeAnalyzer(const AnalyzerArguments& _args, Channel channel_id)
@@ -83,22 +108,26 @@ public:
             }
         }
 
+        std::set<std::string> histograms_to_report = { FlatAnalyzerData::m_ttbb_Name() };
+
         for (const auto& hist_name : FlatAnalyzerData::GetOriginalHistogramNames<TH1D>()) {
-            EventSubCategory subCategory = EventSubCategory::KinematicFitConvergedWithMassWindow;
-            for(EventEnergyScale energyScale : AllEventEnergyScales) {
-                if(energyScale != EventEnergyScale::Central) continue;
-                std::cout << "Processing '" << hist_name << "' in " << subCategory << "/" << energyScale
-                          << "..." << std::endl;
+            for(auto subCategory : EventSubCategoriesToProcess()) {
+                for(auto energyScale : EventEnergyScaleToProcess()) {
+                    std::cout << "Processing '" << hist_name << "' in " << subCategory << "/" << energyScale
+                              << "..." << std::endl;
 
-                std::ostream& s_out = std::cout;
+                    std::ostringstream debug;
+                    std::ostream& s_out = histograms_to_report.count(hist_name) ? std::cout : debug;
 
-                for (EventCategory eventCategory : EventCategoriesToProcess()) {
-                    const FlatAnalyzerDataMetaId_noRegion_noName anaDataMetaId(eventCategory, subCategory, energyScale);
-                    DataCategoryType dataCategoryType = DataCategoryType::QCD;
-                    const auto qcd_yield = CalculateQCDYield(anaDataMetaId, hist_name, dataCategoryType, s_out);
-                    s_out << eventCategory << ": QCD yield = " << qcd_yield << ".\n";
-                    EstimateQCD(anaDataMetaId, hist_name, qcd_yield, dataCategoryType);
-                    ProcessCompositDataCategories(anaDataMetaId, hist_name);
+                    for (EventCategory eventCategory : EventCategoriesToProcess()) {
+                        const FlatAnalyzerDataMetaId_noRegion_noName anaDataMetaId(eventCategory, subCategory,
+                                                                                   energyScale);
+                        DataCategoryType dataCategoryType = DataCategoryType::QCD;
+                        const auto qcd_yield = CalculateQCDYield(anaDataMetaId, hist_name, dataCategoryType, s_out);
+                        s_out << eventCategory << ": QCD yield = " << qcd_yield << ".\n";
+                        EstimateQCD(anaDataMetaId, hist_name, qcd_yield, dataCategoryType);
+                        ProcessCompositDataCategories(anaDataMetaId, hist_name);
+                    }
                 }
             }
         }
@@ -107,8 +136,8 @@ public:
         PrintTables("comma", L",");
 
         std::cout << "Saving datacards... " << std::endl;
-        ProduceFileForLimitsCalculation(FlatAnalyzerData::m_ttbb_kinfit_Name(),
-                                        EventSubCategory::KinematicFitConvergedWithMassWindow,
+        ProduceFileForLimitsCalculation(FlatAnalyzerData::m_ttbb_Name(),
+                                        EventSubCategory::MassWindow,
                                         &FlatAnalyzerData::m_ttbb_kinfit);
 
         std::cout << "Printing stacked plots... " << std::endl;
@@ -131,8 +160,8 @@ protected:
         if(mass_tautau > m_tautau_low && mass_tautau < m_tautau_high
                 && eventInfo.Hbb.M() > m_bb_low && eventInfo.Hbb.M() < m_bb_high) {
             sub_categories.insert(EventSubCategory::MassWindow);
-            if(eventInfo.GetKinFitResults().HasMass())
-                sub_categories.insert(EventSubCategory::KinematicFitConvergedWithMassWindow);
+//            if(eventInfo.GetKinFitResults().HasMass())
+//                sub_categories.insert(EventSubCategory::KinematicFitConvergedWithMassWindow);
         } else
             sub_categories.insert(EventSubCategory::OutsideMassWindow);
         return sub_categories;
@@ -340,88 +369,61 @@ protected:
         return selected_pair;
     }
 
-    EventCategoryVector DetermineSyncCategoriesWorkaround(){
-        EventCategoryVector categories;
-        categories.push_back(EventCategory::Inclusive);
+    double ComputeWeight(const DataCategory& dataCategory, const ntuple::Sync& event, double scale_factor)
+    {
+        static constexpr bool applyPUreweight = false;
+        static constexpr bool applybTagWeight = true;
 
-        return categories;
+        double btagweight = 1;
+        if ( dataCategory.name == "TTbar" && applybTagWeight) btagweight = bTagLooseWeight.Compute(event);
+
+        puReWeight.Reset();
+        puReWeight.CalculatePuWeight(event);
+        puReWeight.CalculateLeptonWeights(event);
+        const double puweight = dataCategory.IsData() ? 1 : (applyPUreweight ? puReWeight.GetPileUpWeight():1);
+        const double lepweight = dataCategory.IsData() ? 1 : puReWeight.GetLeptonWeights();
+        return scale_factor * puweight * btagweight * lepweight;
     }
 
     void ProcessDataSource(const DataCategory& dataCategory, std::shared_ptr<ntuple::SyncTree> tree,
                            double scale_factor)
     {
-        static constexpr bool applyPUreweight = false;
-        static constexpr bool applybTagWeight = true;
         static constexpr bool order_bjet_by_csv = true;
 
         const DataCategory& DYJets_incl = dataCategoryCollection.GetUniqueCategory(DataCategoryType::DYJets_incl);
-        //const DataCategory& TTbar = dataCategoryCollection.GetUniqueCategory(DataCategoryType::TTbar);
-//        const DataCategory& DYJets_excl = dataCategoryCollection.GetUniqueCategory(DataCategoryType::DYJets_excl);
-//        const DataCategory& DY_Embedded = dataCategoryCollection.GetUniqueCategory(DataCategoryType::Embedded);
 
         for(Long64_t current_entry = 0; current_entry < tree->GetEntries(); ++current_entry) {
             tree->GetEntry(current_entry);
-            //--const ntuple::Flat& event = tree->data;
             const ntuple::Sync& event = tree->data();
 
             if (dataCategory.name == DYJets_incl.name && event.HTBin != 0) continue;
 
             const SyncEventInfo::BjetPair selected_bjet_pair = SelectBjetPair(event, order_bjet_by_csv);
-            //--const bool useRetag = dataCategory.IsData() || dataCategory.name == DY_Embedded.name  ? false : true;
-           const EventCategoryVector eventCategories = DetermineEventCategories(event.csv_jets,
+            const EventCategoryVector eventCategories = DetermineEventCategories(event.csv_jets,
                                                                                  selected_bjet_pair,
                                                                                  0,
                                                                                  cuts::Htautau_2015::btag::CSVL,
                                                                                  cuts::Htautau_2015::btag::CSVM,
                                                                                  false);
-//            const EventCategoryVector eventCategories = DetermineSyncCategoriesWorkaround();
-//            const bool useCustomSF = dataCategory.exclusive_sf.count(event.n_extraJets_MC);
-//            const double corrected_sf = useCustomSF
-//                    ? dataCategory.exclusive_sf.at(event.n_extraJets_MC) : scale_factor;
-            double btagweight = 1;
-            if ( dataCategory.name == "TTbar" && applybTagWeight) btagweight = bTagLooseWeight.Compute(event);
-
-            puReWeight.Reset();
-            puReWeight.CalculatePuWeight(event);
-            puReWeight.CalculateLeptonWeights(event);
-            const double puweight = dataCategory.IsData() ? 1 : (applyPUreweight ? puReWeight.GetPileUpWeight():1);
-            const double lepweight = dataCategory.IsData() ? 1 : puReWeight.GetLeptonWeights();
-            //const double puweight = dataCategory.IsData() ? 1 : (applyPUreweight ? puWeightLUT((Int_t)event.npu):1);
-            // const double mcweight = dataCategory.IsData() ? 1 : event.weightevt;
-            const double mcweight = 1;
-            const double corrected_sf = scale_factor;
-//            if(std::isnan(event.weight)) {
-//                std::cerr << "ERROR: event " << event.evt << " will not be processed because event weight is NaN."
-//                          << std::endl;
-//                continue;
-//            }
-
-            //--const double weight = event.weight * corrected_sf;
-            const double weight = 1 * corrected_sf * puweight * mcweight * btagweight * lepweight;
-            //const double weight = 1;
-            //--std::shared_ptr<FlatEventInfo> eventInfo;
+            double weight = std::numeric_limits<double>::quiet_NaN();
             std::shared_ptr<SyncEventInfo> eventInfo;
             for(auto eventCategory : eventCategories) {
                 if (!EventCategoriesToProcess().count(eventCategory)) continue;
-                // const EventRegion eventRegion = DetermineEventRegion(event, eventCategory);
-                // if(eventRegion == EventRegion::Unknown) continue;
                 const EventRegion eventRegion = DetermineEventRegion(event, eventCategory);
-//                if(eventRegion == EventRegion::Unknown) continue;
-                if(eventRegion != EventRegion::OS_Isolated && eventRegion != EventRegion::SS_Isolated) continue;
+                if(!EventRegionsToProcess().count(eventRegion)) continue;
+
                 if(!eventInfo)
                     eventInfo = std::shared_ptr<SyncEventInfo>(new SyncEventInfo(event,selected_bjet_pair));
 
                 const EventSubCategorySet subCategories = DetermineEventSubCategories(*eventInfo);
-                if(!subCategories.count(EventSubCategory::KinematicFitConvergedWithMassWindow)) continue;
-
-                const FlatAnalyzerDataMetaId_noSub_noES metaId_noSub_noES(eventCategory, eventRegion,
-                                                                          dataCategory.name);
-                const auto data_id = metaId_noSub_noES.MakeId(EventSubCategory::KinematicFitConvergedWithMassWindow,
-                                                              EventEnergyScale::Central);
-                if (dataCategory.IsData())
-                     anaDataCollection.Fill(data_id, ChannelId(), *eventInfo, weight);
-                else
+                for(auto subCategory : subCategories) {
+                    if(!EventSubCategoriesToProcess().count(subCategory)) continue;
+                    const FlatAnalyzerDataId data_id(eventCategory, subCategory, eventRegion,
+                                                     EventEnergyScale::Central, dataCategory.name);
+                    if(std::isnan(weight))
+                        weight = ComputeWeight(dataCategory, event, scale_factor);
                     anaDataCollection.Fill(data_id, ChannelId(), *eventInfo, weight);
+                }
             }
         }
     }
@@ -492,7 +494,7 @@ protected:
             full_name << "btagFake";
         else
             throw exception("Unsupported event energy scale %1%.") % eventEnergyScale;
-        full_name << "_8TeV";
+        full_name << "_13TeV";
         if(eventEnergyScale == EventEnergyScale::TauUp || eventEnergyScale == EventEnergyScale::JetUp ||
                 eventEnergyScale == EventEnergyScale::BtagEfficiencyUp ||
                 eventEnergyScale == EventEnergyScale::BtagFakeUp )
@@ -534,7 +536,7 @@ protected:
             for(const DataCategory* dataCategory : dataCategoryCollection.GetCategories(DataCategoryType::Limits)) {
                 if(!dataCategory->datacard.size())
                     throw exception("Empty datacard name for data category '%1%'.") % dataCategory->name;
-                for(const EventEnergyScale& eventEnergyScale : AllEventEnergyScales) {
+                for(const EventEnergyScale& eventEnergyScale : EventEnergyScaleToProcess()) {
                     const FlatAnalyzerDataMetaId_noRegion_noName meta_id(eventCategory, eventSubCategory,
                                                                          eventEnergyScale);
                     std::shared_ptr<TH1D> hist;

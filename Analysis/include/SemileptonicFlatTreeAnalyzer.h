@@ -91,8 +91,8 @@ protected:
                              const analysis::PhysicalValue& scale_factor, DataCategoryType dataCategoryType) override
     {
         static const EventCategorySet categories=
-            { EventCategory::TwoJets_AtLeastOneBtag };
-            //{ EventCategory::TwoJets_OneBtag, EventCategory::TwoJets_TwoBtag, EventCategory::TwoJets_AtLeastOneBtag };
+//            { EventCategory::TwoJets_AtLeastOneBtag };
+            { EventCategory::TwoJets_OneBtag, EventCategory::TwoJets_TwoBtag, EventCategory::TwoJets_AtLeastOneBtag };
         static const analysis::EventCategorySet inclusive_categories =
             { EventCategory::Inclusive, EventCategory::TwoJets_Inclusive};
 
@@ -123,7 +123,10 @@ protected:
                                                                        anaDataMetaId.eventEnergyScale);
 
         auto hist_shape_data = GetHistogram(anaDataMetaId_ref, eventRegion, data.name, hist_name);
-        if(!hist_shape_data) return;
+        if(!hist_shape_data) {
+            std::cout << "Warning: Data shape for QCD estimate not found." << std::endl;
+            return;
+        }
 
         TH1D& histogram = CloneHistogram(anaDataMetaId, EventRegion::OS_Isolated, qcd.name, *hist_shape_data);
         if (subtractOtherBkg){

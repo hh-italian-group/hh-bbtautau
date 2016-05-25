@@ -97,8 +97,11 @@ public:
 
         const ntuple::Sync& event = *eventInfo.event;
 
-        if(eventInfo.GetKinFitResults().HasMass())
-            m_ttbb_kinfit().Fill(eventInfo.GetKinFitResults().mass, weight);
+        if(eventInfo.has_bjet_pair)
+            m_ttbb().Fill(eventInfo.resonance.M(), weight);
+
+//        if(eventInfo.GetKinFitResults().HasMass())
+//            m_ttbb_kinfit().Fill(eventInfo.GetKinFitResults().mass, weight);
         if(!fill_all) return;
 
         npv().Fill(event.npv,weight);
@@ -107,7 +110,7 @@ public:
         // DeltaR_tt().Fill(eventInfo.lepton_momentums.at(0).DeltaR(eventInfo.lepton_momentums.at(1)), weight);
         // pt_H_tt().Fill(eventInfo.Htt.Pt(),weight);
 
-        m_vis().Fill(eventInfo.Htt.M(),weight);
+        m_vis().Fill(eventInfo.Htt_vis.M(),weight);
         // pt_H_tt_MET().Fill(eventInfo.Htt_MET.Pt(), weight);
         // DeltaPhi_tt_MET().Fill(std::abs(eventInfo.Htt.DeltaPhi(eventInfo.MET)), weight);
         mt_2().Fill(event.pfmt_2, weight);
@@ -132,7 +135,7 @@ public:
         // DeltaR_bb().Fill(eventInfo.bjet_momentums.at(eventInfo.selected_bjets.first).DeltaR(
         //                              eventInfo.bjet_momentums.at(eventInfo.selected_bjets.second)), weight);
         // pt_H_bb().Fill(eventInfo.Hbb.Pt(),weight);
-        m_ttbb().Fill(eventInfo.resonance.M(), weight);
+
 
 
     }
@@ -227,7 +230,7 @@ public:
     virtual const std::vector<double>& M_ttbb_Bins() const override
     {
         static const std::vector<double> bins = { 100,200, 250, 270, 290, 310, 330, 350, 370, 390, 410, 430, 450, 500, 550,
-                                                  600, 650, 700 };
+                                                  600, 650, 700, 750, 800, 850, 900, 950, 1000, 1100, 1200 };
         return bins;
     }
 
