@@ -72,7 +72,7 @@ public:
     virtual const EventEnergyScaleSet& EventEnergyScaleToProcess() const
     {
         static const EventEnergyScaleSet scales = {
-            EventEnergyScale::Central
+            EventEnergyScale::Central, EventEnergyScale::TauUp, EventEnergyScale::TauDown
         };
         return scales;
     }
@@ -86,14 +86,7 @@ public:
 
     void Run()
     {
-        static const std::set<std::string> disabled_branches = {
-            "partonFlavour_bjets", "channelID", "eventEnergyScale", "byVLooseIsolationMVArun2v1DBoldDMwLT_1",
-            "byLooseIsolationMVArun2v1DBoldDMwLT_1", "byMediumIsolationMVArun2v1DBoldDMwLT_1",
-            "byTightIsolationMVArun2v1DBoldDMwLT_1", "byVTightIsolationMVArun2v1DBoldDMwLT_1",
-            "byVLooseIsolationMVArun2v1DBoldDMwLT_2", "byLooseIsolationMVArun2v1DBoldDMwLT_2",
-            "byMediumIsolationMVArun2v1DBoldDMwLT_2", "byTightIsolationMVArun2v1DBoldDMwLT_2",
-            "byVTightIsolationMVArun2v1DBoldDMwLT_2", "partonFlavour_jets"
-        };
+        static const std::set<std::string> disabled_branches = { };
 
         std::cout << "Processing data categories... " << std::endl;
         for(const DataCategory* dataCategory : dataCategoryCollection.GetAllCategories()) {
@@ -102,7 +95,7 @@ public:
             for(const auto& source_entry : dataCategory->sources_sf) {
                 const std::string fullFileName = args.inputPath() + "/" + source_entry.first;
                 auto file = root_ext::OpenRootFile(fullFileName);
-                std::shared_ptr<ntuple::SyncTree> tree(new ntuple::SyncTree("sync", file.get(), true,
+                std::shared_ptr<ntuple::SyncTree> tree(new ntuple::SyncTree(TreeName(), file.get(), true,
                                                                             disabled_branches));
                 ProcessDataSource(*dataCategory, tree, source_entry.second);
             }
@@ -148,6 +141,7 @@ public:
 
 protected:
     virtual Channel ChannelId() const = 0;
+    virtual std::string TreeName() const { return "sync"; }
     virtual EventRegion DetermineEventRegion(const ntuple::Sync& event, EventCategory eventCategory) = 0;
 
     static EventSubCategorySet DetermineEventSubCategories(const SyncEventInfo& eventInfo)
@@ -283,7 +277,9 @@ protected:
                 CalculateBackgroundIntegral(anaDataMetaId, eventRegion, hist_name, qcd.name, false, bkg_yield_debug);
         s_out << bkg_yield_debug;
 
-        auto hist_data = GetHistogram(anaDataMetaId, eventRegion, data.name, hist_name);
+        auto metaId_data = anaDataMetaId;
+        metaId_data.eventEnergyScale = EventEnergyScale::Central;
+        auto hist_data = GetHistogram(metaId_data, eventRegion, data.name, hist_name);
         if(!hist_data)
             throw exception("Unable to find data histograms for QCD yield estimation.");
         const auto data_yield = Integral(*hist_data, true);
@@ -419,7 +415,7 @@ protected:
                 for(auto subCategory : subCategories) {
                     if(!EventSubCategoriesToProcess().count(subCategory)) continue;
                     const FlatAnalyzerDataId data_id(eventCategory, subCategory, eventRegion,
-                                                     EventEnergyScale::Central, dataCategory.name);
+                                                     eventInfo->energy_scale, dataCategory.name);
                     if(std::isnan(weight))
                         weight = ComputeWeight(dataCategory, event, scale_factor);
                     anaDataCollection.Fill(data_id, ChannelId(), *eventInfo, weight);

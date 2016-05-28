@@ -12,6 +12,7 @@ public:
 
 protected:
     virtual Channel ChannelId() const override { return Channel::MuTau; }
+    virtual std::string TreeName() const override { return "mutau"; }
 
     virtual EventRegion DetermineEventRegion(const ntuple::Sync& event, EventCategory /*eventCategory*/) override
     {

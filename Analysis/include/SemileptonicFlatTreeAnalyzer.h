@@ -122,7 +122,9 @@ protected:
                                                                        anaDataMetaId.eventSubCategory,
                                                                        anaDataMetaId.eventEnergyScale);
 
-        auto hist_shape_data = GetHistogram(anaDataMetaId_ref, eventRegion, data.name, hist_name);
+        auto metaId_ref_data = anaDataMetaId_ref;
+        metaId_ref_data.eventEnergyScale = EventEnergyScale::Central;
+        auto hist_shape_data = GetHistogram(metaId_ref_data, eventRegion, data.name, hist_name);
         if(!hist_shape_data) {
             std::cout << "Warning: Data shape for QCD estimate not found." << std::endl;
             return;
