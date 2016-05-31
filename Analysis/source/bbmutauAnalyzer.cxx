@@ -21,12 +21,15 @@ protected:
         if(event.againstMuonTight3_2 < tauID::againstMuonTight3
                 || event.againstElectronVLooseMVA6_2 < tauID::againstElectronVLooseMVA6
                 || event.iso_1 >= muonID::pFRelIso
-                || event.dilepton_veto)
+                || event.dilepton_veto
+                /*|| (event.extraelec_veto || event.extramuon_veto) */)
             return EventRegion::Unknown;
 
         const bool os = event.q_1 * event.q_2 == -1;
+//        const bool iso = event.byTightIsolationMVArun2v1DBoldDMwLT_2 > 0.5;
         const bool iso = event.iso_2 > 0.2;
-        const bool low_mt = event.pfmt_1 < muonID::mt;
+        //        const bool low_mt = event.pfmt_1 < muonID::mt;
+        const bool low_mt = true;
 
         if(iso && os) return low_mt ? EventRegion::OS_Isolated : EventRegion::OS_Iso_HighMt;
         if(iso && !os) return low_mt ? EventRegion::SS_Isolated : EventRegion::SS_Iso_HighMt;

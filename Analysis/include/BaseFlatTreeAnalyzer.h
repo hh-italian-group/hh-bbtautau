@@ -45,7 +45,7 @@ public:
 
     virtual const EventCategorySet& EventCategoriesToProcess() const
     {
-        static const EventCategorySet categories = {
+        static const EventCategorySet categories = { EventCategory::TwoJets_Inclusive,
             EventCategory::TwoJets_ZeroBtag,
             EventCategory::TwoJets_OneBtag, EventCategory::TwoJets_OneLooseBtag,
             EventCategory::TwoJets_TwoBtag, EventCategory::TwoJets_TwoLooseBtag
@@ -86,7 +86,13 @@ public:
 
     void Run()
     {
-        static const std::set<std::string> disabled_branches = { };
+        static const std::set<std::string> disabled_branches = {};
+//        static const std::set<std::string> disabled_branches = {"channelID","eventEnergyScale","byVLooseIsolationMVArun2v1DBoldDMwLT_1",
+//                                                               "byLooseIsolationMVArun2v1DBoldDMwLT_1", "byMediumIsolationMVArun2v1DBoldDMwLT_1",
+//                                                               "byTightIsolationMVArun2v1DBoldDMwLT_1", "byVTightIsolationMVArun2v1DBoldDMwLT_1",
+//                                                               "byVLooseIsolationMVArun2v1DBoldDMwLT_2", "byLooseIsolationMVArun2v1DBoldDMwLT_2",
+//                                                               "byMediumIsolationMVArun2v1DBoldDMwLT_2","byTightIsolationMVArun2v1DBoldDMwLT_2",
+//                                                               "byVTightIsolationMVArun2v1DBoldDMwLT_2","partonFlavour_jets","partonFlavour_bjets"};
 
         std::cout << "Processing data categories... " << std::endl;
         for(const DataCategory* dataCategory : dataCategoryCollection.GetAllCategories()) {
@@ -286,10 +292,10 @@ protected:
         const PhysicalValue yield = data_yield - bkg_yield;
         s_out << "Data yield = " << data_yield << "\nData-MC yield = " << yield << std::endl;
         if(yield.GetValue() < 0) {
-            if(&s_out != &std::cout)
-                std::cout << bkg_yield_debug << "\nData yield = " << data_yield << std::endl;
-            throw exception("Negative QCD yield for histogram '%1%' in %2% %3%.") % hist_name
-                    % anaDataMetaId.eventCategory % eventRegion;
+//            if(&s_out != &std::cout)
+//                std::cout << bkg_yield_debug << "\nData yield = " << data_yield << std::endl;
+//            throw exception("Negative QCD yield for histogram '%1%' in %2% %3%.") % hist_name
+//                    % anaDataMetaId.eventCategory % eventRegion;
         }
         return yield;
     }
@@ -369,6 +375,7 @@ protected:
     {
         static constexpr bool applyPUreweight = false;
         static constexpr bool applybTagWeight = true;
+        static constexpr bool applyLeptonWeight = true;
 
         double btagweight = 1;
         if ( dataCategory.name == "TTbar" && applybTagWeight) btagweight = bTagLooseWeight.Compute(event);
@@ -377,7 +384,7 @@ protected:
         puReWeight.CalculatePuWeight(event);
         puReWeight.CalculateLeptonWeights(event);
         const double puweight = dataCategory.IsData() ? 1 : (applyPUreweight ? puReWeight.GetPileUpWeight():1);
-        const double lepweight = dataCategory.IsData() ? 1 : puReWeight.GetLeptonWeights();
+        const double lepweight = dataCategory.IsData() ? 1 : (applyLeptonWeight ? puReWeight.GetLeptonWeights():1);
         return scale_factor * puweight * btagweight * lepweight;
     }
 
@@ -391,7 +398,6 @@ protected:
         for(Long64_t current_entry = 0; current_entry < tree->GetEntries(); ++current_entry) {
             tree->GetEntry(current_entry);
             const ntuple::Sync& event = tree->data();
-
             if (dataCategory.name == DYJets_incl.name && event.HTBin != 0) continue;
 
             const SyncEventInfo::BjetPair selected_bjet_pair = SelectBjetPair(event, order_bjet_by_csv);

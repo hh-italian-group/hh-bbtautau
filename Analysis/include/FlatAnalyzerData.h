@@ -14,6 +14,7 @@ public:
     TH1D_ENTRY_CUSTOM_EX(m_vis, M_tt_Bins2(), "M_{vis}(GeV)", "Events", false, 1.1, false, SaveAll)
     TH1D_ENTRY_CUSTOM_EX(m_bb_slice, M_tt_bbSlice_Bins(), "2DM_{sv}(GeV)", "Events", false, 1.1, false, SaveAll)
     TH1D_ENTRY_CUSTOM_EX(m_ttbb, M_ttbb_Bins(), "M_{#tau#tau+jj} (GeV)", "dN/dm_{#tau#tau+jj} (1/GeV)", false, 1.5, true, SaveAll)
+    TH1D_ENTRY_CUSTOM_EX(m_ttbb_log, M_ttbb_Bins(), "M_{#tau#tau+jj} (GeV)", "dN/dm_{#tau#tau+jj} (1/GeV)", true, 1., true, SaveAll)
     TH1D_ENTRY_CUSTOM_EX(m_ttbb_kinfit, M_ttbb_Bins(), "M_{H}^{kinfit} (GeV)", "dN/dm_{H}^{kinfit} (1/GeV)", false, 1.4, true, true)
 
 
@@ -88,8 +89,7 @@ public:
 
     virtual const std::vector<double>& M_ttbb_Bins() const
     {
-        static const std::vector<double> bins = { 200, 210, 230, 250, 270, 290, 310, 330, 350, 370, 390, 410, 430, 450, 500, 550,
-                                                  600, 650, 700 };
+        static const std::vector<double> bins = { 260, 300, 350, 400, 450, 500, 600, 700, 850, 1000 };
         return bins;
     }
 
@@ -97,8 +97,10 @@ public:
 
         const ntuple::Sync& event = *eventInfo.event;
 
-        if(eventInfo.has_bjet_pair)
+        if(eventInfo.has_bjet_pair){
             m_ttbb().Fill(eventInfo.resonance.M(), weight);
+            m_ttbb_log().Fill(eventInfo.resonance.M(), weight);
+        }
 
 //        if(eventInfo.GetKinFitResults().HasMass())
 //            m_ttbb_kinfit().Fill(eventInfo.GetKinFitResults().mass, weight);
@@ -142,7 +144,7 @@ public:
 
     virtual void CreateAll()
     {
-        m_vis(); m_bb_slice(); m_ttbb(); m_ttbb_kinfit(); pt_b1(); eta_b1(); csv_b1(); pt_b2(); eta_b2();
+        m_vis(); m_bb_slice(); m_ttbb(); m_ttbb_log(); m_ttbb_kinfit(); pt_b1(); eta_b1(); csv_b1(); pt_b2(); eta_b2();
         csv_b2(); pt_H_tt(); pt_H_bb(); pt_H_hh(); /*m_bb();*/ DeltaPhi_tt(); DeltaPhi_bb(); DeltaPhi_bb_MET();
         DeltaPhi_tt_MET(); DeltaPhi_hh(); DeltaR_tt(); DeltaR_bb(); DeltaR_hh(); mt_2(); pt_H_tt_MET(); convergence();
         chi2(); fit_probability(); pull_balance(); pull_balance_1(); pull_balance_2(); MET(); MET_wide(); phiMET(); nJets_Pt30();
@@ -191,10 +193,10 @@ public:
     TH1D_ENTRY_CUSTOM_EX(m_sv, M_tt_Bins(), "M_{#tau#tau} (GeV)", "dN/dm_{#tau#tau} (1/GeV)", false, 1.3, true, true)
     TH1D_ENTRY_CUSTOM_EX(m_sv_bin, M_tt_Bins2(), "M_{#tau#tau} (GeV)", "dN/dm_{#tau#tau} (1/GeV)", false, 1.3, true, true)
     TH1D_ENTRY_EX(pt_1, 20, 0, 400, "P_{T}(leading#tau_{h})(GeV)", "Events", false, 1.6, false, SaveAll)
-    TH1D_ENTRY_EX(pt_1_log, 20, 0, 400, "Leading tau p_{T} (GeV)", "Events", true, 2.0, false, SaveAll)
+    TH1D_ENTRY_EX(pt_1_log, 20, 0, 400, "Leading tau p_{T} (GeV)", "Events", true, 1.0, false, SaveAll)
     TH1D_ENTRY_EX(eta_1, 25, -2.5, 2.5, "#eta(leading#tau_{h})", "Events", false, 2, false, SaveAll)
     TH1D_ENTRY_EX(pt_2, 20, 0, 400, "P_{T}(subleading#tau_{h})(GeV)", "Events", false, 1.6, false, SaveAll)
-    TH1D_ENTRY_EX(pt_2_log, 20, 0, 400, "Subleading tau p_{T} (GeV)", "Events", true, 2.0, false, SaveAll)
+    TH1D_ENTRY_EX(pt_2_log, 20, 0, 400, "Subleading tau p_{T} (GeV)", "Events", true, 1.0, false, SaveAll)
     TH1D_ENTRY_EX(eta_2, 25, -2.5, 2.5, "#eta(subleading#tau_{h})", "Events", false, 2, false, SaveAll)
 
     TH1D_ENTRY_EX(mt_1, 20, 0, 200, "M_{T}(GeV)", "Events", false, 1.3, false, SaveAll)
@@ -229,8 +231,7 @@ public:
 
     virtual const std::vector<double>& M_ttbb_Bins() const override
     {
-        static const std::vector<double> bins = { 100,200, 250, 270, 290, 310, 330, 350, 370, 390, 410, 430, 450, 500, 550,
-                                                  600, 650, 700, 750, 800, 850, 900, 950, 1000, 1100, 1200 };
+        static const std::vector<double> bins = { 260, 300, 350, 400, 450, 500, 600, 700, 850, 1000 };
         return bins;
     }
 
@@ -288,7 +289,7 @@ public:
 
     virtual const std::vector<double>& M_ttbb_Bins() const override
     {
-        static const std::vector<double> bins = { 200, 250, 280, 310, 340, 370, 400, 500, 600, 700 };
+        static const std::vector<double> bins = { 260, 300, 350, 400, 450, 500, 600, 700, 850, 1000 };
         return bins;
     }
 

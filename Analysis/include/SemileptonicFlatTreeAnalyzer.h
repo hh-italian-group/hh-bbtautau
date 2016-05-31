@@ -90,22 +90,39 @@ protected:
     virtual void EstimateQCD(const FlatAnalyzerDataMetaId_noRegion_noName& anaDataMetaId, const std::string& hist_name,
                              const analysis::PhysicalValue& scale_factor, DataCategoryType dataCategoryType) override
     {
+//        static const EventCategorySet categories=
+////            { EventCategory::TwoJets_AtLeastOneBtag };
+//            { EventCategory::TwoJets_OneBtag, EventCategory::TwoJets_TwoBtag, EventCategory::TwoJets_AtLeastOneBtag };
+//        static const analysis::EventCategorySet inclusive_categories =
+//            { EventCategory::Inclusive, EventCategory::TwoJets_Inclusive};
+
+//        EventCategory refEventCategory = anaDataMetaId.eventCategory;
+//        if(categories.count(anaDataMetaId.eventCategory))
+//            refEventCategory = MediumToLoose_EventCategoryMap.at(anaDataMetaId.eventCategory);
+
+//        EventRegion eventRegion = EventRegion::SS_AntiIsolated;
+//        bool subtractOtherBkg = false;
+//        if(inclusive_categories.count(anaDataMetaId.eventCategory)) {
+//            eventRegion = EventRegion::SS_Isolated;
+//            subtractOtherBkg = true;
+//        }
+
         static const EventCategorySet categories=
-//            { EventCategory::TwoJets_AtLeastOneBtag };
-            { EventCategory::TwoJets_OneBtag, EventCategory::TwoJets_TwoBtag, EventCategory::TwoJets_AtLeastOneBtag };
-        static const analysis::EventCategorySet inclusive_categories =
-            { EventCategory::Inclusive, EventCategory::TwoJets_Inclusive};
+                    { EventCategory::TwoJets_AtLeastOneBtag };
+                    //{ EventCategory::TwoJets_OneBtag, EventCategory::TwoJets_TwoBtag, EventCategory::TwoJets_AtLeastOneBtag };
+                static const analysis::EventCategorySet inclusive_categories =
+                    { EventCategory::Inclusive, EventCategory::TwoJets_Inclusive};
 
-        EventCategory refEventCategory = anaDataMetaId.eventCategory;
-        if(categories.count(anaDataMetaId.eventCategory))
-            refEventCategory = MediumToLoose_EventCategoryMap.at(anaDataMetaId.eventCategory);
+                EventCategory refEventCategory = anaDataMetaId.eventCategory;
+                if(categories.count(anaDataMetaId.eventCategory))
+                    refEventCategory = MediumToLoose_EventCategoryMap.at(anaDataMetaId.eventCategory);
 
-        EventRegion eventRegion = EventRegion::SS_AntiIsolated;
-        bool subtractOtherBkg = false;
-        if(inclusive_categories.count(anaDataMetaId.eventCategory)) {
-            eventRegion = EventRegion::SS_Isolated;
-            subtractOtherBkg = true;
-        }
+                EventRegion eventRegion = EventRegion::SS_AntiIsolated;
+                bool subtractOtherBkg = false;
+                if(inclusive_categories.count(anaDataMetaId.eventCategory)) {
+                    eventRegion = EventRegion::SS_Isolated;
+                    subtractOtherBkg = true;
+                }
 
         return EstimateQCDEx(anaDataMetaId, refEventCategory, eventRegion, hist_name, scale_factor, subtractOtherBkg,
                              dataCategoryType);
