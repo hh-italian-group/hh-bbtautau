@@ -8,12 +8,12 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include <TH1.h>
 
 #include "AnalyzerData.h"
-#include "h-tautau/Analysis/include/FlatEventInfo.h"
+#include "h-tautau/Analysis/include/EventInfo.h"
 #include "AnalysisMath.h"
 #include "exception.h"
 #include "h-tautau/Analysis/include/Particles.h"
 #include "h-tautau/Analysis/include/Htautau_2015.h"
-#include "h-tautau/Analysis/include/SyncTree.h"
+#include "h-tautau/Analysis/include/EventTuple.h"
 #include "BTagCalibrationStandalone.h"
 
 namespace analysis {
@@ -26,10 +26,10 @@ namespace btag {
     int   partonFlavour;
     float eff, SF;
 
-    jetEffInfo(const ntuple::Sync& event, int jetIndex):eff(0.),SF(0.){
-        pt  = event.pt_jets.at(jetIndex);
-        eta = event.eta_jets.at(jetIndex);
-        CSV = event.csv_jets.at(jetIndex);
+    jetEffInfo(const ntuple::Event& event, int jetIndex):eff(0.),SF(0.){
+        pt  = event.jets_p4.at(jetIndex).pt();
+        eta = event.jets_p4.at(jetIndex).eta();
+        CSV = event.jets_csv.at(jetIndex);
         partonFlavour = 0;/*event.partonFlavour_jets.at(jetIndex);*/
     }
 
@@ -56,12 +56,12 @@ namespace btag {
        eff_l = (TH2F*) bTagEffFile->Get("eff_l");
      }
 
-     double Compute(const ntuple::Sync& event){
+     double Compute(const ntuple::Event& event){
            //std::cout<<" SyncTree Entry :   "<<current_entry<<"\n";
            using namespace cuts::Htautau_2015;
 
            bTagMap bTagMedium;
-           for (int jetIndex = 0; jetIndex < event.njets; jetIndex++){
+           for (int jetIndex = 0; jetIndex < event.jets_p4.size(); jetIndex++){
              jetEffInfo jetInfo(event, jetIndex);
              if      (abs (jetInfo.partonFlavour) == 5 ) {
                jetInfo.SF  = reader->eval(btag_calibration::BTagEntry::FLAV_B, jetInfo.eta, jetInfo.pt);

@@ -14,23 +14,22 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
 #include "AnalysisTools/Core/include/Tools.h"
 #include "AnalysisTools/Print/include/RootPrintTools.h"
-#include "h-tautau/Analysis/include/FlatEventInfo.h"
+#include "h-tautau/Analysis/include/EventInfo.h"
 
 namespace analysis {
-
-typedef std::map<std::string, double> DataSourceScaleFactorMap;
 
 enum class DataCategoryType { Signal, Background, Data, DYJets, DYJets_incl, DYJets_excl, ZL, ZJ, ZL_MC, ZJ_MC, ZTT,
                               ZTT_MC, ZTT_L, Embedded, TT_Embedded, Limits, Composit, QCD, QCD_alternative, WJets,
                               WJets_MC, DiBoson_MC, DiBoson, TTbar};
-static const std::map<DataCategoryType, std::string> dataCategoryTypeNameMap = {
+
+ENUM_NAMES(DataCategoryType) = {
     { DataCategoryType::Signal, "SIGNAL" }, { DataCategoryType::Background, "BACKGROUND" },
     { DataCategoryType::Data, "DATA" }, { DataCategoryType::DYJets, "DY_JETS" },
     { DataCategoryType::DYJets_incl, "DY_JETS_incl" },{ DataCategoryType::DYJets_excl, "DY_JETS_excl" },
     { DataCategoryType::ZL, "ZL" }, { DataCategoryType::ZJ, "ZJ" },
     { DataCategoryType::ZL_MC, "ZL_MC" }, { DataCategoryType::ZJ_MC, "ZJ_MC" }, { DataCategoryType::ZTT, "ZTT" },
-    { DataCategoryType::ZTT_MC, "ZTT_MC" }, { DataCategoryType::ZTT_L, "ZTT_L" }, { DataCategoryType::Embedded, "EMBEDDED" },
-    { DataCategoryType::TT_Embedded, "TT_EMBEDDED" },
+    { DataCategoryType::ZTT_MC, "ZTT_MC" }, { DataCategoryType::ZTT_L, "ZTT_L" },
+    { DataCategoryType::Embedded, "EMBEDDED" }, { DataCategoryType::TT_Embedded, "TT_EMBEDDED" },
     { DataCategoryType::Limits, "LIMITS" }, { DataCategoryType::Composit, "COMPOSIT" },
     { DataCategoryType::QCD, "QCD" }, { DataCategoryType::QCD_alternative, "QCD_alternative" },
     { DataCategoryType::WJets, "W_JETS" }, { DataCategoryType::WJets_MC, "W_JETS_MC" },
@@ -38,23 +37,9 @@ static const std::map<DataCategoryType, std::string> dataCategoryTypeNameMap = {
     { DataCategoryType::TTbar, "TTbar"}
 };
 
-std::ostream& operator<< (std::ostream& s, const DataCategoryType& dataCategoryType) {
-    s << dataCategoryTypeNameMap.at(dataCategoryType);
-    return s;
-}
-std::istream& operator>> (std::istream& s, DataCategoryType& dataCategoryType) {
-    std::string name;
-    s >> name;
-    for(const auto& map_entry : dataCategoryTypeNameMap) {
-        if(map_entry.second == name) {
-            dataCategoryType = map_entry.first;
-            return s;
-        }
-    }
-    throw exception("Unknown data category type '%1%'.") % name;
-}
-
 struct DataCategory {
+    using SFMap = std::map<std::string, double>;
+
     std::string name;
     std::string title;
     std::string datacard;
@@ -67,7 +52,7 @@ struct DataCategory {
     std::set<DataCategoryType> types;
     std::set<Channel> channels;
     std::set<std::string> sub_categories;
-    DataSourceScaleFactorMap sources_sf;
+    SFMap sources_sf;
     std::map<unsigned, double> exclusive_sf;
     std::set<std::string> uncertainties;
 
@@ -80,12 +65,12 @@ struct DataCategory {
     bool IsComposit() const { return types.count(DataCategoryType::Composit); }
 };
 
-typedef std::map<std::string, DataCategory> DataCategoryMap;
-typedef std::set<const DataCategory*> DataCategoryPtrSet;
-typedef std::map<std::string, const DataCategory*> DataCategoryPtrMap;
-typedef std::set<DataCategoryType> DataCategoryTypeSet;
-typedef std::vector<const DataCategory*> DataCategoryPtrVector;
-typedef std::map<DataCategoryType, DataCategoryPtrSet> DataCategoryTypeMap;
+using DataCategoryMap = std::map<std::string, DataCategory>;
+using DataCategoryPtrSet = std::set<const DataCategory*>;
+using DataCategoryPtrMap = std::map<std::string, const DataCategory*>;
+using DataCategoryTypeSet = std::set<DataCategoryType>;
+using DataCategoryPtrVector = std::vector<const DataCategory*>;
+using DataCategoryTypeMap = std::map<DataCategoryType, DataCategoryPtrSet>;
 
 static const DataCategoryTypeSet dataCategoryTypeForQCD  = { DataCategoryType::QCD,
                                                              DataCategoryType::QCD_alternative };
@@ -322,54 +307,56 @@ enum class EventSubCategory { NoCuts = 0, KinematicFitConverged = 1, MassWindow 
                               KinematicFitConvergedOutsideMassWindow = 5
                             };
 
-namespace detail {
-static const std::map<EventCategory, std::string> eventCategoryNamesMap =
-          { { EventCategory::Inclusive, "Inclusive" }, { EventCategory::TwoJets_Inclusive, "2jets" },
-            { EventCategory::TwoJets_ZeroBtag, "2jets0btag" }, { EventCategory::TwoJets_OneBtag, "2jets1btag"},
-            { EventCategory::TwoJets_TwoBtag, "2jets2btag" },
-            { EventCategory::TwoJets_ZeroLooseBtag, "2jets0Loosebtag" },
-            { EventCategory::TwoJets_OneLooseBtag, "2jets1Loosebtag" },
-            { EventCategory::TwoJets_TwoLooseBtag, "2jets2Loosebtag" },
-            { EventCategory::TwoJets_AtLeastOneBtag, "2jets_at_least_1btag" },
-          { EventCategory::TwoJets_AtLeastOneLooseBtag, "2jets_at_least_1Loosebtag" }};
+ENUM_NAMES(EventRegion) = {
+    { EventRegion::Unknown, "Unknown"}, { EventRegion::OS_Isolated, "OS_Isolated"},
+    { EventRegion::OS_AntiIsolated, "OS_AntiIsolated"}, { EventRegion::SS_Isolated, "SS_Isolated"},
+    { EventRegion::SS_AntiIsolated, "SS_AntiIsolated"},  { EventRegion::OS_Iso_HighMt, "OS_Iso_HighMt"},
+    { EventRegion::SS_Iso_HighMt, "SS_Iso_HighMt"} , { EventRegion::OS_AntiIso_HighMt, "OS_AntiIso_HighMt"},
+    { EventRegion::SS_AntiIso_HighMt, "SS_AntiIso_HighMt"}
+};
 
-static const std::map<EventRegion, std::string> eventRegionNamesMap =
-          { { EventRegion::Unknown, "Unknown"}, { EventRegion::OS_Isolated, "OS_Isolated"},
-            { EventRegion::OS_AntiIsolated, "OS_AntiIsolated"}, { EventRegion::SS_Isolated, "SS_Isolated"},
-            { EventRegion::SS_AntiIsolated, "SS_AntiIsolated"},  { EventRegion::OS_Iso_HighMt, "OS_Iso_HighMt"},
-            { EventRegion::SS_Iso_HighMt, "SS_Iso_HighMt"} , { EventRegion::OS_AntiIso_HighMt, "OS_AntiIso_HighMt"},
-            { EventRegion::SS_AntiIso_HighMt, "SS_AntiIso_HighMt"} };
+ENUM_NAMES(EventCategory) = {
+    { EventCategory::Inclusive, "Inclusive" }, { EventCategory::TwoJets_Inclusive, "2jets" },
+    { EventCategory::TwoJets_ZeroBtag, "2jets0btag" }, { EventCategory::TwoJets_OneBtag, "2jets1btag"},
+    { EventCategory::TwoJets_TwoBtag, "2jets2btag" },
+    { EventCategory::TwoJets_ZeroLooseBtag, "2jets0Loosebtag" },
+    { EventCategory::TwoJets_OneLooseBtag, "2jets1Loosebtag" },
+    { EventCategory::TwoJets_TwoLooseBtag, "2jets2Loosebtag" },
+    { EventCategory::TwoJets_AtLeastOneBtag, "2jets_at_least_1btag" },
+    { EventCategory::TwoJets_AtLeastOneLooseBtag, "2jets_at_least_1Loosebtag" }
+};
 
-static const std::map<EventSubCategory, std::string> eventSubCategoryNamesMap =
-          { { EventSubCategory::NoCuts, "NoCuts" }, { EventSubCategory::KinematicFitConverged, "KinFitConverged" },
-            { EventSubCategory::MassWindow, "MassWindow" },
-            { EventSubCategory::KinematicFitConvergedWithMassWindow, "KinFitConvergedWithMassWindow" },
-            { EventSubCategory::KinematicFitConvergedOutsideMassWindow, "KinematicFitConvergedOutsideMassWindow" },
-            { EventSubCategory::OutsideMassWindow, "OutsideMassWindow" } };
-} // namespace detail
+ENUM_NAMES(EventSubCategory) = {
+    { EventSubCategory::NoCuts, "NoCuts" }, { EventSubCategory::KinematicFitConverged, "KinFitConverged" },
+    { EventSubCategory::MassWindow, "MassWindow" },
+    { EventSubCategory::KinematicFitConvergedWithMassWindow, "KinFitConvergedWithMassWindow" },
+    { EventSubCategory::KinematicFitConvergedOutsideMassWindow, "KinematicFitConvergedOutsideMassWindow" },
+    { EventSubCategory::OutsideMassWindow, "OutsideMassWindow" }
+};
 
-typedef std::vector<EventCategory> EventCategoryVector;
-typedef std::set<EventCategory> EventCategorySet;
-typedef std::map<EventCategory, EventCategory> EventCategoryMap;
-typedef std::set<EventSubCategory> EventSubCategorySet;
+using EventCategoryVector = std::vector<EventCategory>;
+using EventCategorySet = EnumNameMap<EventCategory>::EnumEntrySet;
+using EventCategoryMap = std::map<EventCategory, EventCategory>;
+using EventSubCategorySet = EnumNameMap<EventSubCategory>::EnumEntrySet;
 
-static const EventCategorySet AllEventCategories = tools::collect_map_keys(detail::eventCategoryNamesMap);
-static const EventSubCategorySet AllEventSubCategories = tools::collect_map_keys(detail::eventSubCategoryNamesMap);
+static const EventCategorySet AllEventCategories = __EventCategory_names.GetEnumEntries();
+static const EventSubCategorySet AllEventSubCategories = __EventSubCategory_names.GetEnumEntries();
 
-static const EventCategoryMap MediumToLoose_EventCategoryMap =
-        { { EventCategory::TwoJets_ZeroBtag, EventCategory::TwoJets_ZeroLooseBtag },
-          { EventCategory::TwoJets_OneBtag, EventCategory::TwoJets_OneLooseBtag },
-          { EventCategory::TwoJets_TwoBtag, EventCategory::TwoJets_TwoLooseBtag },
-          { EventCategory::TwoJets_AtLeastOneBtag, EventCategory::TwoJets_AtLeastOneLooseBtag }};
+static const EventCategoryMap MediumToLoose_EventCategoryMap = {
+    { EventCategory::TwoJets_ZeroBtag, EventCategory::TwoJets_ZeroLooseBtag },
+    { EventCategory::TwoJets_OneBtag, EventCategory::TwoJets_OneLooseBtag },
+    { EventCategory::TwoJets_TwoBtag, EventCategory::TwoJets_TwoLooseBtag },
+    { EventCategory::TwoJets_AtLeastOneBtag, EventCategory::TwoJets_AtLeastOneLooseBtag }
+};
 
 static const EventCategorySet TwoJetsEventCategories_MediumBjets =
-                                                                tools::collect_map_keys(MediumToLoose_EventCategoryMap);
+    tools::collect_map_keys<decltype(MediumToLoose_EventCategoryMap), EventCategorySet>(MediumToLoose_EventCategoryMap);
 
 static const EventCategorySet TwoJetsEventCategories_LooseBjets =
-                                                              tools::collect_map_values(MediumToLoose_EventCategoryMap);
+    tools::collect_map_values<decltype(MediumToLoose_EventCategoryMap), EventCategorySet>(MediumToLoose_EventCategoryMap);
 
-typedef std::set<EventRegion> EventRegionSet;
-typedef std::map<EventRegion, EventRegion> EventRegionMap;
+using EventRegionSet = EnumNameMap<EventRegion>::EnumEntrySet;
+using EventRegionMap = std::map<EventRegion, EventRegion>;
 
 static const EventRegionMap HighMt_LowMt_RegionMap =
         { { EventRegion::OS_Iso_HighMt, EventRegion::OS_Isolated },
@@ -383,70 +370,22 @@ static const EventRegionSet HighMtRegions = { EventRegion::OS_Iso_HighMt, EventR
 static const EventRegionSet QcdRegions = { EventRegion::OS_Isolated, EventRegion::SS_Isolated,
                                            EventRegion::OS_AntiIsolated, EventRegion::SS_AntiIsolated};
 
-static const EventRegionSet AllEventRegions = tools::collect_map_keys(detail::eventRegionNamesMap);
+static const EventRegionSet AllEventRegions = __EventRegion_names.GetEnumEntries();
 
-std::ostream& operator<<(std::ostream& s, const EventCategory& eventCategory) {
-    s << detail::eventCategoryNamesMap.at(eventCategory);
-    return s;
-}
-
-std::wostream& operator<<(std::wostream& s, const EventCategory& eventCategory) {
-    const std::string str = detail::eventCategoryNamesMap.at(eventCategory);
-    s << std::wstring(str.begin(), str.end());
-    return s;
-}
-
-std::istream& operator>> (std::istream& s, EventCategory& eventCategory)
+enum class HTbinning { lt0 = -1, lt100 = 0, f100to200 = 1, f200to400 = 2, f400to600 = 3, gt600 = 4 };
+inline HTbinning GetHTbin(double HT)
 {
-    std::string name;
-    s >> name;
-    for(const auto& map_entry : detail::eventCategoryNamesMap) {
-        if(map_entry.second == name) {
-            eventCategory = map_entry.first;
-            return s;
-        }
-    }
-    throw exception("Unknown event category '%1%'.") % name;
+    if(HT < 0) return HTbinning::lt0;
+    if(HT < 100) return HTbinning::lt100;
+    if(HT < 200) return HTbinning::f100to200;
+    if(HT < 400) return HTbinning::f200to400;
+    if(HT < 600) return HTbinning::f400to600;
+    return HTbinning::gt600;
 }
 
-std::ostream& operator<<(std::ostream& s, const EventRegion& eventRegion) {
-    s << detail::eventRegionNamesMap.at(eventRegion);
-    return s;
-}
-
-std::istream& operator>> (std::istream& s, EventRegion& eventRegion)
-{
-    std::string name;
-    s >> name;
-    for(const auto& map_entry : detail::eventRegionNamesMap) {
-        if(map_entry.second == name) {
-            eventRegion = map_entry.first;
-            return s;
-        }
-    }
-    throw exception("Unknown event region '%1%'.") % name;
-}
-
-std::ostream& operator<<(std::ostream& s, const EventSubCategory& eventSubCategory) {
-    s << detail::eventSubCategoryNamesMap.at(eventSubCategory);
-    return s;
-}
-
-std::istream& operator>> (std::istream& s, EventSubCategory& eventSubCategory)
-{
-    std::string name;
-    s >> name;
-    for(const auto& map_entry : detail::eventSubCategoryNamesMap) {
-        if(map_entry.second == name) {
-            eventSubCategory = map_entry.first;
-            return s;
-        }
-    }
-    throw exception("Unknown event sub-category '%1%'.") % name;
-}
 
 EventCategoryVector DetermineEventCategories(const std::vector<float>& csv_Bjets,
-                                             const SyncEventInfo::BjetPair& selected_bjets, Int_t nBjets_retagged,
+                                             const EventInfoBase::BjetPair& selected_bjets, Int_t nBjets_retagged,
                                              double CSVL, double CSVM, bool doRetag = false)
 {
     EventCategoryVector categories;

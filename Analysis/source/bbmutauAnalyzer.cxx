@@ -1,33 +1,34 @@
 /*! Analyze flat-tree for mu-tau channel for HHbbtautau analysis.
 This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
-#include "Analysis/include/SemileptonicFlatTreeAnalyzer.h"
+#include "Analysis/include/SemileptonicEventAnalyzer.h"
 
 namespace analysis {
 
-class bbmutauAnalyzer : public SemileptonicFlatTreeAnalyzer {
+class bbmutauAnalyzer : public SemileptonicFlatTreeAnalyzer<MuonCandidate> {
 public:
-    bbmutauAnalyzer(const AnalyzerArguments& _args)
-         : SemileptonicFlatTreeAnalyzer(_args, ChannelId()) {}
+    using SemileptonicFlatTreeAnalyzer<MuonCandidate>::SemileptonicFlatTreeAnalyzer;
 
 protected:
-    virtual Channel ChannelId() const override { return Channel::MuTau; }
     virtual std::string TreeName() const override { return "mutau"; }
 
-    virtual EventRegion DetermineEventRegion(const ntuple::Sync& event, EventCategory /*eventCategory*/) override
+    virtual EventRegion DetermineEventRegion(EventInfo& event, EventCategory /*eventCategory*/) override
     {
         using namespace cuts::Htautau_2015::MuTau;
 
-        if(event.againstMuonTight3_2 < tauID::againstMuonTight3
-                || event.againstElectronVLooseMVA6_2 < tauID::againstElectronVLooseMVA6
-                || event.iso_1 >= muonID::pFRelIso
-                || event.dilepton_veto
+        const MuonCandidate& muon = event.GetFirstLeg();
+        const TauCandidate& tau = event.GetSecondLeg();
+
+        if(tau->againstMuon3(DiscriminatorWP::Tight) < tauID::againstMuonTight3
+                || tau->againstElectronMVA6(DiscriminatorWP::VLoose) < tauID::againstElectronVLooseMVA6
+                || muon->iso() >= muonID::pFRelIso
+                || event->dilepton_veto
                 /*|| (event.extraelec_veto || event.extramuon_veto) */)
             return EventRegion::Unknown;
 
-        const bool os = event.q_1 * event.q_2 == -1;
+        const bool os = muon.GetCharge() * tau.GetCharge() == -1;
 //        const bool iso = event.byTightIsolationMVArun2v1DBoldDMwLT_2 > 0.5;
-        const bool iso = event.iso_2 > 0.2;
+        const bool iso = tau->iso() > 0.2;
         //        const bool low_mt = event.pfmt_1 < muonID::mt;
         const bool low_mt = true;
 

@@ -1,39 +1,44 @@
-/*! Definition of the base class for semi-leptonic flat tree analyzers.
+/*! Definition of the base class for semi-leptonic event analyzers.
 This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #pragma once
 
-#include "BaseFlatTreeAnalyzer.h"
+#include "BaseEventAnalyzer.h"
 
 namespace analysis {
 
-class SemileptonicFlatTreeAnalyzer : public BaseFlatTreeAnalyzer {
+template<typename FirstLeg>
+class SemileptonicFlatTreeAnalyzer : public BaseEventAnalyzer<FirstLeg> {
 public:
-    using BaseFlatTreeAnalyzer::BaseFlatTreeAnalyzer;
+    using Base = BaseEventAnalyzer<FirstLeg>;
+    using PhysicalValueMap = typename Base::PhysicalValueMap;
+
+    using Base::BaseEventAnalyzer;
+
 
 protected:
 
-    virtual void CreateHistogramForZTT(const FlatAnalyzerDataMetaId_noRegion_noName& anaDataMetaId,
+    virtual void CreateHistogramForZTT(const EventAnalyzerDataMetaId_noRegion_noName& anaDataMetaId,
                                        const std::string& hist_name, const PhysicalValueMap& ztt_yield_map,
                                        bool useEmbedded) override
     {
-        const DataCategory& embedded = dataCategoryCollection.GetUniqueCategory(DataCategoryType::Embedded);
-        const DataCategory& ZTT_MC = dataCategoryCollection.GetUniqueCategory(DataCategoryType::ZTT_MC);
-        const DataCategory& ZTT = dataCategoryCollection.GetUniqueCategory(DataCategoryType::ZTT);
-        const DataCategory& ZTT_L = dataCategoryCollection.GetUniqueCategory(DataCategoryType::ZTT_L);
-        const DataCategory& TTembedded = dataCategoryCollection.GetUniqueCategory(DataCategoryType::TT_Embedded);
+        const DataCategory& embedded = this->dataCategoryCollection.GetUniqueCategory(DataCategoryType::Embedded);
+        const DataCategory& ZTT_MC = this->dataCategoryCollection.GetUniqueCategory(DataCategoryType::ZTT_MC);
+        const DataCategory& ZTT = this->dataCategoryCollection.GetUniqueCategory(DataCategoryType::ZTT);
+        const DataCategory& ZTT_L = this->dataCategoryCollection.GetUniqueCategory(DataCategoryType::ZTT_L);
+        const DataCategory& TTembedded = this->dataCategoryCollection.GetUniqueCategory(DataCategoryType::TT_Embedded);
 
         for(const auto& eventRegionKey : ztt_yield_map) {
             const EventRegion eventRegion = eventRegionKey.first;
             const PhysicalValue& ztt_yield = eventRegionKey.second;
-            auto ztt_l_hist = GetHistogram(anaDataMetaId, eventRegion, ZTT_L.name, hist_name);
+            auto ztt_l_hist = this->GetHistogram(anaDataMetaId, eventRegion, ZTT_L.name, hist_name);
             const std::string embeddedName = useEmbedded && eventRegion == EventRegion::OS_Isolated ?
                                              embedded.name : ZTT_MC.name;
-            auto embedded_hist = GetHistogram(anaDataMetaId, eventRegion, embeddedName, hist_name);
-            auto TTembedded_hist = GetHistogram(anaDataMetaId, eventRegion, TTembedded.name, hist_name);
+            auto embedded_hist = this->GetHistogram(anaDataMetaId, eventRegion, embeddedName, hist_name);
+            auto TTembedded_hist = this->GetHistogram(anaDataMetaId, eventRegion, TTembedded.name, hist_name);
 
             if (embedded_hist){
-                TH1D& ztt_hist = CloneHistogram(anaDataMetaId, eventRegion, ZTT.name, *embedded_hist);
+                TH1D& ztt_hist = this->CloneHistogram(anaDataMetaId, eventRegion, ZTT.name, *embedded_hist);
                 if (TTembedded_hist && useEmbedded)
                     ztt_hist.Add(TTembedded_hist, -1);
                 RenormalizeHistogram(ztt_hist, ztt_yield, true);
@@ -41,11 +46,11 @@ protected:
                     ztt_hist.Add(ztt_l_hist);
             }
             if (!embedded_hist && ztt_l_hist)
-                CloneHistogram(anaDataMetaId, eventRegion, ZTT.name, *ztt_l_hist);
+                this->CloneHistogram(anaDataMetaId, eventRegion, ZTT.name, *ztt_l_hist);
         }
     }
 
-    virtual analysis::PhysicalValue CalculateQCDYield(const FlatAnalyzerDataMetaId_noRegion_noName& anaDataMetaId,
+    virtual analysis::PhysicalValue CalculateQCDYield(const EventAnalyzerDataMetaId_noRegion_noName& anaDataMetaId,
                                                       const std::string& hist_name,
                                                       DataCategoryType /*dataCategoryType*/,
                                                       std::ostream& s_out) override
@@ -57,26 +62,26 @@ protected:
 //        if(categories.count(anaDataMetaId.eventCategory))
 //            refEventCategory = EventCategory::TwoJets_Inclusive;
 
-        const FlatAnalyzerDataMetaId_noRegion_noName anaDataMetaId_ref(refEventCategory,
+        const EventAnalyzerDataMetaId_noRegion_noName anaDataMetaId_ref(refEventCategory,
                                                                        anaDataMetaId.eventSubCategory,
                                                                        anaDataMetaId.eventEnergyScale);
 
         const PhysicalValue yield_SSIso =
-                CalculateYieldsForQCD(anaDataMetaId_ref, EventRegion::SS_Isolated, hist_name, s_out);
+                this->CalculateYieldsForQCD(anaDataMetaId_ref, EventRegion::SS_Isolated, hist_name, s_out);
 
         s_out << "yield_ssIso: " << yield_SSIso << "\n";
         if(refEventCategory == anaDataMetaId.eventCategory)
             return sf * yield_SSIso;
 
-        const DataCategory& data = dataCategoryCollection.GetUniqueCategory(DataCategoryType::Data);
+        const DataCategory& data = this->dataCategoryCollection.GetUniqueCategory(DataCategoryType::Data);
 
-        auto hist_data_EvtCategory = GetHistogram(anaDataMetaId, EventRegion::SS_AntiIsolated, data.name, hist_name);
+        auto hist_data_EvtCategory = this->GetHistogram(anaDataMetaId, EventRegion::SS_AntiIsolated, data.name, hist_name);
         if(!hist_data_EvtCategory)
             throw exception("Unable to find hist_data_EvtCategory for QCD scale factors estimation - SS AntiIso");
         const PhysicalValue yield_Data_EvtCategory = Integral(*hist_data_EvtCategory, true);
 
         auto hist_data_RefCategory =
-                GetHistogram(anaDataMetaId_ref, EventRegion::SS_AntiIsolated, data.name, hist_name);
+                this->GetHistogram(anaDataMetaId_ref, EventRegion::SS_AntiIsolated, data.name, hist_name);
         if(!hist_data_RefCategory)
             throw exception("Unable to find hist_data_RefCategory for QCD scale factors estimation - SS AntiIso");
         const PhysicalValue yield_Data_RefCategory = Integral(*hist_data_RefCategory, true);
@@ -87,7 +92,7 @@ protected:
         return sf * yield_SSIso * evt_ToRef_category_sf;
     }
 
-    virtual void EstimateQCD(const FlatAnalyzerDataMetaId_noRegion_noName& anaDataMetaId, const std::string& hist_name,
+    virtual void EstimateQCD(const EventAnalyzerDataMetaId_noRegion_noName& anaDataMetaId, const std::string& hist_name,
                              const analysis::PhysicalValue& scale_factor, DataCategoryType dataCategoryType) override
     {
 //        static const EventCategorySet categories=
@@ -128,35 +133,35 @@ protected:
                              dataCategoryType);
     }
 
-    void EstimateQCDEx(const FlatAnalyzerDataMetaId_noRegion_noName& anaDataMetaId, EventCategory refEventCategory,
+    void EstimateQCDEx(const EventAnalyzerDataMetaId_noRegion_noName& anaDataMetaId, EventCategory refEventCategory,
                        EventRegion eventRegion, const std::string& hist_name, const PhysicalValue& scale_factor,
                        bool subtractOtherBkg, DataCategoryType dataCategoryType)
     {
-        const DataCategory& qcd = dataCategoryCollection.GetUniqueCategory(dataCategoryType);
-        const DataCategory& data = dataCategoryCollection.GetUniqueCategory(DataCategoryType::Data);
+        const DataCategory& qcd = this->dataCategoryCollection.GetUniqueCategory(dataCategoryType);
+        const DataCategory& data = this->dataCategoryCollection.GetUniqueCategory(DataCategoryType::Data);
 
-        const FlatAnalyzerDataMetaId_noRegion_noName anaDataMetaId_ref(refEventCategory,
+        const EventAnalyzerDataMetaId_noRegion_noName anaDataMetaId_ref(refEventCategory,
                                                                        anaDataMetaId.eventSubCategory,
                                                                        anaDataMetaId.eventEnergyScale);
 
         auto metaId_ref_data = anaDataMetaId_ref;
         metaId_ref_data.eventEnergyScale = EventEnergyScale::Central;
-        auto hist_shape_data = GetHistogram(metaId_ref_data, eventRegion, data.name, hist_name);
+        auto hist_shape_data = this->GetHistogram(metaId_ref_data, eventRegion, data.name, hist_name);
         if(!hist_shape_data) {
             std::cout << "Warning: Data shape for QCD estimate not found." << std::endl;
             return;
         }
 
-        TH1D& histogram = CloneHistogram(anaDataMetaId, EventRegion::OS_Isolated, qcd.name, *hist_shape_data);
+        TH1D& histogram = this->CloneHistogram(anaDataMetaId, EventRegion::OS_Isolated, qcd.name, *hist_shape_data);
         if (subtractOtherBkg){
             std::string debug_info, negative_bins_info;
-            SubtractBackgroundHistograms(anaDataMetaId_ref, eventRegion, histogram, qcd.name, debug_info,
+            this->SubtractBackgroundHistograms(anaDataMetaId_ref, eventRegion, histogram, qcd.name, debug_info,
                                          negative_bins_info);
         }
         RenormalizeHistogram(histogram, scale_factor, true);
     }
 
-    virtual void CreateHistogramForVVcategory(const FlatAnalyzerDataMetaId_noRegion_noName& anaDataMetaId,
+    virtual void CreateHistogramForVVcategory(const EventAnalyzerDataMetaId_noRegion_noName& anaDataMetaId,
                                               const std::string& hist_name) override
     {
         const std::map<DataCategoryType, DataCategoryType> diboson_category_map = {
@@ -164,13 +169,13 @@ protected:
         };
 
         for (const auto& diboson_category : diboson_category_map){
-            const DataCategory& originalVVcategory = dataCategoryCollection.GetUniqueCategory(diboson_category.first);
-            const DataCategory& newVVcategory = dataCategoryCollection.GetUniqueCategory(diboson_category.second);
+            const DataCategory& originalVVcategory = this->dataCategoryCollection.GetUniqueCategory(diboson_category.first);
+            const DataCategory& newVVcategory = this->dataCategoryCollection.GetUniqueCategory(diboson_category.second);
 
             for(EventRegion eventRegion : AllEventRegions) {
-                auto vv_hist_shape = GetHistogram(anaDataMetaId, eventRegion, originalVVcategory.name, hist_name);
+                auto vv_hist_shape = this->GetHistogram(anaDataMetaId, eventRegion, originalVVcategory.name, hist_name);
                 if (vv_hist_shape)
-                    CloneHistogram(anaDataMetaId, eventRegion, newVVcategory.name, *vv_hist_shape);
+                    this->CloneHistogram(anaDataMetaId, eventRegion, newVVcategory.name, *vv_hist_shape);
             }
         }
     }

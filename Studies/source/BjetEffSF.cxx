@@ -12,7 +12,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include "AnalysisTools/Run/include/program_main.h"
 #include "AnalyzerData.h"
-#include "h-tautau/Analysis/include/FlatEventInfo.h"
+#include "h-tautau/Analysis/include/EventInfo.h"
 #include "AnalysisMath.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
 #include "exception.h"
@@ -20,7 +20,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Print/include/RootPrintToPdf.h"
 #include "ProgressReporter.h"
 #include "h-tautau/Analysis/include/Htautau_2015.h"
-#include "h-tautau/Analysis/include/SyncTree.h"
+#include "h-tautau/Analysis/include/EventTuple.h"
 #include "hh-bbtautau/Analysis/include/BTagCalibrationStandalone.h"
 
 
@@ -36,10 +36,10 @@ struct jetEffInfo{
   int   partonFlavour;
   float eff, SF;
 
-  jetEffInfo(const ntuple::Sync& event, int jetIndex):eff(0.),SF(0.){
-      pt  = event.pt_jets.at(jetIndex);
-      eta = event.eta_jets.at(jetIndex);
-      CSV = event.csv_jets.at(jetIndex);
+  jetEffInfo(const ntuple::Event& event, int jetIndex):eff(0.),SF(0.){
+      pt  = event.jets_p4.at(jetIndex).pt();
+      eta = event.jets_p4.at(jetIndex).eta();
+      CSV = event.jets_csv.at(jetIndex);
       partonFlavour = 0;/*event.partonFlavour_jets.at(jetIndex);*/
   }
 
@@ -63,7 +63,7 @@ public:
         : inputFile(root_ext::OpenRootFile(args.inputFileName())),
           outputFile(root_ext::CreateRootFile(args.outputFileName())),
           bTagEffFile(root_ext::OpenRootFile(args.bTagEffName())),
-          syncTree(new ntuple::SyncTree("sync", inputFile.get(), true)), anaData(outputFile) {
+          syncTree(new ntuple::EventTuple("sync", inputFile.get(), true)), anaData(outputFile) {
 
      calib        = new btag_calibration::BTagCalibration("CSVv2", args.bjetSFName());
      reader       = new btag_calibration::BTagCalibrationReader(calib, btag_calibration::BTagEntry::OP_LOOSE, "mujets",
@@ -89,9 +89,9 @@ public:
         bTagMap bTagMedium;
         progressReporter->Report(current_entry);
         syncTree->GetEntry(current_entry);
-        const ntuple::Sync& event = syncTree->data();
+        const ntuple::Event& event = syncTree->data();
         //std::cout<<" SyncTree Entry :   "<<current_entry<<"\n";
-        for (int jetIndex = 0; jetIndex < event.njets; jetIndex++){
+        for (int jetIndex = 0; jetIndex < event.jets_p4.size(); jetIndex++){
           jetEffInfo jetInfo(event, jetIndex);
           if      (abs (jetInfo.partonFlavour) == 5 ) {
             jetInfo.SF  = reader->eval(btag_calibration::BTagEntry::FLAV_B, jetInfo.eta, jetInfo.pt);
@@ -164,7 +164,7 @@ private:
 
 private:
   std::shared_ptr<TFile> inputFile, outputFile, bTagEffFile;
-  std::shared_ptr<ntuple::SyncTree> syncTree;
+  std::shared_ptr<ntuple::EventTuple> syncTree;
   BjetStudyData anaData;
   btag_calibration::BTagCalibration *calib;
   btag_calibration::BTagCalibrationReader *reader, *reader_light;
