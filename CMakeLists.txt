@@ -10,7 +10,7 @@ file(GLOB_RECURSE HTT_UTILITIES_SRC "${CMSSW_BASE_SRC}/HTT-utilities/*.cc")
 add_library(HTT-utilities STATIC "${HTT_UTILITIES_SRC}")
 
 file(GLOB_RECURSE HH_KINFIT2_SRC "${CMSSW_BASE_SRC}/HHKinFit2/*.cpp")
-add_library(HHKinFit2 STATIC "${HH_KINFIT2_SRC}")
+add_library(HHKinFit2 STATIC ${HH_KINFIT2_SRC})
 target_include_directories(HHKinFit2 PRIVATE "${CMSSW_BASE_SRC}/HHKinFit2/HHKinFit2/interface")
 
 foreach(exe_name ${EXE_LIST})
