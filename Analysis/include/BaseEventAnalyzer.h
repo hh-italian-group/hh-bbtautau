@@ -77,6 +77,7 @@ public:
 
     virtual const EventEnergyScaleSet& EventEnergyScaleToProcess() const
     {
+		(void)AllEventEnergyScales;
         static const EventEnergyScaleSet scales = {
             EventEnergyScale::Central, EventEnergyScale::TauUp, EventEnergyScale::TauDown
         };

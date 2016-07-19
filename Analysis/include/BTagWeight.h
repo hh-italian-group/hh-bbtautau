@@ -26,7 +26,7 @@ namespace btag {
     int   partonFlavour;
     float eff, SF;
 
-    jetEffInfo(const ntuple::Event& event, int jetIndex):eff(0.),SF(0.){
+    jetEffInfo(const ntuple::Event& event, size_t jetIndex):eff(0.),SF(0.){
         pt  = event.jets_p4.at(jetIndex).pt();
         eta = event.jets_p4.at(jetIndex).eta();
         CSV = event.jets_csv.at(jetIndex);
@@ -61,7 +61,7 @@ namespace btag {
            using namespace cuts::Htautau_2015;
 
            bTagMap bTagMedium;
-           for (int jetIndex = 0; jetIndex < event.jets_p4.size(); jetIndex++){
+           for (size_t jetIndex = 0; jetIndex < event.jets_p4.size(); jetIndex++){
              jetEffInfo jetInfo(event, jetIndex);
              if      (abs (jetInfo.partonFlavour) == 5 ) {
                jetInfo.SF  = reader->eval(btag_calibration::BTagEntry::FLAV_B, jetInfo.eta, jetInfo.pt);
