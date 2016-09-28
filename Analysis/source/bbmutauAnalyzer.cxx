@@ -10,7 +10,7 @@ public:
     using SemileptonicFlatTreeAnalyzer<MuonCandidate>::SemileptonicFlatTreeAnalyzer;
 
 protected:
-    virtual std::string TreeName() const override { return "mutau"; }
+    virtual std::string TreeName() const override { return "muTau"; }
 
     virtual EventRegion DetermineEventRegion(EventInfo& event, EventCategory /*eventCategory*/) override
     {

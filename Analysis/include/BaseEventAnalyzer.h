@@ -79,7 +79,7 @@ public:
     {
 		(void)AllEventEnergyScales;
         static const EventEnergyScaleSet scales = {
-            EventEnergyScale::Central, EventEnergyScale::TauUp, EventEnergyScale::TauDown
+            EventEnergyScale::Central/*, EventEnergyScale::TauUp, EventEnergyScale::TauDown*/
         };
         return scales;
     }
@@ -93,7 +93,7 @@ public:
 
     void Run()
     {
-        static const std::set<std::string> disabled_branches = {};
+        static const std::set<std::string> disabled_branches = { "lhe_particle_pdg", "lhe_particle_p4" };
 
         std::cout << "Processing data categories... " << std::endl;
         for(const DataCategory* dataCategory : dataCategoryCollection.GetAllCategories()) {
@@ -379,7 +379,7 @@ protected:
 
     double ComputeWeight(const DataCategory& dataCategory, const ntuple::Event& event, double scale_factor)
     {
-        static constexpr bool applyPUreweight = false;
+        static constexpr bool applyPUreweight = true;
         static constexpr bool applybTagWeight = true;
         static constexpr bool applyLeptonWeight = true;
 
@@ -399,7 +399,7 @@ protected:
     {
         static constexpr bool order_bjet_by_csv = true;
 
-        const DataCategory& DYJets_incl = dataCategoryCollection.GetUniqueCategory(DataCategoryType::DYJets_incl);
+//        const DataCategory& DYJets_incl = dataCategoryCollection.GetUniqueCategory(DataCategoryType::DYJets_incl);
 
         for(Long64_t current_entry = 0; current_entry < tree->GetEntries(); ++current_entry) {
             tree->GetEntry(current_entry);
@@ -408,8 +408,8 @@ protected:
             EventInfo event(tree->data(), selected_bjet_pair);
 
             // TODO
-            const int HTBin = 0;
-            if (dataCategory.name == DYJets_incl.name && HTBin != 0) continue;
+//            const int HTBin = 0;
+//            if (dataCategory.name == DYJets_incl.name && HTBin != 0) continue;
 
             const EventCategoryVector eventCategories = DetermineEventCategories(event->jets_csv,
                                                                                  selected_bjet_pair,

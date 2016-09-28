@@ -383,7 +383,6 @@ inline HTbinning GetHTbin(double HT)
     return HTbinning::gt600;
 }
 
-
 EventCategoryVector DetermineEventCategories(const std::vector<float>& csv_Bjets,
                                              const EventInfoBase::BjetPair& selected_bjets, Int_t nBjets_retagged,
                                              double CSVL, double CSVM, bool doRetag = false)
