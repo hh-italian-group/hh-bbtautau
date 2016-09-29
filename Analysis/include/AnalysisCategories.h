@@ -339,8 +339,8 @@ using EventCategorySet = EnumNameMap<EventCategory>::EnumEntrySet;
 using EventCategoryMap = std::map<EventCategory, EventCategory>;
 using EventSubCategorySet = EnumNameMap<EventSubCategory>::EnumEntrySet;
 
-static const EventCategorySet AllEventCategories = __EventCategory_names.GetEnumEntries();
-static const EventSubCategorySet AllEventSubCategories = __EventSubCategory_names.GetEnumEntries();
+static const EventCategorySet AllEventCategories = __EventCategory_names<>::names.GetEnumEntries();
+static const EventSubCategorySet AllEventSubCategories = __EventSubCategory_names<>::names.GetEnumEntries();
 
 static const EventCategoryMap MediumToLoose_EventCategoryMap = {
     { EventCategory::TwoJets_ZeroBtag, EventCategory::TwoJets_ZeroLooseBtag },
@@ -370,7 +370,7 @@ static const EventRegionSet HighMtRegions = { EventRegion::OS_Iso_HighMt, EventR
 static const EventRegionSet QcdRegions = { EventRegion::OS_Isolated, EventRegion::SS_Isolated,
                                            EventRegion::OS_AntiIsolated, EventRegion::SS_AntiIsolated};
 
-static const EventRegionSet AllEventRegions = __EventRegion_names.GetEnumEntries();
+static const EventRegionSet AllEventRegions = __EventRegion_names<>::names.GetEnumEntries();
 
 enum class HTbinning { lt0 = -1, lt100 = 0, f100to200 = 1, f200to400 = 2, f400to600 = 3, gt600 = 4 };
 inline HTbinning GetHTbin(double HT)

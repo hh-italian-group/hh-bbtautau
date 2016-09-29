@@ -77,7 +77,7 @@ public:
 
     virtual const EventEnergyScaleSet& EventEnergyScaleToProcess() const
     {
-		(void)AllEventEnergyScales;
+        (void)AllEventEnergyScales;
         static const EventEnergyScaleSet scales = {
             EventEnergyScale::Central/*, EventEnergyScale::TauUp, EventEnergyScale::TauDown*/
         };
@@ -305,7 +305,7 @@ protected:
         return yield;
     }
 
-    const std::string& ChannelName() const { return __Channel_names.EnumToString(ChannelId()); }
+    const std::string& ChannelName() const { return __Channel_names<>::names.EnumToString(ChannelId()); }
     const std::string& ChannelNameLatex() const { return __Channel_names_latex.EnumToString(ChannelId()); }
 
     EventAnalyzerData& GetAnaData(const EventAnalyzerDataId& anaDataId)
@@ -456,7 +456,7 @@ protected:
                     ss_title << ": " << hist_name;
 
                     StackedPlotDescriptor stackDescriptor(ss_title.str(), false, ChannelNameLatex(),
-                                                          __EventCategory_names.EnumToString(eventCategory), drawRatio,
+                                                          __EventCategory_names<>::names.EnumToString(eventCategory), drawRatio,
                                                           false);
 
                     for(const DataCategory* category : dataCategoryCollection.GetAllCategories()) {

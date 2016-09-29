@@ -2,8 +2,6 @@
 This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include <thread>
-#include <mutex>
-#include <queue>
 #include <functional>
 
 #include "AnalysisTools/Core/include/RootExt.h"
@@ -33,7 +31,9 @@ public:
 
     void Run()
     {
+#if ROOT_VERSION_CODE > ROOT_VERSION(6,6,0)
         ROOT::EnableThreadSafety();
+#endif
 
         std::thread process_thread(std::bind(&TupleSkimmer::ProcessThread, this));
         std::thread writer_thread(std::bind(&TupleSkimmer::WriteThread, this, args.treeName(),

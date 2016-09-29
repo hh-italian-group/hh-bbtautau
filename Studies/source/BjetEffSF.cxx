@@ -91,7 +91,7 @@ public:
         syncTree->GetEntry(current_entry);
         const ntuple::Event& event = syncTree->data();
         //std::cout<<" SyncTree Entry :   "<<current_entry<<"\n";
-        for (int jetIndex = 0; jetIndex < event.jets_p4.size(); jetIndex++){
+        for (size_t jetIndex = 0; jetIndex < event.jets_p4.size(); jetIndex++){
           jetEffInfo jetInfo(event, jetIndex);
           if      (abs (jetInfo.partonFlavour) == 5 ) {
             jetInfo.SF  = reader->eval(btag_calibration::BTagEntry::FLAV_B, jetInfo.eta, jetInfo.pt);
