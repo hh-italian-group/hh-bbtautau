@@ -387,7 +387,7 @@ protected:
     {
         static constexpr bool applybTagWeight = true;
         if(dataCategory.IsData()) return 1;
-        return scale_factor * weights.TotalWeight(event, applybTagWeight, cuts::Htautau_2015::btag::CSVM);
+        return scale_factor * weights.GetTotalWeight(event, applybTagWeight, cuts::Htautau_2015::btag::CSVM);
     }
 
     void ProcessDataSource(const DataCategory& dataCategory, std::shared_ptr<ntuple::EventTuple> tree,
