@@ -442,7 +442,7 @@ protected:
 
         for(EventCategory eventCategory : EventCategoriesToProcess()) {
             for (const auto& hist_name : EventAnalyzerData::template GetOriginalHistogramNames<TH1D>()) {
-                for(EventSubCategory subCategory : AllEventSubCategories) {
+                for(EventSubCategory subCategory : EventSubCategoriesToProcess()) {
                     const EventAnalyzerDataMetaId_noRegion_noName anaDataMetaId(eventCategory, subCategory,
                                                                                EventEnergyScale::Central);
                     std::ostringstream ss_title;
