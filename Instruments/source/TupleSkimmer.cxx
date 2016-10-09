@@ -31,7 +31,7 @@ public:
 
     void Run()
     {
-#if ROOT_VERSION_CODE > ROOT_VERSION(6,6,0)
+#if ROOT_VERSION_CODE >= ROOT_VERSION(6,6,0)
         ROOT::EnableThreadSafety();
 #endif
 

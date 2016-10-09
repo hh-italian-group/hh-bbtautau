@@ -23,10 +23,9 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisCategories.h"
 #include "EventAnalyzerDataCollection.h"
 
-#include "BTagWeight.h"
 #include "h-tautau/Analysis/include/Htautau_2015.h"
 #include "h-tautau/Analysis/include/EventTuple.h"
-#include "h-tautau/Analysis/include/PUWeights.h"
+#include "h-tautau/McCorrections/include/EventWeights.h"
 
 namespace analysis {
 
@@ -51,8 +50,8 @@ public:
 
     virtual const EventCategorySet& EventCategoriesToProcess() const
     {
-        static const EventCategorySet categories = { EventCategory::TwoJets_Inclusive,
-            EventCategory::TwoJets_ZeroBtag,
+        static const EventCategorySet categories = {
+            EventCategory::TwoJets_Inclusive, EventCategory::TwoJets_ZeroBtag,
             EventCategory::TwoJets_OneBtag, EventCategory::TwoJets_OneLooseBtag,
             EventCategory::TwoJets_TwoBtag, EventCategory::TwoJets_TwoLooseBtag
         };
@@ -62,7 +61,8 @@ public:
     virtual const EventSubCategorySet& EventSubCategoriesToProcess() const
     {
         static const EventSubCategorySet sub_categories = {
-            EventSubCategory::NoCuts, EventSubCategory::MassWindow
+            EventSubCategory::NoCuts, EventSubCategory::MassWindow, EventSubCategory::KinematicFitConverged,
+            EventSubCategory::KinematicFitConvergedWithMassWindow
         };
         return sub_categories;
     }
@@ -87,7 +87,7 @@ public:
     BaseEventAnalyzer(const AnalyzerArguments& _args)
         : args(_args), dataCategoryCollection(args.source_cfg(), args.signal_list(), ChannelId()),
           anaDataCollection(args.outputFileName() + "_full.root", args.saveFullOutput()),
-          puReWeight(false, false, true, false, "hh-bbtautau/Analysis/data/reWeight_Fall.root", 60.0, 0.0)
+          weights(Period::Run2015, DiscriminatorWP::Medium)
     {
     }
 
@@ -108,7 +108,7 @@ public:
             }
         }
 
-        std::set<std::string> histograms_to_report = { EventAnalyzerData::m_ttbb_Name() };
+        std::set<std::string> histograms_to_report = { EventAnalyzerData::m_ttbb_kinfit_Name() };
 
         for (const auto& hist_name : EventAnalyzerData::template GetOriginalHistogramNames<TH1D>()) {
             for(auto subCategory : EventSubCategoriesToProcess()) {
@@ -136,8 +136,8 @@ public:
         PrintTables("comma", L",");
 
         std::cout << "Saving datacards... " << std::endl;
-        ProduceFileForLimitsCalculation(EventAnalyzerData::m_ttbb_Name(),
-                                        EventSubCategory::MassWindow,
+        ProduceFileForLimitsCalculation(EventAnalyzerData::m_ttbb_kinfit_Name(),
+                                        EventSubCategory::KinematicFitConvergedWithMassWindow,
                                         &EventAnalyzerData::m_ttbb_kinfit);
 
         std::cout << "Printing stacked plots... " << std::endl;
@@ -161,13 +161,19 @@ protected:
             const double mass_tautau = event.GetHiggsTTMomentum(true).M();
             const double mass_bb = event.GetHiggsBB().GetMomentum().M();
 
+            if(event.GetKinFitResults().HasValidMass())
+                sub_categories.insert(EventSubCategory::KinematicFitConverged);
+
             if(mass_tautau > m_tautau_low && mass_tautau < m_tautau_high
                     && mass_bb > m_bb_low && mass_bb < m_bb_high) {
                 sub_categories.insert(EventSubCategory::MassWindow);
                 if(event.GetKinFitResults().HasValidMass())
                     sub_categories.insert(EventSubCategory::KinematicFitConvergedWithMassWindow);
-            } else
+            } else {
                 sub_categories.insert(EventSubCategory::OutsideMassWindow);
+                if(event.GetKinFitResults().HasValidMass())
+                    sub_categories.insert(EventSubCategory::KinematicFitConvergedOutsideMassWindow);
+            }
         }
         return sub_categories;
     }
@@ -379,19 +385,9 @@ protected:
 
     double ComputeWeight(const DataCategory& dataCategory, const ntuple::Event& event, double scale_factor)
     {
-        static constexpr bool applyPUreweight = true;
         static constexpr bool applybTagWeight = true;
-        static constexpr bool applyLeptonWeight = true;
-
-        double btagweight = 1;
-        if ( dataCategory.name == "TTbar" && applybTagWeight) btagweight = bTagLooseWeight.Compute(event);
-
-        puReWeight.Reset();
-        puReWeight.CalculatePuWeight(event);
-        puReWeight.CalculateLeptonWeights(event);
-        const double puweight = dataCategory.IsData() ? 1 : (applyPUreweight ? puReWeight.GetPileUpWeight():1);
-        const double lepweight = dataCategory.IsData() ? 1 : (applyLeptonWeight ? puReWeight.GetLeptonWeights():1);
-        return scale_factor * puweight * btagweight * lepweight;
+        if(dataCategory.IsData()) return 1;
+        return scale_factor * weights.TotalWeight(event, applybTagWeight, cuts::Htautau_2015::btag::CSVM);
     }
 
     void ProcessDataSource(const DataCategory& dataCategory, std::shared_ptr<ntuple::EventTuple> tree,
@@ -838,8 +834,7 @@ protected:
     AnalyzerArguments args;
     DataCategoryCollection dataCategoryCollection;
     EventAnalyzerDataCollection anaDataCollection;
-    analysis::btag::BjetEffWeight bTagLooseWeight;
-    analysis::PUWeights puReWeight;
+    mc_corrections::EventWeights weights;
 };
 
 } // namespace analysis

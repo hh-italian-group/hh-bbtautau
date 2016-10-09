@@ -21,7 +21,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "ProgressReporter.h"
 #include "h-tautau/Analysis/include/Htautau_2015.h"
 #include "h-tautau/Analysis/include/EventTuple.h"
-#include "hh-bbtautau/Analysis/include/BTagCalibrationStandalone.h"
+#include "h-tautau/McCorrections/include/BTagCalibrationStandalone.h"
 
 
 class BjetStudyData : public root_ext::AnalyzerData {
