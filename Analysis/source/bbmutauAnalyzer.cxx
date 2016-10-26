@@ -21,9 +21,8 @@ protected:
 
         if(tau->againstMuon3(DiscriminatorWP::Tight) < tauID::againstMuonTight3
                 || tau->againstElectronMVA6(DiscriminatorWP::VLoose) < tauID::againstElectronVLooseMVA6
-                || muon->iso() >= muonID::pFRelIso
-                || event->dilepton_veto
-                /*|| (event.extraelec_veto || event.extramuon_veto) */)
+                || muon->iso() >= 0.15
+                || event->extraelec_veto || event->extramuon_veto)
             return EventRegion::Unknown;
 
         const bool os = muon.GetCharge() * tau.GetCharge() == -1;

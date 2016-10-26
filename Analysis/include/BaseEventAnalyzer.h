@@ -122,10 +122,12 @@ public:
                     for (EventCategory eventCategory : EventCategoriesToProcess()) {
                         const EventAnalyzerDataMetaId_noRegion_noName anaDataMetaId(eventCategory, subCategory,
                                                                                    energyScale);
-                        DataCategoryType dataCategoryType = DataCategoryType::QCD;
-                        const auto qcd_yield = CalculateQCDYield(anaDataMetaId, hist_name, dataCategoryType, s_out);
-                        s_out << eventCategory << ": QCD yield = " << qcd_yield << ".\n";
-                        EstimateQCD(anaDataMetaId, hist_name, qcd_yield, dataCategoryType);
+                        if(dataCategoryCollection.GetCategories(DataCategoryType::Data).size()) {
+                            DataCategoryType dataCategoryType = DataCategoryType::QCD;
+                            const auto qcd_yield = CalculateQCDYield(anaDataMetaId, hist_name, dataCategoryType, s_out);
+                            s_out << eventCategory << ": QCD yield = " << qcd_yield << ".\n";
+                            EstimateQCD(anaDataMetaId, hist_name, qcd_yield, dataCategoryType);
+                        }
                         ProcessCompositDataCategories(anaDataMetaId, hist_name);
                     }
                 }
@@ -303,10 +305,10 @@ protected:
         const PhysicalValue yield = data_yield - bkg_yield;
         s_out << "Data yield = " << data_yield << "\nData-MC yield = " << yield << std::endl;
         if(yield.GetValue() < 0) {
-//            if(&s_out != &std::cout)
-//                std::cout << bkg_yield_debug << "\nData yield = " << data_yield << std::endl;
-//            throw exception("Negative QCD yield for histogram '%1%' in %2% %3%.") % hist_name
-//                    % anaDataMetaId.eventCategory % eventRegion;
+            if(&s_out != &std::cout)
+                std::cout << bkg_yield_debug << "\nData yield = " << data_yield << std::endl;
+            throw exception("Negative QCD yield for histogram '%1%' in %2% %3%.") % hist_name
+                    % anaDataMetaId.eventCategory % eventRegion;
         }
         return yield;
     }
@@ -387,6 +389,7 @@ protected:
     {
         static constexpr bool applybTagWeight = true;
         if(dataCategory.IsData()) return 1;
+//        std::cout << event.p4_1.Pt() << " " << event.p4_2.Pt() << std::endl;
         return scale_factor * weights.GetTotalWeight(event, applybTagWeight, cuts::Htautau_2015::btag::CSVM);
     }
 

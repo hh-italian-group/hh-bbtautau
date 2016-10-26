@@ -19,7 +19,6 @@ struct Arguments {
 
 namespace analysis {
 
-
 class TupleSkimmer {
 public:
     using Event = ntuple::Event;
@@ -97,7 +96,10 @@ private:
         const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
         if(es != EventEnergyScale::Central) return false;
 
-        static const std::set<std::string> tauID_Names = { "againstMuonTight3", "againstElectronVLooseMVA6" };
+        static const std::set<std::string> tauID_Names = {
+            "againstMuonTight3", "againstElectronVLooseMVA6", "againstElectronTightMVA6", "againstMuonLoose3",
+            "byTightIsolationMVArun2v1DBoldDMwLT", "byVTightIsolationMVArun2v1DBoldDMwLT"
+        };
         decltype(event.tauIDs_1) tauIDs_1, tauIDs_2;
         for(const auto& name : tauID_Names) {
             if(event.tauIDs_1.count(name))
