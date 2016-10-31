@@ -8,7 +8,8 @@ namespace analysis {
 
 class bbmutauAnalyzer : public SemileptonicFlatTreeAnalyzer<MuonCandidate> {
 public:
-    using SemileptonicFlatTreeAnalyzer<MuonCandidate>::SemileptonicFlatTreeAnalyzer;
+    //using SemileptonicFlatTreeAnalyzer<MuonCandidate>::SemileptonicFlatTreeAnalyzer;
+	bbmutauAnalyzer(const AnalyzerArguments& _args) : SemileptonicFlatTreeAnalyzer(_args), MVA_reader(_args.weight_file()) {}
 
 protected:
     virtual std::string TreeName() const override { return "muTau"; }
@@ -19,7 +20,8 @@ protected:
 
         const MuonCandidate& muon = event.GetFirstLeg();
         const TauCandidate& tau = event.GetSecondLeg();
-		double BDT_wp = 0.0; /*Francesco*/
+		//double BDT_wp = -0.065; /*Francesco*/
+		double BDT_wp =args.BDT_cut(); /*Francesco*/
 		double BDT_output = MVA_reader.BDT_score(event);
 		//std::cout<<"  BDT score: " << BDT_output << " passed: " << (BDT_output > BDT_wp) <<std::endl;
 
@@ -28,6 +30,7 @@ protected:
                 || muon->iso() >= muonID::pFRelIso
                 || event->dilepton_veto
 				|| BDT_output < BDT_wp /*Francesco*/
+				//|| event->pfmt_1>BDT_wp
                 /*|| (event.extraelec_veto || event.extramuon_veto) */)
             return EventRegion::Unknown;
 
