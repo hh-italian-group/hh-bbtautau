@@ -35,6 +35,8 @@ struct AnalyzerArguments {
     REQ_ARG(std::string, outputFileName);
     REQ_ARG(std::string, signal_list);
     OPT_ARG(bool, saveFullOutput, false);
+	OPT_ARG(std::string, weight_file, "");
+	OPT_ARG(double, BDT_cut, 0.2);
 };
 
 template<typename _FirstLeg>
