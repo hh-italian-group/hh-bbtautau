@@ -30,7 +30,6 @@ protected:
                 || muon->iso() >= muonID::pFRelIso
                 || event->dilepton_veto
 				|| BDT_output < BDT_wp /*Francesco*/
-				//|| event->pfmt_1>BDT_wp
                 /*|| (event.extraelec_veto || event.extramuon_veto) */)
             return EventRegion::Unknown;
 
