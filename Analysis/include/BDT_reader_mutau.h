@@ -58,15 +58,17 @@ class BDT_reader
 	using EventInfo = analysis::EventInfo<MuonCandidate>;
 
 	public:
-		BDT_reader();
+		BDT_reader(TString file);
 		~BDT_reader();
 		double BDT_score(EventInfo& event);
 	
 	private:
 		// Declare MVAreader, weight file, MVAmethodname
 		TMVA::Reader *reader = new TMVA::Reader( "!Color:Silent" );
+		TString weight_file;
+		//TString weight_file = "hh-bbtautau/Analysis/data/TMVAClassification_BDT_low_mass.weights.xml";
 		//TString weight_file = "hh-bbtautau/Analysis/data/TMVAClassification_BDT_full_mass.weights.xml";
-		TString weight_file = "hh-bbtautau/Analysis/data/TMVAClassification_BDT_high_mass.weights.xml";
+		//TString weight_file = "hh-bbtautau/Analysis/data/TMVAClassification_BDT_high_mass.weights.xml";
 		TString methodname = "BDT_full_mass";
 	
 		// Declare variables for MVAreader
@@ -103,9 +105,12 @@ class BDT_reader
 
 // ***************** Member functions definitions *****************
 // Constructor
-BDT_reader::BDT_reader(void)
+BDT_reader::BDT_reader(TString file)
 {
 	std::cout<<" --- Class BDT_reader is being created ---"<<std::endl;
+	std::cout<<file<<std::endl;
+	
+	weight_file = file;
 	
 	reader->AddVariable("HT",&var1);
 	reader->AddVariable("HT50",&var2);
