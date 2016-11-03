@@ -124,7 +124,7 @@ public:
                     for (EventCategory eventCategory : EventCategoriesToProcess()) {
                         const EventAnalyzerDataMetaId_noRegion_noName anaDataMetaId(eventCategory, subCategory,
                                                                                    energyScale);
-                        if(dataCategoryCollection.GetCategories(DataCategoryType::Data).size()) {
+                        if(dataCategoryCollection.GetCategories(DataCategoryType::Data).size() && false) { //Francesco
                             DataCategoryType dataCategoryType = DataCategoryType::QCD;
                             const auto qcd_yield = CalculateQCDYield(anaDataMetaId, hist_name, dataCategoryType, s_out);
                             s_out << eventCategory << ": QCD yield = " << qcd_yield << ".\n";
@@ -145,8 +145,8 @@ public:
                                         &EventAnalyzerData::m_ttbb_kinfit);
 
         std::cout << "Printing stacked plots... " << std::endl;
-        PrintStackedPlots(EventRegion::OS_Isolated, false, true);
-        PrintStackedPlots(EventRegion::OS_Isolated, false, false);
+        PrintStackedPlots(EventRegion::OS_Isolated, true, true);
+        PrintStackedPlots(EventRegion::OS_Isolated, true, false);
         std::cout << "Saving output file..." << std::endl;
     }
 
