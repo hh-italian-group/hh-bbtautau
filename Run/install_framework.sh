@@ -73,6 +73,9 @@ if [ $MODE = "prod" ] ; then
 
     # MET filters
     git cms-merge-topic -u cms-met:CMSSW_8_0_X-METFilterUpdate
+
+    # MET corrections
+    git cms-merge-topic cms-met:METRecipe_8020
 fi
 
 if [ $MODE = "limits" ] ; then
