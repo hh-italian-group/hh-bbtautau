@@ -107,6 +107,11 @@ git clone git@github.com:hh-italian-group/HHKinFit2.git HHKinFit2/HHKinFit2
 git clone git@github.com:hh-italian-group/LeptonEff-interface.git HTT-utilities
 git clone git@github.com:CMS-HTT/LeptonEfficiencies.git HTT-utilities/LepEffInterface/data
 
+# Recoil Corrections
+if [ $MODE = "prod" -o $MODE = "limits" ] ; then
+   git clone https://github.com/CMS-HTT/RecoilCorrections.git  HTT-utilities/RecoilCorrections
+fi
+
 # hh-italian-group packages
 git clone git@github.com:hh-italian-group/AnalysisTools.git
 git clone git@github.com:hh-italian-group/h-tautau.git
