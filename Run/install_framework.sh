@@ -73,6 +73,9 @@ if [ $MODE = "prod" ] ; then
 
     # MET filters
     git cms-merge-topic -u cms-met:CMSSW_8_0_X-METFilterUpdate
+
+    # MET corrections
+    git cms-merge-topic cms-met:METRecipe_8020
 fi
 
 if [ $MODE = "limits" ] ; then
@@ -114,13 +117,15 @@ git clone git@github.com:hh-italian-group/AnalysisTools.git
 git clone git@github.com:hh-italian-group/h-tautau.git
 git clone git@github.com:hh-italian-group/hh-bbtautau.git
 
-# Prepare analysis working area
-./AnalysisTools/Run/install.sh ../build AnalysisTools h-tautau hh-bbtautau
-
 if [ $MODE = "prod" -o $MODE = "limits" ] ; then
     cd h-tautau
     git checkout sync
     cd ..
+fi
 
+# Prepare analysis working area
+./AnalysisTools/Run/install.sh ../build AnalysisTools h-tautau hh-bbtautau
+
+if [ $MODE = "prod" -o $MODE = "limits" ] ; then
     scram b -j$N_JOBS
 fi
