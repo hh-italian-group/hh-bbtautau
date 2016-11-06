@@ -117,7 +117,13 @@ git clone git@github.com:hh-italian-group/AnalysisTools.git
 git clone git@github.com:hh-italian-group/h-tautau.git
 git clone git@github.com:hh-italian-group/hh-bbtautau.git
 
-if [ $MODE = "prod" -o $MODE = "limits" ] ; then
+if [ $MODE = "prod" ] ; then
+    cd h-tautau
+    git checkout prod_v2
+    cd ..
+fi
+
+if [ $MODE = "limits" ] ; then
     cd h-tautau
     git checkout sync
     cd ..
