@@ -259,7 +259,7 @@ private:
         for(bool next = true; next;) {
             const size_t pos = signal_list.find(separator, prev_pos);
             next = pos != std::string::npos;
-            const size_t last_pos = next ? pos - 1 : std::string::npos;
+            const size_t last_pos = next ? pos : std::string::npos;
             const std::string signal_name = signal_list.substr(prev_pos, last_pos);
             result.insert(signal_name);
             prev_pos = pos + 1;

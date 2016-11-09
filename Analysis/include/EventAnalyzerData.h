@@ -7,6 +7,19 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 #include "h-tautau/Analysis/include/EventInfo.h"
 #include "AnalysisCategories.h"
 
+#define PI 3.14159265358979323846
+
+// Francesco
+struct bjet
+{
+	ROOT::Math::LorentzVector<ROOT::Math::PtEtaPhiE4D<double>> jet;
+	double csv;
+	bool operator > (const bjet& a) const
+	{
+		return csv > a.csv;
+	}
+};
+
 namespace analysis {
 
 class BaseEventAnalyzerData : public root_ext::AnalyzerData {
@@ -17,6 +30,19 @@ public:
     TH1D_ENTRY_CUSTOM_EX(m_ttbb_kinfit, M_ttbb_Bins(), "M_{H}^{kinfit} (GeV)", "dN/dm_{H}^{kinfit} (1/GeV)", false, 1.4, true, true)
 
 
+	// Francesco
+	//TH1D_ENTRY_EX(HTfull	, 40, 0, 1100,  "HTfull", "Events", false, 1.1, false, SaveAll)
+	TH1D_ENTRY_EX(dphi_mumet, 20, 0,    4,  "d#phi(#mu MET)", "Events", false, 1., false, SaveAll)
+	TH1D_ENTRY_EX(dphi_metsv, 20, 0,    4,  "d#phi(MET sv)", "Events", false, 1., false, SaveAll)
+	TH1D_ENTRY_EX(dphi_bbmet, 20, 0,    4,  "d#phi(bb MET)", "Events", false, 1., false, SaveAll)
+	TH1D_ENTRY_EX(dphi_bbsv	, 20, 0,    4,  "d#phi(bbsv)", "Events", false, 1., false, SaveAll)
+	//TH1D_ENTRY_EX(dR_bbsv	, 25, 0,    5,  "dR(bbsv)", "Events", false, 1., false, SaveAll)
+	TH1D_ENTRY_EX(dR_bb		, 25, 0,    5,  "dR(bb)", "Events", false, 1., false, SaveAll)
+	TH1D_ENTRY_EX(dR_taumu	, 25, 0,    5,  "dR(#tau#mu)", "Events", false, 1., false, SaveAll)
+	TH1D_ENTRY_EX(pfmt_1	, 40, 0,  300,  "mT #mu", "Events", false, 1., false, SaveAll)
+	TH1D_ENTRY_EX(pfmt_2	, 40, 0,  300,  "mT #tau", "Events", false, 1., false, SaveAll)
+	//TH1D_ENTRY_EX(BDT_output, 30,-1,    1,  "BDT_output", "Events", false, 1., false, SaveAll)
+	// Francesco
     TH1D_ENTRY_EX(npv, 40, 0, 40,  "Number of Primary Vertex", "Events", false, 1.4, false, SaveAll)
     TH1D_ENTRY_EX(pt_b1, 25, 0, 500, "Leading selected jet p_{T} (GeV)", "Events", false, 1.4, false, SaveAll)
 //    TH1D_ENTRY_EX(pt_b1_etaRange, 20, 0, 200, "Leading selected jet p_{T} (GeV), |#eta| < 1.5 ", "Events", false, 1.4, false, SaveAll)
@@ -96,7 +122,66 @@ public:
                 m_ttbb_kinfit().Fill(kinfit.mass, weight);
         }
         if(!fill_all) return;
+		
+		//Francesco
+		TLorentzVector mu;
+		TLorentzVector met;
+		TLorentzVector sv;
+		TLorentzVector tau;
+		tau.SetPtEtaPhiM(event->p4_2.Pt(), event->p4_2.Eta(), event->p4_2.Phi(), event->p4_2.M());
+		mu.SetPtEtaPhiM(event->p4_1.Pt(), event->p4_1.Eta(), event->p4_1.Phi(), event->p4_1.M());
+		met.SetPtEtaPhiM(event->pfMET_p4.Pt(), event->pfMET_p4.Eta(), event->pfMET_p4.Phi(), event->pfMET_p4.M());
+		sv.SetPtEtaPhiM(event->SVfit_p4.Pt(), event->SVfit_p4.Eta(), event->SVfit_p4.Phi(), event->SVfit_p4.M());
 
+		Float_t HTfull_val = 0;
+		Float_t dphi_mumet_val = deltaPhi(mu, met);
+		Float_t dphi_metsv_val = deltaPhi(met, sv);
+		Float_t dR_taumu_val = deltaR(tau, mu);
+		
+		for (unsigned int i = 0; i< (event->jets_p4).size(); i++)
+		{
+			if (event->jets_p4[i].Pt() > 20.)
+			{
+				HTfull_val = HTfull_val + event->jets_p4[i].Pt();
+			}
+		}
+		HTfull_val = HTfull_val + (event->p4_1.Pt()) + (event->p4_2.Pt());
+		
+		std::vector<bjet> bjets; //Francesco
+		for (unsigned int i = 0; i< (event->jets_p4).size(); i++)
+		{
+			if (event->jets_p4[i].Pt()>20. && std::abs((event->jets_p4[i].Eta())) < 2.4 && event->jets_csv[i]>0.65)
+			{
+				bjet temp_bjet;
+				temp_bjet.jet = event->jets_p4[i];
+				temp_bjet.csv = event->jets_csv[i];
+				bjets.push_back(temp_bjet);
+			}
+		}
+
+		if (bjets.size() >= 2)//Francesco
+		{
+			std::sort(bjets.begin(), bjets.end(), std::greater<bjet>());
+			TLorentzVector b1, b2, bsum;
+			b1.SetPtEtaPhiM(bjets[0].jet.Pt(), bjets[0].jet.Eta(), bjets[0].jet.Phi(), bjets[0].jet.M());
+			b2.SetPtEtaPhiM(bjets[1].jet.Pt(), bjets[1].jet.Eta(), bjets[1].jet.Phi(), bjets[1].jet.M());
+			bsum = b1+b2;
+			
+			dphi_bbmet().Fill(deltaPhi(bsum,met),weight);
+			dphi_bbsv().Fill(deltaPhi(bsum,sv),weight);
+			//dR_bbsv().Fill(deltaR(bsum,sv),weight);
+			dR_bb().Fill(deltaR(b1,b2),weight);
+		}
+
+		//HTfull().Fill(HTfull_val,weight); //Francesco
+		dphi_mumet().Fill(dphi_mumet_val,weight); //Francesco
+		dphi_metsv().Fill(dphi_metsv_val,weight); //Francesco
+		dR_taumu().Fill(dR_taumu_val,weight); //Francesco
+		pfmt_1().Fill(event->pfmt_1,weight); //Francesco
+		pfmt_2().Fill(event->pfmt_2,weight); //Francesco
+		//BDT_output().Fill(MVA_reader.BDT_score(event), weight); //Francesco
+		//BDT_output().Fill(9, weight); //Francesco
+		
         npv().Fill(event->npv,weight);
         m_vis().Fill(event.GetHiggsTTMomentum(false).M(),weight);
         mt_2().Fill(event->pfmt_2, weight);
@@ -120,15 +205,55 @@ public:
     virtual void CreateAll()
     {
         m_vis(); m_ttbb(); m_ttbb_log(); m_ttbb_kinfit(); pt_b1(); eta_b1(); csv_b1(); pt_b2(); eta_b2();
-        csv_b2(); pt_H_tt(); pt_H_bb(); pt_H_hh(); /*m_bb();*/ DeltaPhi_tt(); DeltaPhi_bb(); DeltaPhi_bb_MET();
+        csv_b2(); pt_H_tt(); pt_H_bb(); pt_H_hh(); m_bb(); DeltaPhi_tt(); DeltaPhi_bb(); DeltaPhi_bb_MET();
         DeltaPhi_tt_MET(); DeltaPhi_hh(); DeltaR_tt(); DeltaR_bb(); DeltaR_hh(); mt_2(); pt_H_tt_MET(); convergence();
         chi2(); fit_probability(); pull_balance(); pull_balance_1(); pull_balance_2(); MET(); MET_wide(); phiMET(); nJets_Pt30();
         csv_b1_vs_ptb1(); chi2_vs_ptb1(); mH_vs_chi2(); npv();
+		/*HTfull();
+		 dR_bbsv();*/
+		dphi_mumet();
+		dphi_metsv();
+		dphi_bbmet();
+		dphi_bbsv();
+		dR_bb();
+		dR_taumu();
+		pfmt_1();
+		pfmt_2();
+		//BDT_output();
     }
 
 protected:
     bool fill_all;
+
+private:
+	Float_t deltaPhi(TLorentzVector& v1, TLorentzVector& v2);
+	Float_t deltaEta(TLorentzVector& v1, TLorentzVector& v2);
+	Float_t deltaR(TLorentzVector& v1, TLorentzVector& v2);
 };
+
+// delta phi - Francesco
+Float_t BaseEventAnalyzerData::deltaPhi(TLorentzVector& v1, TLorentzVector& v2)
+{
+	Float_t res = v1.Phi() - v2.Phi();
+	if (res > PI)  res = res - 2*PI;
+	if (res < -PI) res = res + 2*PI;
+	return std::abs(res);
+}
+
+// deltaETA  - Francesco
+Float_t BaseEventAnalyzerData::deltaEta(TLorentzVector& v1, TLorentzVector& v2)
+{
+	Float_t res = v1.Eta() - v2.Eta();
+	return std::abs(res);
+}
+
+// deltaR  - Francesco
+Float_t BaseEventAnalyzerData::deltaR(TLorentzVector& v1, TLorentzVector& v2)
+{
+	Float_t dphi=deltaPhi(v1,v2);
+	Float_t deta=deltaEta(v1,v2);
+	return std::sqrt((dphi*dphi) + (deta*deta));
+}
 
 template<typename _FirstLeg>
 class EventAnalyzerData : public BaseEventAnalyzerData {

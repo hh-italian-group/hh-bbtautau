@@ -27,11 +27,11 @@ protected:
 
         if(tau->againstMuon3(DiscriminatorWP::Tight) < tauID::againstMuonTight3
                 || tau->againstElectronMVA6(DiscriminatorWP::VLoose) < tauID::againstElectronVLooseMVA6
-                || muon->iso() >= muonID::pFRelIso
-                || event->dilepton_veto
-				|| BDT_output < BDT_wp /*Francesco*/
-				//|| event->pfmt_1>BDT_wp
-                /*|| (event.extraelec_veto || event.extramuon_veto) */)
+			    //|| muon->iso() >= muonID::pFRelIso
+                || muon->iso() >= 0.15
+                //|| event->dilepton_veto
+			    || event->extraelec_veto || event->extramuon_veto
+				|| BDT_output < BDT_wp) /*Francesco*/
             return EventRegion::Unknown;
 
         const bool os = muon.GetCharge() * tau.GetCharge() == -1;

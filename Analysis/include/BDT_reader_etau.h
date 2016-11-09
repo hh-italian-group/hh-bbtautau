@@ -55,7 +55,7 @@ namespace analysis {
 // class to evalluate the BDT score
 class BDT_reader
 {
-	using EventInfo = analysis::EventInfo<MuonCandidate>;
+	using EventInfo = analysis::EventInfo<ElectronCandidate>;
 
 	public:
 		BDT_reader(TString file);
@@ -182,7 +182,7 @@ double BDT_reader::BDT_score(EventInfo& event)
 	var23 = event->p4_2.Eta();
 	var24 = get_dphi_bbmet(event);
 	var25 = get_dphi_bbsv(event);
-	var26 = 0;
+	var26 = 1;
 	
 	BDT_value = reader->EvaluateMVA(methodname);
 	
