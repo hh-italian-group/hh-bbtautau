@@ -9,6 +9,7 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 
 #define PI 3.14159265358979323846
 
+// Francesco
 struct bjet
 {
 	ROOT::Math::LorentzVector<ROOT::Math::PtEtaPhiE4D<double>> jet;
@@ -31,15 +32,16 @@ public:
 
 	// Francesco
 	//TH1D_ENTRY_EX(HTfull	, 40, 0, 1100,  "HTfull", "Events", false, 1.1, false, SaveAll)
-	//TH1D_ENTRY_EX(dphi_mumet, 20, 0,    4,  "d#phi(#mu MET)", "Events", false, 1., false, SaveAll)
-	//TH1D_ENTRY_EX(dphi_metsv, 20, 0,    4,  "d#phi(MET sv)", "Events", false, 1., false, SaveAll)
-	//TH1D_ENTRY_EX(dphi_bbmet, 20, 0,    4,  "d#phi(bb MET)", "Events", false, 1., false, SaveAll)
-	//TH1D_ENTRY_EX(dphi_bbsv	, 20, 0,    4,  "d#phi(bbsv)", "Events", false, 1., false, SaveAll)
+	TH1D_ENTRY_EX(dphi_mumet, 20, 0,    4,  "d#phi(#mu MET)", "Events", false, 1., false, SaveAll)
+	TH1D_ENTRY_EX(dphi_metsv, 20, 0,    4,  "d#phi(MET sv)", "Events", false, 1., false, SaveAll)
+	TH1D_ENTRY_EX(dphi_bbmet, 20, 0,    4,  "d#phi(bb MET)", "Events", false, 1., false, SaveAll)
+	TH1D_ENTRY_EX(dphi_bbsv	, 20, 0,    4,  "d#phi(bbsv)", "Events", false, 1., false, SaveAll)
 	//TH1D_ENTRY_EX(dR_bbsv	, 25, 0,    5,  "dR(bbsv)", "Events", false, 1., false, SaveAll)
-	//TH1D_ENTRY_EX(dR_bb		, 25, 0,    5,  "dR(bb)", "Events", false, 1., false, SaveAll)
-	//TH1D_ENTRY_EX(dR_taumu	, 25, 0,    5,  "dR(#tau#mu)", "Events", false, 1., false, SaveAll)
-	//TH1D_ENTRY_EX(pfmt_1	, 40, 0,  300,  "mT #mu", "Events", false, 1., false, SaveAll)
-	//TH1D_ENTRY_EX(pfmt_2	, 40, 0,  300,  "mT #tau", "Events", false, 1., false, SaveAll)
+	TH1D_ENTRY_EX(dR_bb		, 25, 0,    5,  "dR(bb)", "Events", false, 1., false, SaveAll)
+	TH1D_ENTRY_EX(dR_taumu	, 25, 0,    5,  "dR(#tau#mu)", "Events", false, 1., false, SaveAll)
+	TH1D_ENTRY_EX(pfmt_1	, 40, 0,  300,  "mT #mu", "Events", false, 1., false, SaveAll)
+	TH1D_ENTRY_EX(pfmt_2	, 40, 0,  300,  "mT #tau", "Events", false, 1., false, SaveAll)
+	//TH1D_ENTRY_EX(BDT_output, 30,-1,    1,  "BDT_output", "Events", false, 1., false, SaveAll)
 	// Francesco
     TH1D_ENTRY_EX(npv, 40, 0, 40,  "Number of Primary Vertex", "Events", false, 1.4, false, SaveAll)
     TH1D_ENTRY_EX(pt_b1, 25, 0, 500, "Leading selected jet p_{T} (GeV)", "Events", false, 1.4, false, SaveAll)
@@ -165,18 +167,20 @@ public:
 			b2.SetPtEtaPhiM(bjets[1].jet.Pt(), bjets[1].jet.Eta(), bjets[1].jet.Phi(), bjets[1].jet.M());
 			bsum = b1+b2;
 			
-			//dphi_bbmet().Fill(deltaPhi(bsum,met),weight);
-			//dphi_bbsv().Fill(deltaPhi(bsum,sv),weight);
+			dphi_bbmet().Fill(deltaPhi(bsum,met),weight);
+			dphi_bbsv().Fill(deltaPhi(bsum,sv),weight);
 			//dR_bbsv().Fill(deltaR(bsum,sv),weight);
-			//dR_bb().Fill(deltaR(b1,b2),weight);
+			dR_bb().Fill(deltaR(b1,b2),weight);
 		}
 
 		//HTfull().Fill(HTfull_val,weight); //Francesco
-		//dphi_mumet().Fill(dphi_mumet_val,weight); //Francesco
-		//dphi_metsv().Fill(dphi_metsv_val,weight); //Francesco
-		//dR_taumu().Fill(dR_taumu_val,weight); //Francesco
-		//pfmt_1().Fill(event->pfmt_1,weight); //Francesco
-		//pfmt_2().Fill(event->pfmt_2,weight); //Francesco
+		dphi_mumet().Fill(dphi_mumet_val,weight); //Francesco
+		dphi_metsv().Fill(dphi_metsv_val,weight); //Francesco
+		dR_taumu().Fill(dR_taumu_val,weight); //Francesco
+		pfmt_1().Fill(event->pfmt_1,weight); //Francesco
+		pfmt_2().Fill(event->pfmt_2,weight); //Francesco
+		//BDT_output().Fill(MVA_reader.BDT_score(event), weight); //Francesco
+		//BDT_output().Fill(9, weight); //Francesco
 		
         npv().Fill(event->npv,weight);
         m_vis().Fill(event.GetHiggsTTMomentum(false).M(),weight);
@@ -201,20 +205,21 @@ public:
     virtual void CreateAll()
     {
         m_vis(); m_ttbb(); m_ttbb_log(); m_ttbb_kinfit(); pt_b1(); eta_b1(); csv_b1(); pt_b2(); eta_b2();
-        csv_b2(); pt_H_tt(); pt_H_bb(); pt_H_hh(); /*m_bb();*/ DeltaPhi_tt(); DeltaPhi_bb(); DeltaPhi_bb_MET();
+        csv_b2(); pt_H_tt(); pt_H_bb(); pt_H_hh(); m_bb(); DeltaPhi_tt(); DeltaPhi_bb(); DeltaPhi_bb_MET();
         DeltaPhi_tt_MET(); DeltaPhi_hh(); DeltaR_tt(); DeltaR_bb(); DeltaR_hh(); mt_2(); pt_H_tt_MET(); convergence();
         chi2(); fit_probability(); pull_balance(); pull_balance_1(); pull_balance_2(); MET(); MET_wide(); phiMET(); nJets_Pt30();
         csv_b1_vs_ptb1(); chi2_vs_ptb1(); mH_vs_chi2(); npv();
 		/*HTfull();
+		 dR_bbsv();*/
 		dphi_mumet();
 		dphi_metsv();
 		dphi_bbmet();
 		dphi_bbsv();
-		dR_bbsv();
 		dR_bb();
 		dR_taumu();
 		pfmt_1();
-		pfmt_2();*/
+		pfmt_2();
+		//BDT_output();
     }
 
 protected:
