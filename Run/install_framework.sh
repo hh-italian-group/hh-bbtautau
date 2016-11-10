@@ -118,7 +118,13 @@ git clone git@github.com:hh-italian-group/h-tautau.git
 git clone git@github.com:hh-italian-group/hh-bbtautau.git
 
 if [ $MODE = "prod" ] ; then
+    cd AnalysisTools
+    git checkout prod_v2
+    cd ..
     cd h-tautau
+    git checkout prod_v2
+    cd ..
+    cd hh-bbtautau
     git checkout prod_v2
     cd ..
 fi
