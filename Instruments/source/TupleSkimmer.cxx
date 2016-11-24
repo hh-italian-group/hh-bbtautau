@@ -100,7 +100,7 @@ private:
             "againstMuonTight3", "againstElectronVLooseMVA6", "againstElectronTightMVA6", "againstMuonLoose3",
             "byTightIsolationMVArun2v1DBoldDMwLT", "byVTightIsolationMVArun2v1DBoldDMwLT"
         };
-        decltype(event.tauIDs_1) tauIDs_1, tauIDs_2;
+        /*decltype(event.tauIDs_1) tauIDs_1, tauIDs_2;
         for(const auto& name : tauID_Names) {
             if(event.tauIDs_1.count(name))
                 tauIDs_1[name] = event.tauIDs_1.at(name);
@@ -124,7 +124,27 @@ private:
             event.lhe_HT = std::sqrt(lhe_HT2);
             event.lhe_particle_p4.clear();
             event.lhe_particle_pdg.clear();
-        }
+        }*/
+
+		event.dphi_mumet = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.p4_1    , event.pfMET_p4));
+		event.dphi_metsv = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.SVfit_p4, event.pfMET_p4));
+		event.dR_taumu = std::abs(ROOT::Math::VectorUtil::DeltaR(event.p4_1, event.p4_2));
+		event.mT1 = Calculate_MT(event.p4_1, event.pfMET_p4);
+		event.mT2 = Calculate_MT(event.p4_2, event.pfMET_p4);
+		
+		if (event.jets_p4.size() >= 2)
+		{
+			ROOT::Math::LorentzVector<ROOT::Math::PtEtaPhiE4D<float>> bsum = event.jets_p4[0] + event.jets_p4[1];
+			event.dphi_bbmet = std::abs(ROOT::Math::VectorUtil::DeltaPhi(bsum, event.pfMET_p4));
+			event.dphi_bbsv = std::abs(ROOT::Math::VectorUtil::DeltaPhi(bsum, event.SVfit_p4));
+			event.dR_bb = std::abs(ROOT::Math::VectorUtil::DeltaR(event.jets_p4[0], event.jets_p4[1]));
+		}
+		else
+		{
+			event.dphi_bbmet = -1.;
+			event.dphi_bbsv = -1.;
+			event.dR_bb = -1.;
+		}
 
         return true;
     }
