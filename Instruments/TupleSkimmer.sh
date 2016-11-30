@@ -1,13 +1,14 @@
 #!/bin/bash
 
-if [ $# -ne 3 ] ; then
-    echo "Usage: tree_name input_path output_path"
+if [ $# -ne 4 ] ; then
+    echo "Usage: tree_name input_path output_path sample_type"
     exit 1
 fi
 
 TREE_NAME="$1"
 INPUT_PATH="$2"
 OUTPUT_PATH="$3"
+SAMPLE_TYPE="$4"
 INPUT_PATTERN="*.root"
 
 mkdir -p "$OUTPUT_PATH"
@@ -23,7 +24,7 @@ for input_file in "${INPUT_FILES[@]}" ; do
         continue
     fi
     echo "Skimming '$input_file' -> '$output_file'..."
-    ./run.sh TupleSkimmer "$TREE_NAME" "$input_file" "$output_file"
+    ./run.sh TupleSkimmer "$TREE_NAME" "$input_file" "$output_file" "SAMPLE_TYPE"
     RESULT=$?
     if [ $RESULT -ne 0 ] ; then
         echo "Error occurred while processing '$input_file'."
