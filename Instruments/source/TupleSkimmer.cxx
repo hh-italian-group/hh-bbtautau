@@ -7,6 +7,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/RootExt.h"
 #include "AnalysisTools/Run/include/program_main.h"
 #include "h-tautau/Analysis/include/EventTuple.h"
+#include "h-tautau/Analysis/include/SummaryTuple.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
 #include "AnalysisTools/Run/include/EntryQueue.h"
 #include "AnalysisTools/Core/include/ProgressReporter.h"
@@ -27,6 +28,10 @@ public:
     using EventPtr = std::shared_ptr<Event>;
     using EventTuple = ntuple::EventTuple;
     using EventQueue = run::EntryQueue<EventPtr>;
+	
+	using ExpressTuple = ntuple::ExpressTuple;
+	using ExpressEvent = ntuple::ExpressEvent;
+	using ExpressPtr   = std::shared_ptr<ExpressEvent>;
 
     TupleSkimmer(const Arguments& _args) : args(_args), processQueue(100000), writeQueue(100000), eventWeights(Period::Run2016, DiscriminatorWP::Medium) {}
 
@@ -36,7 +41,18 @@ public:
         ROOT::EnableThreadSafety();
 #endif
 
-        std::thread process_thread(std::bind(&TupleSkimmer::ProcessThread, this, args.sample_type(), eventWeights));
+		outputFile = root_ext::CreateRootFile(args.outputFileName());
+		originalFile = root_ext::OpenRootFile(args.originalFileName());
+		
+		DisabledBranches_read = { "dphi_mumet", "dphi_metsv", "dR_taumu", "mT1", "mT2", "dphi_bbmet", "dphi_bbsv", "dR_bb","n_jets",
+			"btag_weight", "ttbar_weight",  "PU_weight", "shape_denominator_weight", "trigger_accepts", "trigger_matches"};
+
+		DisabledBranches_write = { "lhe_particle_pdg", "lhe_particle_p4", "pfMET_cov", "genJets_partoFlavour", "genJets_hadronFlavour",
+			"genJets_p4", "genParticles_p4", "genParticles_pdg", "trigger_accepts", "trigger_matches"};
+		
+		denominator = GetShapeDenominatorWeight(args.originalFileName());
+
+        std::thread process_thread(std::bind(&TupleSkimmer::ProcessThread, this));
         std::thread writer_thread(std::bind(&TupleSkimmer::WriteThread, this, args.treeName(), args.outputFileName()));
 
         ReadThread(args.treeName(), args.originalFileName());
@@ -45,17 +61,44 @@ public:
         process_thread.join();
         writer_thread.join();
 		
-		std::cout << "Copying the summary tree..." << std::endl;
-		SaveSummaryTree(args.originalFileName(), args.outputFileName());
+		SaveSummaryTree();
     }
 
 private:
+	Float_t GetShapeDenominatorWeight(const std::string& originalFileName)
+	{
+		std::cout << "Calculating denominator for shape changing weights..." << std::endl;
+		
+		std::shared_ptr<ExpressTuple> AllEventTuple(new ExpressTuple("all_events", originalFile.get(), true));
+		
+		Float_t tot_weight = 1.;
+		const Long64_t all_entries = AllEventTuple->GetEntries();
+		for(Long64_t current_entry = 0; current_entry < all_entries; ++current_entry)
+		{
+			AllEventTuple->GetEntry(current_entry);
+			ExpressPtr event(new ExpressEvent(AllEventTuple->data()));
+			Float_t pu = eventWeights.GetPileUpWeight(*event);
+			Float_t mc = event->genEventWeight;
+			
+			Float_t ttbar = 1.;
+			if(args.sample_type() == "ttbar")
+			{
+				ttbar = std::sqrt(std::exp(0.0615 - 0.0005 * event->gen_top_pt) * std::exp(0.0615 - 0.0005*event->gen_topBar_pt));
+			}
+			tot_weight = tot_weight + (pu*ttbar*mc);
+		}
+		return tot_weight;
+	}
+
+
     void ReadThread(const std::string& treeName, const std::string& originalFileName)
     {
-        auto originalFile = root_ext::OpenRootFile(originalFileName);
-        std::shared_ptr<EventTuple> originalTuple(new EventTuple(treeName, originalFile.get(), true,
-                { "lhe_n_partons", "lhe_HT", "dphi_mumet", "dphi_metsv", "dR_taumu", "mT1", "mT2", "dphi_bbmet", "dphi_bbsv", "dR_bb",
-				"n_jets", "btag_weight", "ttbar_weight", "trigger_accepts", "trigger_matches"}));
+		if(args.sample_type() == "data")
+		{
+			DisabledBranches_read.erase("trigger_accepts");
+			DisabledBranches_read.erase("trigger_matches");
+		}
+		std::shared_ptr<EventTuple> originalTuple(new EventTuple(treeName, originalFile.get(), true, DisabledBranches_read));
 
         tools::ProgressReporter reporter(10, std::cout, "Starting skimming...");
         const Long64_t n_entries = originalTuple->GetEntries();
@@ -70,28 +113,23 @@ private:
         reporter.Report(n_entries, true);
     }
 
-	void SaveSummaryTree(const std::string& originalFileName, const std::string& outputFileName)
+	void SaveSummaryTree()
 	{
-		const char * in_name = originalFileName.c_str();
-		TFile *input_file = new TFile(in_name);
-		TTree *input_tree = (TTree*)input_file->Get("summary");
-		
-		const char * out_name = outputFileName.c_str();
-		TFile *output_file = new TFile(out_name,"update");
-		//TTree *output_tree =
-		input_tree->CloneTree();
-		output_file->Write();
-		delete input_file;
-		delete output_file;
+		/* --- FIXME --- */
+		std::cout << "Copying the summary tree..." << std::endl;
+		auto original_tree = root_ext::ReadObject<TTree>(*originalFile, "summary");
+		original_tree->SetBranchStatus("*",1);
 
+		auto copied_tree = root_ext::CloneObject<TTree>(*original_tree,"summary");
+		root_ext::WriteObject<TTree>(*copied_tree, outputFile.get());
+		outputFile->Write();
 	}
 
-
-    void ProcessThread(const std::string& sample_type, analysis::mc_corrections::EventWeights eventWeights)
+    void ProcessThread()
     {
         EventPtr event;
         while(processQueue.Pop(event)) {
-            if(ProcessEvent(*event, sample_type, eventWeights))
+            if(ProcessEvent(*event))
                 writeQueue.Push(event);
         }
         writeQueue.SetAllDone();
@@ -99,10 +137,12 @@ private:
 
     void WriteThread(const std::string& treeName, const std::string& outputFileName)
     {
-        auto outputFile = root_ext::CreateRootFile(outputFileName);
-        std::shared_ptr<EventTuple> outputTuple(new EventTuple(treeName, outputFile.get(), false,
-                { "lhe_particle_pdg", "lhe_particle_p4", "pfMET_cov", "genJets_nTotal", "genJets_partoFlavour", "genJets_hadronFlavour",
-				 "genJets_p4", "genParticles_p4", "genParticles_pdg"} ));
+		if(args.sample_type() == "data")
+		{
+			DisabledBranches_write.erase("trigger_accepts");
+			DisabledBranches_write.erase("trigger_matches");
+		}
+		std::shared_ptr<EventTuple> outputTuple(new EventTuple(treeName, outputFile.get(), false, DisabledBranches_write));
 
         EventPtr event;
         while(writeQueue.Pop(event)) {
@@ -113,7 +153,7 @@ private:
         outputTuple->Write();
     }
 
-    static bool ProcessEvent(Event& event, const std::string& sample_type, analysis::mc_corrections::EventWeights eventWeights)
+	bool ProcessEvent(Event& event)
     {
 	
 		if (event.jets_p4.size() < 2) return false;
@@ -136,44 +176,16 @@ private:
         }
         event.tauIDs_1 = tauIDs_1;
         event.tauIDs_2 = tauIDs_2;
-
-        static const std::set<int> quarks_and_gluons = { 1, 2, 3, 4, 5, 6, 21 };
-        if(event.lhe_particle_p4.size()) {
-            double lhe_HT2 = 0;
-            event.lhe_n_partons = 0;
-            for(size_t n = 0; n < event.lhe_particle_p4.size(); ++n) {
-                const int abs_pdg = std::abs(event.lhe_particle_pdg.at(n));
-                if(!quarks_and_gluons.count(abs_pdg)) continue;
-                lhe_HT2 += event.lhe_particle_p4.at(n).perp2();
-                ++event.lhe_n_partons;
-            }
-            event.lhe_HT = std::sqrt(lhe_HT2);
-            event.lhe_particle_p4.clear();
-            event.lhe_particle_pdg.clear();
-        }*/
-
-		/*std::cout<<"--- Event ---"<<std::endl;
-		for (UInt_t i=0; i<event.jets_p4.size(); i++)
-		{
-			std::cout<<"  jet "<<i<<" - pT: "<<event.jets_p4[i].Pt()<<" - csv: "<<(float)event.jets_csv[i]<<std::endl;
-		}*/
-
+		*/
+	
 		// Event Variables
 		event.n_jets = event.jets_p4.size();
 
 		// Event Weights Variables
 		event.btag_weight = eventWeights.GetBtagWeight(event);
-		
-		
-		double topWeight = 1.;
-		if(sample_type == "ttbar") {
-			for(size_t n = 0; n < event.genParticles_pdg.size(); ++n) {
-				if(std::abs(event.genParticles_pdg.at(n)) != 6) continue;
-				const double pt = event.genParticles_p4.at(n).pt();
-				topWeight *= std::sqrt(std::exp(0.0615 - 0.0005 * pt));
-			}
-		}
-		event.ttbar_weight = topWeight;
+		event.PU_weight = eventWeights.GetPileUpWeight(event);
+		event.ttbar_weight = eventWeights.GetTopPtWeight(event);
+		event.shape_denominator_weight = denominator;
 		
 		// BDT Variables
 		event.dphi_mumet = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.p4_1    , event.pfMET_p4));
@@ -200,6 +212,9 @@ private:
 		event.jets_csv.resize(2);
 		event.jets_rawf.resize(2);
 		event.jets_mva.resize(2);
+		event.jets_p4.resize(2);
+		event.jets_partonFlavour.resize(2);
+		event.jets_hadronFlavour.resize(2);
 		
         return true;
     }
@@ -207,7 +222,12 @@ private:
 private:
     Arguments args;
     EventQueue processQueue, writeQueue;
+	std::shared_ptr<TFile> originalFile;
+	std::shared_ptr<TFile> outputFile;
 	mc_corrections::EventWeights eventWeights;
+	Float_t denominator;
+	std::set<std::string> DisabledBranches_read;
+	std::set<std::string> DisabledBranches_write;
 };
 
 } // namespace analysis
