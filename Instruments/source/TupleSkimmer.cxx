@@ -118,11 +118,12 @@ private:
 		/* --- FIXME --- */
 		std::cout << "Copying the summary tree..." << std::endl;
 		auto original_tree = root_ext::ReadObject<TTree>(*originalFile, "summary");
-		original_tree->SetBranchStatus("*",1);
 
-		auto copied_tree = root_ext::CloneObject<TTree>(*original_tree,"summary");
-		root_ext::WriteObject<TTree>(*copied_tree, outputFile.get());
+		outputFile->cd();
+		TTree* copied_tree = original_tree->CloneTree();
 		outputFile->Write();
+		delete original_tree;
+		delete copied_tree;
 	}
 
     void ProcessThread()
