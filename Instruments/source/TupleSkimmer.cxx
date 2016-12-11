@@ -18,6 +18,8 @@ struct Arguments {
     REQ_ARG(std::string, originalFileName);
     REQ_ARG(std::string, outputFileName);
 	REQ_ARG(std::string, sample_type);
+	OPT_ARG(std::string, additionalInputFile, "");
+	OPT_ARG(std::string, additional2InputFile, "");
 };
 
 namespace analysis {
@@ -43,19 +45,35 @@ public:
 
 		outputFile = root_ext::CreateRootFile(args.outputFileName());
 		originalFile = root_ext::OpenRootFile(args.originalFileName());
+		inputFiles.push_back(originalFile);
+		if (args.additionalInputFile() != "")
+		{
+			additionalFile = root_ext::OpenRootFile(args.additionalInputFile());
+			inputFiles.push_back(additionalFile);
+			std::cout << "  --> there is one additional file <-- " <<std::endl;
+		}
 		
-		DisabledBranches_read = { "dphi_mumet", "dphi_metsv", "dR_taumu", "mT1", "mT2", "dphi_bbmet", "dphi_bbsv", "dR_bb","n_jets",
+		if (args.additional2InputFile() != "")
+		{
+			additional2File = root_ext::OpenRootFile(args.additional2InputFile());
+			inputFiles.push_back(additional2File);
+			std::cout << "  --> there is another additional file <-- " <<std::endl;
+		}
+		
+		DisabledBranches_read = { "dphi_mumet", "dphi_metsv", "dR_taumu", "mT1", "mT2", "dphi_bbmet", "dphi_bbsv", "dR_bb", "m_bb", "n_jets",
 			"btag_weight", "ttbar_weight",  "PU_weight", "shape_denominator_weight", "trigger_accepts", "trigger_matches"};
 
 		DisabledBranches_write = { "lhe_particle_pdg", "lhe_particle_p4", "pfMET_cov", "genJets_partoFlavour", "genJets_hadronFlavour",
-			"genJets_p4", "genParticles_p4", "genParticles_pdg", "trigger_accepts", "trigger_matches"};
+			"genJets_p4", "genParticles_p4", "genParticles_pdg", "trigger_accepts", "trigger_matches", "tauId_keys_1", "tauId_values_1",
+			"tauId_keys_2", "tauId_values_2"};
 		
 		denominator = GetShapeDenominatorWeight(args.originalFileName());
 
         std::thread process_thread(std::bind(&TupleSkimmer::ProcessThread, this));
         std::thread writer_thread(std::bind(&TupleSkimmer::WriteThread, this, args.treeName(), args.outputFileName()));
 
-        ReadThread(args.treeName(), args.originalFileName());
+        //ReadThread(args.treeName(), args.originalFileName());
+		ReadThread2(args.treeName());
 
         std::cout << "Waiting for process and write threads to finish..." << std::endl;
         process_thread.join();
@@ -90,7 +108,6 @@ private:
 		return tot_weight;
 	}
 
-
     void ReadThread(const std::string& treeName, const std::string& originalFileName)
     {
 		if(args.sample_type() == "data")
@@ -100,22 +117,64 @@ private:
 		}
 		std::shared_ptr<EventTuple> originalTuple(new EventTuple(treeName, originalFile.get(), true, DisabledBranches_read));
 
-        tools::ProgressReporter reporter(10, std::cout, "Starting skimming...");
-        const Long64_t n_entries = originalTuple->GetEntries();
-        reporter.SetTotalNumberOfEvents(n_entries);
-        for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) {
-            originalTuple->GetEntry(current_entry);
-            reporter.Report(current_entry);
-            EventPtr event(new Event(originalTuple->data()));
-            processQueue.Push(event);
-        }
-        processQueue.SetAllDone();
-        reporter.Report(n_entries, true);
+		tools::ProgressReporter reporter(10, std::cout, "Starting skimming...");
+		const Long64_t n_entries = originalTuple->GetEntries();
+		reporter.SetTotalNumberOfEvents(n_entries);
+		for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry)
+		{
+			originalTuple->GetEntry(current_entry);
+			reporter.Report(current_entry);
+			EventPtr event(new Event(originalTuple->data()));
+			processQueue.Push(event);
+		}
+		processQueue.SetAllDone();
+		reporter.Report(n_entries, true);
     }
+
+	void ReadThread2(const std::string& treeName)
+	{
+		if(args.sample_type() == "data")
+		{
+			DisabledBranches_read.erase("trigger_accepts");
+			DisabledBranches_read.erase("trigger_matches");
+		}
+
+		tools::ProgressReporter reporter(10, std::cout, "Starting skimming...");
+
+		double tot_entries = 0.;
+		std::vector<std::shared_ptr<EventTuple>> inputTuples;
+		for (size_t n = 0; n<inputFiles.size(); ++n)
+		{
+			std::shared_ptr<EventTuple> tempTuple(new EventTuple(treeName, inputFiles.at(n).get(), true, DisabledBranches_read));
+			inputTuples.push_back(tempTuple);
+			std::cout << "   Temp entries: " << tempTuple->GetEntries() << std::endl;
+			tot_entries += tempTuple->GetEntries();
+		}
+
+		std::cout << "   Total entries: " << tot_entries << std::endl;
+		reporter.SetTotalNumberOfEvents(tot_entries);
+		
+		for (size_t n = 0; n<inputTuples.size(); ++n)
+		{
+			std::cout << " Analyzing Tuple: " << inputTuples.at(n) << std::endl;
+			
+			const Long64_t n_entries = inputTuples.at(n)->GetEntries();
+			//reporter.SetTotalNumberOfEvents(n_entries);
+			for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry)
+			{
+			 	inputTuples.at(n)->GetEntry(current_entry);
+				reporter.Report(current_entry);
+				EventPtr event(new Event(inputTuples.at(n)->data()));
+				processQueue.Push(event);
+			}
+		}
+		
+		processQueue.SetAllDone();
+		reporter.Report(tot_entries, true);
+	}
 
 	void SaveSummaryTree()
 	{
-		/* --- FIXME --- */
 		std::cout << "Copying the summary tree..." << std::endl;
 		auto original_tree = root_ext::ReadObject<TTree>(*originalFile, "summary");
 
@@ -201,9 +260,11 @@ private:
 			event.dphi_bbmet = std::abs(ROOT::Math::VectorUtil::DeltaPhi(bsum, event.pfMET_p4));
 			event.dphi_bbsv = std::abs(ROOT::Math::VectorUtil::DeltaPhi(bsum, event.SVfit_p4));
 			event.dR_bb = std::abs(ROOT::Math::VectorUtil::DeltaR(event.jets_p4[0], event.jets_p4[1]));
+			event.m_bb = bsum.M();
 		}
 		else
 		{
+			std::cout << "Less than 2 jets in run:lumi:evt -->" << event.run << ":" << event.lumi << ":" << event.evt << std::endl;
 			event.dphi_bbmet = -1.;
 			event.dphi_bbsv = -1.;
 			event.dR_bb = -1.;
@@ -223,10 +284,16 @@ private:
 private:
     Arguments args;
     EventQueue processQueue, writeQueue;
+	
 	std::shared_ptr<TFile> originalFile;
 	std::shared_ptr<TFile> outputFile;
+	std::shared_ptr<TFile> additionalFile;
+	std::shared_ptr<TFile> additional2File;
+	std::vector<std::shared_ptr<TFile>> inputFiles;
+	
 	mc_corrections::EventWeights eventWeights;
 	Float_t denominator;
+	
 	std::set<std::string> DisabledBranches_read;
 	std::set<std::string> DisabledBranches_write;
 };
