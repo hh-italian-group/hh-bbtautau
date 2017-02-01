@@ -67,7 +67,7 @@ public:
 
 
 private:
-    stesso_tipo_delle ntuple _lhe_n_partons;
+    double _lhe_n_partons; //stesso_tipo_delle ntuple
     double _lhe_n_b_partons;
     double _lhe_ht_bin;
     double _lhe_n_events;
