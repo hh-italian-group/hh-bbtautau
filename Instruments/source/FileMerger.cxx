@@ -4,6 +4,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Run/include/program_main.h"
 #include "AnalysisTools/Core/include/ConfigReader.h" // definition of wrappers for the program main and program arguments.
 #include "AnalysisTools/Core/include/RootExt.h"
+#include "AnalysisTools/Core/include/NumericPrimitives.h"
 #include "h-tautau/Analysis/include/EventInfo.h"
 #include "Instruments/include/FileConfigEntryReader.h"
 
@@ -17,12 +18,9 @@ struct Arguments { // list of all program arguments
 struct JetSplitting{
 public:
     struct JetParameters{
-      int n_jet_min;
-      double n_jet_max;
-      double n_bjet_min;
-      double n_bjet_max;
-      double n_ht_min;
-      double n_ht_max;
+      analysis::Range<int> n_jet;
+      analysis::Range<int> n_bjet;
+      analysis::Range<int> n_ht;
     };
 
     using JetParametersMap = std::map<size_t, JetParameters>;
@@ -42,8 +40,7 @@ public:
             ++line_number;
             std::istringstream ss(cfgLine);
             JetParameters jetParam;
-            ss >> jetParam.n_jet_min >> jetParam.n_jet_max >> jetParam.n_bjet_min >> jetParam.n_bjet_max >>
-                    jetParam.n_ht_min >> jetParam.n_ht_max;
+            ss >> jetParam.n_jet >> jetParam.n_bjet >> jetParam.n_ht;
             jetParameters[line_number] = jetParam;
         }
         return jetParameters;
@@ -54,23 +51,23 @@ public:
 struct LHE_event_info{
 public:
 
-    LHE_event_info(const double lhe_n_partons, const double lhe_n_b_partons, const double lhe_ht_bin,
-                   const double lhe_n_events) : _lhe_n_partons(lhe_n_partons), _lhe_n_b_partons(lhe_n_b_partons),
+    LHE_event_info(const size_t lhe_n_partons, const size_t lhe_n_b_partons, const size_t lhe_ht_bin,
+                   const size_t lhe_n_events) : _lhe_n_partons(lhe_n_partons), _lhe_n_b_partons(lhe_n_b_partons),
         _lhe_ht_bin(lhe_ht_bin), _lhe_n_events(lhe_n_events) {}
 
     using LHE_event_infos = std::vector<LHE_event_info>;
 
-    const double lhe_n_partons() const {return _lhe_n_partons; }
-    const double lhe_n_b_partons() const {return _lhe_n_b_partons; }
-    const double lhe_ht_bin() const {return _lhe_ht_bin; }
-    const double lhe_n_events() const {return _lhe_n_events; }
+    const size_t lhe_n_partons() const {return _lhe_n_partons; }
+    const size_t lhe_n_b_partons() const {return _lhe_n_b_partons; }
+    const size_t lhe_ht_bin() const {return _lhe_ht_bin; }
+    const size_t lhe_n_events() const {return _lhe_n_events; }
 
 
 private:
-    double _lhe_n_partons; //stesso_tipo_delle ntuple
-    double _lhe_n_b_partons;
-    double _lhe_ht_bin;
-    double _lhe_n_events;
+    size_t _lhe_n_partons; //stesso_tipo_delle ntuple
+    size_t _lhe_n_b_partons;
+    size_t _lhe_ht_bin;
+    size_t _lhe_n_events;
 
 };
 
@@ -121,49 +118,59 @@ public:
             const Long64_t n_entries = summaryTuple.GetEntries();
             std::cout << "N entries in Summary Tuple " << n_entries << std::endl;
 
-            for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) { //loop on events
+            ntuple::GenEventCountMap genEventCountMap;
+            size_t total_n_processed_events = 0;
+            for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) { //loop on entries
                 summaryTuple.GetEntry(current_entry);
 //                std::cout << "N events processed in Summary Tuple " << summaryTuple.data().numberOfProcessedEvents << std::endl;
                 //std::shared_ptr<analysis::SummaryInfo> summaryInfo(new analysis::SummaryInfo(summaryTuple.data()));
-    //            std::cout << "N partons in Summary Tuple " << summaryTuple.data().lhe_n_partons.size() //or summaryTuple.operator()()
-    //                      << std::endl;
-    //            if (summaryTuple.data().lhe_n_partons.size() == summaryTuple.data().lhe_n_partons.size())
-    //                std::cout << "Same size!" << std::endl;        
 
+// da rimuovere tale struttura
                 LHE_event_info::LHE_event_infos lhe_event_infos;
-                    for (size_t i = 0; i < summaryTuple.data().lhe_n_partons.size(); ++i){ // loop on gen event info
-                        LHE_event_info lhe_event_info(summaryTuple.data().lhe_n_partons.at(i),
-                                     summaryTuple.data().lhe_n_b_partons.at(i),
-                                     summaryTuple.data().lhe_ht10_bin.at(i),
-                                     summaryTuple.data().lhe_n_events.at(i));
-//                        std::cout << lhe_event_info << std::endl;
-                        lhe_event_infos.push_back(lhe_event_info);
-                    }
-//                std::cout << "LHE infos size: " << lhe_event_infos.size() << std::endl;
+                total_n_processed_events += summaryTuple.data().numberOfProcessedEvents;
+                for (size_t i = 0; i < summaryTuple.data().lhe_n_partons.size(); ++i){ // loop on gen event info
+                    const ntuple::GenId genId(summaryTuple.data().lhe_n_partons.at(i),
+                                              summaryTuple.data().lhe_n_b_partons.at(i),
+                                              summaryTuple.data().lhe_ht10_bin.at(i));
+                    size_t nevents = summaryTuple.data().lhe_n_events.at(i);
+                    genEventCountMap[genId] += nevents;
 
-                for (auto jetParam : jetParametersMap){ // loop on splitting
-                    JetSplitting::JetParameters jetParameters = jetParam.second;
+                    LHE_event_info lhe_event_info(summaryTuple.data().lhe_n_partons.at(i),
+                                 summaryTuple.data().lhe_n_b_partons.at(i),
+                                 summaryTuple.data().lhe_ht10_bin.at(i),
+                                 summaryTuple.data().lhe_n_events.at(i));
+                    std::cout << lhe_event_info << std::endl;
+                    lhe_event_infos.push_back(lhe_event_info);
+                } // end loop on gen event info
 
-                    for (size_t m = 0; m < lhe_event_infos.size(); ++m){
-                        LHE_event_info lhe_event_element = lhe_event_infos.at(m);
-                        if (lhe_event_element.lhe_n_partons() >= jetParameters.n_jet_min
-                                && lhe_event_element.lhe_n_partons() <= jetParameters.n_jet_max
-                                && lhe_event_element.lhe_n_b_partons() >= jetParameters.n_bjet_min &&
-                                lhe_event_element.lhe_n_b_partons() <= jetParameters.n_bjet_max
-                                && lhe_event_element.lhe_ht_bin() >= jetParameters.n_ht_min &&
-                                lhe_event_element.lhe_ht_bin() <= jetParameters.n_ht_max)
-//                            std::cout << "FOUND!!" << lhe_event_element.lhe_ht_bin()  << " " <<
-//                                      jetParameters.n_ht_min << " " << jetParameters.n_ht_max << ", b partons: " <<
-//                                         lhe_event_element.lhe_n_b_partons() << " " <<  jetParameters.n_bjet_min << " " <<
-//                                         jetParameters.n_bjet_max << ", partons: " <<
-//                                         lhe_event_element.lhe_n_partons() << " " <<  jetParameters.n_jet_min << " " <<
-//                                         jetParameters.n_jet_max << std::endl;
-                            cfg << jetParameters.n_jet_min << " " <<jetParameters.n_jet_max  << " " <<
-                                   jetParameters.n_bjet_min << " " << jetParameters.n_bjet_max << " " <<
-                                   jetParameters.n_ht_min << " " << jetParameters.n_ht_max << " " <<
-                                   lhe_event_element.lhe_n_events() << "\n";
-                    }
+            } //end loop on entries
+            std::cout << "Total processed events in the sumple: " << total_n_processed_events << std::endl;
+            std::cout << "Print out map" << std::endl;
+            size_t total_n_events = 0;
+            for (auto genEventCount : genEventCountMap){
+                const ntuple::GenId genId = genEventCount.first;
+                const size_t nevents = genEventCount.second;
+                total_n_events += nevents;
+                std::cout << "GenId: " << genId.n_partons << " " << genId.n_b_partons << " " << genId.ht10_bin <<
+                             ", nevents: " << nevents << std::endl;
+            }
+            std::cout << "Total events in the sumple: " << total_n_events << std::endl;
+
+
+            for (auto jetParam : jetParametersMap){ // loop on splitting
+                JetSplitting::JetParameters jetParameters = jetParam.second;
+                size_t totalEvents = 0;
+                for (auto genEventCount : genEventCountMap){
+                    const ntuple::GenId genId = genEventCount.first;
+                    const size_t nevents = genEventCount.second;
+                    if(jetParameters.n_ht.Contains(genId.ht10_bin))
+                        totalEvents += nevents;
+                    continue;
                 }
+                cfg << jetParameters.n_jet.min() << " " <<jetParameters.n_jet.max()  << " " <<
+                       jetParameters.n_bjet.min() << " " << jetParameters.n_bjet.max() << " " <<
+                       jetParameters.n_ht.min() << " " << jetParameters.n_ht.max() << " " <<
+                       totalEvents << "\n";
             }
         }
 

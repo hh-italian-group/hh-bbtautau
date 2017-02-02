@@ -22,12 +22,9 @@ public:
     virtual void EndEntry() override
     {
         CheckReadParamCounts("file_path", 1, Condition::less_equal);
-        CheckReadParamCounts("n_jet_min", 1, Condition::less_equal);
-        CheckReadParamCounts("n_jet_max", 1, Condition::less_equal);
-        CheckReadParamCounts("n_bjet_min", 1, Condition::less_equal);
-        CheckReadParamCounts("n_bjet_max", 1, Condition::less_equal);
-        CheckReadParamCounts("n_ht_min", 1, Condition::less_equal);
-        CheckReadParamCounts("n_ht_max", 1, Condition::less_equal);
+        CheckReadParamCounts("n_jet", 1, Condition::less_equal);
+        CheckReadParamCounts("n_bjet", 1, Condition::less_equal);
+        CheckReadParamCounts("n_ht", 1, Condition::less_equal);
         CheckReadParamCounts("fileType", 1, Condition::less_equal);
 
         (*descriptors)[current.name] = current;
@@ -37,12 +34,9 @@ public:
                                std::istringstream& /*ss*/) override
     {
         ParseEntry("file_path", current.file_path);
-        ParseEntry("n_jet_min", current.n_jet_min);
-        ParseEntry("n_jet_max", current.n_jet_max);
-        ParseEntry("n_bjet_min", current.n_bjet_min);
-        ParseEntry("n_bjet_max", current.n_bjet_max);
-        ParseEntry("n_ht_min", current.n_ht_min);
-        ParseEntry("n_ht_max", current.n_ht_max);
+        ParseEntry("n_jet", current.n_jet);
+        ParseEntry("n_bjet", current.n_bjet);
+        ParseEntry("n_ht", current.n_ht);
         ParseEntry("fileType", current.fileType);
     }
 
