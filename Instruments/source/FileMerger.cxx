@@ -104,7 +104,7 @@ public:
             throw analysis::exception("Unable to create outputfile'");
         cfg.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 
-        cfg << "#n_jet_min n_jet_max	n_bjet_min n_bjet_max ht_bin_min ht_bin_max inclusive_n_events\n";
+        cfg << "#n_jet_min n_jet_max n_bjet_min n_bjet_max ht_bin_min ht_bin_max inclusive_n_events nu eps_nu\n";
 
         for (auto file_descriptor : file_descriptors){ //loop on DYJets files
             const FileDescriptor file_descriptor_element = file_descriptor.second;
@@ -159,18 +159,25 @@ public:
 
             for (auto jetParam : jetParametersMap){ // loop on splitting
                 JetSplitting::JetParameters jetParameters = jetParam.second;
+//                std::cout << "param ht min " << jetParameters.n_ht.min() << ",  max " << jetParameters.n_ht.max() << std::endl;
                 size_t totalEvents = 0;
                 for (auto genEventCount : genEventCountMap){
                     const ntuple::GenId genId = genEventCount.first;
                     const size_t nevents = genEventCount.second;
-                    if(jetParameters.n_ht.Contains(genId.ht10_bin))
+                    if(jetParameters.n_jet.Contains(genId.n_partons) &&
+                          jetParameters.n_bjet.Contains(genId.n_b_partons) &&
+                          jetParameters.n_ht.Contains(genId.ht10_bin))
                         totalEvents += nevents;
                     continue;
+
                 }
+                double nu = ((double)totalEvents)/total_n_events;
+                double eps_nu = 1/(std::sqrt(totalEvents));
+
                 cfg << jetParameters.n_jet.min() << " " <<jetParameters.n_jet.max()  << " " <<
                        jetParameters.n_bjet.min() << " " << jetParameters.n_bjet.max() << " " <<
                        jetParameters.n_ht.min() << " " << jetParameters.n_ht.max() << " " <<
-                       totalEvents << "\n";
+                       totalEvents << " " << nu << " " << eps_nu <<  "\n";
             }
         }
 
