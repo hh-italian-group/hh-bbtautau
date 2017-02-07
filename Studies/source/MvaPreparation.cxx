@@ -17,7 +17,9 @@ class MvaData : public root_ext::AnalyzerData {
 public:
     using AnalyzerData::AnalyzerData;
 
-    TH1D_ENTRY(PtTau, 100, 0, 300)
+    TH1D_ENTRY(PtTau, 100, 0, 200)
+    TH1D_ENTRY(PhiTau, 100, -3.5, 3.5)
+    TH1D_ENTRY(EtaTau, 100, -2.5, 2.5)
 };
 
 
@@ -52,7 +54,9 @@ public:
             tuple.GetEntry(current_entry);
             const Event& event = tuple.data();
             anaData.PtTau("signal").Fill(event.p4_1.pt());
-//            anaData.PtTau("bkg").Fill(event.p4_2.pt());
+            //anaData.PtTau("bkg").Fill(event.p4_2.pt());
+            anaData.PhiTau("signal").Fill(event.p4_1.phi());
+            anaData.EtaTau("signal").Fill(event.p4_1.eta());
         }
     }
 private:
