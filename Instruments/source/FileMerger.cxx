@@ -98,25 +98,28 @@ public:
         config_reader.ReadConfig(args.file_cfg_name());
 
         JetSplitting::JetParametersMap jetParametersMap = jetSplitting.LoadConfig(args.cfg_name());
-        const std::string outputFileName = "splitting.txt";
-        std::ofstream cfg(outputFileName);
-        if(cfg.fail())
-            throw analysis::exception("Unable to create outputfile'");
-        cfg.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 
-        cfg << "#n_jet_min n_jet_max n_bjet_min n_bjet_max ht_bin_min ht_bin_max inclusive_n_events nu eps_nu\n";
 
         for (auto file_descriptor : file_descriptors){ //loop on DYJets files
             const FileDescriptor file_descriptor_element = file_descriptor.second;
             std::cout << "File descriptor characteristics: " << file_descriptor.first << ", " <<
                          file_descriptor_element.file_path << ", " << file_descriptor_element.fileType
                       << std::endl;
-            if(!(file_descriptor_element.fileType == analysis::FileType::inclusive)) continue;
+            //if(!(file_descriptor_element.fileType == analysis::FileType::inclusive)) continue;
+
+            const std::string outputFileName = "splitting" + file_descriptor_element.name + ".txt";
+            std::ofstream cfg(outputFileName);
+            if(cfg.fail())
+                throw analysis::exception("Unable to create outputfile'");
+            cfg.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+
+            cfg << "#n_jet_min n_jet_max n_bjet_min n_bjet_max ht_bin_min ht_bin_max n_events nu eps_nu\n";
+
             //auto inputFile = root_ext::OpenRootFile(args.input_file());
             auto inputFile = root_ext::OpenRootFile(file_descriptor_element.file_path);
             ntuple::SummaryTuple summaryTuple(args.tree_name(), inputFile.get(), true);
             const Long64_t n_entries = summaryTuple.GetEntries();
-            std::cout << "N entries in Summary Tuple " << n_entries << std::endl;
+//            std::cout << "N entries in Summary Tuple " << n_entries << std::endl;
 
             ntuple::GenEventCountMap genEventCountMap;
             size_t total_n_processed_events = 0;
@@ -139,7 +142,7 @@ public:
                                  summaryTuple.data().lhe_n_b_partons.at(i),
                                  summaryTuple.data().lhe_ht10_bin.at(i),
                                  summaryTuple.data().lhe_n_events.at(i));
-                    std::cout << lhe_event_info << std::endl;
+//                    std::cout << lhe_event_info << std::endl;
                     lhe_event_infos.push_back(lhe_event_info);
                 } // end loop on gen event info
 
