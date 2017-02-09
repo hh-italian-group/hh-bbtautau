@@ -15,79 +15,98 @@ struct Arguments { // list of all program arguments
     REQ_ARG(std::string, file_cfg_name); // cfg name
 };
 
-struct JetSplitting{
-public:
-    struct JetParameters{
-      analysis::Range<int> n_jet;
-      analysis::Range<int> n_bjet;
-      analysis::Range<int> n_ht;
-    };
-
-    using JetParametersMap = std::map<size_t, JetParameters>;
-
-    static JetParametersMap LoadConfig(const std::string& config_file)
-    {
-        static std::mutex m;
-        std::lock_guard<std::mutex> lock(m);
-        JetParametersMap jetParameters;
-        jetParameters.clear();
-        size_t line_number = 0;
-        std::ifstream cfg(config_file);
-        while (cfg.good()) {
-            std::string cfgLine;
-            std::getline(cfg,cfgLine);
-            if (!cfgLine.size() || cfgLine.at(0) == '#') continue;
-            ++line_number;
-            std::istringstream ss(cfgLine);
-            JetParameters jetParam;
-            ss >> jetParam.n_jet >> jetParam.n_bjet >> jetParam.n_ht;
-            jetParameters[line_number] = jetParam;
-        }
-        return jetParameters;
-    }
-
-};
-
-struct LHE_event_info{
-public:
-
-    LHE_event_info(const size_t lhe_n_partons, const size_t lhe_n_b_partons, const size_t lhe_ht_bin,
-                   const size_t lhe_n_events) : _lhe_n_partons(lhe_n_partons), _lhe_n_b_partons(lhe_n_b_partons),
-        _lhe_ht_bin(lhe_ht_bin), _lhe_n_events(lhe_n_events) {}
-
-    using LHE_event_infos = std::vector<LHE_event_info>;
-
-    const size_t lhe_n_partons() const {return _lhe_n_partons; }
-    const size_t lhe_n_b_partons() const {return _lhe_n_b_partons; }
-    const size_t lhe_ht_bin() const {return _lhe_ht_bin; }
-    const size_t lhe_n_events() const {return _lhe_n_events; }
-
-
-private:
-    size_t _lhe_n_partons; //stesso_tipo_delle ntuple
-    size_t _lhe_n_b_partons;
-    size_t _lhe_ht_bin;
-    size_t _lhe_n_events;
-
-};
-
-std::ostream& operator<<(std::ostream& s, const LHE_event_info& lhe_event_info)
-{
-    s << lhe_event_info.lhe_n_partons() << " " << lhe_event_info.lhe_n_b_partons() << " " <<
-         lhe_event_info.lhe_ht_bin() << " " << lhe_event_info.lhe_n_events();
-    return s;
-}
-
 namespace analysis {
+
+struct SampleDescriptor {
+    using GenMap = std::map<ntuple::GenId, size_t>;
+    DYBinDescriptor bin;
+    GenMap gen_counts;
+
+    size_t Integral() const;
+    size_t Integral(const DYBinDescriptor& range) const
+    {
+
+    }
+};
 
 class FileMerger { // simple analyzer definition
 public:
+    using GenMap = SampleDescriptor::GenMap;
+    using VSD = std::vector<SampleDescriptor>;
+    using VBD = std::vector<DYBinDescriptor>;
     FileMerger(const Arguments& _args) : args(_args)
     {
         // Analyzer initialization (e.g. open input/output files, parse configs...)
     }
+
+
+private:
+    SampleDescriptor global_map;
+    SampleDescriptor inclusive;
+    VSD all_samples;
+    VBD output_bins;
+
+    void LoadInputs()
+    {
+        // Fill inclusive and all_samples
+    }
+
+    void LoadBins()
+    {
+       output_bins = DYBinDescriptor::LoadConfig(args.cfg_name);
+    }
+
+    void FindBestBin(DYBinDescriptor& output_bin) const
+    {
+        for(sample : all_samples) {
+            const size_t contribution = sample.Integrate(output_bin);
+            if(!contribution) continue;
+            PhysicalValue nu ( contribution / double(sample.Inegral()), sqrt(double(con)/integral));
+            if(sample == inclusive) {
+                // formula 2
+                PhysicalValue nu = nu_excl;
+            } else {
+                const size_t sample_contirbution = inclusive.Integral(sample.bin);
+                // formula 3
+                PV nu_inc(sample_contirbution/incl.Integral);
+                nu *= nu_inc;
+            }
+
+            if(oputput_bin.nu.Errror() > nu.error) {
+                output_bin.nu = nu;
+                output_bin.ref_sample = sample.name;
+            }
+        }
+
+        if(output_bin.nu.Error == inf)
+            throw exception("ref not found");
+    }
+
+    void CalcWeight(out_bin) const
+    {
+        out_bin.w = out_bin.nu / global_map.Integral(out_bin);
+    }
+
+    public:
+
+
     void Run()
     {
+
+        for(out_bin : output_bins)
+        {
+            FindBestBin(out_bin);
+            CalcWeight(out_bin);
+            DBV out_bin_descs;
+            for(sample : all_samples) {
+
+            }
+
+        }
+
+        DYDescriptor::SaveCfg(args.ouput);
+
+
         // analyzer code
         analysis::ConfigReader config_reader;
 
@@ -99,6 +118,10 @@ public:
 
         JetSplitting::JetParametersMap jetParametersMap = jetSplitting.LoadConfig(args.cfg_name());
 
+
+        using JetParameters_nuvalues_Map = std::map<JetSplitting::JetParameters, exclusive_samples_info::exclusive_samples_vector>;
+
+        JetParameters_nuvalues_Map jetParameters_nuvalues_Map;
 
         for (auto file_descriptor : file_descriptors){ //loop on DYJets files
             const FileDescriptor file_descriptor_element = file_descriptor.second;
@@ -174,14 +197,38 @@ public:
                     continue;
 
                 }
-                double nu = ((double)totalEvents)/total_n_events;
+                const PhysicalValue nu(((double)totalEvents)/total_n_events, 1/(std::sqrt(totalEvents)));
                 double eps_nu = 1/(std::sqrt(totalEvents));
+
+                if(file_descriptor_element.fileType == analysis::FileType::inclusive){
+                    const PhysicalValue nu_incl(((double)totalEvents)/total_n_events,std::sqrt((double)totalEvents)/total_n_events);
+                }
+
+                if(file_descriptor_element.fileType == analysis::FileType::exclusive){
+                    const PhysicalValue nu_excl(((double)totalEvents)/total_n_events,std::sqrt((double)totalEvents)/total_n_events);
+                }
+
+                const PhysicalValue nu_prod = nu_incl * nu_excl;
+                const double rel_nu_err = nu_prod.GetRelativeStatisticalError();
+
+                exclusive_samples_info excl_info(nu_prod,rel_nu_err,totalEvents,file_descriptor_element.name);
+                exclusive_samples_info excl_info(nu,eps_nu,totalEvents,file_descriptor_element.name);
+                jetParameters_nuvalues_Map[jetParameters].push_back(excl_info);
 
                 cfg << jetParameters.n_jet.min() << " " <<jetParameters.n_jet.max()  << " " <<
                        jetParameters.n_bjet.min() << " " << jetParameters.n_bjet.max() << " " <<
                        jetParameters.n_ht.min() << " " << jetParameters.n_ht.max() << " " <<
                        totalEvents << " " << nu << " " << eps_nu <<  "\n";
             }
+        }
+
+        for (auto splitting_param : jetParameters_nuvalues_Map){
+            JetSplitting::JetParameters jetParameters = splitting_param.first;
+            exclusive_samples_info::exclusive_samples_vector excl_vector = splitting_param.second;
+            std::cout << jetParameters.n_jet.min() << " " <<jetParameters.n_jet.max()  << " " <<
+                         jetParameters.n_bjet.min() << " " << jetParameters.n_bjet.max() << " " <<
+                         jetParameters.n_ht.min() << " " << jetParameters.n_ht.max() << ", size excl vector: " <<
+                         excl_vector.size() << std::endl;
         }
 
     }
