@@ -143,8 +143,8 @@ private:
             }
         }
 
-//        if(output_bin.nu.GetStatisticalError() == std::numeric_limits<double>::infinity())
-//            throw exception("ref not found");
+        if(output_bin.nu.GetStatisticalError() == std::numeric_limits<double>::infinity())
+            throw exception("ref not found");
     }
 
     void CalcWeight(DYBinDescriptor& output_bin) const
@@ -163,7 +163,7 @@ private:
             throw analysis::exception("Unable to create outputfile'");
         cfg.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 
-        cfg << "#n_jet_min n_jet_max n_bjet_min n_bjet_max ht_bin_min ht_bin_max weight nu err_nu ref_sample\n";
+        cfg << "#n_jet_min n_jet_max n_bjet_min n_bjet_max ht_bin_min ht_bin_max weight nu +/- err_nu ref_sample\n";
 
         for(unsigned i = 0; i < output_bins.size(); ++i)
         {
@@ -173,7 +173,7 @@ private:
             cfg << output_bin.n_jet.min() << " " <<output_bin.n_jet.max()  << " " <<
                    output_bin.n_bjet.min() << " " << output_bin.n_bjet.max() << " " <<
                    output_bin.n_ht.min() << " " << output_bin.n_ht.max() << " " <<
-                   output_bin.weight << " " << output_bin.nu << " " << output_bin.nu.GetStatisticalError() <<
+                   output_bin.weight << " " << output_bin.nu <<
                 " " << output_bin.ref_sample <<  "\n";
         }
 
