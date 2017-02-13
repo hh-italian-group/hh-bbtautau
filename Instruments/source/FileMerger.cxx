@@ -90,7 +90,9 @@ private:
             std::cout << "File descriptor characteristics: " << file_descriptor.first << ", " <<
                          file_descriptor_element.file_path << ", " << file_descriptor_element.fileType
                       << std::endl;
-            global_map.bin = file_descriptor_element;
+            SampleDescriptor sample_desc;
+            sample_desc.bin = file_descriptor_element;
+            //global_map.bin = file_descriptor_element;
             if (file_descriptor_element.fileType == analysis::FileType::inclusive)
                 inclusive.bin = file_descriptor_element;
 
@@ -105,13 +107,14 @@ private:
                                               summaryTuple.data().lhe_n_b_partons.at(i),
                                               summaryTuple.data().lhe_ht10_bin.at(i));
                     size_t nevents = summaryTuple.data().lhe_n_events.at(i);
+                    sample_desc.gen_counts[genId] += nevents;
                     global_map.gen_counts[genId] += nevents;
                     if (file_descriptor_element.fileType == analysis::FileType::inclusive)
                         inclusive.gen_counts[genId] += nevents;
 
                 } // end loop on gen event info
             } //end loop on entries
-            all_samples.push_back(global_map);
+            all_samples.push_back(sample_desc);
         } //end loop n file_descriptors
     }
 
