@@ -8,6 +8,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include <ostream>
 #include "AnalysisTools/Core/include/EnumNameMap.h"
 #include "AnalysisTools/Core/include/NumericPrimitives.h"
+#include "AnalysisTools/Core/include/PhysicalValue.h"
 
 namespace analysis {
 
@@ -25,35 +26,34 @@ struct DYBinDescriptor {
     analysis::Range<int> n_bjet;
     analysis::Range<int> n_ht;
 
-    PhysicalValue nu{0, inf};
+    PhysicalValue nu;
     double weight;
     std::string ref_sample;
 
-    FileDescriptor()
-        : n_jet(0,0), n_bjet(0,0),n_ht(0,0) {}
+    DYBinDescriptor()
+        : n_jet(0,0), n_bjet(0,0),n_ht(0,0),nu(0.0, std::numeric_limits<double>::infinity()),
+          weight(std::numeric_limits<double>::quiet_NaN()) {}
 
     static std::vector<DYBinDescriptor> LoadConfig(const std::string& config_file)
     {
         static std::mutex m;
         std::lock_guard<std::mutex> lock(m);
-        JetParametersMap jetParameters;
-        jetParameters.clear();
-        size_t line_number = 0;
+        std::vector<DYBinDescriptor> dyBinDescriptors;
+        dyBinDescriptors.clear();
         std::ifstream cfg(config_file);
         while (cfg.good()) {
             std::string cfgLine;
             std::getline(cfg,cfgLine);
             if (!cfgLine.size() || cfgLine.at(0) == '#') continue;
-            ++line_number;
             std::istringstream ss(cfgLine);
-            JetParameters jetParam;
-            ss >> jetParam.n_jet >> jetParam.n_bjet >> jetParam.n_ht;
-            jetParameters[line_number] = jetParam;
+            DYBinDescriptor descriptor;
+            ss >> descriptor.n_jet >> descriptor.n_bjet >> descriptor.n_ht;
+            dyBinDescriptors.push_back(descriptor);
         }
-        return jetParameters;
+        return dyBinDescriptors;
     }
 };
 
-typedef std::unordered_map<std::string, FileDescriptor> FileDescriptorCollection;
+typedef std::unordered_map<std::string, DYBinDescriptor> DYBinDescriptorCollection;
 
 } // namespace analysis

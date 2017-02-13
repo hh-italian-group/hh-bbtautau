@@ -10,12 +10,12 @@ namespace analysis {
 
 class FileConfigEntryReader : public analysis::ConfigEntryReader {
 public:
-    FileConfigEntryReader(FileDescriptorCollection& _descriptors) : descriptors(&_descriptors) {}
+    FileConfigEntryReader(DYBinDescriptorCollection& _descriptors) : descriptors(&_descriptors) {}
 
     virtual void StartEntry(const std::string& name, const std::string& reference_name) override
     {
         ConfigEntryReader::StartEntry(name, reference_name);
-        current = reference_name.size() ? descriptors->at(reference_name) : FileDescriptor();
+        current = reference_name.size() ? descriptors->at(reference_name) : DYBinDescriptor();
         current.name = name;
     }
 
@@ -41,8 +41,8 @@ public:
     }
 
 private:
-    FileDescriptor current;
-    FileDescriptorCollection* descriptors;
+    DYBinDescriptor current;
+    DYBinDescriptorCollection* descriptors;
 };
 
 } // namespace analysis
