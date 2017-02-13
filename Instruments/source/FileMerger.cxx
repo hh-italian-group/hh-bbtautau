@@ -130,13 +130,13 @@ private:
             const size_t contribution = sample.Integral(output_bin);
             if(!contribution) continue;
             //formula 2
-            PhysicalValue nu ( contribution / double(sample.Integral()), sqrt(double(contribution)/double(sample.Integral())));
+            PhysicalValue nu ( contribution / double(sample.Integral()), sqrt(double(contribution))/double(sample.Integral()));
 
             if(!(sample.bin.fileType == analysis::FileType::inclusive)) {
                 const size_t sample_contribution = inclusive.Integral(sample.bin);
                 // formula 3
                 PhysicalValue nu_incl(sample_contribution/double(inclusive.Integral()),
-                                      sqrt(double(sample_contribution)/double(inclusive.Integral())));
+                                      sqrt(double(sample_contribution))/double(inclusive.Integral()));
                 nu *= nu_incl;
             }
 
