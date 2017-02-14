@@ -166,18 +166,19 @@ private:
             throw analysis::exception("Unable to create outputfile'");
         cfg.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 
-        cfg << "#n_jet_min n_jet_max n_bjet_min n_bjet_max ht_bin_min ht_bin_max weight nu +/- err_nu ref_sample\n";
+        cfg << "#n_jet_min n_jet_max n_bjet_min n_bjet_max ht_bin_min ht_bin_max weight nu +/- err_nu rel_err ref_sample\n";
 
         for(unsigned i = 0; i < output_bins.size(); ++i)
         {
             DYBinDescriptor output_bin = output_bins.at(i);
             FindBestBin(output_bin);
             CalcWeight(output_bin);
-            cfg << output_bin.n_jet.min() << " " <<output_bin.n_jet.max()  << " " <<
-                   output_bin.n_bjet.min() << " " << output_bin.n_bjet.max() << " " <<
-                   output_bin.n_ht.min() << " " << output_bin.n_ht.max() << " " <<
-                   output_bin.weight << " " << output_bin.nu <<
-                " " << output_bin.ref_sample <<  "\n";
+            if(output_bin.nu.GetRelativeStatisticalError() >= 0.01)
+                cfg << output_bin.n_jet.min() << " " <<output_bin.n_jet.max()  << " " <<
+                       output_bin.n_bjet.min() << " " << output_bin.n_bjet.max() << " " <<
+                       output_bin.n_ht.min() << " " << output_bin.n_ht.max() << " " <<
+                       output_bin.weight << " " << output_bin.nu << " " << output_bin.nu.GetRelativeStatisticalError() <<
+                    " " << output_bin.ref_sample <<  "\n";
         }
 
     }
