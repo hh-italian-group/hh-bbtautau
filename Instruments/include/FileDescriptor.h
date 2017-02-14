@@ -27,7 +27,7 @@ struct DYBinDescriptor {
     analysis::Range<int> n_ht;
 
     PhysicalValue nu;
-    double weight;
+    PhysicalValue weight;
     std::string ref_sample;
 
     DYBinDescriptor()

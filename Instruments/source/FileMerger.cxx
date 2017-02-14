@@ -152,7 +152,23 @@ private:
 
     void CalcWeight(DYBinDescriptor& output_bin) const
     {
-        output_bin.weight = output_bin.nu.GetValue() / global_map.Integral(output_bin);
+        size_t inclusive_contribution = 0;
+        size_t other_contribution = 0;
+        for (unsigned i = 0; i < all_samples.size(); ++i) {
+            const SampleDescriptor sample = all_samples.at(i);
+            const size_t contribution = sample.Integral(output_bin);
+            if(!contribution) continue;
+            if(sample.bin.fileType == analysis::FileType::inclusive)
+                inclusive_contribution = contribution;
+            else
+                other_contribution += contribution;
+        }
+        PhysicalValue n((double)inclusive_contribution, std::sqrt((double)inclusive_contribution));
+        PhysicalValue X((double)other_contribution,0);
+        PhysicalValue sum = n + X;
+        output_bin.weight = output_bin.nu / sum;
+        //old definition
+        //output_bin.weight = output_bin.nu.GetValue() / global_map.Integral(output_bin);
     }
 
     public:
@@ -166,19 +182,21 @@ private:
             throw analysis::exception("Unable to create outputfile'");
         cfg.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 
-        cfg << "#n_jet_min n_jet_max n_bjet_min n_bjet_max ht_bin_min ht_bin_max weight nu +/- err_nu rel_err ref_sample\n";
+        cfg << "#n_jet_min n_jet_max n_bjet_min n_bjet_max ht_bin_min ht_bin_max weight +/- err_w rel_err_w "
+               "nu +/- err_nu rel_err_nu ref_sample\n";
 
         for(unsigned i = 0; i < output_bins.size(); ++i)
         {
             DYBinDescriptor output_bin = output_bins.at(i);
             FindBestBin(output_bin);
             CalcWeight(output_bin);
-            if(output_bin.nu.GetRelativeStatisticalError() >= 0.01)
-                cfg << output_bin.n_jet.min() << " " <<output_bin.n_jet.max()  << " " <<
-                       output_bin.n_bjet.min() << " " << output_bin.n_bjet.max() << " " <<
-                       output_bin.n_ht.min() << " " << output_bin.n_ht.max() << " " <<
-                       output_bin.weight << " " << output_bin.nu << " " << output_bin.nu.GetRelativeStatisticalError() <<
-                    " " << output_bin.ref_sample <<  "\n";
+            //if(output_bin.nu.GetRelativeStatisticalError() >= 0.01)
+            cfg << output_bin.n_jet.min() << " " <<output_bin.n_jet.max()  << " " <<
+                   output_bin.n_bjet.min() << " " << output_bin.n_bjet.max() << " " <<
+                   output_bin.n_ht.min() << " " << output_bin.n_ht.max() << " " <<
+                   output_bin.weight << " " << output_bin.weight.GetRelativeStatisticalError() << " " <<
+                   output_bin.nu << " " << output_bin.nu.GetRelativeStatisticalError() <<
+                " " << output_bin.ref_sample <<  "\n";
         }
 
     }
