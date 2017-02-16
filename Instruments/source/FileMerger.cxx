@@ -189,7 +189,7 @@ private:
     {
         for(unsigned i = 0; i < output_bins.size(); ++i)
         {
-            DYBinDescriptor output_bin = output_bins.at(i);
+            DYBinDescriptor& output_bin = output_bins.at(i);
             CalculateWeight(output_bin);
         }
         DYBinDescriptor::SaveCfg(args.output_file(), output_bins);
