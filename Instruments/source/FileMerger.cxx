@@ -120,60 +120,35 @@ private:
 
     void CalculateWeight(DYBinDescriptor& output_bin) const
     {
-        size_t contribution = 0;
-        size_t other_contribution = 0;
-        size_t sample_contribution = 0;
-        size_t integral_ref_sample = 0;
-        //bool use_complex_formula = false;
+        size_t all_events = global_map.Integral(output_bin);
         for(unsigned i = 0; i < all_samples.size(); ++i) {
             const SampleDescriptor<DYBinDescriptor, ntuple::GenEventCountMap> sample = all_samples.at(i);
-            contribution = sample.Integral(output_bin);
+            size_t contribution = sample.Integral(output_bin);
             if(!contribution) continue;
             //formula 2
             PhysicalValue nu ( contribution / double(sample.Integral()), sqrt(double(contribution))/double(sample.Integral()));
+            PhysicalValue weight ((double)nu.GetValue()/(double)all_events, ((double)(all_events - contribution)/(double)std::pow(all_events,2))*sqrt(double(contribution))/double(sample.Integral()));
 
             if(!(sample.bin.fileType == analysis::FileType::inclusive)) {
-                other_contribution += contribution;
-                sample_contribution = inclusive.Integral(sample.bin);
+                size_t sample_contribution = inclusive.Integral(sample.bin);
                 // formula 3
                 PhysicalValue nu_incl(sample_contribution/double(inclusive.Integral()),
                                       sqrt(double(sample_contribution))/double(inclusive.Integral()));
                 nu *= nu_incl;
+                weight *= nu_incl;
             }
 
             if(output_bin.nu.GetStatisticalError() > nu.GetStatisticalError()) {
                 output_bin.nu = nu;
                 output_bin.ref_sample = sample.bin.name;
+                output_bin.weight = weight;
                 output_bin.fileType = sample.bin.fileType;
-                integral_ref_sample = sample.Integral();
             }
 
         }
 
         if(output_bin.nu.GetStatisticalError() == std::numeric_limits<double>::infinity())
             throw exception("ref not found");
-
-        PhysicalValue n((double)contribution, std::sqrt((double)contribution));
-        PhysicalValue X((double)other_contribution,0);
-        PhysicalValue K((double)sample_contribution, std::sqrt((double)sample_contribution));
-        PhysicalValue sum = n + X;
-
-        std::cout << "n: " << n.GetValue() << ", X: "<< X.GetValue() << ", K: " << K.GetValue() << std::endl;
-
-        double error_weight = std::sqrt(std::pow((std::sqrt((double)(contribution)*K.GetValue()*X.GetValue()))
-                                                 /((double)(integral_ref_sample*inclusive.Integral()*(X.GetValue()+n.GetValue())*(X.GetValue()+n.GetValue()))),2)
-                                        + std::pow(((double)contribution*std::sqrt((double)sample_contribution))
-                                                   /((double)((X.GetValue()+n.GetValue())*integral_ref_sample*inclusive.Integral())),2));
-        std::cout << "error weight: " << error_weight << std::endl;
-        if(output_bin.fileType == analysis::FileType::inclusive){
-            PhysicalValue weight(output_bin.nu.GetValue() / sum.GetValue(),
-                                 ((double)X.GetValue()/((double)(X.GetValue()+n.GetValue())*(X.GetValue()+n.GetValue())))*
-                                 (std::sqrt((double)contribution)/double(inclusive.Integral())));
-            output_bin.weight = weight;
-        } else {
-            PhysicalValue weight(output_bin.nu.GetValue() / sum.GetValue(), (double)error_weight);
-            output_bin.weight = weight;
-        }
     }
 
     //old definition
