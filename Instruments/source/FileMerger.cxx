@@ -42,8 +42,7 @@ struct SampleDescriptor {
             const size_t nevents = genEventCount.second;
             if(binDescriptor_range.Contains(genId))
                 totalEvents += nevents;
-            continue;
-
+            continue; //investiga!!!!
         }
         return totalEvents;
     }
