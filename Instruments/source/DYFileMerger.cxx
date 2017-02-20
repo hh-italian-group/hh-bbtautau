@@ -5,8 +5,9 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/ConfigReader.h"
 #include "AnalysisTools/Core/include/RootExt.h"
 #include "h-tautau/Analysis/include/EventInfo.h"
-#include "Instruments/include/FileConfigEntryReader.h"
+#include "Instruments/include/DYFileConfigEntryReader.h"
 #include "AnalysisTools/Core/include/NumericPrimitives.h"
+#include "Instruments/include/SampleDescriptor.h"
 
 
 //std::string tree_name{"tree_name", "Tree on which we work"};
@@ -19,41 +20,12 @@ struct Arguments {
 
 namespace analysis {
 
-
-template<typename BinDescriptor, typename GenMap>
-struct SampleDescriptor {
-    BinDescriptor bin;
-    GenMap gen_counts;
-
-    size_t Integral() const
-    {
-        size_t total_n_events = 0;
-        for (const auto& genEventCount : gen_counts){
-            const size_t nevents = genEventCount.second;
-            total_n_events += nevents;
-        }
-        return total_n_events;
-    }
-    size_t Integral(const DYBinDescriptor& binDescriptor_range) const
-    {     
-        size_t totalEvents = 0;
-        for (const auto& genEventCount : gen_counts){
-            const auto& genId = genEventCount.first;
-            const size_t nevents = genEventCount.second;
-            if(binDescriptor_range.Contains(genId))
-                totalEvents += nevents;
-            continue; //investiga!!!!
-        }
-        return totalEvents;
-    }
-};
-
-class FileMerger { // simple analyzer definition
+class DYFileMerger { // simple analyzer definition
 public:
     using GenMap = ntuple::GenEventCountMap;
     using VSD = std::vector<SampleDescriptor<DYBinDescriptor, ntuple::GenEventCountMap>>;
     using VBD = std::vector<DYBinDescriptor>;
-    FileMerger(const Arguments& _args) : args(_args)
+    DYFileMerger(const Arguments& _args) : args(_args)
     {
         // Analyzer initialization (e.g. open input/output files, parse configs...)
         LoadInputs();
@@ -75,7 +47,7 @@ private:
         analysis::ConfigReader config_reader;
 
         analysis::DYBinDescriptorCollection file_descriptors;
-        analysis::FileConfigEntryReader file_entry_reader(file_descriptors);
+        analysis::DYFileConfigEntryReader file_entry_reader(file_descriptors);
         config_reader.AddEntryReader("FILE", file_entry_reader, true);
 
         config_reader.ReadConfig(args.file_cfg_name());
@@ -173,4 +145,4 @@ private:
 
 }
 
-PROGRAM_MAIN(analysis::FileMerger, Arguments) // definition of the main program function
+PROGRAM_MAIN(analysis::DYFileMerger, Arguments) // definition of the main program function

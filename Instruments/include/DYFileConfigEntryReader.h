@@ -4,13 +4,13 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #pragma once
 
 #include "AnalysisTools/Core/include/ConfigReader.h"
-#include "FileDescriptor.h"
+#include "DYFileDescriptor.h"
 
 namespace analysis {
 
-class FileConfigEntryReader : public analysis::ConfigEntryReader {
+class DYFileConfigEntryReader : public analysis::ConfigEntryReader {
 public:
-    FileConfigEntryReader(DYBinDescriptorCollection& _descriptors) : descriptors(&_descriptors) {}
+    DYFileConfigEntryReader(DYBinDescriptorCollection& _descriptors) : descriptors(&_descriptors) {}
 
     virtual void StartEntry(const std::string& name, const std::string& reference_name) override
     {
