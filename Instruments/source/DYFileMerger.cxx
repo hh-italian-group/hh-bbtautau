@@ -20,30 +20,39 @@ struct Arguments {
 
 namespace analysis {
 
-class DYFileMerger { // simple analyzer definition
+class DYFileMerger {
 public:
     using GenMap = ntuple::GenEventCountMap;
-    using VSD = std::vector<SampleDescriptor<DYBinDescriptor, ntuple::GenEventCountMap>>;
-    using VBD = std::vector<DYBinDescriptor>;
+    using VectorSampleDescriptor = std::vector<SampleDescriptor<DYBinDescriptor, ntuple::GenEventCountMap>>;
+    using VectorDYBinDescriptor = std::vector<DYBinDescriptor>;
     DYFileMerger(const Arguments& _args) : args(_args)
     {
-        // Analyzer initialization (e.g. open input/output files, parse configs...)
         LoadInputs();
-        LoadBins();
+        output_bins = DYBinDescriptor::LoadConfig(args.cfg_name());
+    }
+
+public:
+
+    void Run()
+    {
+        for(auto& output_bin : output_bins)
+        {
+            CalculateWeight(output_bin);
+        }
+        DYBinDescriptor::SaveCfg(args.output_file(), output_bins);
     }
 
 
 private:
     SampleDescriptor<DYBinDescriptor, ntuple::GenEventCountMap> global_map;
     SampleDescriptor<DYBinDescriptor, ntuple::GenEventCountMap> inclusive;
-    VSD all_samples;
-    VBD output_bins;
+    VectorSampleDescriptor all_samples;
+    VectorDYBinDescriptor output_bins;
+    Arguments args;
 
 
     void LoadInputs()
     {
-        // Fill inclusive and all_samples
-        // analyzer code
         analysis::ConfigReader config_reader;
 
         analysis::DYBinDescriptorCollection file_descriptors;
@@ -85,27 +94,22 @@ private:
         } //end loop n file_descriptors
     }
 
-    void LoadBins()
-    {
-       output_bins = DYBinDescriptor::LoadConfig(args.cfg_name());
-    }
 
     void CalculateWeight(DYBinDescriptor& output_bin) const
     {
         size_t all_events = global_map.Integral(output_bin);
-        for(unsigned i = 0; i < all_samples.size(); ++i) {
-            const SampleDescriptor<DYBinDescriptor, ntuple::GenEventCountMap> sample = all_samples.at(i);
+        for(auto& sample : all_samples) {
             size_t contribution = sample.Integral(output_bin);
             if(!contribution) continue;
             //formula 2
-            PhysicalValue nu ( contribution / double(sample.Integral()), sqrt(double(contribution))/double(sample.Integral()));
-            PhysicalValue weight ((double)nu.GetValue()/(double)all_events, ((double)(all_events - contribution)/(double)std::pow(all_events,2))*sqrt(double(contribution))/double(sample.Integral()));
+            PhysicalValue nu ( contribution / double(sample.Integral()), sqrt(contribution)/double(sample.Integral()));
+            PhysicalValue weight (nu.GetValue()/double(all_events), (double(all_events - contribution)/std::pow(all_events,2))*sqrt(contribution)/double(sample.Integral()));
 
             if(!(sample.bin.fileType == analysis::FileType::inclusive)) {
                 size_t sample_contribution = inclusive.Integral(sample.bin);
                 // formula 3
                 PhysicalValue nu_incl(sample_contribution/double(inclusive.Integral()),
-                                      sqrt(double(sample_contribution))/double(inclusive.Integral()));
+                                      sqrt(sample_contribution)/double(inclusive.Integral()));
                 nu *= nu_incl;
                 weight *= nu_incl;
             }
@@ -123,26 +127,10 @@ private:
             throw exception("ref not found");
     }
 
-    //old definition
-    //output_bin.weight = output_bin.nu.GetValue() / global_map.Integral(output_bin);
-
-    public:
 
 
-    void Run()
-    {
-        for(unsigned i = 0; i < output_bins.size(); ++i)
-        {
-            DYBinDescriptor& output_bin = output_bins.at(i);
-            CalculateWeight(output_bin);
-        }
-        DYBinDescriptor::SaveCfg(args.output_file(), output_bins);
-
-    }
-private:
-    Arguments args;
 };
 
 }
 
-PROGRAM_MAIN(analysis::DYFileMerger, Arguments) // definition of the main program function
+PROGRAM_MAIN(analysis::DYFileMerger, Arguments)

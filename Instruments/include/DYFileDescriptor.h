@@ -69,23 +69,38 @@ struct DYBinDescriptor {
             throw analysis::exception("Unable to create outputfile'");
         cfg.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 
-        cfg << "#n_jet_min n_jet_max n_bjet_min n_bjet_max ht_bin_min ht_bin_max weight rel_err_w "
-               "nu rel_err_nu ref_sample\n";
+        static const std::vector<int> column_widths = { 9,9,9,9,9,11,15,15,15,15,20 };
 
-        for(unsigned i = 0; i < output_bins.size(); ++i)
+        cfg << std::setw(column_widths.at(0)) << "#n_jet_min " <<
+               std::setw(column_widths.at(1)) << "n_jet_max " <<
+               std::setw(column_widths.at(2)) << "n_bjet_min " <<
+               std::setw(column_widths.at(3)) << "n_bjet_max " <<
+               std::setw(column_widths.at(4)) << "ht_bin_min " <<
+               std::setw(column_widths.at(5)) << "ht_bin_max " <<
+               std::setw(column_widths.at(6)) << "weight " <<
+               std::setw(column_widths.at(7)) << " rel_err_w " <<
+               std::setw(column_widths.at(8)) << " nu " <<
+               std::setw(column_widths.at(9)) << " rel_err_nu  " <<
+               std::setw(column_widths.at(10)) << " ref_sample \n";
+
+        for(auto& output_bin : output_bins)
         {
-            DYBinDescriptor output_bin = output_bins.at(i);
-            cfg << output_bin.n_jet.min() << " " <<output_bin.n_jet.max()  << " " <<
-                   output_bin.n_bjet.min() << " " << output_bin.n_bjet.max() << " " <<
-                   output_bin.n_ht.min() << " " << output_bin.n_ht.max() << " " <<
-                   output_bin.weight.GetValue() << " " << output_bin.weight.GetRelativeStatisticalError() << " " <<
-                   output_bin.nu.GetValue() << " " << output_bin.nu.GetRelativeStatisticalError() <<
-                " " << output_bin.ref_sample <<  "\n";
+            cfg << std::setw(column_widths.at(0)) << output_bin.n_jet.min() << " " <<
+                   std::setw(column_widths.at(1)) << output_bin.n_jet.max()  << " " <<
+                   std::setw(column_widths.at(2)) << output_bin.n_bjet.min() << " " <<
+                   std::setw(column_widths.at(3)) << output_bin.n_bjet.max() << " " <<
+                   std::setw(column_widths.at(4)) << output_bin.n_ht.min() << " " <<
+                   std::setw(column_widths.at(5)) << output_bin.n_ht.max() << " " <<
+                   std::setw(column_widths.at(6)) << output_bin.weight.GetValue() << " " <<
+                   std::setw(column_widths.at(7)) << output_bin.weight.GetRelativeStatisticalError() << " " <<
+                   std::setw(column_widths.at(8)) << output_bin.nu.GetValue() << " " <<
+                   std::setw(column_widths.at(9)) << output_bin.nu.GetRelativeStatisticalError() << " " <<
+                   std::setw(column_widths.at(10)) << output_bin.ref_sample <<  "\n";
         }
         return cfg;
     }
 };
 
-typedef std::unordered_map<std::string, DYBinDescriptor> DYBinDescriptorCollection;
+using DYBinDescriptorCollection = std::unordered_map<std::string, DYBinDescriptor>;
 
 } // namespace analysis
