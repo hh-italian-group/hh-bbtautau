@@ -10,6 +10,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/NumericPrimitives.h"
 #include "AnalysisTools/Core/include/PhysicalValue.h"
 #include "h-tautau/Analysis/include/SummaryTuple.h"
+#include "AnalysisTools/Core/include/ConfigReader.h"
 
 namespace analysis {
 
@@ -45,8 +46,6 @@ struct DYBinDescriptor {
 
     static std::vector<DYBinDescriptor> LoadConfig(const std::string& config_file)
     {
-        static std::mutex m;
-        std::lock_guard<std::mutex> lock(m);
         std::vector<DYBinDescriptor> dyBinDescriptors;
         dyBinDescriptors.clear();
         std::ifstream cfg(config_file);
@@ -54,9 +53,17 @@ struct DYBinDescriptor {
             std::string cfgLine;
             std::getline(cfg,cfgLine);
             if (!cfgLine.size() || cfgLine.at(0) == '#') continue;
+            auto columns = ConfigEntryReader::ParseOrderedParameterList(cfgLine, true);
             std::istringstream ss(cfgLine);
             DYBinDescriptor descriptor;
-            ss >> descriptor.n_jet >> descriptor.n_bjet >> descriptor.n_ht;
+            if(columns.size() == 6)
+                ss >> descriptor.n_jet >> descriptor.n_bjet >> descriptor.n_ht;
+            else if (columns.size() > 6 && columns.size() < 11){
+                ss >> descriptor.n_jet >> descriptor.n_bjet >> descriptor.n_ht >> descriptor.weight >>
+                        descriptor.nu >> descriptor.ref_sample;
+            }
+            else if(columns.size() < 6 || columns.size() > 11)
+                throw exception("Bad configuration file.");
             dyBinDescriptors.push_back(descriptor);
         }
         return dyBinDescriptors;
