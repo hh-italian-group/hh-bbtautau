@@ -24,6 +24,7 @@ namespace analysis {
 
 struct SampleEntry{
   std::string filename;
+
   double weight;
   bool issignal;
   SampleEntry() : weight(-1), issignal(false){}
