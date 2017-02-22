@@ -13,6 +13,8 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 namespace analysis {
 
+namespace sample_merging{
+
 template<typename BinDescriptor, typename GenMap>
 struct SampleDescriptor {
     BinDescriptor bin;
@@ -40,5 +42,6 @@ struct SampleDescriptor {
     }
 };
 
+} // namespace sample_merging
 
 } // namespace analysis

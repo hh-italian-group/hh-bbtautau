@@ -10,15 +10,16 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "Instruments/include/SampleDescriptor.h"
 
 
-//std::string tree_name{"tree_name", "Tree on which we work"};
 struct Arguments {
-    REQ_ARG(std::string, tree_name);
-    REQ_ARG(std::string, cfg_name);
-    REQ_ARG(std::string, file_cfg_name);
-    REQ_ARG(std::string, output_file);
+    run::Argument<std::string> tree_name{"tree_name", "Tree on which we work"};
+    run::Argument<std::string> cfg_name{"cfg_name", "cfg bin splitting"};
+    run::Argument<std::string> file_cfg_name{"file_cfg_name", "DY file cfg"};
+    run::Argument<std::string> output_file{"output_file", "Output file"};
 };
 
 namespace analysis {
+
+namespace sample_merging{
 
 class DYFileMerger {
 public:
@@ -55,8 +56,8 @@ private:
     {
         analysis::ConfigReader config_reader;
 
-        analysis::DYBinDescriptorCollection file_descriptors;
-        analysis::DYFileConfigEntryReader file_entry_reader(file_descriptors);
+        DYBinDescriptorCollection file_descriptors;
+        DYFileConfigEntryReader file_entry_reader(file_descriptors);
         config_reader.AddEntryReader("FILE", file_entry_reader, true);
 
         config_reader.ReadConfig(args.file_cfg_name());
@@ -69,7 +70,7 @@ private:
             SampleDescriptor<DYBinDescriptor, ntuple::GenEventCountMap> sample_desc;
             sample_desc.bin = file_descriptor_element;
             //global_map.bin = file_descriptor_element;
-            if (file_descriptor_element.fileType == analysis::FileType::inclusive)
+            if (file_descriptor_element.fileType == FileType::inclusive)
                 inclusive.bin = file_descriptor_element;
 
             auto inputFile = root_ext::OpenRootFile(file_descriptor_element.file_path);
@@ -85,7 +86,7 @@ private:
                     size_t nevents = summaryTuple.data().lhe_n_events.at(i);
                     sample_desc.gen_counts[genId] += nevents;
                     global_map.gen_counts[genId] += nevents;
-                    if (file_descriptor_element.fileType == analysis::FileType::inclusive)
+                    if (file_descriptor_element.fileType == FileType::inclusive)
                         inclusive.gen_counts[genId] += nevents;
 
                 } // end loop on gen event info
@@ -105,7 +106,7 @@ private:
             PhysicalValue nu ( contribution / double(sample.Integral()), sqrt(contribution)/double(sample.Integral()));
             PhysicalValue weight (nu.GetValue()/double(all_events), (double(all_events - contribution)/std::pow(all_events,2))*sqrt(contribution)/double(sample.Integral()));
 
-            if(!(sample.bin.fileType == analysis::FileType::inclusive)) {
+            if(!(sample.bin.fileType == FileType::inclusive)) {
                 size_t sample_contribution = inclusive.Integral(sample.bin);
                 // formula 3
                 PhysicalValue nu_incl(sample_contribution/double(inclusive.Integral()),
@@ -131,6 +132,8 @@ private:
 
 };
 
-}
+} //namespace sample_merging
 
-PROGRAM_MAIN(analysis::DYFileMerger, Arguments)
+} //namespace analysis
+
+PROGRAM_MAIN(analysis::sample_merging::DYFileMerger, Arguments)

@@ -8,6 +8,8 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 namespace analysis {
 
+namespace sample_merging{
+
 class DYFileConfigEntryReader : public analysis::ConfigEntryReader {
 public:
     DYFileConfigEntryReader(DYBinDescriptorCollection& _descriptors) : descriptors(&_descriptors) {}
@@ -44,5 +46,7 @@ private:
     DYBinDescriptor current;
     DYBinDescriptorCollection* descriptors;
 };
+
+} //namespace sample_merging
 
 } // namespace analysis
