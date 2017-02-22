@@ -7,17 +7,18 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/AnalyzerData.h"
 
 struct Arguments { // list of all program arguments
-    REQ_ARG(std::string, input_file); // required argument "input_file"
+    REQ_ARG(std::string, input_signal_file); // required argument "input_signal_file"
+    REQ_ARG(std::string, input_bkg_file); // required argument "input_bkg_file"
     REQ_ARG(std::string, output_file); // required argument "output_file"
 };
 
 namespace analysis {
 
+
 class MvaData : public root_ext::AnalyzerData {
 public:
     using AnalyzerData::AnalyzerData;
-
-    TH1D_ENTRY(PtTau, 100, 0, 200)
+    TH1D_ENTRY(PtTau, 100, 0, 500)
     TH1D_ENTRY(PhiTau, 100, -3.5, 3.5)
     TH1D_ENTRY(EtaTau, 100, -2.5, 2.5)
 };
@@ -39,32 +40,73 @@ public:
     }
 
     MvaPreparation(const Arguments& _args) :
-        args(_args), input(root_ext::OpenRootFile(args.input_file())),
+        args(_args), input_signal(root_ext::OpenRootFile(args.input_signal_file()))/*, input_bkg(root_ext::OpenRootFile(args.input_bkg_file()))*/,
         output(root_ext::CreateRootFile(args.output_file())),
-        anaData(output), tuple("muTau", input.get(), true, GetDisabledBranches())
+        anaData(output), tuple_signal("muTau", input_signal.get(), true, GetDisabledBranches())/*, tuple_bkg("muTau", input_bkg.get(), true, GetDisabledBranches())*/
     {
     }
 
     void Run()
     {
-        std::cout << boost::format("Processing input file '%1%' into output file '%2%'.\n")
-                     % args.input_file() % args.output_file();
-        const Long64_t n_entries = tuple.GetEntries();
-        for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) {
-            tuple.GetEntry(current_entry);
-            const Event& event = tuple.data();
+        std::cout << boost::format("Processing input signal file '%1%' and input signal file '%2%' into output file '%3%'.\n")
+                     % args.input_signal_file()   % args.input_bkg_file() % args.output_file();
+        const Long64_t n_entries_signal = tuple_signal.GetEntries()/*, n_entries_bkg = tuple_bkg.GetEntries()*/;
+        for(Long64_t current_entry = 0; current_entry < n_entries_signal; ++current_entry) {
+            tuple_signal.GetEntry(current_entry);
+            const Event& event = tuple_signal.data();
+            double p, E=event.p4_1.e(), mass;
+            p=event.p4_1.px()*event.p4_1.px()+event.p4_1.py()*event.p4_1.py()+event.p4_1.pz()*event.p4_1.pz();
+            mass=sqrt(E*E-p);
+
+            anaData.PtTau("signal").SetMarkerColor(4);
             anaData.PtTau("signal").Fill(event.p4_1.pt());
-            //anaData.PtTau("bkg").Fill(event.p4_2.pt());
+
+            anaData.PhiTau("signal").SetMarkerColor(4);
             anaData.PhiTau("signal").Fill(event.p4_1.phi());
+
+            anaData.EtaTau("signal").SetMarkerColor(4);
             anaData.EtaTau("signal").Fill(event.p4_1.eta());
+            event.dR_bb
+
         }
+
+        Double_t scale = 1/anaData.PtTau("signal").Integral();
+        anaData.PtTau("signal").Scale(scale);
+        scale = 1/anaData.PhiTau("signal").Integral();
+        anaData.PhiTau("signal").Scale(scale);
+        scale = 1/anaData.EtaTau("signal").Integral();
+        anaData.EtaTau("signal").Scale(scale);
+
+        for(Long64_t current_entry = 0; current_entry < n_entries_bkg; ++current_entry) {
+            tuple_bkg.GetEntry(current_entry);
+            const Event& event = tuple_bkg.data();
+
+            anaData.PtTau("bkg").SetMarkerColor(2);
+            anaData.PtTau("bkg").Fill(event.p4_1.pt());
+
+            anaData.PhiTau("bkg").SetMarkerColor(2);
+            anaData.PhiTau("bkg").Fill(event.p4_1.phi());
+
+            anaData.EtaTau("bkg").SetMarkerColor(2);
+            anaData.EtaTau("bkg").Fill(event.p4_1.eta());
+
+        }
+        scale = 1/anaData.PtTau("bkg").Integral();
+        anaData.PtTau("bkg").Scale(scale);
+        scale = 1/anaData.PhiTau("bkg").Integral();
+        anaData.PhiTau("bkg").Scale(scale);
+        scale = 1/anaData.EtaTau("bkg").Integral();
+        anaData.EtaTau("bkg").Scale(scale);*/
+
+
     }
 private:
     Arguments args;
-    std::shared_ptr<TFile> input, output;
+    std::shared_ptr<TFile> input_signal,input_bkg, output;
     MvaData anaData;
-    EventTuple tuple;
+    EventTuple tuple_signal, tuple_bkg;
 };
+
 
 }
 
