@@ -12,6 +12,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 struct Arguments {
     run::Argument<std::string> tree_name{"tree_name", "Tree on which we work"};
+    run::Argument<std::string> input_path{"input_path", "Input path of the samples"};
     run::Argument<std::string> cfg_name{"cfg_name", "cfg bin splitting"};
     run::Argument<std::string> file_cfg_name{"file_cfg_name", "DY file cfg"};
     run::Argument<std::string> output_file{"output_file", "Output file"};
@@ -73,7 +74,8 @@ private:
             if (file_descriptor_element.fileType == FileType::inclusive)
                 inclusive.bin = file_descriptor_element;
 
-            auto inputFile = root_ext::OpenRootFile(file_descriptor_element.file_path);
+            std::string filename = args.input_path() + file_descriptor_element.file_path;
+            auto inputFile = root_ext::OpenRootFile(filename);
             ntuple::SummaryTuple summaryTuple(args.tree_name(), inputFile.get(), true);
             const Long64_t n_entries = summaryTuple.GetEntries();
 
@@ -100,17 +102,17 @@ private:
     {
         size_t all_events = global_map.Integral(output_bin);
         for(auto& sample : all_samples) {
-            size_t contribution = sample.Integral(output_bin);
+            double contribution = sample.Integral(output_bin);
             if(!contribution) continue;
             //formula 2
-            PhysicalValue nu ( contribution / double(sample.Integral()), sqrt(contribution)/double(sample.Integral()));
-            PhysicalValue weight (nu.GetValue()/double(all_events), (double(all_events - contribution)/std::pow(all_events,2))*sqrt(contribution)/double(sample.Integral()));
+            PhysicalValue nu ( contribution / sample.Integral(), sqrt(contribution)/sample.Integral());
+            PhysicalValue weight (nu.GetValue()/double(all_events), (double(all_events - contribution)/std::pow(all_events,2))*sqrt(contribution)/sample.Integral());
 
             if(!(sample.bin.fileType == FileType::inclusive)) {
-                size_t sample_contribution = inclusive.Integral(sample.bin);
+                double sample_contribution = inclusive.Integral(sample.bin);
                 // formula 3
-                PhysicalValue nu_incl(sample_contribution/double(inclusive.Integral()),
-                                      sqrt(sample_contribution)/double(inclusive.Integral()));
+                PhysicalValue nu_incl(sample_contribution/inclusive.Integral(),
+                                      sqrt(sample_contribution)/inclusive.Integral());
                 nu *= nu_incl;
                 weight *= nu_incl;
             }

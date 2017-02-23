@@ -1,4 +1,4 @@
-/*! Definition of the file descriptor.
+/*! Definition of the sample descriptor used for sample merging.
 This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #pragma once

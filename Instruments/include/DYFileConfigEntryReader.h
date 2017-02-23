@@ -1,4 +1,4 @@
-/*! Definition of the file configuration entry reader.
+/*! Definition of the file configuration entry reader for DY sample merging.
 This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #pragma once
@@ -23,11 +23,11 @@ public:
 
     virtual void EndEntry() override
     {
-        CheckReadParamCounts("file_path", 1, Condition::less_equal);
-        CheckReadParamCounts("n_jet", 1, Condition::less_equal);
-        CheckReadParamCounts("n_bjet", 1, Condition::less_equal);
-        CheckReadParamCounts("n_ht", 1, Condition::less_equal);
-        CheckReadParamCounts("fileType", 1, Condition::less_equal);
+        CheckReadParamCounts("file_path", 1, Condition::equal_to);
+        CheckReadParamCounts("n_jet", 1, Condition::equal_to);
+        CheckReadParamCounts("n_bjet", 1, Condition::equal_to);
+        CheckReadParamCounts("n_ht", 1, Condition::equal_to);
+        CheckReadParamCounts("fileType", 1, Condition::equal_to);
 
         (*descriptors)[current.name] = current;
     }
