@@ -58,18 +58,26 @@ struct DYBinDescriptor {
             auto columns = ConfigEntryReader::ParseOrderedParameterList(cfgLine, true);
             std::istringstream ss(cfgLine);
             DYBinDescriptor descriptor;
-            if(columns.size() == 6)
+            if(columns.size() >= 6)
                 ss >> descriptor.n_jet >> descriptor.n_bjet >> descriptor.n_ht;
-            else if (columns.size() > 6 && columns.size() < 11){
-                ss >> descriptor.n_jet >> descriptor.n_bjet >> descriptor.n_ht >> descriptor.weight >>
-                        descriptor.nu >> descriptor.ref_sample;
+            if (columns.size() >= 11){
+                double col_weight = analysis::Parse<double>(columns.at(6));
+                double col_weight_err = analysis::Parse<double>(columns.at(7))*col_weight;
+                analysis::PhysicalValue weight(col_weight,col_weight_err);
+                descriptor.weight = weight;
+                double col_nu = analysis::Parse<double>(columns.at(8));
+                double col_nu_err = analysis::Parse<double>(columns.at(9))*col_nu;
+                analysis::PhysicalValue nu(col_nu,col_nu_err);
+                descriptor.nu = nu;
+                descriptor.ref_sample = analysis::Parse<std::string>(columns.at(10));
             }
-            else if(columns.size() < 6 || columns.size() > 11)
+            else if(columns.size() != 6 && columns.size() != 11)
                 throw exception("Bad configuration file.");
             dyBinDescriptors.push_back(descriptor);
         }
         return dyBinDescriptors;
     }
+
 
     static std::ofstream SaveCfg(const std::string& output_file, const std::vector<DYBinDescriptor>& output_bins)
     {
