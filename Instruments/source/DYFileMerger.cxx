@@ -74,7 +74,7 @@ private:
             if (file_descriptor_element.fileType == FileType::inclusive)
                 inclusive.bin = file_descriptor_element;
 
-            std::string filename = args.input_path() + file_descriptor_element.file_path;
+            std::string filename = args.input_path()  + "/" + file_descriptor_element.file_path;
             auto inputFile = root_ext::OpenRootFile(filename);
             ntuple::SummaryTuple summaryTuple(args.tree_name(), inputFile.get(), true);
             const Long64_t n_entries = summaryTuple.GetEntries();
@@ -100,13 +100,13 @@ private:
 
     void CalculateWeight(DYBinDescriptor& output_bin) const
     {
-        size_t all_events = global_map.Integral(output_bin);
+        double all_events = global_map.Integral(output_bin);
         for(auto& sample : all_samples) {
             double contribution = sample.Integral(output_bin);
             if(!contribution) continue;
             //formula 2
             PhysicalValue nu ( contribution / sample.Integral(), sqrt(contribution)/sample.Integral());
-            PhysicalValue weight (nu.GetValue()/double(all_events), (double(all_events - contribution)/std::pow(all_events,2))*sqrt(contribution)/sample.Integral());
+            PhysicalValue weight (nu.GetValue()/all_events, (all_events - contribution/std::pow(all_events,2))*sqrt(contribution)/sample.Integral());
 
             if(!(sample.bin.fileType == FileType::inclusive)) {
                 double sample_contribution = inclusive.Integral(sample.bin);
