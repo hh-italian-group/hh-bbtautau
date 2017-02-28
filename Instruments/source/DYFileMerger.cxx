@@ -65,34 +65,40 @@ private:
 
         for (auto file_descriptor : file_descriptors){ //loop on DYJets files
             const DYBinDescriptor file_descriptor_element = file_descriptor.second;
-            std::cout << "File descriptor characteristics: " << file_descriptor.first << ", " <<
-                         file_descriptor_element.file_path << ", " << file_descriptor_element.fileType
-                      << std::endl;
+
             SampleDescriptor<DYBinDescriptor, ntuple::GenEventCountMap> sample_desc;
             sample_desc.bin = file_descriptor_element;
             //global_map.bin = file_descriptor_element;
             if (file_descriptor_element.fileType == FileType::inclusive)
                 inclusive.bin = file_descriptor_element;
 
-            std::string filename = args.input_path()  + "/" + file_descriptor_element.file_path;
-            auto inputFile = root_ext::OpenRootFile(filename);
-            ntuple::SummaryTuple summaryTuple(args.tree_name(), inputFile.get(), true);
-            const Long64_t n_entries = summaryTuple.GetEntries();
+            for (auto single_file_path : file_descriptor_element.file_paths){ //loop on files
 
-            for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) { //loop on entries
-                summaryTuple.GetEntry(current_entry);
-                for (size_t i = 0; i < summaryTuple.data().lhe_n_partons.size(); ++i){ // loop on gen event info
-                    const ntuple::GenId genId(summaryTuple.data().lhe_n_partons.at(i),
-                                              summaryTuple.data().lhe_n_b_partons.at(i),
-                                              summaryTuple.data().lhe_ht10_bin.at(i));
-                    size_t nevents = summaryTuple.data().lhe_n_events.at(i);
-                    sample_desc.gen_counts[genId] += nevents;
-                    global_map.gen_counts[genId] += nevents;
-                    if (file_descriptor_element.fileType == FileType::inclusive)
-                        inclusive.gen_counts[genId] += nevents;
 
-                } // end loop on gen event info
-            } //end loop on entries
+                std::cout << "File descriptor characteristics: " << file_descriptor.first << ", " <<
+                             single_file_path << ", " << file_descriptor_element.fileType
+                          << std::endl;
+                std::string filename = args.input_path()  + "/" + single_file_path;
+                auto inputFile = root_ext::OpenRootFile(filename);
+                ntuple::SummaryTuple summaryTuple(args.tree_name(), inputFile.get(), true);
+                const Long64_t n_entries = summaryTuple.GetEntries();
+
+                for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) { //loop on entries
+                    summaryTuple.GetEntry(current_entry);
+                    for (size_t i = 0; i < summaryTuple.data().lhe_n_partons.size(); ++i){ // loop on gen event info
+                        const ntuple::GenId genId(summaryTuple.data().lhe_n_partons.at(i),
+                                                  summaryTuple.data().lhe_n_b_partons.at(i),
+                                                  summaryTuple.data().lhe_ht10_bin.at(i));
+                        size_t nevents = summaryTuple.data().lhe_n_events.at(i);
+                        sample_desc.gen_counts[genId] += nevents;
+                        global_map.gen_counts[genId] += nevents;
+                        if (file_descriptor_element.fileType == FileType::inclusive)
+                            inclusive.gen_counts[genId] += nevents;
+
+                    } // end loop on gen event info
+                } //end loop on entries
+
+            } // end loop on files
             all_samples.push_back(sample_desc);
         } //end loop n file_descriptors
     }
@@ -106,7 +112,7 @@ private:
             if(!contribution) continue;
             //formula 2
             PhysicalValue nu ( contribution / sample.Integral(), sqrt(contribution)/sample.Integral());
-            PhysicalValue weight (nu.GetValue()/all_events, (all_events - contribution/std::pow(all_events,2))*sqrt(contribution)/sample.Integral());
+            PhysicalValue weight (nu.GetValue()/all_events, (all_events - contribution)/std::pow(all_events,2)*sqrt(contribution)/sample.Integral());
 
             if(!(sample.bin.fileType == FileType::inclusive)) {
                 double sample_contribution = inclusive.Integral(sample.bin);

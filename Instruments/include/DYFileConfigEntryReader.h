@@ -23,7 +23,7 @@ public:
 
     virtual void EndEntry() override
     {
-        CheckReadParamCounts("file_path", 1, Condition::equal_to);
+        CheckReadParamCounts("file_path", 0, Condition::greater_equal);
         CheckReadParamCounts("n_jet", 1, Condition::equal_to);
         CheckReadParamCounts("n_bjet", 1, Condition::equal_to);
         CheckReadParamCounts("n_ht", 1, Condition::equal_to);
@@ -35,7 +35,7 @@ public:
     virtual void ReadParameter(const std::string& /*param_name*/, const std::string& /*param_value*/,
                                std::istringstream& /*ss*/) override
     {
-        ParseEntry("file_path", current.file_path);
+        ParseEntry("file_path", current.file_paths);
         ParseEntry("n_jet", current.n_jet);
         ParseEntry("n_bjet", current.n_bjet);
         ParseEntry("n_ht", current.n_ht);
