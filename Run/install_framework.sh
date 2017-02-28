@@ -95,7 +95,8 @@ if [ $MODE = "limits" ] ; then
 fi
 
 # SVfit packages
-git clone git@github.com:veelken/SVfit_standalone.git TauAnalysis/SVfitStandalone
+#git clone git@github.com:veelken/SVfit_standalone.git TauAnalysis/SVfitStandalone #notworking
+git clone git@github.com:hh-italian-group/SVfit_standalone.git TauAnalysis/SVfitStandalone
 cd TauAnalysis/SVfitStandalone
 git checkout HIG-16-006
 cd ../..
