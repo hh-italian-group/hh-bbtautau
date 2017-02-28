@@ -73,6 +73,7 @@ private:
                 inclusive.bin = file_descriptor_element;
 
             for (auto single_file_path : file_descriptor_element.file_paths){ //loop on files
+
                 std::cout << "File descriptor characteristics: " << file_descriptor.first << ", " <<
                              single_file_path << ", " << file_descriptor_element.fileType
                           << std::endl;
@@ -95,6 +96,7 @@ private:
 
                     } // end loop on gen event info
                 } //end loop on entries
+
             } // end loop on files
             all_samples.push_back(sample_desc);
         } //end loop n file_descriptors
