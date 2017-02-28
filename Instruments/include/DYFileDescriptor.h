@@ -24,7 +24,7 @@ ENUM_NAMES(FileType) = {
 
 struct DYBinDescriptor {
     std::string name;
-    std::string file_path;
+    std::vector<std::string> file_paths;
     FileType fileType;
     Range<int> n_jet;
     Range<int> n_bjet;
