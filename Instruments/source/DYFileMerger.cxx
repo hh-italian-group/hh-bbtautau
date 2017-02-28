@@ -74,6 +74,7 @@ private:
 
             for (auto single_file_path : file_descriptor_element.file_paths){ //loop on files
 
+
                 std::cout << "File descriptor characteristics: " << file_descriptor.first << ", " <<
                              single_file_path << ", " << file_descriptor_element.fileType
                           << std::endl;
@@ -111,7 +112,7 @@ private:
             if(!contribution) continue;
             //formula 2
             PhysicalValue nu ( contribution / sample.Integral(), sqrt(contribution)/sample.Integral());
-            PhysicalValue weight (nu.GetValue()/all_events, (all_events - contribution/std::pow(all_events,2))*sqrt(contribution)/sample.Integral());
+            PhysicalValue weight (nu.GetValue()/all_events, (all_events - contribution)/std::pow(all_events,2)*sqrt(contribution)/sample.Integral());
 
             if(!(sample.bin.fileType == FileType::inclusive)) {
                 double sample_contribution = inclusive.Integral(sample.bin);
