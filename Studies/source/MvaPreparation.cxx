@@ -21,6 +21,8 @@ public:
     TH1D_ENTRY(PtTau, 100, 0, 500)
     TH1D_ENTRY(PhiTau, 100, -3.5, 3.5)
     TH1D_ENTRY(EtaTau, 100, -2.5, 2.5)
+    TH2D_ENTRY(MttMbb, 100, 0, 500, 100, 0, 500)
+    TH2D_ENTRY(MttMbb_cut, 100, 0, 500, 100, 0, 500)
 };
 
 
@@ -40,9 +42,9 @@ public:
     }
 
     MvaPreparation(const Arguments& _args) :
-        args(_args), input_signal(root_ext::OpenRootFile(args.input_signal_file()))/*, input_bkg(root_ext::OpenRootFile(args.input_bkg_file()))*/,
+        args(_args), input_signal(root_ext::OpenRootFile(args.input_signal_file())), input_bkg(root_ext::OpenRootFile(args.input_bkg_file())),
         output(root_ext::CreateRootFile(args.output_file())),
-        anaData(output), tuple_signal("muTau", input_signal.get(), true, GetDisabledBranches())/*, tuple_bkg("muTau", input_bkg.get(), true, GetDisabledBranches())*/
+        anaData(output), tuple_signal("muTau", input_signal.get(), true, GetDisabledBranches()), tuple_bkg("muTau", input_bkg.get(), true, GetDisabledBranches())
     {
     }
 
@@ -50,13 +52,14 @@ public:
     {
         std::cout << boost::format("Processing input signal file '%1%' and input signal file '%2%' into output file '%3%'.\n")
                      % args.input_signal_file()   % args.input_bkg_file() % args.output_file();
-        const Long64_t n_entries_signal = tuple_signal.GetEntries()/*, n_entries_bkg = tuple_bkg.GetEntries()*/;
+        const Long64_t n_entries_signal = tuple_signal.GetEntries(), n_entries_bkg = tuple_bkg.GetEntries();
         for(Long64_t current_entry = 0; current_entry < n_entries_signal; ++current_entry) {
             tuple_signal.GetEntry(current_entry);
             const Event& event = tuple_signal.data();
-            double p, E=event.p4_1.e(), mass;
-            p=event.p4_1.px()*event.p4_1.px()+event.p4_1.py()*event.p4_1.py()+event.p4_1.pz()*event.p4_1.pz();
-            mass=sqrt(E*E-p);
+
+            if (event.eventEnergyScale!=0 || (event.q_1+event.q_2)!=0 || event.jets_p4.size() < 2
+                || event.extraelec_veto==true || event.extramuon_veto==true) continue;
+
 
             anaData.PtTau("signal").SetMarkerColor(4);
             anaData.PtTau("signal").Fill(event.p4_1.pt());
@@ -66,7 +69,13 @@ public:
 
             anaData.EtaTau("signal").SetMarkerColor(4);
             anaData.EtaTau("signal").Fill(event.p4_1.eta());
-            event.dR_bb
+
+            LorentzVectorE_Float bb= event.jets_p4[0] + event.jets_p4[1];
+            anaData.MttMbb("signal").Fill(event.SVfit_p4.mass(),bb.M());
+
+            double circular_cut=std::sqrt(pow(event.SVfit_p4.mass()-116.,2)+pow(bb.M()-111,2));
+            if (circular_cut>40) continue;
+            anaData.MttMbb_cut("signal").Fill(event.SVfit_p4.mass(),bb.M());
 
         }
 
@@ -80,6 +89,8 @@ public:
         for(Long64_t current_entry = 0; current_entry < n_entries_bkg; ++current_entry) {
             tuple_bkg.GetEntry(current_entry);
             const Event& event = tuple_bkg.data();
+            if (event.eventEnergyScale!=0 || (event.q_1+event.q_2)!=0 || event.jets_p4.size() < 2
+                || event.extraelec_veto==true || event.extramuon_veto==true) continue;
 
             anaData.PtTau("bkg").SetMarkerColor(2);
             anaData.PtTau("bkg").Fill(event.p4_1.pt());
@@ -89,6 +100,13 @@ public:
 
             anaData.EtaTau("bkg").SetMarkerColor(2);
             anaData.EtaTau("bkg").Fill(event.p4_1.eta());
+
+            LorentzVectorE_Float bb= event.jets_p4[0] + event.jets_p4[1];
+            anaData.MttMbb("bkg").Fill(event.SVfit_p4.mass(),bb.M());
+            double circular_cut=std::sqrt(pow(event.SVfit_p4.mass()-116.,2)+pow(bb.M()-111,2));
+            if (circular_cut>40) continue;
+            anaData.MttMbb_cut("bkg").Fill(event.SVfit_p4.mass(),bb.M());
+
 
         }
         scale = 1/anaData.PtTau("bkg").Integral();
@@ -112,3 +130,5 @@ private:
 
 
 PROGRAM_MAIN(analysis::MvaPreparation, Arguments) // definition of the main program function
+// ./run.sh MvaPreparation --input_signal_file ~/Desktop/tuples/GluGluToRadionToHHTo2B2Tau_M-250_narrow.root
+//   --input_bkg_file ~/Desktop/tuples/TT_ext3_muTau.root  --output_file mr.root
