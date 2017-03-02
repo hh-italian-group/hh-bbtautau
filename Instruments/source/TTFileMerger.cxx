@@ -14,7 +14,7 @@ struct Arguments {
     run::Argument<std::string> tree_name{"tree_name", "Tree on which we work"};
     run::Argument<std::string> input_path{"input_path", "Input path of the samples"};
     run::Argument<std::string> cfg_name{"cfg_name", "cfg bin splitting"};
-    run::Argument<std::string> file_cfg_name{"file_cfg_name", "DY file cfg"};
+    run::Argument<std::string> file_cfg_name{"file_cfg_name", "TT file cfg"};
     run::Argument<std::string> output_file{"output_file", "Output file"};
 };
 
@@ -24,8 +24,8 @@ namespace sample_merging{
 
 class TTFileMerger {
 public:
-    using GenMap = ntuple::GenEventCountMap;
-    using VectorSampleDescriptor = std::vector<SampleDescriptor<TTBinDescriptor, ntuple::GenEventCountMap>>;
+    using GenEventTypeMap = std::map<GenEventType, size_t>;
+    using VectorSampleDescriptor = std::vector<SampleDescriptor<TTBinDescriptor, GenEventTypeMap>>;
     using VectorDYBinDescriptor = std::vector<TTBinDescriptor>;
     TTFileMerger(const Arguments& _args) : args(_args)
     {
@@ -46,8 +46,8 @@ public:
 
 
 private:
-    SampleDescriptor<TTBinDescriptor, ntuple::GenEventCountMap> global_map;
-    SampleDescriptor<TTBinDescriptor, ntuple::GenEventCountMap> inclusive;
+    SampleDescriptor<TTBinDescriptor, GenEventTypeMap> global_map;
+    SampleDescriptor<TTBinDescriptor, GenEventTypeMap> inclusive;
     VectorSampleDescriptor all_samples;
     VectorDYBinDescriptor output_bins;
     Arguments args;
@@ -66,7 +66,7 @@ private:
         for (auto file_descriptor : file_descriptors){ //loop on DYJets files
             const TTBinDescriptor file_descriptor_element = file_descriptor.second;
 
-            SampleDescriptor<TTBinDescriptor, ntuple::GenEventCountMap> sample_desc;
+            SampleDescriptor<TTBinDescriptor, GenEventTypeMap> sample_desc;
             sample_desc.bin = file_descriptor_element;
             //global_map.bin = file_descriptor_element;
             if (file_descriptor_element.fileType == FileType::inclusive)
@@ -80,22 +80,19 @@ private:
                           << std::endl;
                 std::string filename = args.input_path()  + "/" + single_file_path;
                 auto inputFile = root_ext::OpenRootFile(filename);
-                ntuple::SummaryTuple summaryTuple(args.tree_name(), inputFile.get(), true);
-                const Long64_t n_entries = summaryTuple.GetEntries();
+                ntuple::EventTuple eventTuple(args.tree_name(), inputFile.get(), true);
+                const Long64_t n_entries = eventTuple.GetEntries();
 
                 for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) { //loop on entries
-                    summaryTuple.GetEntry(current_entry);
-                    for (size_t i = 0; i < summaryTuple.data().lhe_n_partons.size(); ++i){ // loop on gen event info
-                        const ntuple::GenId genId(summaryTuple.data().lhe_n_partons.at(i),
-                                                  summaryTuple.data().lhe_n_b_partons.at(i),
-                                                  summaryTuple.data().lhe_ht10_bin.at(i));
-                        size_t nevents = summaryTuple.data().lhe_n_events.at(i);
-                        sample_desc.gen_counts[genId] += nevents;
-                        global_map.gen_counts[genId] += nevents;
-                        if (file_descriptor_element.fileType == FileType::inclusive)
-                            inclusive.gen_counts[genId] += nevents;
+                    eventTuple.GetEntry(current_entry);
+                    GenEventType genEventType = static_cast<GenEventType>(eventTuple.data().genEventType);
 
-                    } // end loop on gen event info
+                        ++sample_desc.gen_counts[genEventType];
+                        ++global_map.gen_counts[genEventType];
+                        if (file_descriptor_element.fileType == FileType::inclusive)
+                            ++inclusive.gen_counts[genEventType];
+
+
                 } //end loop on entries
 
             } // end loop on files

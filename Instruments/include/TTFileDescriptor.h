@@ -9,7 +9,8 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/EnumNameMap.h"
 #include "AnalysisTools/Core/include/NumericPrimitives.h"
 #include "AnalysisTools/Core/include/PhysicalValue.h"
-#include "h-tautau/Analysis/include/SummaryTuple.h"
+#include "h-tautau/Analysis/include/EventTuple.h"
+#include "h-tautau/Analysis/include/AnalysisTypes.h"
 #include "AnalysisTools/Core/include/ConfigReader.h"
 
 namespace analysis {
@@ -37,11 +38,9 @@ struct TTBinDescriptor {
         : genType(0,0),nu(0.0, std::numeric_limits<double>::infinity()),
           weight(std::numeric_limits<double>::quiet_NaN()) {}
 
-    bool Contains(const ntuple::GenId& genId) const  //?????
+    bool Contains(const analysis::GenEventType& genEventType) const  //?????
     {
-        return n_jet.Contains(genId.n_partons) &&
-              n_bjet.Contains(genId.n_b_partons) &&
-              n_ht.Contains(genId.ht10_bin);
+        return genType.Contains(static_cast<int>(genEventType));
     }
 
     static std::vector<TTBinDescriptor> LoadConfig(const std::string& config_file)

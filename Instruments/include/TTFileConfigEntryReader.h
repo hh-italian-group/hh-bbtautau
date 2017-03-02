@@ -34,7 +34,7 @@ public:
                                std::istringstream& /*ss*/) override
     {
         ParseEntry("file_path", current.file_paths);
-        ParseEntry("genType", current.n_jet);
+        ParseEntry("genType", current.genType);
         ParseEntry("fileType", current.fileType);
     }
 
