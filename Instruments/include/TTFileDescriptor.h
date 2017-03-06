@@ -28,6 +28,7 @@ struct TTBinDescriptor {
     std::vector<std::string> file_paths;
     FileType fileType;
     Range<int> genType;
+    std::string channel;
 
     PhysicalValue nu;
     PhysicalValue weight;
@@ -36,7 +37,7 @@ struct TTBinDescriptor {
         : genType(0,0),nu(0.0, std::numeric_limits<double>::infinity()),
           weight(std::numeric_limits<double>::quiet_NaN()) {}
 
-    bool Contains(const analysis::GenEventType& genEventType) const  //?????
+    bool Contains(const analysis::GenEventType& genEventType) const
     {
         return genType.Contains(static_cast<int>(genEventType));
     }

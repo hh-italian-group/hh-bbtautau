@@ -103,6 +103,8 @@ private:
                 const Long64_t n_entries = eventTuple.GetEntries();
 
                 const Channel channel = Parse<Channel>(args.tree_name());
+                const Channel descriptor_channel = Parse<Channel>(file_descriptor_element.channel);
+                if (descriptor_channel != channel) continue;
 
                 for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) { //loop on entries
                     eventTuple.GetEntry(current_entry);
