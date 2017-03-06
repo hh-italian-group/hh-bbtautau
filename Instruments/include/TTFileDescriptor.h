@@ -31,8 +31,6 @@ struct TTBinDescriptor {
 
     PhysicalValue nu;
     PhysicalValue weight;
-    std::string ref_sample;
-    FileType ref_fileType;
 
     TTBinDescriptor()
         : genType(0,0),nu(0.0, std::numeric_limits<double>::infinity()),
@@ -64,7 +62,6 @@ struct TTBinDescriptor {
                 double col_nu = analysis::Parse<double>(columns.at(4));
                 double col_nu_err = analysis::Parse<double>(columns.at(5))*col_nu;
                 descriptor.nu = PhysicalValue(col_nu,col_nu_err);
-                descriptor.ref_sample = columns.at(6);
             }
             if(columns.size() != 2 && columns.size() != 7)
                 throw exception("Bad configuration file.");
@@ -81,25 +78,23 @@ struct TTBinDescriptor {
             throw analysis::exception("Unable to create outputfile'");
         cfg.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 
-        static const std::vector<int> column_widths = { 9,9,15,15,15,15,20 };
+        static const std::vector<int> column_widths = { 9,9,15,15,15,15 };
 
         cfg << std::setw(column_widths.at(0)) << "#genType_min " <<
                std::setw(column_widths.at(1)) << "genType_max " <<
                std::setw(column_widths.at(2)) << "weight " <<
                std::setw(column_widths.at(3)) << " rel_err_w " <<
                std::setw(column_widths.at(4)) << " nu " <<
-               std::setw(column_widths.at(5)) << " rel_err_nu  " <<
-               std::setw(column_widths.at(6)) << " ref_sample \n";
+               std::setw(column_widths.at(5)) << " rel_err_nu \n";
 
         for(auto& output_bin : output_bins)
         {
             cfg << std::setw(column_widths.at(0)) << output_bin.genType.min() << " " <<
                    std::setw(column_widths.at(1)) << output_bin.genType.max()  << " " <<
-                   std::setw(column_widths.at(6)) << output_bin.weight.GetValue() << " " <<
-                   std::setw(column_widths.at(7)) << output_bin.weight.GetRelativeStatisticalError() << " " <<
-                   std::setw(column_widths.at(8)) << output_bin.nu.GetValue() << " " <<
-                   std::setw(column_widths.at(9)) << output_bin.nu.GetRelativeStatisticalError() << " " <<
-                   std::setw(column_widths.at(10)) << output_bin.ref_sample <<  "\n";
+                   std::setw(column_widths.at(2)) << output_bin.weight.GetValue() << " " <<
+                   std::setw(column_widths.at(3)) << output_bin.weight.GetRelativeStatisticalError() << " " <<
+                   std::setw(column_widths.at(4)) << output_bin.nu.GetValue() << " " <<
+                   std::setw(column_widths.at(5)) << output_bin.nu.GetRelativeStatisticalError() << " \n";
         }
         return cfg;
     }

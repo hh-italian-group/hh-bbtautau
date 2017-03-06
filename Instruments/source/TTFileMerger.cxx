@@ -53,6 +53,24 @@ private:
     Arguments args;
 
 
+    static const std::set<std::string>& GetEnabledBranches()
+    {
+        static const std::set<std::string> EnabledBranches_read = {
+            "eventEnergyScale", "genEventType", "genEventWeight"
+        };
+        return EnabledBranches_read;
+    }
+
+    static const std::set<std::string>& GetDisabledBranches()
+    {
+        static const std::set<std::string> DisabledBranches_read = {
+            "dphi_mumet", "dphi_metsv", "dR_taumu", "mT1", "mT2", "dphi_bbmet", "dphi_bbsv", "dR_bb", "m_bb", "n_jets",
+            "btag_weight", "ttbar_weight",  "PU_weight", "shape_denominator_weight"
+        };
+        return DisabledBranches_read;
+    }
+
+
     void LoadInputs()
     {
         analysis::ConfigReader config_reader;
@@ -80,18 +98,23 @@ private:
                           << std::endl;
                 std::string filename = args.input_path()  + "/" + single_file_path;
                 auto inputFile = root_ext::OpenRootFile(filename);
-                ntuple::EventTuple eventTuple(args.tree_name(), inputFile.get(), true);
+                ntuple::EventTuple eventTuple(args.tree_name(), inputFile.get(), true, GetDisabledBranches(),
+                                              GetEnabledBranches());
                 const Long64_t n_entries = eventTuple.GetEntries();
+
                 const Channel channel = Parse<Channel>(args.tree_name());
 
                 for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) { //loop on entries
                     eventTuple.GetEntry(current_entry);
-                    GenEventType genEventType = static_cast<GenEventType>(eventTuple.data().genEventType);
+                    const ntuple::Event& event = eventTuple.data();
+                    if (static_cast<EventEnergyScale>(event.eventEnergyScale) != analysis::EventEnergyScale::Central)
+                        continue;
+                    GenEventType genEventType = static_cast<GenEventType>(event.genEventType);
 
-                        ++sample_desc.gen_counts[genEventType];
-                        ++global_map.gen_counts[genEventType];
+                        sample_desc.gen_counts[genEventType] += event.genEventWeight;
+                        global_map.gen_counts[genEventType] += event.genEventWeight;
                         if (file_descriptor_element.fileType == FileType::inclusive)
-                            ++inclusive.gen_counts[genEventType];
+                            inclusive.gen_counts[genEventType] += event.genEventWeight;
 
 
                 } //end loop on entries
@@ -105,30 +128,14 @@ private:
     void CalculateWeight(TTBinDescriptor& output_bin) const
     {
         double all_events = global_map.Integral(output_bin);
-        for(auto& sample : all_samples) {
-            double contribution = sample.Integral(output_bin);
-            if(!contribution) continue;
-            //formula 2
-            PhysicalValue nu ( contribution / sample.Integral(), sqrt(contribution)/sample.Integral());
-            PhysicalValue weight (nu.GetValue()/all_events, (all_events - contribution)/std::pow(all_events,2)*sqrt(contribution)/sample.Integral());
+        double sample_contribution = inclusive.Integral(output_bin);
+        // formula 3
+        PhysicalValue nu_incl(sample_contribution/inclusive.Integral(),
+                              sqrt(sample_contribution)/inclusive.Integral());
+        PhysicalValue weight (nu_incl.GetValue()/all_events, (all_events - sample_contribution)/std::pow(all_events,2)*sqrt(sample_contribution)/inclusive.Integral());
 
-            if(!(sample.bin.fileType == FileType::inclusive)) {
-                double sample_contribution = inclusive.Integral(sample.bin);
-                // formula 3
-                PhysicalValue nu_incl(sample_contribution/inclusive.Integral(),
-                                      sqrt(sample_contribution)/inclusive.Integral());
-                nu *= nu_incl;
-                weight *= nu_incl;
-            }
-
-            if(output_bin.nu.GetStatisticalError() > nu.GetStatisticalError()) {
-                output_bin.nu = nu;
-                output_bin.ref_sample = sample.bin.name;
-                output_bin.weight = weight;
-                output_bin.fileType = sample.bin.fileType;
-            }
-
-        }
+        output_bin.nu = nu_incl;
+        output_bin.weight = weight;
 
         if(output_bin.nu.GetStatisticalError() == std::numeric_limits<double>::infinity())
             throw exception("ref not found");
