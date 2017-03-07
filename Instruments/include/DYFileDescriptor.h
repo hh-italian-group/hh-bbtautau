@@ -15,7 +15,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 namespace analysis {
 
 namespace sample_merging{
-
+ENUM_OSTREAM_OPERATOR()
 enum class FileType { inclusive, exclusive };
 ENUM_NAMES(FileType) = {
     { FileType::inclusive, "inclusive" },
