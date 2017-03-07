@@ -16,6 +16,7 @@ namespace analysis {
 
 namespace sample_merging{
 ENUM_OSTREAM_OPERATOR()
+ENUM_ISTREAM_OPERATORS()
 enum class FileType { inclusive, exclusive };
 ENUM_NAMES(FileType) = {
     { FileType::inclusive, "inclusive" },
