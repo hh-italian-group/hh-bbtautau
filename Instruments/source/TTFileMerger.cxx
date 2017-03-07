@@ -24,7 +24,7 @@ namespace sample_merging{
 
 class TTFileMerger {
 public:
-    using GenEventTypeMap = std::map<GenEventType, size_t>;
+    using GenEventTypeMap = std::map<GenEventType, Float_t>;
     using VectorSampleDescriptor = std::vector<SampleDescriptor<TTBinDescriptor, GenEventTypeMap>>;
     using VectorDYBinDescriptor = std::vector<TTBinDescriptor>;
     TTFileMerger(const Arguments& _args) : args(_args)
@@ -92,6 +92,9 @@ private:
 
             for (auto single_file_path : file_descriptor_element.file_paths){ //loop on files
 
+                const Channel channel = Parse<Channel>(args.tree_name());
+                const Channel descriptor_channel = Parse<Channel>(file_descriptor_element.channel);
+                if (descriptor_channel != channel) continue;
 
                 std::cout << "File descriptor characteristics: " << file_descriptor.first << ", " <<
                              single_file_path << ", " << file_descriptor_element.fileType
@@ -101,10 +104,6 @@ private:
                 ntuple::EventTuple eventTuple(args.tree_name(), inputFile.get(), true, GetDisabledBranches(),
                                               GetEnabledBranches());
                 const Long64_t n_entries = eventTuple.GetEntries();
-
-                const Channel channel = Parse<Channel>(args.tree_name());
-                const Channel descriptor_channel = Parse<Channel>(file_descriptor_element.channel);
-                if (descriptor_channel != channel) continue;
 
                 for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) { //loop on entries
                     eventTuple.GetEntry(current_entry);
