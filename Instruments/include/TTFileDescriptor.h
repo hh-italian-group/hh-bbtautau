@@ -12,16 +12,11 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Analysis/include/EventTuple.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
 #include "AnalysisTools/Core/include/ConfigReader.h"
+#include "Instruments/include/SampleDescriptor.h"
 
 namespace analysis {
 
 namespace sample_merging{
-
-enum class FileType { inclusive, exclusive };
-ENUM_NAMES(FileType) = {
-    { FileType::inclusive, "inclusive" },
-    { FileType::exclusive, "exclusive" }
-};
 
 struct TTBinDescriptor {
     std::string name;
