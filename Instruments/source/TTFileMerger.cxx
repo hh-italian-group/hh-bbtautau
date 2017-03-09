@@ -61,15 +61,6 @@ private:
         return EnabledBranches_read;
     }
 
-    static const std::set<std::string>& GetDisabledBranches()
-    {
-        static const std::set<std::string> DisabledBranches_read = {
-            "dphi_mumet", "dphi_metsv", "dR_taumu", "mT1", "mT2", "dphi_bbmet", "dphi_bbsv", "dR_bb", "m_bb", "n_jets",
-            "btag_weight", "ttbar_weight",  "PU_weight", "shape_denominator_weight"
-        };
-        return DisabledBranches_read;
-    }
-
 
     void LoadInputs()
     {
@@ -131,12 +122,10 @@ private:
         double all_events = global_map.Integral(output_bin);
         double sample_contribution = inclusive.Integral(output_bin);
         // formula 3
-        //PhysicalValue nu_incl(sample_contribution/inclusive.Integral(),
-                              //sqrt(sample_contribution)/inclusive.Integral());
-        //PhysicalValue weight (nu_incl.GetValue()/all_events, (all_events - sample_contribution)/std::pow(all_events,2)*sqrt(sample_contribution)/inclusive.Integral());
-        PhysicalValue nu_incl(sample_contribution, sqrt(sample_contribution));
-        PhysicalValue weight (nu_incl.GetValue()/all_events, (all_events - sample_contribution)/std::pow(all_events,2)*sqrt(sample_contribution));
-
+        PhysicalValue nu_incl(sample_contribution/inclusive.Integral(),
+                              sqrt(sample_contribution)/inclusive.Integral());
+        PhysicalValue weight (nu_incl.GetValue()/all_events, (all_events - sample_contribution)/std::pow(all_events,2)*sqrt(sample_contribution)/inclusive.Integral());
+        
         output_bin.nu = nu_incl;
         output_bin.weight = weight;
 
