@@ -61,7 +61,13 @@ private:
         return EnabledBranches_read;
     }
 
-
+    static const std::set<std::string>& GetDisabledBranches()
+    {
+        static const std::set<std::string> DisabledBranches_read = {
+         "dphi_mumet", "dphi_metsv", "dR_taumu", "mT1", "mT2", "dphi_bbmet", "dphi_bbsv", "dR_bb", "m_bb", "n_jets","btag_weight", "ttbar_weight",  "PU_weight", "shape_denominator_weight"};
+        return DisabledBranches_read;
+    }
+    
     void LoadInputs()
     {
         analysis::ConfigReader config_reader;
