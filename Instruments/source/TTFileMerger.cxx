@@ -125,8 +125,8 @@ private:
 
     void CalculateWeight(TTBinDescriptor& output_bin) const
     {
-        double all_events = global_map.Integral(output_bin);
-        double sample_contribution = inclusive.Integral(output_bin);
+        double all_events = global_map.Integral_double(output_bin);
+        double sample_contribution = inclusive.Integral_double(output_bin);
         // formula 3
         PhysicalValue nu_incl(sample_contribution/inclusive.Integral(),
                               sqrt(sample_contribution)/inclusive.Integral());
