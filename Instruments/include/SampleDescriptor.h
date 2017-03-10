@@ -50,17 +50,6 @@ struct SampleDescriptor {
         return totalEvents;
     }
 
-    double Integral_double(const BinDescriptor& binDescriptor_range) const
-    {
-        double totalEvents = 0;
-        for (const auto& genEventCount : gen_counts){
-            const auto& genId = genEventCount.first;
-            const double nevents = genEventCount.second;
-            if(binDescriptor_range.Contains(genId))
-                totalEvents += nevents;
-        }
-        return totalEvents;
-    }
 };
 
 } // namespace sample_merging

@@ -125,13 +125,20 @@ private:
 
     void CalculateWeight(TTBinDescriptor& output_bin) const
     {
-        double all_events = global_map.Integral_double(output_bin);
-        double sample_contribution = inclusive.Integral_double(output_bin);
+        double all_events = global_map.Integral(output_bin);
+        double sample_contribution = inclusive.Integral(output_bin);
         // formula 3
-        PhysicalValue nu_incl(sample_contribution/inclusive.Integral(),
-                              sqrt(sample_contribution)/inclusive.Integral());
-        PhysicalValue weight (nu_incl.GetValue()/all_events, (all_events - sample_contribution)/std::pow(all_events,2)*sqrt(sample_contribution)/inclusive.Integral());
+//        PhysicalValue nu_incl(sample_contribution/inclusive.Integral(),
+//                              sqrt(sample_contribution)/inclusive.Integral());
+//        PhysicalValue weight (nu_incl.GetValue()/all_events,
+//                              (all_events - sample_contribution)/std::pow(all_events,2)*
+//                              sqrt(sample_contribution)/inclusive.Integral());
         
+        PhysicalValue nu_incl(sample_contribution,
+                              sqrt(sample_contribution));
+        PhysicalValue weight (nu_incl.GetValue()/all_events,
+                              (all_events - sample_contribution)/std::pow(all_events,2)*
+                              sqrt(sample_contribution));
         output_bin.nu = nu_incl;
         output_bin.weight = weight;
 

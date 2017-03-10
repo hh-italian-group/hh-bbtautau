@@ -111,14 +111,23 @@ private:
             double contribution = sample.Integral(output_bin);
             if(!contribution) continue;
             //formula 2
-            PhysicalValue nu ( contribution / sample.Integral(), sqrt(contribution)/sample.Integral());
-            PhysicalValue weight (nu.GetValue()/all_events, (all_events - contribution)/std::pow(all_events,2)*sqrt(contribution)/sample.Integral());
+//            PhysicalValue nu ( contribution / sample.Integral(), sqrt(contribution)/sample.Integral());
+//            PhysicalValue weight (nu.GetValue()/all_events, (all_events - contribution)/std::pow(all_events,2)*sqrt(contribution)/sample.Integral());
+
+            PhysicalValue nu ( contribution , sqrt(contribution));
+            PhysicalValue weight (nu.GetValue()/all_events, (all_events - contribution)/std::pow(all_events,2)*sqrt(contribution));
 
             if(!(sample.bin.fileType == FileType::inclusive)) {
+//                double sample_contribution = inclusive.Integral(sample.bin);
+//                // formula 3
+//                PhysicalValue nu_incl(sample_contribution/inclusive.Integral(),
+//                                      sqrt(sample_contribution)/inclusive.Integral());
+
                 double sample_contribution = inclusive.Integral(sample.bin);
                 // formula 3
-                PhysicalValue nu_incl(sample_contribution/inclusive.Integral(),
-                                      sqrt(sample_contribution)/inclusive.Integral());
+                PhysicalValue nu_incl(sample_contribution/ sample.Integral(),
+                                      sqrt(sample_contribution)/ sample.Integral());
+
                 nu *= nu_incl;
                 weight *= nu_incl;
             }
