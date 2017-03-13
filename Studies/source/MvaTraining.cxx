@@ -114,7 +114,7 @@ public:
 
     void Run()
     {
-        double c=0;
+
         for(const SampleEntry& entry:samples)
         {
             auto input_file=root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
@@ -130,7 +130,7 @@ public:
                 const bool istraining= testvstraining(gen) == 0;
 
                 LorentzVectorE_Float bb= event.jets_p4[0] + event.jets_p4[1];
-//                LorentzVectorM_Float leptons= event.p4_1 + event.p4_2;
+                LorentzVectorM_Float leptons= event.p4_1 + event.p4_2;
 
                 double circular_cut=std::sqrt(pow(event.SVfit_p4.mass()-116.,2)+pow(bb.M()-111,2));
                 if (circular_cut>40) continue;
@@ -144,21 +144,20 @@ public:
                 vars["dphi_bbmet"]=std::abs(ROOT::Math::VectorUtil::DeltaPhi(bb, event.pfMET_p4));
                 vars["dphi_bbsv"]=std::abs(ROOT::Math::VectorUtil::DeltaPhi(bb, event.SVfit_p4));
 
-//                vars["mass_sv"]=event.SVfit_p4.M();
-//                vars["mass_jets"]=bb.M();
-//                vars["mt_l1"]=event.p4_1.mt(); // Calculate_MT(event.p4_1,event.pfMET_p4)??
-//                vars["mt_l2"]=event.p4_2.mt();
-//                vars["dphi_l2met"] = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.p4_2, event.pfMET_p4));
-//                vars["pt_met"]=event.pfMET_p4.pt();
-//                vars["dphi_leptons"] = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.p4_1, event.p4_2));
-//                vars["dphi_jets"]=std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.jets_p4[0], event.jets_p4[1]));
-//                vars["deta_leptons"] =std::abs(event.p4_1.eta() - event.p4_2.eta());
-//                vars["deta_jets"]=std::abs(event.jets_p4[0].eta() - event.jets_p4[1].eta());
-//                vars["dR_leptons"] = std::abs(ROOT::Math::VectorUtil::DeltaR(event.p4_1, event.p4_2));
-//                vars["dR_jets"]=std::abs(ROOT::Math::VectorUtil::DeltaR(event.jets_p4[0], event.jets_p4[1]));
-//                vars["transversemass_hl"]=std::sqrt(2*leptons.pt()*event.pfMET_p4.Et()*(1-std::cos(std::abs(ROOT::Math::VectorUtil::DeltaPhi(leptons, event.pfMET_p4)))));
-//                vars["transversemass_hl"]=Calculate_MT(leptons, event.pfMET_p4);
-//                vars["mass_H"]=ROOT::Math::VectorUtil::InvariantMass(bb,event.SVfit_p4);
+                vars["mass_sv"]=event.SVfit_p4.M();
+                vars["mass_jets"]=bb.M();
+                vars["mt_l1"]=event.p4_1.mt(); // Calculate_MT(event.p4_1,event.pfMET_p4)??
+                vars["mt_l2"]=event.p4_2.mt();
+                vars["dphi_l2met"] = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.p4_2, event.pfMET_p4));
+                vars["pt_met"]=event.pfMET_p4.pt();
+                vars["dphi_leptons"] = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.p4_1, event.p4_2));
+                vars["dphi_jets"]=std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.jets_p4[0], event.jets_p4[1]));
+                vars["deta_leptons"] =std::abs(event.p4_1.eta() - event.p4_2.eta());
+                vars["deta_jets"]=std::abs(event.jets_p4[0].eta() - event.jets_p4[1].eta());
+                vars["dR_leptons"] = std::abs(ROOT::Math::VectorUtil::DeltaR(event.p4_1, event.p4_2));
+                vars["dR_jets"]=std::abs(ROOT::Math::VectorUtil::DeltaR(event.jets_p4[0], event.jets_p4[1]));
+                vars["transversemass_hl"]=Calculate_MT(leptons, event.pfMET_p4);
+                vars["mass_H"]=ROOT::Math::VectorUtil::InvariantMass(bb,event.SVfit_p4);
 
                 vars.AddEvent(entry.issignal, istraining, entry.weight);
 
@@ -169,12 +168,7 @@ public:
 
 
         factory->BookMethod( dataloader.get(), TMVA::Types::kBDT, "BDTG",
-                                    "!H:!V:NTrees=1000:MinNodeSize=2.5%:BoostType=Grad:Shrinkage=0.10:UseBaggedBoost:BaggedSampleFraction=0.5:nCuts=20:MaxDepth=2" );
-
-
-        factory->BookMethod( dataloader.get(), TMVA::Types::kBDT, "BDTD_2","!H:!V:NTrees=200:MaxDepth=3:MinNodeSize=2.5%:"
-                                        "nCuts=-1:BoostType=Bagging:UseBaggedBoost=True:BaggedSampleFraction=0.6:UseRandomisedTrees=True:"
-                                        "UseNvars=2:SeparationType=GiniIndex:UseYesNoLeaf:VarTransform=Decorrelate" );
+                                    "!H:!V:NTrees=1000:MinNodeSize=2.5%:BoostType=Grad:Shrinkage=0.10:UseBaggedBoost:BaggedSampleFraction=0.5:nCuts=20:MaxDepth=3:VarTransform=PCA" );
 
 
         factory->TrainAllMethods();
@@ -199,5 +193,6 @@ private:
 
 
 PROGRAM_MAIN(analysis::MvaClassification, Arguments) // definition of the main program function
-/*./run.sh MvaTraining --input_path ~/Desktop/tuples --output_file myfile.root --cfg_file hh-bbtautau/Studies/config/mva_config.cfg --tree_name muTau --number_events 10000000
+
+//./run.sh MvaTraining --input_path ~/Desktop/tuples --output_file BDT_lm_muTau.root --cfg_file hh-bbtautau/Studies/config/mva_config.cfg --tree_name muTau --number_events 10000000
 
