@@ -339,6 +339,49 @@ double Pzetavisible(const LVector1& l1_p4, const LVector2& l2_p4)
     return ll_p2u / ll_mod;
 }
 
+////Creat 2D histos for each pair of variables
+//std::map<VarPair, TH2D*> Create2DHisto(std::map<std::string, std::vector<double>> sample_signal, std::string class_sample){
+//    std::map<VarPair, TH2D*> histo;
+//    for(const auto& var_1 : sample_signal) {
+//        for(const auto& var_2 : sample_signal) {
+//            const VarPair var_12(var_1.first, var_2.first);
+//            const VarPair var_21(var_2.first, var_1.first);
+//            if(histo.count(var_21)) continue;
+
+//        }
+//    }
+
+//}
+
+
+////Mutual Information method for non-linear correlations estimates in 2D histogram
+//std::map<VarPair,double> GetMutualInformation(std::map<VarPair, TH2D*> histo){
+//    std::map<VarPair,double> mutual_information;
+//    for(const auto& var : histo) {
+//        VarPair name = var.first;
+//        TH2D* h = var[name];
+//        double area=h.Integral();
+//        TH2D hc(h); //copy histogram and rebin to speed up procedure
+//        hc.RebinX(2);
+//        hc.RebinY(2);
+//        int maxbin_x=hc.GetNbinsX();
+//        int maxbin_y=hc.GetNbinsY();
+//        double m_i=0;
+//        for (Int_t x = 1; x <= maxbin_x; x++) {
+//            for (Int_t y = 1; y <= maxbin_y; y++) {
+//                double p_xy = hc.GetBinContent(x,y)/area;
+//                double p_x  = hc.Integral(x,x,1,maxbin_y)/area;
+//                double p_y  = hc.Integral(1,maxbin_x,y,y)/area;
+//                if (p_x > 0. && p_y > 0. && p_xy > 0.){
+//                    m_i += p_xy*TMath::Log(p_xy / (p_x * p_y));
+//                }
+//            }
+//        }
+//        mutual_information[name]=m_i;
+//    }
+//    return mutualinformation;
+//}
+
 
 using SampleEntryCollection = std::vector<SampleEntry>;
 
@@ -398,7 +441,7 @@ public:
 
                 LorentzVectorE_Float bb= event.jets_p4[0] + event.jets_p4[1];
                 LorentzVectorM_Float leptons= event.p4_1 + event.p4_2;
-                LorentzVectorM_Float leptonsMET= event.p4_1 + event.p4_2 + event.pfMET_p4;
+//                LorentzVectorM_Float leptonsMET= event.p4_1 + event.p4_2 + event.pfMET_p4;
 
                 double circular_cut=std::sqrt(pow(event.SVfit_p4.mass()-116.,2)+pow(bb.M()-111,2));
                 if (circular_cut>40) continue;
@@ -406,73 +449,73 @@ public:
 
                 vars["pt_l1"] = event.p4_1.pt();
                 vars["pt_l2"] = event.p4_2.pt();
-//                vars["pt_jet1"] = event.jets_p4[0].pt();
-//                vars["pt_jet2"] = event.jets_p4[1].pt();
-//                vars["pt_l1l2"] = leptons.pt();
-//                vars["pt_sv"] = event.SVfit_p4.pt();
-//                vars["pt_l1l2met"] = leptonsMET.pt();
-//                vars["pt_b1b2"] = bb.pt();
+//                vars["pt_b1"] = event.jets_p4[0].pt();
+//                vars["pt_b2"] = event.jets_p4[1].pt();
+//                vars["pt_l1+l2"] = leptons.pt();
+//                vars["pt_htautau"] = event.SVfit_p4.pt();
+//                vars["pt_l1+l2+met"] = leptonsMET.pt();
+//                vars["pt_hbb"] = bb.pt();
                 vars["pt_met"] = event.pfMET_p4.pt();
 
 //                vars["p_zeta"] = Pzeta(event.p4_1, event.p4_2, event.pfMET_p4);
 //                vars["p_zeta_visible"] = Pzetavisible(event.p4_1,event.p4_2);
 
-                vars["abs(dphi_l1l2)"] = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.p4_1, event.p4_2));
-                vars["dphi_l1l2"] = (ROOT::Math::VectorUtil::DeltaPhi(event.p4_1, event.p4_2));
-//                vars["abs(dphi_jet1jet2)"] = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.jets_p4[0], event.jets_p4[1]));
-                vars["dphi_jet1jet2"] = (ROOT::Math::VectorUtil::DeltaPhi(event.jets_p4[0], event.jets_p4[1]));
-//                vars["abs(dphi_l1met)"] = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.p4_1, event.pfMET_p4));
-//                vars["dphi_l1met"] = (ROOT::Math::VectorUtil::DeltaPhi(event.p4_1, event.pfMET_p4));
-//                vars["abs(dphi_l2met)"] = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.p4_2, event.pfMET_p4));
-                vars["dphi_l2met"] = (ROOT::Math::VectorUtil::DeltaPhi(event.p4_2, event.pfMET_p4));
-//                vars["abs(dphi_l1l2met)"] = std::abs(ROOT::Math::VectorUtil::DeltaPhi(leptons, event.pfMET_p4));
-//                vars["dphi_l1l2met"] = (ROOT::Math::VectorUtil::DeltaPhi(leptons, event.pfMET_p4));
-//                vars["abs(dphi_svmet)"] = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.SVfit_p4, event.pfMET_p4));
-                vars["dphi_svmet"] = (ROOT::Math::VectorUtil::DeltaPhi(event.SVfit_p4, event.pfMET_p4));
-//                vars["abs(dphi_b1b2met)"] = std::abs(ROOT::Math::VectorUtil::DeltaPhi(bb, event.pfMET_p4));
-                vars["dphi_b1b2met"] = (ROOT::Math::VectorUtil::DeltaPhi(bb, event.pfMET_p4));
-                vars["abs(dphi_b1b2sv)"] = std::abs(ROOT::Math::VectorUtil::DeltaPhi(bb, event.SVfit_p4));
-                vars["dphi_b1b2sv"] = (ROOT::Math::VectorUtil::DeltaPhi(bb, event.SVfit_p4));
+//                vars["abs(dphi_l1-l2)"] = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.p4_1, event.p4_2));
+                vars["dphi_l1-l2"] = (ROOT::Math::VectorUtil::DeltaPhi(event.p4_1, event.p4_2));
+//                vars["abs(dphi_b1-b2)"] = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.jets_p4[0], event.jets_p4[1]));
+//                vars["dphi_b1-b2"] = (ROOT::Math::VectorUtil::DeltaPhi(event.jets_p4[0], event.jets_p4[1]));
+//                vars["abs(dphi_l1-met)"] = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.p4_1, event.pfMET_p4));
+//                vars["dphi_l1-met"] = (ROOT::Math::VectorUtil::DeltaPhi(event.p4_1, event.pfMET_p4));
+//                vars["abs(dphi_l2-met)"] = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.p4_2, event.pfMET_p4));
+//                vars["dphi_l2-met"] = (ROOT::Math::VectorUtil::DeltaPhi(event.p4_2, event.pfMET_p4));
+//                vars["abs(dphi_l1+l2-met)"] = std::abs(ROOT::Math::VectorUtil::DeltaPhi(leptons, event.pfMET_p4));
+//                vars["dphi_l1+l2-met"] = (ROOT::Math::VectorUtil::DeltaPhi(leptons, event.pfMET_p4));
+//                vars["abs(dphi_htautau-met)"] = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.SVfit_p4, event.pfMET_p4));
+                vars["dphi_htautau-met"] = (ROOT::Math::VectorUtil::DeltaPhi(event.SVfit_p4, event.pfMET_p4));
+//                vars["abs(dphi_hbb-met)"] = std::abs(ROOT::Math::VectorUtil::DeltaPhi(bb, event.pfMET_p4));
+                vars["dphi_hbb-met"] = (ROOT::Math::VectorUtil::DeltaPhi(bb, event.pfMET_p4));
+//                vars["abs(dphi_hbb-hatutau)"] = std::abs(ROOT::Math::VectorUtil::DeltaPhi(bb, event.SVfit_p4));
+                vars["dphi_hbb-htautau"] = (ROOT::Math::VectorUtil::DeltaPhi(bb, event.SVfit_p4));
 
-                vars["abs(deta_l1l2)"] = std::abs(event.p4_1.eta() - event.p4_2.eta());
-                vars["deta_l1l2"] = (event.p4_1.eta() - event.p4_2.eta());
-//                vars["abs(deta_jet1jet2)"] = std::abs(event.jets_p4[0].eta() - event.jets_p4[1].eta());
-                vars["deta_jet1jet2"] = (event.jets_p4[0].eta() - event.jets_p4[1].eta());
-//                vars["abs(deta_l1met)"] = std::abs(event.p4_1.eta()-event.pfMET_p4.eta());
-//                vars["deta_l1met"] = (event.p4_1.eta()-event.pfMET_p4.eta());
-//                vars["abs(deta_l2met)"] = std::abs(event.p4_2.eta()-event.pfMET_p4.eta());
-//                vars["deta_l2met"] = (event.p4_2.eta()-event.pfMET_p4.eta());
-//                vars["abs(deta_l1l2met)"] = std::abs(leptons.eta()-event.pfMET_p4.eta());
-//                vars["deta_l1l2met"] = (leptons.eta()-event.pfMET_p4.eta());
-//                vars["abs(deta_svmet)"] = std::abs(event.SVfit_p4.eta()-event.pfMET_p4.eta());
-//                vars["deta_svmet"] = (event.SVfit_p4.eta()-event.pfMET_p4.eta());
-//                vars["abs(deta_b1b2met)"] = std::abs(bb.eta()-event.pfMET_p4.eta());
-//                vars["deta_b1b2met"] = (bb.eta()-event.pfMET_p4.eta());
-                vars["abs(deta_b1b2sv)"] = std::abs(bb.eta()-event.SVfit_p4.eta());
-                vars["deta_b1b2sv"] = bb.eta()-event.SVfit_p4.eta();
+//                dmvars["abs(deta_l1+l2)"] = std::abs(event.p4_1.eta() - event.p4_2.eta());
+                vars["deta_l1+l2"] = (event.p4_1.eta() - event.p4_2.eta());
+//                vars["abs(deta_b1+b2)"] = std::abs(event.jets_p4[0].eta() - event.jets_p4[1].eta());
+                vars["deta_b1+b2"] = (event.jets_p4[0].eta() - event.jets_p4[1].eta());
+//                vars["abs(deta_l1+met)"] = std::abs(event.p4_1.eta()-event.pfMET_p4.eta());
+//                vars["deta_l1+met"] = (event.p4_1.eta()-event.pfMET_p4.eta());
+//                vars["abs(deta_l2+met)"] = std::abs(event.p4_2.eta()-event.pfMET_p4.eta());
+//                vars["deta_l2+met"] = (event.p4_2.eta()-event.pfMET_p4.eta());
+//                devars["abs(deta_l1+l2-met)"] = std::abs(leptons.eta()-event.pfMET_p4.eta());
+//                vars["deta_l1+l2-met"] = (leptons.eta()-event.pfMET_p4.eta());
+//                vars["abs(deta_htautau-met)"] = std::abs(event.SVfit_p4.eta()-event.pfMET_p4.eta());
+//                vars["deta_hatutau-met"] = (event.SVfit_p4.eta()-event.pfMET_p4.eta());
+//                vars["abs(deta_hbb-met)"] = std::abs(bb.eta()-event.pfMET_p4.eta());
+//                vars["deta_hbb-met"] = (bb.eta()-event.pfMET_p4.eta());
+                vars["abs(deta_hbb-htautau)"] = std::abs(bb.eta()-event.SVfit_p4.eta());
+                vars["deta_hbb-hatutau"] = bb.eta()-event.SVfit_p4.eta();
 
-//                vars["dR_l1l2"] = (ROOT::Math::VectorUtil::DeltaR(event.p4_1, event.p4_2));
-                vars["dR_b1b2"] = (ROOT::Math::VectorUtil::DeltaR(event.jets_p4[0], event.jets_p4[1]));
-                vars["dR_l1met"] = (ROOT::Math::VectorUtil::DeltaR(event.p4_1, event.pfMET_p4));
-                vars["dR_l2met"] = (ROOT::Math::VectorUtil::DeltaR(event.p4_2, event.pfMET_p4));
-                vars["dR_l1l2met"] = (ROOT::Math::VectorUtil::DeltaR(leptons, event.pfMET_p4));
-                vars["dR_svmet"] = (ROOT::Math::VectorUtil::DeltaR(event.SVfit_p4, event.pfMET_p4));
-//                vars["dR_b1b2met"] = (ROOT::Math::VectorUtil::DeltaR(bb, event.pfMET_p4));
-//                vars["dR_b1b2sv"] = (ROOT::Math::VectorUtil::DeltaR(bb, event.SVfit_p4));
+                vars["dR_l1+l2"] = (ROOT::Math::VectorUtil::DeltaR(event.p4_1, event.p4_2));
+                vars["dR_b1+b2"] = (ROOT::Math::VectorUtil::DeltaR(event.jets_p4[0], event.jets_p4[1]));
+                vars["dR_l1-met"] = (ROOT::Math::VectorUtil::DeltaR(event.p4_1, event.pfMET_p4));
+                vars["dR_l2-met"] = (ROOT::Math::VectorUtil::DeltaR(event.p4_2, event.pfMET_p4));
+                vars["dR_l1+l2-met"] = (ROOT::Math::VectorUtil::DeltaR(leptons, event.pfMET_p4));
+                vars["dR_htautau-met"] = (ROOT::Math::VectorUtil::DeltaR(event.SVfit_p4, event.pfMET_p4));
+//                vars["dR_hbb-met"] = (ROOT::Math::VectorUtil::DeltaR(bb, event.pfMET_p4));
+//                vars["dR_hbb-htautau"] = (ROOT::Math::VectorUtil::DeltaR(bb, event.SVfit_p4));
 
-//                vars["dR_jet1jet2Pt_b1b2"] = (ROOT::Math::VectorUtil::DeltaR(event.jets_p4[0], event.jets_p4[1]))*bb.Pt();
-//                vars["dR_l1l2Pt_sv"] = (ROOT::Math::VectorUtil::DeltaR(event.p4_1, event.p4_2))*event.SVfit_p4.Pt();
+//                vars["dR_b1+b2Pt_hbb"] = (ROOT::Math::VectorUtil::DeltaR(event.jets_p4[0], event.jets_p4[1]))*bb.Pt();
+//                vars["dR_l1+l2Pt_htautau"] = (ROOT::Math::VectorUtil::DeltaR(event.p4_1, event.p4_2))*event.SVfit_p4.Pt();
 
-//                vars["massinvariant_l1l2met"] = ROOT::Math::VectorUtil::InvariantMass(leptons,event.pfMET_p4); //
-                vars["mass_sv"] = event.SVfit_p4.M();
-//                vars["mass_l1l2"] = std::sqrt(pow(event.p4_1.Et()+event.p4_2.Et(),2)-pow(event.p4_1.px()+event.p4_2.px(),2)+pow(event.p4_1.py()+event.p4_2.py(),2));//
-                vars["mass_b1b2"] = bb.M();
+//                vars["mass_l1+l2-met"] = ROOT::Math::VectorUtil::InvariantMass(leptons,event.pfMET_p4); //
+                vars["mass_htautau"] = event.SVfit_p4.M();
+//                vars["mass_l1+l2"] = std::sqrt(pow(event.p4_1.Et()+event.p4_2.Et(),2)-pow(event.p4_1.px()+event.p4_2.px(),2)+pow(event.p4_1.py()+event.p4_2.py(),2));//
+                vars["mass_hbb"] = bb.M();
 //                vars["MT_l1"] = Calculate_MT(event.p4_1,event.pfMET_p4);
-                vars["MT_l2"] = Calculate_MT(event.p4_2,event.pfMET_p4);
-                vars["MT_sv"] = Calculate_MT(event.SVfit_p4, event.pfMET_p4); //
-                vars["MT_l1l2"] = Calculate_MT(leptons, event.pfMET_p4);
+//                vars["MT_l2"] = Calculate_MT(event.p4_2,event.pfMET_p4);
+                vars["MT_hatutau"] = Calculate_MT(event.SVfit_p4, event.pfMET_p4);
+                vars["MT_l1+l2"] = Calculate_MT(leptons, event.pfMET_p4);
+                vars["MT_tot"] = Calculate_TotalMT(event.p4_1,event.p4_2,event.pfMET_p4); //Total transverse mass
                 vars["mass_H"] = ROOT::Math::VectorUtil::InvariantMass(bb,event.SVfit_p4);
-                vars["mass_H(l1l2met+b1b2)"] = ROOT::Math::VectorUtil::InvariantMass(bb,leptonsMET);
 
                 LorentzVectorM_Float t1 = event.p4_1 + event.jets_p4[0] + event.pfMET_p4;
                 LorentzVectorM_Float t2 = event.p4_2 + event.jets_p4[0] + event.pfMET_p4;
@@ -482,55 +525,77 @@ public:
                 double d2 = std::abs(t2.mass() - mass_top);
                 double d3 = std::abs(t3.mass() - mass_top);
                 double d4 = std::abs(t4.mass() - mass_top);
-                if (d1<d2 && d1<d3 && d1<d4) vars["mass_top"] = d1;
-                if (d2<d1 && d2<d3 && d2<d4) vars["mass_top"] = d2;
-                if (d3<d1 && d3<d2 && d3<d4) vars["mass_top"] = d3;
-                if (d4<d1 && d4<d3 && d4<d2) vars["mass_top"] = d4;
+                if (d1<d2 && d1<d3 && d1<d4) vars["mass_top(met)"] = d1;
+                if (d2<d1 && d2<d3 && d2<d4) vars["mass_top(met)"] = d2;
+                if (d3<d1 && d3<d2 && d3<d4) vars["mass_top(met)"] = d3;
+                if (d4<d1 && d4<d3 && d4<d2) vars["mass_top(met)"] = d4;
 
-                TLorentzVector lvec_t1(event.p4_1.x(),event.p4_1.y(),event.p4_1.z(),event.p4_1.t());
-                TLorentzVector lvec_t2(event.p4_2.x(),event.p4_2.y(),event.p4_2.z(),event.p4_2.t());
-                TLorentzVector lvec_svfit(event.SVfit_p4.x(),event.SVfit_p4.y(),event.SVfit_p4.z(),event.SVfit_p4.t());
-                TVector3 boost_1 = -(lvec_t1+lvec_t2).BoostVector();
-                lvec_t1.Boost(boost_1);
-                lvec_svfit.Boost(boost_1);
-//                vars["theta_1"] = ROOT::Math::VectorUtil::Angle(lvec_t1,lvec_svfit);
+                LorentzVectorM_Float t11 = event.p4_1 + event.jets_p4[0];
+                LorentzVectorM_Float t22 = event.p4_2 + event.jets_p4[0];
+                LorentzVectorM_Float t33 = event.p4_1 + event.jets_p4[1];
+                LorentzVectorM_Float t44 = event.p4_2 + event.jets_p4[1];
+                double d11 = std::abs(t11.mass() - mass_top);
+                double d22 = std::abs(t22.mass() - mass_top);
+                double d33 = std::abs(t33.mass() - mass_top);
+                double d44 = std::abs(t44.mass() - mass_top);
+                if (d11<d22 && d11<d33 && d11<d44) vars["mass_top"] = d11;
+                if (d22<d11 && d22<d33 && d22<d44) vars["mass_top"] = d22;
+                if (d33<d11 && d33<d22 && d33<d44) vars["mass_top"] = d33;
+                if (d44<d11 && d44<d33 && d44<d22) vars["mass_top"] = d44;
 
-                TLorentzVector lvec_j1(event.jets_p4[0].x(),event.jets_p4[0].y(),event.jets_p4[0].z(),event.jets_p4[0].t());
-                TLorentzVector lvec_j2(event.jets_p4[1].x(),event.jets_p4[1].y(),event.jets_p4[1].z(),event.jets_p4[1].t());
-                TLorentzVector lvec_j1j2(bb.x(),bb.y(),bb.z(),bb.t());
-                TVector3 boost_2 = -(lvec_j1+lvec_j2).BoostVector();
-                lvec_j1.Boost(boost_2);
-                lvec_j1j2.Boost(boost_2);
-                vars["theta_2"] = ROOT::Math::VectorUtil::Angle(lvec_j1,lvec_j1j2);
+                const analysis::LorentzVectorXYZ sv(event.SVfit_p4.px(),event.SVfit_p4.py(),event.SVfit_p4.pz(),event.SVfit_p4.e());
+                const auto boosted_tau1 = ROOT::Math::VectorUtil::boost(event.p4_1, sv.BoostToCM());
+                vars["theta_l1(h)"] = std::acos(ROOT::Math::VectorUtil::CosTheta(boosted_tau1, sv)); //theta angle between the first final state lepton and the direction of flight of h_tautau in the h_tautau rest frame
+                vars["phi_l1(h)"] = std::atan(boosted_tau1.py()/boosted_tau1.px()); //phi angle between the first final state lepton and the direction of flight of h_tautau in the h_tautau rest frame
+                const auto boosted_tau2 = ROOT::Math::VectorUtil::boost(event.p4_2, sv.BoostToCM());
+                vars["theta_l2(h)"] = std::acos(ROOT::Math::VectorUtil::CosTheta(boosted_tau2, sv)); //angle between the second final state lepton and the direction of flight of h_tautau in the h_tautau rest frame
+                vars["phi_l2(h)"] = std::atan(boosted_tau2.py()/boosted_tau2.px()); //phi angle between the second final state lepton and the direction of flight of h_tautau in the h_tautau rest frame
+                vars["R_l1-l2(h)"] = ROOT::Math::VectorUtil::DeltaR(boosted_tau1, boosted_tau2); // R between the two final state leptons in the h_tautau rest frame
 
-                TLorentzVector lvec_sv(event.SVfit_p4.x(),event.SVfit_p4.y(),event.SVfit_p4.z(),event.SVfit_p4.t());
-                TLorentzVector lvec_b1b2(bb.x(),bb.y(),bb.z(),bb.t());
-                TLorentzVector lvec_l1(event.p4_1.x(),event.p4_1.y(),event.p4_1.z(),event.p4_1.t());
-                TLorentzVector lvec_b1(event.jets_p4[0].x(),event.jets_p4[0].y(),event.jets_p4[0].z(),event.jets_p4[0].t());
-                TVector3 boost = (lvec_sv+lvec_b1b2).BoostVector();
-                lvec_l1.Boost(boost);
-                lvec_t2.Boost(boost);
-                lvec_b1.Boost(boost);
-                lvec_j2.Boost(boost);
-                TVector3 vec_l1 = lvec_l1.Vect();
-                TVector3 vec_b1 = lvec_b1.Vect();
-                TVector3 vec_l2 = lvec_t2.Vect();
-                TVector3 vec_b2 = lvec_j2.Vect();
-                TVector3 n1, n2;
-                n1 = vec_l1.Cross(vec_l2);
-                n2 = vec_b1.Cross(vec_b2);
-                vars["phi"] = ROOT::Math::VectorUtil::Angle(n1,n2);
+                const analysis::LorentzVectorXYZ hbb(bb.px(),bb.py(),bb.pz(),bb.e());
+                const auto boosted_b1 = ROOT::Math::VectorUtil::boost(event.jets_p4[0], hbb.BoostToCM());
+                vars["theta_b1(h)"] = std::acos(ROOT::Math::VectorUtil::CosTheta(boosted_b1, hbb)); //angle between the first final state bjet and the direction of flight of h_bb in the h_bb rest frame
+                vars["phi_b1(h)"] = std::atan(boosted_b1.py()/boosted_b1.px()); //phi angle between the first final state bjet and the direction of flight of h_bb in the h_bb rest frame
+                const auto boosted_b2 = ROOT::Math::VectorUtil::boost(event.jets_p4[2], hbb.BoostToCM());
+                vars["theta_b2(h)"] = std::acos(ROOT::Math::VectorUtil::CosTheta(boosted_b2, hbb)); //angle between the second final state bjet and the direction of flight of h_bb in the h_bb rest frame
+                vars["phi_b2(h)"] = std::atan(boosted_b2.py()/boosted_b2.px()); //phi angle between the second final state bjet and the direction of flight of h_bb in the h_bb rest frame
+                vars["R_b1-b2(h)"] = ROOT::Math::VectorUtil::DeltaR(boosted_b1, boosted_b2); // R between the two final state b-jetsin the h_bb rest frame
 
-                lvec_sv.Boost(boost);
-                vars["theta_star"] = std::atan(std::sqrt(pow(lvec_sv.X(),2)+pow(lvec_sv.Y(),2))/lvec_sv.Z());
+                LorentzVectorE_Float H = bb + event.SVfit_p4;
+                const analysis::LorentzVectorXYZ vec_H(H.px(),H.py(),H.pz(),H.e());
+                const auto boosted_l1 = ROOT::Math::VectorUtil::boost(event.p4_1, vec_H.BoostToCM());
+                const auto boosted_l2 = ROOT::Math::VectorUtil::boost(event.p4_2, vec_H.BoostToCM());
+                const auto boosted_j1 = ROOT::Math::VectorUtil::boost(event.jets_p4[0], vec_H.BoostToCM());
+                const auto boosted_j2 = ROOT::Math::VectorUtil::boost(event.jets_p4[1], vec_H.BoostToCM());
+                const TVector3 vec_l1(boosted_l1.px(),boosted_l1.py(),boosted_l1.pz());
+                const TVector3 vec_l2(boosted_l2.px(),boosted_l2.py(),boosted_l2.pz());
+                const TVector3 vec_j1(boosted_j1.px(),boosted_j1.py(),boosted_j1.pz());
+                const TVector3 vec_j2(boosted_j2.px(),boosted_j2.py(),boosted_j2.pz());
+                const auto n1 = vec_l1.Cross(vec_l2);
+                const auto n2 = vec_j1.Cross(vec_j2);
+                vars["phi(H)"] = ROOT::Math::VectorUtil::Angle(n1, n2); //angle between the decay planes of the four final state elements expressed in the H rest frame
 
-                TLorentzVector lz_axis(0,0,1,0);
-                lz_axis.Boost(boost);
-                TVector3 n_1;
-                TVector3 z_axis = lz_axis.Vect();
-                TVector3 vec_sv = lvec_sv.Vect();
-                n_1 = z_axis.Cross(vec_sv);
-                vars["phi_1"] = ROOT::Math::VectorUtil::Angle(n1,n_1);
+
+                const auto boosted_htautau = ROOT::Math::VectorUtil::boost(event.SVfit_p4, vec_H.BoostToCM());
+                vars["theta_star1(H)"] = std::acos(ROOT::Math::VectorUtil::CosTheta(boosted_htautau, ROOT::Math::Cartesian3D<>(0, 0, 1))); // Is the production angle of the h_tautau defined in the H rest frame
+
+                const auto boosted_hbb = ROOT::Math::VectorUtil::boost(bb, vec_H.BoostToCM());
+                vars["theta_star2(H)"] = std::acos(ROOT::Math::VectorUtil::CosTheta(boosted_hbb, ROOT::Math::Cartesian3D<>(0, 0, 1)));// Is the production angle of the h_bb defined in the H rest frame
+
+                vars["phi_hbb-htautau(H)"] = ROOT::Math::VectorUtil::DeltaPhi(boosted_htautau,boosted_hbb); //Phi angle between hbb and htautau in the H rest frame
+                vars["theta_hbb-htautau(H)"] = std::acos(ROOT::Math::VectorUtil::CosTheta(boosted_htautau, boosted_hbb)); //Theta angle between hbb and htautau in the H rest frame
+
+                const TVector3 vec_htautau(boosted_htautau.px(),boosted_htautau.py(),boosted_htautau.pz());
+                TVector3 z_axis(0,0,1);
+                const auto n3 = vec_htautau.Cross(z_axis);
+                vars["phi_1(H)"] = ROOT::Math::VectorUtil::Angle(n1,n3); //Angle between the decay plane of the lepton pair and a plane defined by the vector of the h_tautau in the H rest frame and the positive direction of z axis
+
+                const TVector3 vec_hbb(boosted_hbb.px(),boosted_hbb.py(),boosted_hbb.pz());
+                const auto n4 = vec_hbb.Cross(z_axis);
+                vars["phi_2(H)"] = ROOT::Math::VectorUtil::Angle(n2,n4); //Angle between the decay plane of the b-jets pair and a plane defined by the vector of the h_bb in the H rest frame and the positive direction of z axis
+
+                vars["phi_htautau(H)"] = std::atan(vec_htautau.Y()/vec_htautau.X()); //Phi angle of h_tautau in the H rest frame
+                vars["phi_hbb(H)"] = std::atan(vec_hbb.Y()/vec_hbb.X()); //Phi angle of h_bb in the H rest frame
 
                 vars.AddEvent(samplename);
             }
@@ -563,9 +628,6 @@ public:
             }
         }
 
-//        CreateMatrixHistos(sample_vars_signal,cov_matrix_signal,anaData,"covariance","Signal");
-//        CreateMatrixHistos(sample_vars_bkg,cov_matrix_bkg,anaData,"covariance","Background");
-
         std::map<VarPair, double> corr_matrix_signal, corr_matrix_bkg;
         corr_matrix_signal = CovToCorr(cov_matrix_signal);
         corr_matrix_bkg = CovToCorr(cov_matrix_bkg);
@@ -594,7 +656,7 @@ public:
             std::pair<VarPair, double> element_difference = corr_vector_difference[i];
             VarPair pair = element_difference.first;
 
-            if ((std::abs(corr_matrix_signal_fix[pair])>0.3 && std::abs(corr_matrix_bkg_fix[pair])>0.3) && element_difference.second<0.6){
+            if ((std::abs(corr_matrix_signal_fix[pair])>0.2 && std::abs(corr_matrix_bkg_fix[pair])>0.2) && element_difference.second<0.65){
                 ofs <<pair.first<<"    "<<pair.second<<"    "<<std::abs(corr_matrix_signal_fix[pair])<<"    "<<std::abs(corr_matrix_bkg_fix[pair])<<"    "<<element_difference.second<<"   "<<chi2[pair.first]<<"    "<<chi2[pair.second]<<"  "<<kolmogorov[pair.first]<<"    "<<kolmogorov[pair.second]<<std::endl;
                 if (kolmogorov[pair.first]<=kolmogorov[pair.second] && chi2[pair.first]<=chi2[pair.second]) eliminate[pair.first]++;
                 if (kolmogorov[pair.first]>kolmogorov[pair.second] && chi2[pair.first]>chi2[pair.second]) eliminate[pair.second]++;
