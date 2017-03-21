@@ -91,7 +91,7 @@ private:
             const Channel descriptor_channel = Parse<Channel>(file_descriptor_element.channel);
             if (descriptor_channel != channel) continue;
 
-            double count = 0;
+            //double count = 0;
             for (auto single_file_path : file_descriptor_element.file_paths){ //loop on files
 
                 std::cout << "File descriptor characteristics: " << file_descriptor.first << ", " <<
@@ -117,11 +117,11 @@ private:
 
 
                 } //end loop on entries
-                if (sample_desc.gen_counts.count(GenEventType::TTbar_SemiLeptonic)){
-                    std::cout << "n events semileptonic in incl: " << single_file_path << " " <<
-                                size_t(sample_desc.gen_counts.at(GenEventType::TTbar_SemiLeptonic) - count) << std::endl;
-                    count = sample_desc.gen_counts.at(GenEventType::TTbar_SemiLeptonic);
-                }
+//                if (sample_desc.gen_counts.count(GenEventType::TTbar_SemiLeptonic)){
+//                    std::cout << "n events semileptonic in incl: " << single_file_path << " " <<
+//                                size_t(sample_desc.gen_counts.at(GenEventType::TTbar_SemiLeptonic) - count) << std::endl;
+//                    count = sample_desc.gen_counts.at(GenEventType::TTbar_SemiLeptonic);
+//                }
             } // end loop on files
             all_samples.push_back(sample_desc);
         } //end loop n file_descriptors
@@ -132,12 +132,7 @@ private:
     {
         double all_events = global_map.Integral(output_bin);
         double sample_contribution = inclusive.Integral(output_bin);
-        // formula 3
-//        PhysicalValue nu_incl(sample_contribution/inclusive.Integral(),
-//                              sqrt(sample_contribution)/inclusive.Integral());
-//        PhysicalValue weight (nu_incl.GetValue()/all_events,
-//                              (all_events - sample_contribution)/std::pow(all_events,2)*
-//                              sqrt(sample_contribution)/inclusive.Integral());
+        // formula 2
         
         PhysicalValue nu_incl(sample_contribution,
                               sqrt(sample_contribution));
@@ -146,6 +141,7 @@ private:
                               sqrt(sample_contribution));
         output_bin.nu = nu_incl;
         output_bin.weight = weight;
+        output_bin.inclusive_integral = inclusive.Integral();
 
         if(output_bin.nu.GetStatisticalError() == std::numeric_limits<double>::infinity())
             throw exception("ref not found");
