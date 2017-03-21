@@ -61,12 +61,6 @@ private:
         return EnabledBranches_read;
     }
 
-//    static const std::set<std::string>& GetDisabledBranches()
-//    {
-//        static const std::set<std::string> DisabledBranches_read = {
-//         "dphi_mumet", "dphi_metsv", "dR_taumu", "mT1", "mT2", "dphi_bbmet", "dphi_bbsv", "dR_bb", "m_bb", "n_jets","btag_weight", "ttbar_weight",  "PU_weight", "shape_denominator_weight"};
-//        return DisabledBranches_read;
-//    }
     
     void LoadInputs()
     {
@@ -117,11 +111,6 @@ private:
 
 
                 } //end loop on entries
-//                if (sample_desc.gen_counts.count(GenEventType::TTbar_SemiLeptonic)){
-//                    std::cout << "n events semileptonic in incl: " << single_file_path << " " <<
-//                                size_t(sample_desc.gen_counts.at(GenEventType::TTbar_SemiLeptonic) - count) << std::endl;
-//                    count = sample_desc.gen_counts.at(GenEventType::TTbar_SemiLeptonic);
-//                }
             } // end loop on files
             all_samples.push_back(sample_desc);
         } //end loop n file_descriptors

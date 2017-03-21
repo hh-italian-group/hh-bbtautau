@@ -56,16 +56,18 @@ struct DYBinDescriptor {
             DYBinDescriptor descriptor;
             if(columns.size() >= 6)
                 ss >> descriptor.n_jet >> descriptor.n_bjet >> descriptor.n_ht;
-            if (columns.size() >= 11){
+            if (columns.size() >= 12){
                 double col_weight = analysis::Parse<double>(columns.at(6));
                 double col_weight_err = analysis::Parse<double>(columns.at(7))*col_weight;
                 descriptor.weight = PhysicalValue(col_weight,col_weight_err);
                 double col_nu = analysis::Parse<double>(columns.at(8));
                 double col_nu_err = analysis::Parse<double>(columns.at(9))*col_nu;
                 descriptor.nu = PhysicalValue(col_nu,col_nu_err);
-                descriptor.ref_sample = columns.at(10);
+                descriptor.inclusive_integral = analysis::Parse<double>(columns.at(10));
+                descriptor.ref_sample = columns.at(11);
+
             }
-            if(columns.size() != 6 && columns.size() != 11)
+            if(columns.size() != 6 && columns.size() != 12)
                 throw exception("Bad configuration file.");
             dyBinDescriptors.push_back(descriptor);
         }

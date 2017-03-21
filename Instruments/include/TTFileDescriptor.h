@@ -59,6 +59,7 @@ struct TTBinDescriptor {
                 double col_nu = analysis::Parse<double>(columns.at(4));
                 double col_nu_err = analysis::Parse<double>(columns.at(5))*col_nu;
                 descriptor.nu = PhysicalValue(col_nu,col_nu_err);
+                descriptor.inclusive_integral = analysis::Parse<double>(columns.at(6));
             }
             if(columns.size() != 2 && columns.size() != 7)
                 throw exception("Bad configuration file.");
