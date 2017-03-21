@@ -11,16 +11,11 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/PhysicalValue.h"
 #include "h-tautau/Analysis/include/SummaryTuple.h"
 #include "AnalysisTools/Core/include/ConfigReader.h"
+#include "Instruments/include/SampleDescriptor.h"
 
 namespace analysis {
 
 namespace sample_merging{
-
-enum class FileType { inclusive, exclusive };
-ENUM_NAMES(FileType) = {
-    { FileType::inclusive, "inclusive" },
-    { FileType::exclusive, "exclusive" }
-};
 
 struct DYBinDescriptor {
     std::string name;
@@ -34,6 +29,7 @@ struct DYBinDescriptor {
     PhysicalValue weight;
     std::string ref_sample;
     FileType ref_fileType;
+    size_t inclusive_integral;
 
     DYBinDescriptor()
         : n_jet(0,0), n_bjet(0,0),n_ht(0,0),nu(0.0, std::numeric_limits<double>::infinity()),
@@ -60,16 +56,18 @@ struct DYBinDescriptor {
             DYBinDescriptor descriptor;
             if(columns.size() >= 6)
                 ss >> descriptor.n_jet >> descriptor.n_bjet >> descriptor.n_ht;
-            if (columns.size() >= 11){
+            if (columns.size() >= 12){
                 double col_weight = analysis::Parse<double>(columns.at(6));
                 double col_weight_err = analysis::Parse<double>(columns.at(7))*col_weight;
                 descriptor.weight = PhysicalValue(col_weight,col_weight_err);
                 double col_nu = analysis::Parse<double>(columns.at(8));
                 double col_nu_err = analysis::Parse<double>(columns.at(9))*col_nu;
                 descriptor.nu = PhysicalValue(col_nu,col_nu_err);
-                descriptor.ref_sample = columns.at(10);
+                descriptor.inclusive_integral = analysis::Parse<double>(columns.at(10));
+                descriptor.ref_sample = columns.at(11);
+
             }
-            if(columns.size() != 6 && columns.size() != 11)
+            if(columns.size() != 6 && columns.size() != 12)
                 throw exception("Bad configuration file.");
             dyBinDescriptors.push_back(descriptor);
         }
@@ -84,7 +82,7 @@ struct DYBinDescriptor {
             throw analysis::exception("Unable to create outputfile'");
         cfg.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 
-        static const std::vector<int> column_widths = { 9,9,9,9,9,11,15,15,15,15,20 };
+        static const std::vector<int> column_widths = { 9,9,9,9,9,11,15,15,15,15,15,20 };
 
         cfg << std::setw(column_widths.at(0)) << "#n_jet_min " <<
                std::setw(column_widths.at(1)) << "n_jet_max " <<
@@ -96,7 +94,8 @@ struct DYBinDescriptor {
                std::setw(column_widths.at(7)) << " rel_err_w " <<
                std::setw(column_widths.at(8)) << " nu " <<
                std::setw(column_widths.at(9)) << " rel_err_nu  " <<
-               std::setw(column_widths.at(10)) << " ref_sample \n";
+               std::setw(column_widths.at(10)) << " incl_integral  " <<
+               std::setw(column_widths.at(11)) << " ref_sample \n";
 
         for(auto& output_bin : output_bins)
         {
@@ -110,7 +109,8 @@ struct DYBinDescriptor {
                    std::setw(column_widths.at(7)) << output_bin.weight.GetRelativeStatisticalError() << " " <<
                    std::setw(column_widths.at(8)) << output_bin.nu.GetValue() << " " <<
                    std::setw(column_widths.at(9)) << output_bin.nu.GetRelativeStatisticalError() << " " <<
-                   std::setw(column_widths.at(10)) << output_bin.ref_sample <<  "\n";
+                   std::setw(column_widths.at(10)) << output_bin.inclusive_integral << " " <<
+                   std::setw(column_widths.at(11)) << output_bin.ref_sample <<  "\n";
         }
         return cfg;
     }
