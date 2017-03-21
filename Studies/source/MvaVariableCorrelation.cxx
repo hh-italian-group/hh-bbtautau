@@ -93,15 +93,12 @@ std::map<int, std::map<std::string, std::pair<TH1D*,TH1D*>>> GetHistos(std::map<
         std::map<std::string, std::pair<TH1D*,TH1D*>> histos;
         std::map<std::string,std::vector<double>> v_b = sample_bkg[1];
         std::string mass;
-        if (var_m.first!=1) mass = "_mass"+std::to_string(var_m.first);
+        if (var_m.first != 1) mass = "_mass"+std::to_string(var_m.first);
         else mass = "";
-        std::cout<<"MASSA: "<<var_m.first<<std::endl;
+        if (var_m.first == 2000) mass = "_SM";
         for(const auto& var_1 : var_m.second) {
             std::vector<double> vector_s = var_1.second;
             std::vector<double> vector_b = v_b[var_1.first];
-            std::cout<<"variabile: "<<var_1.first<<std::endl;
-            std::cout<<"eventi segnale: "<<vector_s.size()<<std::endl;
-            std::cout<<"eventi fondo: "<<vector_b.size()<<std::endl;
 
             auto max_s = std::max_element(vector_s.begin(),vector_s.end());
             auto min_s = std::min_element(vector_s.begin(),vector_s.end());
@@ -112,15 +109,18 @@ std::map<int, std::map<std::string, std::pair<TH1D*,TH1D*>>> GetHistos(std::map<
             else min = *min_b;
             if (*max_s>=*max_b) max = *max_s;
             else max = *max_b;
+            std::cout<<"variabile: "<<var_1.first<<std::endl;
+            std::cout<<"min_s: "<<*min_s<<" max_s: "<<*max_s<<std::endl;
+            std::cout<<"min_b: "<<*min_b<<" max_b: "<<*max_b<<std::endl;
+            std::cout<<"min: "<<min<<" max: "<<max<<std::endl;
 
             const int nbin = 50;
-            TH1D* h_s = new TH1D((var_1.first+"Signal"+mass).c_str(),(var_1.first+"Signal"+mass).c_str(),nbin,min,max);
-            h_s->SetCanExtend(TH1::kAllAxes);
+            TH1D* h_s = new TH1D((var_1.first+"Signal"+mass).c_str(),(var_1.first+"Signal"+mass).c_str(),nbin,min-1,max+1);
             h_s->SetXTitle((var_1.first).c_str());
             for(Long64_t i = 0; i < vector_s.size(); i++){
                 h_s->Fill(vector_s[i]);
             }
-//            root_ext::WriteObject(*h_s, outfile.get());
+            root_ext::WriteObject(*h_s, outfile.get());
             int new_nbin_s = 0;
             double bin_s[nbin] = {};
             for (Long64_t i=0; i<=nbin; i++)
@@ -138,7 +138,7 @@ std::map<int, std::map<std::string, std::pair<TH1D*,TH1D*>>> GetHistos(std::map<
                 }
             }
             new_nbin_s++;
-            bin_s[new_nbin_s]=h_s->GetBinLowEdge(nbin+1);
+            bin_s[new_nbin_s]=h_s->GetBinLowEdge(nbin+1)+1;
             bin_s[0]=bin_s[1]-1;
             h_s->Delete();
 
@@ -157,11 +157,11 @@ std::map<int, std::map<std::string, std::pair<TH1D*,TH1D*>>> GetHistos(std::map<
 
             int new_nbin_b = 0;
             double bin_b[nbin] = {};
-            for (Long64_t i=0; i<=new_nbin_s; i++)
+            for (Long64_t i=0; i<=nbin; i++)
             {
                 double entry = histos[var_1.first].second->GetBinContent(i);
                 Long64_t rebin = i;
-                while (entry <= 10. && i<=new_nbin_s)
+                while (entry <= 10. && i<=nbin)
                 {
                     i++;
                     entry = entry + histos[var_1.first].second->GetBinContent(i);
@@ -172,7 +172,7 @@ std::map<int, std::map<std::string, std::pair<TH1D*,TH1D*>>> GetHistos(std::map<
                 }
             }
             new_nbin_b++;
-            bin_b[new_nbin_b]=histos[var_1.first].second->GetBinLowEdge(new_nbin_s+1);
+            bin_b[new_nbin_b]=histos[var_1.first].second->GetBinLowEdge(nbin+1)+1;
             bin_b[0]=bin_b[1]-1;
 
             bool check = false;
@@ -296,8 +296,9 @@ void CreateMatrixHistos(std::map<int, std::map<std::string,std::vector<double>>>
         int bin =  var_m.second.size();
         auto el = element[var_m.first];
         std::string mass;
-        if (var_m.first!=1) mass = "_mass"+std::to_string(var_m.first);
+        if (var_m.first != 1) mass = "_mass"+std::to_string(var_m.first);
         else mass = "";
+        if (var_m.first == 2000) mass = "_SM";
         TH2D* matrix= new TH2D((type+"_"+class_sample+mass).c_str(),(type+"_"+class_sample+mass).c_str(),bin,0,0,bin,0,0);
         matrix->SetCanExtend(TH1::kAllAxes);
         matrix->SetBins(bin, 0, bin, bin, 0, bin);
@@ -322,18 +323,18 @@ void CreateMatrixHistos(std::map<int, std::map<std::string,std::vector<double>>>
 
 //Remove diagonal elements from a symmetric matrix
 std::map<int, std::map<VarPair,double>> RemoveDiagonal(std::map<int, std::map<VarPair,double>> matrix){
-    std::map<int, std::map<VarPair,double>> matrix_diagonal;
-    matrix_diagonal = matrix;
+    auto matrix_fix = matrix;
     for(const auto& var_m: matrix){
         if (var_m.second.size() == 0) continue;
-        std::map<VarPair,double> mat = matrix_diagonal[var_m.first];
+        std::map<VarPair,double> mat = matrix[var_m.first];
         for(const auto& elements : var_m.second) {
             const auto name = elements.first;
             const VarPair var_11(name.first, name.first);
             mat.erase(var_11);
         }
+        matrix_fix[var_m.first] = mat;
     }
-    return matrix_diagonal;
+    return matrix_fix;
 }
 
 //Difference between two vectors of pairs
@@ -352,9 +353,10 @@ std::vector< std::pair<VarPair, double>> Difference(std::vector< std::pair<VarPa
     return diff;
 }
 
-//Kolmogorov test return the maximum distance
+//Kolmogorov test
 std::map<int, std::map<std::string,double>> KolmogorovTest(std::map<int, std::map<std::string,std::vector<double>>> sample_signal, std::map<int, std::map<std::string,std::vector<double>>> sample_bkg){
     std::map<int, std::map<std::string,double>> kolmogorov;
+    sample_signal.erase(--sample_signal.rbegin().base());
     for(const auto& var_mass : sample_signal) {
         if (var_mass.second.size() == 0) continue;
         auto map_signal = var_mass.second;
@@ -379,8 +381,231 @@ std::map<int, std::map<std::string,double>> KolmogorovTest(std::map<int, std::ma
     return kolmogorov;
 }
 
-//Create plots of Kolmogorv probability in function of mass for each variable
-void KolmogorvPlot(std::map<int, std::map<std::string,double>> kolmogorov, std::shared_ptr<TFile> outfile){
+//Create plots of Kolmogorv probability for compatibility of signal at different mass
+void CompatibilitySignalPlot(std::map<int, std::map<std::string,std::vector<double>>> sample_signal, std::shared_ptr<TFile> outfile){
+    std::map<std::string, TGraph*> plot;
+
+    auto var_mass = *sample_signal.begin();
+    auto map_signal = var_mass.second;
+    int i = 0;
+    for(const auto& var_mass_2 : sample_signal){
+        if (var_mass_2.second.size() == 0) continue;
+        auto map_signal_2 = var_mass_2.second;
+        for (const auto& var : var_mass.second){
+            std::vector<double> vector_signal = map_signal[var.first];
+            std::sort(vector_signal.begin(), vector_signal.end());
+            std::vector<double> vector_signal_2 = map_signal_2[var.first];
+            std::sort(vector_signal_2.begin(), vector_signal_2.end());
+            Double_t v_s[vector_signal.size()], v_s_2[vector_signal_2.size()];
+            for(Long64_t i = 0; i < vector_signal.size(); i++){
+                v_s[i] = vector_signal[i];
+            }
+            for(Long64_t i = 0; i < vector_signal_2.size(); i++){
+                v_s_2[i] = vector_signal_2[i];
+            }
+            double k = TMath::KolmogorovTest(vector_signal.size(), v_s, vector_signal_2.size(), v_s_2, "");
+            if (plot.count(var.first)==0) plot[var.first] = new TGraph();
+            plot[var.first]->SetPoint(i,var_mass_2.first,k);
+            plot[var.first]->SetLineColor(kGreen+1);
+            plot[var.first]->SetLineWidth(1);
+            plot[var.first]->SetMarkerColor(1);
+            plot[var.first]->SetMarkerSize(1);
+            plot[var.first]->SetMarkerStyle(3);
+            plot[var.first]->SetTitle((var.first+"-Signal").c_str());
+            plot[var.first]->SetName((var.first+"-Signal").c_str());
+        }
+        i++;
+    }
+
+    for(const auto& var: map_signal){
+        root_ext::WriteObject(*plot[var.first], outfile.get());
+    }
+}
+
+//Create 2Dhisto of Kolmogorv probability for compatibility of signal at different mass
+std::map<std::string,TH2D*> CompatibilitySignalHisto(std::map<int, std::map<std::string,std::vector<double>>> sample_signal, std::shared_ptr<TFile> outfile){
+    int bin = sample_signal.size();
+    std::map<std::string,TH2D*> map_histo;
+    int k = 1;
+    auto var_mass = *sample_signal.begin();
+    for (const auto& var : var_mass.second){
+         TH2D* histo= new TH2D((var.first+"CompatibilitySignal").c_str(),(var.first+"CompatibilitySignal").c_str(),bin,0,0,bin,0,0);
+         histo->SetCanExtend(TH1::kAllAxes);
+         histo->SetBins(bin, 0, bin, bin, 0, bin);
+         map_histo[var.first] = histo;
+    }
+    for(const auto& var_mass : sample_signal){
+        for (const auto& var : var_mass.second){
+            if (var_mass.first == 2000 ) {
+                map_histo[var.first]->GetXaxis()->SetBinLabel(k, "SM");
+                map_histo[var.first]->GetYaxis()->SetBinLabel(k, "SM");
+            }
+            else{
+                map_histo[var.first]->GetXaxis()->SetBinLabel(k, (std::to_string(var_mass.first)).c_str());
+                map_histo[var.first]->GetYaxis()->SetBinLabel(k, (std::to_string(var_mass.first)).c_str());
+            }
+        }
+        k++;
+    }
+
+    int i = 1;
+    for(const auto& var_mass : sample_signal){
+        auto map_signal = var_mass.second;
+        if (map_signal.size() == 0) continue;
+        int j = 1;
+        for(const auto& var_mass_2 : sample_signal){
+
+            auto map_signal_2 = var_mass_2.second;
+            if (map_signal_2.size() == 0) continue;
+            for (const auto& var : var_mass.second){
+                std::vector<double> vector_signal = map_signal[var.first];
+                std::sort(vector_signal.begin(), vector_signal.end());
+                std::vector<double> vector_signal_2 = map_signal_2[var.first];
+                std::sort(vector_signal_2.begin(), vector_signal_2.end());
+                Double_t v_s[vector_signal.size()], v_s_2[vector_signal_2.size()];
+                for(Long64_t i = 0; i < vector_signal.size(); i++){
+                    v_s[i] = vector_signal[i];
+                }
+                for(Long64_t i = 0; i < vector_signal_2.size(); i++){
+                    v_s_2[i] = vector_signal_2[i];
+                }
+                double k = TMath::KolmogorovTest(vector_signal.size(), v_s, vector_signal_2.size(), v_s_2, "");
+                map_histo[var.first]->SetBinContent(i, j, k);
+            }
+            j++;
+        }
+        i++;
+    }
+    for(const auto& var: var_mass.second){
+        root_ext::WriteObject(*map_histo[var.first], outfile.get());
+    }
+    return map_histo;
+}
+
+//For eache variable study ranges compatibility and for each of them compute the kolmogorov test between signal and background
+void CompatibilityRangeKolmogorov(std::map<std::string,TH2D*> map_histo, std::map<int, std::map<std::string,std::vector<double>>> sample_signal, std::map<int, std::map<std::string,std::vector<double>>> sample_bkg,std::shared_ptr<TFile> outfile){
+
+
+    sample_signal.erase(--sample_signal.rbegin().base());
+    double masse[sample_signal.size()];
+    int i = 0;
+    for (const auto& var : sample_signal){
+        if (i<(sample_signal.size())) masse[i] = var.first;
+        i++;
+    }
+
+    auto map_bkg = sample_bkg[1];
+    auto var_mass = *sample_signal.begin();
+
+    struct element{
+        std::map<int, std::vector<int>> ranges;
+        std::map<int, double> kolmogorov;
+    };
+    std::vector<std::pair<std::string, element>> vector_pair;
+    int count = 0;
+
+    TH1D* histo_end_1 =  new TH1D("End of first interval", "End of first interval",sample_signal.size(),0,1000);
+    TH1D* histo_end_2 =  new TH1D("End of second interval", "End of second interval",sample_signal.size(),0,1000);
+    histo_end_1->SetBins(sample_signal.size()-1,masse);
+    histo_end_2->SetBins(sample_signal.size()-1,masse);
+    histo_end_1->SetXTitle("mass");
+    histo_end_2->SetXTitle("mass");
+
+
+    for (const auto& var : var_mass.second){
+        element el;
+        std::vector<int> range;
+        int j;
+        for (Long64_t i = 1; i <=(sample_signal.size()); i++){
+            j = i;
+            double bin_content = 1;
+            int k = 0;
+            while(bin_content>0.05 && j<=(sample_signal.size()) && bin_content!=0){
+                j++;
+                bin_content = map_histo[var.first]->GetBinContent(i,j);
+                k++;
+            }
+            range.push_back(k);
+            i = j-1;
+        }
+        auto vec_bkg = map_bkg[var.first];
+        double vector_bkg[vec_bkg.size()];
+        for (Long64_t i = 1; i <vec_bkg.size(); i++) vector_bkg[i] = vec_bkg[i];
+
+        int z = 0;
+        std::map<int, std::vector<int>> map_ranges;
+        std::map<int, double> map_kolmogorov;
+        for (Long64_t i = 0; i <range.size(); i++){
+            std::vector<int> vec_masse;
+            int k = range[i];
+            int j = 0;
+            std::vector<double> p_sum;
+            while(j<k){
+                int mass = masse[z];
+                vec_masse.push_back(mass);
+                auto map_signal = sample_signal[mass];
+                auto vec_signal = map_signal[var.first];
+                std::copy(std::begin(vec_signal),  std::end(vec_signal), std::back_inserter(p_sum));
+                z++;
+                j++;
+            }
+            map_ranges[i] = vec_masse;
+            double vector_signal[p_sum.size()];
+            for (Long64_t i = 1; i <p_sum.size(); i++) vector_signal[i] = p_sum[i];
+            double kolmo = TMath::KolmogorovTest(p_sum.size(), vector_signal, vec_bkg.size(), vector_bkg, "M");
+            map_kolmogorov[i] = kolmo;
+
+        }
+        el.kolmogorov = map_kolmogorov;
+        el.ranges = map_ranges;
+        vector_pair.emplace_back(var.first, el);
+        count++;
+    }
+
+    std::sort(vector_pair.begin(), vector_pair.end(), [](std::pair<std::string, element>& el1,  std::pair<std::string, element>& el2 ){
+        auto first = el1.second;
+        auto second = el2.second;
+        return first.ranges.size()<second.ranges.size();
+    });
+
+    std::ofstream ofs("compatibility.csv", std::ofstream::out);
+    for (Long64_t i = 0; i<vector_pair.size(); i++){
+
+        auto element = vector_pair[i].second;
+        std::map<int, std::vector<int>> element_range = element.ranges;
+        std::map<int, double> element_kolmogorov = element.kolmogorov;
+        ofs<<vector_pair[i].first<<","<<" n.range:"<<element_range.size()<<std::endl;
+        ofs<<",";
+        for (Long64_t j=1; j<=element_range.size();j++){
+            ofs<<"Range"<<j<<",";
+        }
+        ofs<<std::endl;
+        ofs<<"Mass: "<<",";
+        int j = 0;
+        for (const auto& var : element_range){
+            auto vector_element_range = element_range[var.first];
+            if (vector_element_range.size()>1) ofs<<vector_element_range.front()<<"-"<<vector_element_range.back()<<",";
+            else if (vector_element_range.size()==1) ofs<<vector_element_range.front()<<",";
+            if (j == 0) histo_end_1->Fill(vector_element_range.back());
+            if (j == 1) histo_end_2->Fill(vector_element_range.back());
+            j++;
+        }
+
+        ofs<<std::endl;
+        ofs<<"Test K: ";
+        for (const auto& var : element_range){
+            double k = element_kolmogorov[var.first];
+            ofs<<","<<k;
+        }
+        ofs<<std::endl;
+    }
+    root_ext::WriteObject(*histo_end_1, outfile.get());
+    root_ext::WriteObject(*histo_end_2, outfile.get());
+}
+
+
+//Create plots of Kolmogorv probability between signal and background for different values of mass
+void KolmogorovPlotSignalBkg(std::map<int, std::map<std::string,double>> kolmogorov, std::shared_ptr<TFile> outfile){
     std::map<std::string, TGraph*> plot;
     std::map<std::string,double> map_mass;
     int i = 0;
@@ -391,13 +616,14 @@ void KolmogorvPlot(std::map<int, std::map<std::string,double>> kolmogorov, std::
         for (const auto& var : map){
             if (plot.count(var.first)==0) plot[var.first] = new TGraph(kolmogorov.size());
             plot[var.first]->SetPoint(i,var_mass.first,var.second);
-            plot[var.first]->SetLineColor(1);
+            plot[var.first]->SetLineColor(kGreen+1);
             plot[var.first]->SetLineWidth(1);
             plot[var.first]->SetMarkerColor(1);
-            plot[var.first]->SetMarkerSize(0.5);
+            plot[var.first]->SetMarkerSize(1);
             plot[var.first]->SetMarkerStyle(3);
-            plot[var.first]->SetTitle((var.first).c_str());
-            plot[var.first]->SetName((var.first).c_str());
+            plot[var.first]->SetTitle((var.first+"-Signal").c_str());
+            plot[var.first]->SetName((var.first+"-Signal").c_str());
+            plot[var.first]->GetHistogram()->GetXaxis()->SetTitle("mass");
         }
         i++;
     }
@@ -446,17 +672,19 @@ public:
     void Run()
     {
         const double mass_top = 173.21;
-//        int m[19] = {250,260,270,280,300,320,340,350,400,450,500,550,600,650,700,750,800,900,1};
-//        int i=0;
+//       int m[9] = {250,260,270,280,300,320,340,350,1};
+        int m[20] = {250,260,270,280,300,320,340,350,400,450,500,550,600,650,700,750,800,900,2000,1};
+        int i=0;
         for(const SampleEntry& entry:samples)
         {
-//            int mass = m[i];
+            int mass = m[i];
             auto input_file=root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
             EventTuple tuple(args.tree_name(), input_file.get(), true, GetDisabledBranches());
             std::cout<<entry<<" number of events: "<<std::min(tuple.GetEntries(),args.number_events())<<std::endl;
             std::string samplename = entry.issignal ? "Signal" : "Background";
 
             for(Long64_t current_entry = 0; current_entry < std::min(tuple.GetEntries(),args.number_events()); ++current_entry) {
+
                 tuple.GetEntry(current_entry);
                 const Event& event = tuple.data();
 
@@ -541,48 +769,53 @@ public:
                 vars["MT_tot"] = Calculate_TotalMT(event.p4_1,event.p4_2,event.pfMET_p4); //Total transverse mass
                 vars["mass_H"] = ROOT::Math::VectorUtil::InvariantMass(bb,event.SVfit_p4);
 
-                LorentzVectorM_Float t1 = event.p4_1 + event.jets_p4[0] + event.pfMET_p4;
-                LorentzVectorM_Float t2 = event.p4_2 + event.jets_p4[0] + event.pfMET_p4;
-                LorentzVectorM_Float t3 = event.p4_1 + event.jets_p4[1] + event.pfMET_p4;
-                LorentzVectorM_Float t4 = event.p4_2 + event.jets_p4[1] + event.pfMET_p4;
-                double d1 = std::abs(t1.mass() - mass_top);
-                double d2 = std::abs(t2.mass() - mass_top);
-                double d3 = std::abs(t3.mass() - mass_top);
-                double d4 = std::abs(t4.mass() - mass_top);
-                if (d1<d2 && d1<d3 && d1<d4) vars["mass_top(met)"] = d1;
-                if (d2<d1 && d2<d3 && d2<d4) vars["mass_top(met)"] = d2;
-                if (d3<d1 && d3<d2 && d3<d4) vars["mass_top(met)"] = d3;
-                if (d4<d1 && d4<d3 && d4<d2) vars["mass_top(met)"] = d4;
+                LorentzVectorM_Float a1 = event.p4_1 + event.jets_p4[0] + event.pfMET_p4;
+                LorentzVectorM_Float b1 = event.p4_2 + event.jets_p4[1];
+                LorentzVectorM_Float a2 = event.p4_1 + event.jets_p4[0];
+                LorentzVectorM_Float b2 = event.p4_2 + event.jets_p4[1] + event.pfMET_p4;
+                LorentzVectorM_Float a3 = event.p4_1 + event.jets_p4[1] + event.pfMET_p4;
+                LorentzVectorM_Float b3 = event.p4_2 + event.jets_p4[0];
+                LorentzVectorM_Float a4 = event.p4_1 + event.jets_p4[1];
+                LorentzVectorM_Float b4 = event.p4_2 + event.jets_p4[0] + event.pfMET_p4;
 
-                LorentzVectorM_Float t11 = event.p4_1 + event.jets_p4[0];
-                LorentzVectorM_Float t22 = event.p4_2 + event.jets_p4[0];
-                LorentzVectorM_Float t33 = event.p4_1 + event.jets_p4[1];
-                LorentzVectorM_Float t44 = event.p4_2 + event.jets_p4[1];
-                double d11 = std::abs(t11.mass() - mass_top);
-                double d22 = std::abs(t22.mass() - mass_top);
-                double d33 = std::abs(t33.mass() - mass_top);
-                double d44 = std::abs(t44.mass() - mass_top);
-                if (d11<d22 && d11<d33 && d11<d44) vars["mass_top"] = d11;
-                if (d22<d11 && d22<d33 && d22<d44) vars["mass_top"] = d22;
-                if (d33<d11 && d33<d22 && d33<d44) vars["mass_top"] = d33;
-                if (d44<d11 && d44<d33 && d44<d22) vars["mass_top"] = d44;
+                double d1 = pow(std::abs(a1.mass() - mass_top),2) + pow (std::abs(b1.mass() - mass_top),2);
+                double d2 = pow(std::abs(a2.mass() - mass_top),2) + pow (std::abs(b2.mass() - mass_top),2);
+                double d3 = pow(std::abs(a3.mass() - mass_top),2) + pow (std::abs(b3.mass() - mass_top),2);
+                double d4 = pow(std::abs(a4.mass() - mass_top),2) + pow (std::abs(b4.mass() - mass_top),2);
+
+                if (d1<d2 && d1<d3 && d1<d4) {
+                    vars["Mass_top1"] = a1.mass();
+                    vars["Mass_top2"] = b1.mass();
+                }
+                if (d2<d1 && d2<d3 && d2<d4) {
+                    vars["Mass_top1"] = a2.mass();
+                    vars["Mass_top2"] = b2.mass();
+                }
+                if (d3<d1 && d3<d2 && d3<d4) {
+                    vars["Mass_top1"] = a3.mass();
+                    vars["Mass_top2"] = b3.mass();
+                }
+                if (d4<d1 && d4<d3 && d4<d2) {
+                    vars["Mass_top1"] = a4.mass();
+                    vars["Mass_top2"] = b4.mass();
+                }
 
                 const analysis::LorentzVectorXYZ sv(event.SVfit_p4.px(),event.SVfit_p4.py(),event.SVfit_p4.pz(),event.SVfit_p4.e());
                 const auto boosted_tau1 = ROOT::Math::VectorUtil::boost(event.p4_1, sv.BoostToCM());
-                vars["theta_l1(h)"] = std::acos(ROOT::Math::VectorUtil::CosTheta(boosted_tau1, sv)); //theta angle between the first final state lepton and the direction of flight of h_tautau in the h_tautau rest frame
-                vars["phi_l1(h)"] = std::atan(boosted_tau1.py()/boosted_tau1.px()); //phi angle between the first final state lepton and the direction of flight of h_tautau in the h_tautau rest frame
+//                vars["theta_l1(h)"] = std::acos(ROOT::Math::VectorUtil::CosTheta(boosted_tau1, sv)); //theta angle between the first final state lepton and the direction of flight of h_tautau in the h_tautau rest frame
+//                vars["phi_l1(h)"] = std::atan(boosted_tau1.py()/boosted_tau1.px()); //phi angle between the first final state lepton and the direction of flight of h_tautau in the h_tautau rest frame
                 const auto boosted_tau2 = ROOT::Math::VectorUtil::boost(event.p4_2, sv.BoostToCM());
-                vars["theta_l2(h)"] = std::acos(ROOT::Math::VectorUtil::CosTheta(boosted_tau2, sv)); //angle between the second final state lepton and the direction of flight of h_tautau in the h_tautau rest frame
-                vars["phi_l2(h)"] = std::atan(boosted_tau2.py()/boosted_tau2.px()); //phi angle between the second final state lepton and the direction of flight of h_tautau in the h_tautau rest frame
+//                vars["theta_l2(h)"] = std::acos(ROOT::Math::VectorUtil::CosTheta(boosted_tau2, sv)); //angle between the second final state lepton and the direction of flight of h_tautau in the h_tautau rest frame
+//                vars["phi_l2(h)"] = std::atan(boosted_tau2.py()/boosted_tau2.px()); //phi angle between the second final state lepton and the direction of flight of h_tautau in the h_tautau rest frame
                 vars["R_l1-l2(h)"] = ROOT::Math::VectorUtil::DeltaR(boosted_tau1, boosted_tau2); // R between the two final state leptons in the h_tautau rest frame
 
                 const analysis::LorentzVectorXYZ hbb(bb.px(),bb.py(),bb.pz(),bb.e());
                 const auto boosted_b1 = ROOT::Math::VectorUtil::boost(event.jets_p4[0], hbb.BoostToCM());
-                vars["theta_b1(h)"] = std::acos(ROOT::Math::VectorUtil::CosTheta(boosted_b1, hbb)); //angle between the first final state bjet and the direction of flight of h_bb in the h_bb rest frame
-                vars["phi_b1(h)"] = std::atan(boosted_b1.py()/boosted_b1.px()); //phi angle between the first final state bjet and the direction of flight of h_bb in the h_bb rest frame
+//                vars["theta_b1(h)"] = std::acos(ROOT::Math::VectorUtil::CosTheta(boosted_b1, hbb)); //angle between the first final state bjet and the direction of flight of h_bb in the h_bb rest frame
+//                vars["phi_b1(h)"] = std::atan(boosted_b1.py()/boosted_b1.px()); //phi angle between the first final state bjet and the direction of flight of h_bb in the h_bb rest frame
                 const auto boosted_b2 = ROOT::Math::VectorUtil::boost(event.jets_p4[2], hbb.BoostToCM());
-                vars["theta_b2(h)"] = std::acos(ROOT::Math::VectorUtil::CosTheta(boosted_b2, hbb)); //angle between the second final state bjet and the direction of flight of h_bb in the h_bb rest frame
-                if (boosted_b2.px()!=0) vars["phi_b2(h)"] = std::atan(boosted_b2.py()/boosted_b2.px()); //phi angle between the second final state bjet and the direction of flight of h_bb in the h_bb rest frame
+//                vars["theta_b2(h)"] = std::acos(ROOT::Math::VectorUtil::CosTheta(boosted_b2, hbb)); //angle between the second final state bjet and the direction of flight of h_bb in the h_bb rest frame
+//                if (boosted_b2.px()!=0) vars["phi_b2(h)"] = std::atan(boosted_b2.py()/boosted_b2.px()); //phi angle between the second final state bjet and the direction of flight of h_bb in the h_bb rest frame
                 vars["R_b1-b2(h)"] = ROOT::Math::VectorUtil::DeltaR(boosted_b1, boosted_b2); // R between the two final state b-jetsin the h_bb rest frame
 
                 LorentzVectorE_Float H = bb + event.SVfit_p4;
@@ -605,9 +838,6 @@ public:
                 const auto boosted_hbb = ROOT::Math::VectorUtil::boost(bb, vec_H.BoostToCM());
                 vars["theta_star2(H)"] = std::acos(ROOT::Math::VectorUtil::CosTheta(boosted_hbb, ROOT::Math::Cartesian3D<>(0, 0, 1)));// Is the production angle of the h_bb defined in the H rest frame
 
-                vars["phi_hbb-htautau(H)"] = ROOT::Math::VectorUtil::DeltaPhi(boosted_htautau,boosted_hbb); //Phi angle between hbb and htautau in the H rest frame
-                vars["theta_hbb-htautau(H)"] = std::acos(ROOT::Math::VectorUtil::CosTheta(boosted_htautau, boosted_hbb)); //Theta angle between hbb and htautau in the H rest frame
-
                 const TVector3 vec_htautau(boosted_htautau.px(),boosted_htautau.py(),boosted_htautau.pz());
                 TVector3 z_axis(0,0,1);
                 const auto n3 = vec_htautau.Cross(z_axis);
@@ -617,12 +847,12 @@ public:
                 const auto n4 = vec_hbb.Cross(z_axis);
                 vars["phi_2(H)"] = ROOT::Math::VectorUtil::Angle(n2,n4); //Angle between the decay plane of the b-jets pair and a plane defined by the vector of the h_bb in the H rest frame and the positive direction of z axis
 
-                vars["phi_htautau(H)"] = std::atan(boosted_htautau.py()/boosted_htautau.px()); //Phi angle of h_tautau in the H rest frame
-                vars["phi_hbb(H)"] = std::atan(vec_hbb.Y()/vec_hbb.X()); //Phi angle of h_bb in the H rest frame
+//                vars["phi_htautau(H)"] = std::atan(boosted_htautau.py()/boosted_htautau.px()); //Phi angle of h_tautau in the H rest frame
+//                vars["phi_hbb(H)"] = std::atan(boosted_hbb.py()/boosted_hbb.px()); //Phi angle of h_bb in the H rest frame
 
-                vars.AddEvent(samplename,1); //vars.AddEvent(samplename,1) to loop over all the masses, vars.AddEvent(samplename,mass) to look at every mass individually
+                vars.AddEvent(samplename,mass); //vars.AddEvent(samplename,1) to loop over all the masses, vars.AddEvent(samplename,mass) to look at every mass individually
             }
-//            i++;
+            i++;
         }
 
         std::map<int, std::map<std::string,std::vector<double>>> sample_vars_signal = vars.GetSampleVariables("Signal");
@@ -634,16 +864,21 @@ public:
             int mass = var.first;
             auto map = var.second;
             auto vector = map["pt_l1"];
-            std::cout<<"massa: "<<mass<<", eventi segnale: "<<vector.size()<<std::endl;
+            if (mass != 1 && mass != 2000) {
+                std::cout<<"massa: "<<mass<<", eventi segnale: "<<vector.size()<<std::endl;
+            }
+            else {
+                if (mass == 2000) std::cout<<"eventi SM: "<<vector.size()<<std::endl;
+                else std::cout<<"eventi segnale: "<<vector.size()<<std::endl;
+            }
         }
+
         for (const auto& var: sample_vars_bkg){
             if (var.second.size() == 0) continue;
             auto map = var.second;
             auto vector = map["pt_l1"];
             std::cout<<"eventi fondo: "<<vector.size()<<std::endl;
         }
-
-        std::map<int, std::map<std::string, std::pair<TH1D*,TH1D*>>> histos = GetHistos(sample_vars_signal, sample_vars_bkg, outfile);
 
         std::map<int, std::map<VarPair,double>> cov_matrix_signal, cov_matrix_bkg;
         cov_matrix_signal = Cov(sample_vars_signal);
@@ -653,6 +888,7 @@ public:
         corr_matrix_bkg = CovToCorr(cov_matrix_bkg);
         CreateMatrixHistos(sample_vars_signal,corr_matrix_signal,outfile,"correlation","Signal");
         CreateMatrixHistos(sample_vars_bkg,corr_matrix_bkg,outfile,"correlation","Background");
+
         std::map<int, std::map<VarPair,double>> corr_matrix_signal_fix, corr_matrix_bkg_fix;
         corr_matrix_signal_fix = RemoveDiagonal(corr_matrix_signal);
         corr_matrix_bkg_fix = RemoveDiagonal(corr_matrix_bkg);
@@ -671,27 +907,31 @@ public:
             corr_vector_difference[mass] = cvd;
         }
 
-        std::map<int, std::map<std::string,double>> kolmogorov = KolmogorovTest(sample_vars_signal, sample_vars_bkg);
-        std::map< int, std::map<std::string,double>> chi2 = Chi2Test(histos);
-       KolmogorvPlot(kolmogorov,outfile);
+//        std::map<int, std::map<std::string, std::pair<TH1D*,TH1D*>>> histos = GetHistos(sample_vars_signal, sample_vars_bkg, outfile);
+//        std::map< int, std::map<std::string,double>> chi2 = Chi2Test(histos);
 
+//        std::map<int, std::map<std::string,double>> kolmogorov = KolmogorovTest(sample_vars_signal, sample_vars_bkg);
+//        KolmogorovPlotSignalBkg(kolmogorov, outfile);
+        std::map<std::string,TH2D*> map_histo = CompatibilitySignalHisto(sample_vars_signal,outfile);
+        CompatibilityRangeKolmogorov(map_histo,sample_vars_signal,sample_vars_bkg, outfile);
+        CompatibilitySignalPlot(sample_vars_signal,outfile);
 
 
 //        std::map<std::string, int> eliminate;
-//        std::ofstream ofs(args.tree_name()+".txt", std::ofstream::out);
-//        ofs << "Variable    " << "  Variable2   " << "  corr_s  " << "  corr_b    " << "  corr_d    "<<"  chi2_1    "<<"  chi2_2    "<<"  KS_1    "<<"  KS_2"<<std::endl;
+//        std::ofstream ofs(args.tree_name()+".csv", std::ofstream::out);
+//        ofs << "Variable"<<","<<"Variable2"<<","<<"corr_s"<<","<<"corr_b"<<","<<"corr_d"<<","<<"KS_1"<<","<<"KS_2"<<std::endl;
 //        auto corr_vec_diff = corr_vector_difference[1];
 //        auto corr_mat_signal = corr_matrix_signal_fix[1];
 //        auto corr_mat_bkg = corr_matrix_bkg_fix[1];
 //        auto kolmo = kolmogorov[1];
-//        auto chi = chi2[1];
+////        auto chi = chi2[1];
 //        for(Long64_t i = 0; i < corr_vec_diff.size(); i++){
 //            std::pair<VarPair, double> element_difference = corr_vec_diff[i];
 //            VarPair pair = element_difference.first;
 //            if ((std::abs(corr_mat_signal[pair])>0.5 && std::abs(corr_mat_bkg[pair])>0.5) && element_difference.second<0.3){
-//                ofs <<pair.first<<"    "<<pair.second<<"    "<<std::abs(corr_mat_signal[pair])<<"    "<<std::abs(corr_mat_bkg[pair])<<"    "<<element_difference.second<<"   "<<chi[pair.first]<<"    "<<chi[pair.second]<<"  "<<kolmo[pair.first]<<"    "<<kolmo[pair.second]<<std::endl;
-//                if (kolmo[pair.second]<=kolmo[pair.first] && chi[pair.first]<=chi[pair.second]) eliminate[pair.first]++;
-//                if (kolmo[pair.second]>kolmo[pair.first] && chi[pair.first]>chi[pair.second]) eliminate[pair.second]++;
+//                ofs <<pair.first<<","<<pair.second<<","<<std::abs(corr_mat_signal[pair])<<","<<std::abs(corr_mat_bkg[pair])<<","<<element_difference.second<<","/*<<chi[pair.first]<<"    "<<chi[pair.second]<<"  "*/<<kolmo[pair.first]<<","<<kolmo[pair.second]<<std::endl;
+////                if (kolmo[pair.second]<=kolmo[pair.first] /*&& chi[pair.first]<=chi[pair.second]*/) eliminate[pair.first]++;
+////                if (kolmo[pair.second]>kolmo[pair.first] /*&& chi[pair.first]>chi[pair.second]*/) eliminate[pair.second]++;
 //            }
 //        }
 //        ofs.close();
@@ -710,12 +950,3 @@ private:
 }
 
 PROGRAM_MAIN(analysis::MvaClassification, Arguments) // definition of the main program function
-
-
-
-
-
-
-
-
-
