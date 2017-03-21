@@ -29,6 +29,7 @@ struct DYBinDescriptor {
     PhysicalValue weight;
     std::string ref_sample;
     FileType ref_fileType;
+    size_t inclusive_integral;
 
     DYBinDescriptor()
         : n_jet(0,0), n_bjet(0,0),n_ht(0,0),nu(0.0, std::numeric_limits<double>::infinity()),
@@ -79,7 +80,7 @@ struct DYBinDescriptor {
             throw analysis::exception("Unable to create outputfile'");
         cfg.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 
-        static const std::vector<int> column_widths = { 9,9,9,9,9,11,15,15,15,15,20 };
+        static const std::vector<int> column_widths = { 9,9,9,9,9,11,15,15,15,15,15,20 };
 
         cfg << std::setw(column_widths.at(0)) << "#n_jet_min " <<
                std::setw(column_widths.at(1)) << "n_jet_max " <<
@@ -91,7 +92,8 @@ struct DYBinDescriptor {
                std::setw(column_widths.at(7)) << " rel_err_w " <<
                std::setw(column_widths.at(8)) << " nu " <<
                std::setw(column_widths.at(9)) << " rel_err_nu  " <<
-               std::setw(column_widths.at(10)) << " ref_sample \n";
+               std::setw(column_widths.at(10)) << " incl_integral  " <<
+               std::setw(column_widths.at(11)) << " ref_sample \n";
 
         for(auto& output_bin : output_bins)
         {
@@ -105,7 +107,8 @@ struct DYBinDescriptor {
                    std::setw(column_widths.at(7)) << output_bin.weight.GetRelativeStatisticalError() << " " <<
                    std::setw(column_widths.at(8)) << output_bin.nu.GetValue() << " " <<
                    std::setw(column_widths.at(9)) << output_bin.nu.GetRelativeStatisticalError() << " " <<
-                   std::setw(column_widths.at(10)) << output_bin.ref_sample <<  "\n";
+                   std::setw(column_widths.at(10)) << output_bin.inclusive_integral << " " <<
+                   std::setw(column_widths.at(11)) << output_bin.ref_sample <<  "\n";
         }
         return cfg;
     }
