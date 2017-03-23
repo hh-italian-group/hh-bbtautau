@@ -1,4 +1,4 @@
-/*! Study of correlation matrix and mutual information of BDT variables
+/*! Study of compatibility of range masses for each variable
 This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include "AnalysisTools/Run/include/program_main.h"
@@ -31,8 +31,6 @@ struct Arguments { // list of all program arguments
 };
 
 namespace analysis {
-
-bool SM=false;
 
 struct SampleEntry{
   std::string filename;
@@ -104,8 +102,7 @@ double Calculate_MT2(const LVector1& lepton1_p4, const LVector2& lepton2_p4, con
 }
 
 
-/*Create a pair of histogram for each variable. The first one is for signal, the second for background.
-They are binned in the same way, to have at least 10 entries for bin.*/
+//Create a pair of histogram for each variable. The first one is for signal, the second for background.
 std::map<int, std::map<std::string, std::pair<TH1D*,TH1D*>>> GetHistos(std::map<int, std::map<std::string,std::vector<double>>> sample_signal, std::map<int, std::map<std::string,std::vector<double>>> sample_bkg, std::shared_ptr<TFile> outfile){
 
     std::map<int, std::map<std::string, std::pair<TH1D*,TH1D*>>> histogram;
@@ -138,26 +135,6 @@ std::map<int, std::map<std::string, std::pair<TH1D*,TH1D*>>> GetHistos(std::map<
             }
             h_s->Scale(1/h_s->Integral());
             root_ext::WriteObject(*h_s, outfile.get());
-            int new_nbin_s = 0;
-            double bin_s[nbin] = {};
-            for (Long64_t i=0; i<=nbin; i++)
-            {
-                double entry = h_s->GetBinContent(i);
-                Long64_t rebin = i;
-                while (entry <= 10 && i<=nbin)
-                {
-                    i++;
-                    entry = entry + h_s->GetBinContent(i);
-                }
-                if (entry > 10){
-                    new_nbin_s++;
-                    bin_s[new_nbin_s]=h_s->GetBinLowEdge(rebin);
-                }
-            }
-            new_nbin_s++;
-            bin_s[new_nbin_s]=h_s->GetBinLowEdge(nbin+1)+1;
-            bin_s[0]=bin_s[1]-1;
-            h_s->Delete();
 
             TH1D* h_b = new TH1D((var_1.first+"Bkg"+mass).c_str(),(var_1.first+"Bkg"+mass).c_str(),nbin,min-1,max+1);
             h_b->SetXTitle((var_1.first).c_str());
@@ -167,241 +144,10 @@ std::map<int, std::map<std::string, std::pair<TH1D*,TH1D*>>> GetHistos(std::map<
             h_b->Scale(1/h_b->Integral());
             root_ext::WriteObject(*h_b, outfile.get());
             h_b->Delete();
-
-            histos[var_1.first].first = new TH1D((var_1.first+"Signal1"+mass).c_str(),(var_1.first+"Signal1"+mass).c_str(), new_nbin_s, bin_s);
-            histos[var_1.first].first->SetXTitle((var_1.first).c_str());
-            for(Long64_t i = 0; i < vector_s.size(); i++){
-                histos[var_1.first].first->Fill(vector_s[i]);
-            }
-            histos[var_1.first].second = new TH1D((var_1.first+"Bkg1"+mass).c_str(),(var_1.first+"Bkg1"+mass).c_str(),new_nbin_s, bin_s);
-            histos[var_1.first].second->SetXTitle((var_1.first).c_str());
-            for(Long64_t i = 0; i < vector_b.size(); i++){
-                histos[var_1.first].second->Fill(vector_b[i]);
-            }
-//            root_ext::WriteObject(*histos[var_1.first].first, outfile.get());
-//            root_ext::WriteObject(*histos[var_1.first].second, outfile.get());
-
-            int new_nbin_b = 0;
-            double bin_b[nbin] = {};
-            for (Long64_t i=0; i<=nbin; i++)
-            {
-                double entry = histos[var_1.first].second->GetBinContent(i);
-                Long64_t rebin = i;
-                while (entry <= 10. && i<=nbin)
-                {
-                    i++;
-                    entry = entry + histos[var_1.first].second->GetBinContent(i);
-                }
-                if (entry > 10){
-                    new_nbin_b++;
-                    bin_b[new_nbin_b]=histos[var_1.first].second->GetBinLowEdge(rebin);
-                }
-            }
-            new_nbin_b++;
-            bin_b[new_nbin_b]=histos[var_1.first].second->GetBinLowEdge(nbin+1)+1;
-            bin_b[0]=bin_b[1]-1;
-
-            bool check = false;
-            int count = 0;
-            while(check==false && count<nbin){
-                if (bin_s[count]!=bin_b[count]) check=true;
-                count++;
-            }
-            if (check==true){
-                histos[var_1.first].first->Delete();
-                histos[var_1.first].second->Delete();
-                histos[var_1.first].first = new TH1D((var_1.first+"Signal2"+mass).c_str(),(var_1.first+"Signal2"+mass).c_str(), new_nbin_b, bin_b);
-                histos[var_1.first].first->SetXTitle((var_1.first).c_str());
-                for(Long64_t i = 0; i < vector_s.size(); i++){
-                    histos[var_1.first].first->Fill(vector_s[i]);
-                }
-                histos[var_1.first].second = new TH1D((var_1.first+"Bkg2"+mass).c_str(),(var_1.first+"Bkg2"+mass).c_str(),new_nbin_b, bin_b);
-                histos[var_1.first].second->SetXTitle((var_1.first).c_str());
-                for(Long64_t i = 0; i < vector_b.size(); i++){
-                    histos[var_1.first].second->Fill(vector_b[i]);
-                }
-//                root_ext::WriteObject(*histos[var_1.first].first, outfile.get());
-//                root_ext::WriteObject(*histos[var_1.first].second, outfile.get());
-                histos[var_1.first].first->Scale(1/histos[var_1.first].first->Integral());
-                histos[var_1.first].second->Scale(1/histos[var_1.first].second->Integral());
-            }
-            else{
-//                root_ext::WriteObject(*histos[var_1.first].first, outfile.get());
-//                root_ext::WriteObject(*histos[var_1.first].second, outfile.get());
-                histos[var_1.first].first->Scale(1/histos[var_1.first].first->Integral());
-                histos[var_1.first].second->Scale(1/histos[var_1.first].second->Integral());
-            }
          }
-
         histogram[var_m.first] = histos;
     }
     return histogram;
-}
-
-//Chi2Test for signal vs background histo for each variable
-std::map< int, std::map<std::string,double>> Chi2Test(std::map<int, std::map<std::string, std::pair<TH1D*,TH1D*>>> h){
-
-    std::map< int, std::map<std::string,double>> chi;
-    for (const auto& var_m : h){
-        std::cout<<var_m.first<<std::endl;
-        std::map<std::string,double> chi2;
-        for(const auto& var_1 : var_m.second) {
-            std::cout<<var_1.first<<std::endl;
-            std::map<std::string, std::pair<TH1D*,TH1D*>> histos = h[var_m.first];
-            std::pair<TH1D*,TH1D*> pair_histo = histos[var_1.first];
-            double a = pair_histo.first->Chi2Test(pair_histo.second, "WWCHI2/NDF");
-            chi2[var_1.first] = a;
-        }
-        chi[var_m.first] = chi2;
-    }
-    return chi;
-}
-
-
-//Create covariance of two variables
-double Covariance (const std::vector<double> vec_1, const std::vector<double> vec_2){
-        double mean_1 = 0, mean_2 = 0;
-        for (Long64_t i=0; i<vec_1.size(); i++ ){
-            mean_1 = mean_1 + vec_1[i];
-            mean_2 = mean_2 + vec_2[i];
-        }
-        mean_1 = mean_1/vec_1.size();
-        mean_2 = mean_2/vec_1.size();
-        double cov = 0;
-        for (Long64_t i=0; i<vec_1.size(); i++ ){
-            cov = cov + (vec_1[i] - mean_1) * (vec_2[i] - mean_2);
-        }
-        return cov/(vec_1.size()-1);
-    }
-
-
-
-//std::map<int, std::map<VarPair,stat_estimators::EstimatedQuantity>> Cov(std::map<int, std::map<std::string,std::vector<double>>> sample_vars){
-//    std::map<int, std::map<VarPair,stat_estimators::EstimatedQuantity>> cov_matrix;
-//    for (const auto& var: sample_vars){
-//        if (var.second.size() == 0) continue;
-//        const auto map = var.second;
-//        std::map<VarPair,double> cov;
-//        for(const auto& var_1 : map) {
-//            for(const auto& var_2 : map) {
-//                const VarPair var_12(var_1.first, var_2.first);
-//                const VarPair var_21(var_2.first, var_1.first);
-//                if(cov.count(var_21)) continue;
-//                cov[var_12] = stat_estimators::EstimateWithErrorsByResampling(stat_estimators::Covariance(var_1.second,var_2.second),var_1.second,var_2.second,true,1000,0);
-//            }
-//        }
-//        cov_matrix[var.first] = cov;
-//    }
-//    return cov_matrix;
-//}
-
-
-//Create element of mutual information matrix
-std::map<int, std::map<VarPair,double>> Mutual(std::map<int, std::map<std::string,std::vector<double>>> sample_vars, std::map<int, std::map<std::string, double>> band){
-    std::map<int, std::map<VarPair,double>> mutual_matrix;
-
-    for (const auto& var: sample_vars){
-        if (var.second.size() == 0) continue;
-        const auto map = var.second;
-        auto bandwidth = band[var.first];
-        std::map<VarPair,double> mutual;
-        for(const auto& var_1 : map) {
-            for(const auto& var_2 : map) {
-                const VarPair var_12(var_1.first, var_2.first);
-                const VarPair var_21(var_2.first, var_1.first);
-                if(mutual.count(var_21)) continue;
-                mutual[var_12] = stat_estimators::MutualInformation(var_1.second, var_2.second, bandwidth[var_1.first], bandwidth[var_2.first]);
-            }
-        }
-        mutual_matrix[var.first] = mutual;
-    }
-    return mutual_matrix;
-}
-
-//Create correlation of two variables from covariance
-std::map<int, std::map<VarPair,double>> CovToCorr(std::map<int, std::map<VarPair,double>> cov_matrix){
-    std::map<int, std::map<VarPair,double>> corr;
-
-    for(const auto& var : cov_matrix){
-        if (var.second.size() == 0) continue;
-        std::map<VarPair,double> correlation;
-        auto covariance = var.second;
-        for(const auto& elements : var.second) {
-            auto name_1 = elements.first;
-            const VarPair var_11(name_1.first, name_1.first);
-            double sigma_1 = std::sqrt(covariance[var_11]);
-            const VarPair var_22(name_1.second, name_1.second);
-            double sigma_2 = std::sqrt(covariance[var_22]);
-            const VarPair var_12(name_1.first, name_1.second);
-            correlation[var_12] = covariance[var_12]/(sigma_1*sigma_2);
-        }
-        corr[var.first] = correlation;
-    }
-    return corr;
-}
-
-//Create covariance(correlation) histo matrix
-void CreateMatrixHistos(std::map<int, std::map<std::string,std::vector<double>>> sample_vars, std::map<int, std::map<VarPair,double>> element, std::shared_ptr<TFile> outfile, std::string type,  std::string class_sample){
-    for(const auto var_m: sample_vars){
-        if (var_m.second.size() == 0) continue;
-        int bin =  var_m.second.size();
-        auto el = element[var_m.first];
-        std::string mass;
-        if (var_m.first != 1) mass = "_mass"+std::to_string(var_m.first);
-        else mass = "";
-        if (var_m.first == 2000) mass = "_SM";
-        TH2D* matrix= new TH2D((type+"_"+class_sample+mass).c_str(),(type+"_"+class_sample+mass).c_str(),bin,0,0,bin,0,0);
-        matrix->SetCanExtend(TH1::kAllAxes);
-        matrix->SetBins(bin, 0, bin, bin, 0, bin);
-        int i = 1;
-        for(const auto& var_1 : var_m.second) {
-            int j = 1;
-            matrix->GetXaxis()->SetBinLabel(i, (var_1.first).c_str());
-            matrix->GetYaxis()->SetBinLabel(i, (var_1.first).c_str());
-            for(const auto& var_2 : var_m.second) {
-                if (j>=i){
-                const VarPair var_12(var_1.first, var_2.first);
-                matrix->SetBinContent(i, j, el[var_12]);
-                matrix->SetBinContent(j, i, el[var_12]);
-                }
-                j++;
-            }
-            i++;
-        }
-        root_ext::WriteObject(*matrix, outfile.get());
-    }
-}
-
-//Remove diagonal elements from a symmetric matrix
-std::map<int, std::map<VarPair,double>> RemoveDiagonal(std::map<int, std::map<VarPair,double>> matrix){
-    auto matrix_fix = matrix;
-    for(const auto& var_m: matrix){
-        if (var_m.second.size() == 0) continue;
-        std::map<VarPair,double> mat = matrix[var_m.first];
-        for(const auto& elements : var_m.second) {
-            const auto name = elements.first;
-            const VarPair var_11(name.first, name.first);
-            mat.erase(var_11);
-        }
-        matrix_fix[var_m.first] = mat;
-    }
-    return matrix_fix;
-}
-
-//Difference between two vectors of pairs
-std::vector< std::pair<VarPair, double>> Difference(std::vector< std::pair<VarPair, double>> vec_1, std::vector< std::pair<VarPair, double>> vec_2){
-    std::vector< std::pair<VarPair, double>> diff;
-    for(Long64_t i = 0; i < vec_1.size(); i++){
-        std::pair<VarPair, double> element_1 = vec_1[i];
-        std::pair<VarPair, double> element_2 = vec_2[i];
-        if (element_1.first == element_2.first){
-            VarPair nome=element_1.first;
-            VarPair nome2=element_2.first;
-            double difference = std::abs(element_1.second - element_2.second);
-            diff.push_back(std::make_pair(element_1.first,difference));
-        }
-    }
-    return diff;
 }
 
 //Optimal Bandwidth
@@ -417,8 +163,6 @@ std::map<int, std::map<std::string, double>> OptimalBandwidth(std::map<int, std:
     }
     return bandwidth;
 }
-
-
 
 //Kolmogorov test
 std::map<int, std::map<std::string,double>> KolmogorovTest(std::map<int, std::map<std::string,std::vector<double>>> sample_signal, std::map<int, std::map<std::string,std::vector<double>>> sample_bkg){
@@ -477,8 +221,7 @@ void KolmogorovPlotSignalBkg(std::map<int, std::map<std::string,double>> kolmogo
     }
 }
 
-
-//Create plots of Kullback Divergence between signal and background for different values of mass
+//Create plots of Jensen Shannon Divergence Divergence between signal and background for different values of mass
 void KLDPlotSignalBkg(std::map<int, std::map<std::string,std::vector<double>>> sample_signal, std::map<int, std::map<std::string,std::vector<double>>> sample_bkg, std::map<int, std::map<std::string, double>> band_signal, std::map<int, std::map<std::string, double>> band_bkg, std::shared_ptr<TFile> outfile){
     std::map<std::string, TGraph*> plot;
     auto map_bkg = sample_bkg[1];
@@ -508,7 +251,6 @@ void KLDPlotSignalBkg(std::map<int, std::map<std::string,std::vector<double>>> s
         root_ext::WriteObject(*plot[var.first], outfile.get());
     }
 }
-
 
 //Create plots of Kolmogorv probability for compatibility of signal at different mass
 void CompatibilitySignalPlotKolmogorov(std::map<int, std::map<std::string,std::vector<double>>> sample_signal, std::shared_ptr<TFile> outfile){
@@ -552,8 +294,7 @@ void CompatibilitySignalPlotKolmogorov(std::map<int, std::map<std::string,std::v
     }
 }
 
-
-//Create plots of Kullback Leibler Divergence for compatibility of signal at different mass
+//Create plots of Jensen Shannon Divergence for compatibility of signal at different mass
 void CompatibilitySignalPlotKLD(std::map<int, std::map<std::string,std::vector<double>>> sample_signal, std::map<int, std::map<std::string, double>> bandwidth, std::shared_ptr<TFile> outfile){
     std::map<std::string, TGraph*> plot;
 
@@ -648,7 +389,7 @@ std::map<std::string,TH2D*> CompatibilitySignalHistoKolmogorov(std::map<int, std
     return map_histo;
 }
 
-//Create 2Dhisto of Kullback Leibler Divergence for compatibility of signal at different mass
+//Create 2Dhisto of Jensen Shannon Divergence Divergence for compatibility of signal at different mass
 std::map<std::string,TH2D*> CompatibilitySignalHistoKLD(std::map<int, std::map<std::string,std::vector<double>>> sample_signal, std::map<int, std::map<std::string, double>> bandwidth, std::shared_ptr<TFile> outfile){
     int bin = sample_signal.size();
     std::map<std::string,TH2D*> map_histo;
@@ -698,7 +439,6 @@ std::map<std::string,TH2D*> CompatibilitySignalHistoKLD(std::map<int, std::map<s
     }
     return map_histo;
 }
-
 
 
 //For each variable study ranges compatibility and for each of them compute the kolmogorov test between signal and background
@@ -911,7 +651,6 @@ public:
     void Run()
     {
         const double mass_top = 173.21;
-//       int m[9] = {250,260,270,280,300,320,340,350,1};
         int m[20] = {250,260,270,280,300,320,340,350,400,450,500,550,600,650,700,750,800,900,2000,1};
         int i=0;
         for(const SampleEntry& entry:samples)
@@ -936,7 +675,6 @@ public:
 
                 double circular_cut=std::sqrt(pow(event.SVfit_p4.mass()-116.,2)+pow(bb.M()-111,2));
                 if (circular_cut>40) continue;
-//                if ((args.tree_name=="eTau" && circular_cut>40)||(args.tree_name=="muTau" && circular_cut>30)) continue;
 
                 vars["pt_l1"] = event.p4_1.pt();
                 vars["pt_l2"] = event.p4_2.pt();
@@ -1124,40 +862,7 @@ public:
             std::cout<<"eventi fondo: "<<vector.size()<<std::endl;
         }
 
-//        std::map<int, std::map<VarPair,double>> cov_matrix_signal, cov_matrix_bkg;
-//        cov_matrix_signal = Cov(sample_vars_signal);
-//        cov_matrix_bkg = Cov(sample_vars_bkg);
-//        std::map<int, std::map<VarPair,double>> corr_matrix_signal, corr_matrix_bkg;
-//        corr_matrix_signal = CovToCorr(cov_matrix_signal);
-//        corr_matrix_bkg = CovToCorr(cov_matrix_bkg);
-//        CreateMatrixHistos(sample_vars_signal,corr_matrix_signal,outfile,"correlation","Signal");
-//        CreateMatrixHistos(sample_vars_bkg,corr_matrix_bkg,outfile,"correlation","Background");
-//        std::map<int, std::map<VarPair,double>> mutual_matrix_signal, mutual_matrix_bkg;
-//        mutual_matrix_signal = Mutual(sample_vars_signal, bandwith_signal);
-//        mutual_matrix_bkg = Mutual(sample_vars_bkg, bandwidth_bkg);
-//        CreateMatrixHistos(sample_vars_signal,mutual_matrix_signal,outfile,"mutual","Signal");
-//        CreateMatrixHistos(sample_vars_bkg,mutual_matrix_bkg,outfile,"mutual","Background");
-
-//        std::map<int, std::map<VarPair,double>> corr_matrix_signal_fix, corr_matrix_bkg_fix;
-//        corr_matrix_signal_fix = RemoveDiagonal(corr_matrix_signal);
-//        corr_matrix_bkg_fix = RemoveDiagonal(corr_matrix_bkg);
-
-//        std::map<int,std::vector< std::pair<VarPair, double>>> corr_vector_signal, corr_vector_bkg, corr_vector_difference;
-//        for (const auto& var: sample_vars_signal){
-//            int mass = var.first;
-//            std::vector<std::pair<VarPair, double>> cvs(corr_matrix_signal_fix[mass].begin(), corr_matrix_signal_fix[mass].end());
-//            std::vector<std::pair<VarPair, double>> cvb(corr_matrix_bkg_fix[1].begin(), corr_matrix_bkg_fix[1].end());
-//            std::vector<std::pair<VarPair, double>> cvd = Difference(cvs,cvb);
-//            std::sort(cvd.begin(), cvd.end(), [](const std::pair<VarPair, double>& a, const std::pair<VarPair, double>& b) {
-//                return std::abs(a.second) < std::abs(b.second);
-//            });
-//            corr_vector_signal[mass] = cvs;
-//            corr_vector_bkg[mass] = cvb;
-//            corr_vector_difference[mass] = cvd;
-//        }
-
-//        std::map<int, std::map<std::string, std::pair<TH1D*,TH1D*>>> histos = GetHistos(sample_vars_signal, sample_vars_bkg, outfile);
-//        std::map< int, std::map<std::string,double>> chi2 = Chi2Test(histos);
+        std::map<int, std::map<std::string, std::pair<TH1D*,TH1D*>>> histos = GetHistos(sample_vars_signal, sample_vars_bkg, outfile);
 
         std::map<int, std::map<std::string,double>> kolmogorov = KolmogorovTest(sample_vars_signal, sample_vars_bkg);
         KolmogorovPlotSignalBkg(kolmogorov, outfile);
@@ -1168,30 +873,6 @@ public:
         CompatibilitySignalPlotKolmogorov(sample_vars_signal,outfile);
         CompatibilitySignalPlotKLD(sample_vars_signal, bandwith_signal,outfile);
 
-
-//        std::map<std::string, int> eliminate;
-//        std::ofstream ofs(args.tree_name()+".csv", std::ofstream::out);
-//        ofs << "Variable"<<","<<"Variable2"<<","<<"corr_s"<<","<<"corr_b"<<","<<"corr_d"<<","<<"KS_1"<<","<<"KS_2"<<std::endl;
-//        auto corr_vec_diff = corr_vector_difference[1];
-//        auto corr_mat_signal = corr_matrix_signal_fix[1];
-//        auto corr_mat_bkg = corr_matrix_bkg_fix[1];
-//        auto kolmo = kolmogorov[1];
-////        auto chi = chi2[1];
-//        for(Long64_t i = 0; i < corr_vec_diff.size(); i++){
-//            std::pair<VarPair, double> element_difference = corr_vec_diff[i];
-//            VarPair pair = element_difference.first;
-//            if ((std::abs(corr_mat_signal[pair])>0.5 && std::abs(corr_mat_bkg[pair])>0.5) && element_difference.second<0.3){
-//                ofs <<pair.first<<","<<pair.second<<","<<std::abs(corr_mat_signal[pair])<<","<<std::abs(corr_mat_bkg[pair])<<","<<element_difference.second<<","/*<<chi[pair.first]<<"    "<<chi[pair.second]<<"  "*/<<kolmo[pair.first]<<","<<kolmo[pair.second]<<std::endl;
-////                if (kolmo[pair.second]<=kolmo[pair.first] /*&& chi[pair.first]<=chi[pair.second]*/) eliminate[pair.first]++;
-////                if (kolmo[pair.second]>kolmo[pair.first] /*&& chi[pair.first]>chi[pair.second]*/) eliminate[pair.second]++;
-//            }
-//        }
-//        ofs.close();
-//        std::ofstream off("elimination.txt", std::ofstream::out);
-//        for(const auto& i : eliminate){
-//            off << i.first << "     " << i.second<<std::endl;
-//        }
-//        off.close();
     }
 private:
     Arguments args;
