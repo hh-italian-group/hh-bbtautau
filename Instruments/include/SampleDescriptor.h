@@ -18,10 +18,12 @@ namespace sample_merging{
     ENUM_OSTREAM_OPERATOR()
     ENUM_ISTREAM_OPERATORS()
 #endif
-enum class FileType { inclusive, exclusive };
+enum class FileType { inclusive, exclusive, sm, bsm };
 ENUM_NAMES(FileType) = {
     { FileType::inclusive, "inclusive" },
-    { FileType::exclusive, "exclusive" }
+    { FileType::exclusive, "exclusive" },
+    { FileType::sm, "sm" },
+    { FileType::bsm, "bsm" }
 };
 
 template<typename BinDescriptor, typename GenMap>
