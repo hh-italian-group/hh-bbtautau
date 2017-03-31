@@ -63,8 +63,8 @@ private:
         config_reader.AddEntryReader("FILE", file_entry_reader, true);
 
         config_reader.ReadConfig(args.file_cfg_name());
-        std::vector<root_ext::SmartHistogram<TH2D>> hist_sm;
-        std::vector<root_ext::SmartHistogram<TH2D>> hist_bsm;
+        std::vector<root_ext::SmartHistogram<TH2D>> histograms_sm;
+        std::vector<root_ext::SmartHistogram<TH2D>> histograms_bsm;
 
         for (auto file_descriptor : file_descriptors){ //loop on DYJets files
             const SMBinDescriptor file_descriptor_element = file_descriptor.second;
@@ -94,19 +94,28 @@ private:
                 double scale = 1/anaData.lhe_hh_cosTheta_vs_m(name).Integral();
                 anaData.lhe_hh_cosTheta_vs_m(name).Scale(scale);
                 if (file_descriptor_element.fileType == FileType::sm)
-                    hist_sm.push_back(anaData.lhe_hh_cosTheta_vs_m(name));
+                    histograms_sm.push_back(anaData.lhe_hh_cosTheta_vs_m(name));
                 else
-                    hist_bsm.push_back(anaData.lhe_hh_cosTheta_vs_m(name));
+                    histograms_bsm.push_back(anaData.lhe_hh_cosTheta_vs_m(name));
 
 
         } //end loop n file_descriptors
 
-        std::cout << "Hist sm size: " << hist_sm.size() << std::endl;
-        std::cout << "Hist bsm size: " << hist_bsm.size() << std::endl;
+        std::cout << "Hist sm size: " << histograms_sm.size() << std::endl;
+        std::cout << "Hist bsm size: " << histograms_bsm.size() << std::endl;
 
-//        for (unsigned n = 0; n < hist_bsm.size(); ++n){
-//            anaData.weight().Clone
-//        }
+        for (unsigned n = 0; n < histograms_bsm.size(); ++n){
+            root_ext::SmartHistogram<TH2D> hist_sm = histograms_sm.at(0);
+            root_ext::SmartHistogram<TH2D> hist_bsm = histograms_bsm.at(n);
+
+            std::shared_ptr<root_ext::SmartHistogram<TH2D>> ratio_histogram =
+                    std::shared_ptr<root_ext::SmartHistogram<TH2D>>(new root_ext::SmartHistogram<TH2D>(hist_sm));
+            std::shared_ptr<root_ext::SmartHistogram<TH2D>> histogram_bsm =
+                    std::shared_ptr<root_ext::SmartHistogram<TH2D>>(new root_ext::SmartHistogram<TH2D>(hist_bsm));
+            ratio_histogram->Divide(histogram_bsm.get());
+
+            anaData.weight(n) = ratio_histogram;
+        }
     }
 
 };
