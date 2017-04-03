@@ -90,8 +90,8 @@ private:
 
         for (const auto& file_descriptor : file_descriptors) {
             const std::string& name = file_descriptor.second.name;
-            anaData.weight(name).CopyContent(anaData.lhe_hh_cosTheta_vs_m(name));
-            anaData.weight(name).Divide(&anaData.lhe_hh_cosTheta_vs_m(name_sm));
+            anaData.weight(name).CopyContent(anaData.lhe_hh_cosTheta_vs_m(name_sm));
+            anaData.weight(name).Divide(&anaData.lhe_hh_cosTheta_vs_m(name));
         }
     }
 };
