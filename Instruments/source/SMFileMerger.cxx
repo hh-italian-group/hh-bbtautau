@@ -14,7 +14,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 struct Arguments {
     run::Argument<std::string> tree_name{"tree_name", "Tree on which we work"};
     run::Argument<std::string> input_path{"input_path", "Input path of the samples"};
-    run::Argument<std::string> file_cfg_name{"file_cfg_name", "DY file cfg"};
+    run::Argument<std::string> file_cfg_name{"file_cfg_name", "SM file cfg"};
     run::Argument<std::string> output_file{"output_file", "Output root file"};
 };
 
@@ -114,7 +114,7 @@ private:
                     std::shared_ptr<root_ext::SmartHistogram<TH2D>>(new root_ext::SmartHistogram<TH2D>(hist_bsm));
             ratio_histogram->Divide(histogram_bsm.get());
 
-            anaData.weight(n) = ratio_histogram;
+            anaData.weight(n).Clone("ratio_histogram");
         }
     }
 
