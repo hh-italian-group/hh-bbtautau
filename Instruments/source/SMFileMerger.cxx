@@ -27,8 +27,22 @@ public:
     using AnalyzerData::AnalyzerData;
     TH1D_ENTRY(lhe_hh_m, 100, 0, 1000)
     TH1D_ENTRY(lhe_hh_cosTheta, 300, -1.5, 1.5)
-    TH2D_ENTRY(lhe_hh_cosTheta_vs_m, 100, 0, 1000, 300, -1.5, 1.5)
-    TH2D_ENTRY(weight, 100, 0, 1000, 300, -1.5, 1.5)
+    //TH2D_ENTRY(lhe_hh_cosTheta_vs_m, 25, 200, 2000, 30, -1.1, 1.1)
+    TH2D_ENTRY_CUSTOM(lhe_hh_cosTheta_vs_m, mhh_Bins(), cosTheta_Bins())
+    TH2D_ENTRY_CUSTOM(weight, mhh_Bins(), cosTheta_Bins())
+
+    virtual const std::vector<double>& cosTheta_Bins() const
+    {
+        static const std::vector<double> bins = { -1.1, -1.0, -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0.0,
+                                                0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1};
+        return bins;
+    }
+
+    virtual const std::vector<double>& mhh_Bins() const
+    {
+        static const std::vector<double> bins = { 200, 300, 400, 500, 600, 700, 800, 1000, 1100, 1200, 1350, 2500 };
+        return bins;
+    }
 };
 
 
@@ -90,6 +104,13 @@ private:
 
         for (const auto& file_descriptor : file_descriptors) {
             const std::string& name = file_descriptor.second.name;
+
+            for (unsigned n = 0; n < anaData.lhe_hh_cosTheta_vs_m(name).GetNbinsX(); ++n){
+                for (unsigned h = 0; h < anaData.lhe_hh_cosTheta_vs_m(name).GetNbinsY(); ++h){
+                    if (anaData.lhe_hh_cosTheta_vs_m(name).GetBinContent(n,h) == 0)
+                        std::cout << name <<  " - Empty Bin! (" << n << "," << h << ")" << std::endl ;
+                }
+            }
             anaData.weight(name).CopyContent(anaData.lhe_hh_cosTheta_vs_m(name_sm));
             anaData.weight(name).Divide(&anaData.lhe_hh_cosTheta_vs_m(name));
         }
