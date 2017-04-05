@@ -258,6 +258,60 @@ std::vector<std::pair<double, std::string>> GetElements(TMatrixD matrix, std::sh
     return elements;
 }
 
+//Create plots of Jensen Shannon between signal and background for different values of mass
+void KLDPlotSignalBkg(std::map<int, std::map<std::string,std::vector<double>>> sample_signal, std::map<int, std::map<std::string,std::vector<double>>> sample_bkg, std::map<int, std::map<std::string, double>> band_signal, std::map<int, std::map<std::string, double>> band_bkg, std::shared_ptr<TFile> outfile){
+    std::map<int,std::vector<std::pair<std::string,double>>> JSDivergence;
+    std::map<std::string, TGraph*> plot;
+    auto map_bkg = sample_bkg[1];
+    auto bandwidth_bkg = band_bkg[1];
+    int i = 0;
+    for(const auto& var_mass_2 : sample_signal){
+        if (var_mass_2.second.size() == 0) continue;
+        auto map_signal_2 = var_mass_2.second;
+        auto bandwidth_signal = band_signal[var_mass_2.first];
+        auto JSDivergence_mass = JSDivergence[var_mass_2.first];
+        for (const auto& var : var_mass_2.second){
+            double k = stat_estimators::JensenShannonDivergence(map_bkg[var.first], map_signal_2[var.first], bandwidth_bkg[var.first],bandwidth_signal[var.first]);
+            JSDivergence_mass.emplace_back(var.first,k);
+            if (plot.count(var.first)==0) plot[var.first] = new TGraph();
+            plot[var.first]->SetPoint(i,var_mass_2.first, k);
+            plot[var.first]->SetLineColor(kGreen+1);
+            plot[var.first]->SetLineWidth(1);
+            plot[var.first]->SetMarkerColor(1);
+            plot[var.first]->SetMarkerSize(1);
+            plot[var.first]->SetMarkerStyle(3);
+            plot[var.first]->SetTitle(("JSD_"+var.first+"_SignalBkg").c_str());
+            plot[var.first]->SetName(("JSD_"+var.first+"_SignalBkg").c_str());
+            plot[var.first]->GetHistogram()->GetXaxis()->SetTitle("mass");
+            plot[var.first]->GetHistogram()->GetYaxis()->SetTitle("JS Divergence");
+        }
+        std::sort(JSDivergence_mass.begin(),JSDivergence_mass.end(), [](std::pair<std::string,double> el1, std::pair<std::string,double> el2){
+            return el1.second < el2.second;
+        });
+        JSDivergence[var_mass_2.first] = JSDivergence_mass;
+        i++;
+    }
+
+    std::ofstream ofs("JSDivergence_signalvsbkg.csv", std::ofstream::out);
+    for(const auto& var_mass_2 : sample_signal){
+        ofs<<"Massa: "<<","<<var_mass_2.first<<std::endl;
+        auto JSDivergence_mass = JSDivergence[var_mass_2.first];
+        for (Long64_t j = 0; j < map_bkg.size(); j++){
+            ofs<<JSDivergence_mass[j].first<<",";
+        }
+        ofs<<std::endl;
+        for (Long64_t j = 0; j < map_bkg.size(); j++){
+            ofs<<JSDivergence_mass[j].second<<",";
+        }
+        ofs<<std::endl;
+    }
+    ofs.close();
+
+    for(const auto& var: map_bkg){
+        root_ext::WriteObject(*plot[var.first], outfile.get());
+    }
+
+}
 bool PairCompare (const std::pair<double, std::string> &firstelement, const std::pair<double, std::string> &secondelement){
     return firstelement.first > secondelement.first;
 }
@@ -509,6 +563,61 @@ public:
         elements_mutualinformation_background=GetElements(mutualinformation_background,dataloader,nvar);
         std::sort(elements_mutualinformation_background.begin(),elements_mutualinformation_background.end(),PairCompare);
         ReadVector(elements_mutualinformation_background,args,"Background","mutualinformation");
+
+    }
+
+    //Create plots of Jensen Shannon between signal and background for different values of mass
+    void KLDPlotSignalBkg(std::map<int, std::map<std::string,std::vector<double>>> sample_signal, std::map<int, std::map<std::string,std::vector<double>>> sample_bkg, std::map<int, std::map<std::string, double>> band_signal, std::map<int, std::map<std::string, double>> band_bkg, std::shared_ptr<TFile> outfile){
+        std::map<int,std::vector<std::pair<std::string,double>>> JSDivergence;
+        std::map<std::string, TGraph*> plot;
+        auto map_bkg = sample_bkg[1];
+        auto bandwidth_bkg = band_bkg[1];
+        int i = 0;
+        for(const auto& var_mass_2 : sample_signal){
+            if (var_mass_2.second.size() == 0) continue;
+            auto map_signal_2 = var_mass_2.second;
+            auto bandwidth_signal = band_signal[var_mass_2.first];
+            auto JSDivergence_mass = JSDivergence[var_mass_2.first];
+            for (const auto& var : var_mass_2.second){
+                double k = stat_estimators::JensenShannonDivergence(map_bkg[var.first], map_signal_2[var.first], bandwidth_bkg[var.first],bandwidth_signal[var.first]);
+                JSDivergence_mass.emplace_back(var.first,k);
+                if (plot.count(var.first)==0) plot[var.first] = new TGraph();
+                plot[var.first]->SetPoint(i,var_mass_2.first, k);
+                plot[var.first]->SetLineColor(kGreen+1);
+                plot[var.first]->SetLineWidth(1);
+                plot[var.first]->SetMarkerColor(1);
+                plot[var.first]->SetMarkerSize(1);
+                plot[var.first]->SetMarkerStyle(3);
+                plot[var.first]->SetTitle(("JSD_"+var.first+"_SignalBkg").c_str());
+                plot[var.first]->SetName(("JSD_"+var.first+"_SignalBkg").c_str());
+                plot[var.first]->GetHistogram()->GetXaxis()->SetTitle("mass");
+                plot[var.first]->GetHistogram()->GetYaxis()->SetTitle("JS Divergence");
+            }
+            std::sort(JSDivergence_mass.begin(),JSDivergence_mass.end(), [](std::pair<std::string,double> el1, std::pair<std::string,double> el2){
+                return el1.second < el2.second;
+            });
+            JSDivergence[var_mass_2.first] = JSDivergence_mass;
+            i++;
+        }
+
+        std::ofstream ofs("JSDivergence_signalvsbkg.csv", std::ofstream::out);
+        for(const auto& var_mass_2 : sample_signal){
+            ofs<<"Massa: "<<","<<var_mass_2.first<<std::endl;
+            auto JSDivergence_mass = JSDivergence[var_mass_2.first];
+            for (Long64_t j = 0; j < map_bkg.size(); j++){
+                ofs<<JSDivergence_mass[j].first<<",";
+            }
+            ofs<<std::endl;
+            for (Long64_t j = 0; j < map_bkg.size(); j++){
+                ofs<<JSDivergence_mass[j].second<<",";
+            }
+            ofs<<std::endl;
+        }
+        ofs.close();
+
+        for(const auto& var: map_bkg){
+            root_ext::WriteObject(*plot[var.first], outfile.get());
+        }
 
     }
 
