@@ -20,7 +20,7 @@ namespace sample_merging{
 
 struct SMBinDescriptor {
     std::string name;
-    std::string file_path;
+    std::vector<std::string> file_paths;
     FileType fileType;
 
     PhysicalValue nu;

@@ -1,4 +1,4 @@
-/*! Merge BSM files.
+/*! Check SM weight.
 This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include <boost/format.hpp>
 #include "AnalysisTools/Run/include/program_main.h"
@@ -12,9 +12,10 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 
 struct Arguments {
+    run::Argument<std::string> weight_file{"weight_file", "file to reweight BSM samples"};
+    run::Argument<std::string> SM_file{"SM_file", "SM file"};
+    run::Argument<std::string> BSM_file{"BSM_file", "BSM file"};
     run::Argument<std::string> tree_name{"tree_name", "Tree on which we work"};
-    run::Argument<std::string> input_path{"input_path", "Input path of the samples"};
-    run::Argument<std::string> file_cfg_name{"file_cfg_name", "SM file cfg"};
     run::Argument<std::string> output_file{"output_file", "Output root file"};
 };
 
@@ -22,7 +23,7 @@ namespace analysis {
 
 namespace sample_merging{
 
-class SMFileMergerData : public root_ext::AnalyzerData {
+class SMCheckWeightData : public root_ext::AnalyzerData {
 public:
     using AnalyzerData::AnalyzerData;
     TH1D_ENTRY(lhe_hh_m, 100, 0, 1000)
@@ -30,25 +31,12 @@ public:
     //TH2D_ENTRY(lhe_hh_cosTheta_vs_m, 25, 200, 2000, 30, -1.1, 1.1)
     TH2D_ENTRY_CUSTOM(lhe_hh_cosTheta_vs_m, mhh_Bins(), cosTheta_Bins())
     TH2D_ENTRY_CUSTOM(weight, mhh_Bins(), cosTheta_Bins())
-
-    virtual const std::vector<double>& cosTheta_Bins() const
-    {
-        static const std::vector<double> bins = { -1.0, -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0.0,
-                                                0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};
-        return bins;
-    }
-
-    virtual const std::vector<double>& mhh_Bins() const
-    {
-        static const std::vector<double> bins = { 250.,270.,300.,330.,360.,390., 420.,450.,500.,550.,600.,700.,800.,1000. };
-        return bins;
-    }
 };
 
 
-class SMFileMerger {
+class SMCheckWeight {
 public:
-    SMFileMerger(const Arguments& _args) :
+    SMCheckWeight(const Arguments& _args) :
         args(_args), output(root_ext::CreateRootFile(args.output_file())), anaData(output)
     {
         LoadInputs();
@@ -59,30 +47,24 @@ public:
 private:
     Arguments args;
     std::shared_ptr<TFile> output;
-    SMFileMergerData anaData;
+    SMCheckWeightData anaData;
 
     void LoadInputs()
     {
-        analysis::ConfigReader config_reader;
+        auto inputFile_weight = root_ext::OpenRootFile(args.weight_file());
+        auto inputFile_SM = root_ext::OpenRootFile(args.SM_file());
+        auto inputFile_BSM = root_ext::OpenRootFile(args.BSM_file());
 
-        SMBinDescriptorCollection file_descriptors;
-        SMFileConfigEntryReader file_entry_reader(file_descriptors);
-        config_reader.AddEntryReader("FILE", file_entry_reader, true);
+        TH2D *weight = (TH2D*)inputFile_weight->Get("weight_node_BSM");
 
-        config_reader.ReadConfig(args.file_cfg_name());
-        std::string name_sm;
+        Int_t bin_x = weight->GetXaxis()->FindBin(350);
+        Int_t bin_y = weight->GetYaxis()->FindBin(0.5);
 
-        for (const auto& file_descriptor : file_descriptors) {
-            const SMBinDescriptor file_descriptor_element = file_descriptor.second;
-            const std::string& name = file_descriptor_element.name;
-
-            for (auto single_file_path : file_descriptor_element.file_paths){ //loop on files
-                std::cout << "File descriptor characteristics: " << file_descriptor.first << ", " <<
-                             single_file_path << ", " << file_descriptor_element.fileType
-                          << std::endl;
-                const std::string filename = args.input_path()  + "/" + single_file_path;
-                auto inputFile = root_ext::OpenRootFile(filename);
-
+        for (unsigned n = 0; n < weight->GetNbinsX(); ++n){
+            for (unsigned h = 0; h < weight->GetNbinsY(); ++h){
+                std::cout << " Bin Content: " << weight->GetBinContent(bin_x,bin_y) << std::endl ;
+            }
+        }
 
                 std::shared_ptr<ntuple::ExpressTuple> AllEventTuple(new ntuple::ExpressTuple(args.tree_name(), inputFile.get(), true));
                 const Long64_t n_entries = AllEventTuple->GetEntries();
@@ -98,12 +80,7 @@ private:
                     anaData.lhe_hh_cosTheta_vs_m(name).Fill(event->lhe_hh_m,event->lhe_hh_cosTheta);
                 } //end loop on entries
 
-            } //end loop on files
-            const double scale = 1 / anaData.lhe_hh_cosTheta_vs_m(name).Integral();
-            anaData.lhe_hh_cosTheta_vs_m(name).Scale(scale);
-            if (file_descriptor_element.fileType == FileType::sm)
-                name_sm = name;
-        } //end loop n file_descriptors
+
 
         for (const auto& file_descriptor : file_descriptors) {
             const std::string& name = file_descriptor.second.name;
@@ -124,4 +101,4 @@ private:
 
 } //namespace analysis
 
-PROGRAM_MAIN(analysis::sample_merging::SMFileMerger, Arguments)
+PROGRAM_MAIN(analysis::sample_merging::SMCheckWeight, Arguments)

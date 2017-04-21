@@ -32,7 +32,7 @@ public:
     virtual void ReadParameter(const std::string& /*param_name*/, const std::string& /*param_value*/,
                                std::istringstream& /*ss*/) override
     {
-        ParseEntry("file_path", current.file_path);
+        ParseEntry("file_path", current.file_paths);
         ParseEntry("fileType", current.fileType);
     }
 
