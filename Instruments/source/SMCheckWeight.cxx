@@ -66,34 +66,53 @@ private:
             }
         }
 
-                std::shared_ptr<ntuple::ExpressTuple> AllEventTuple(new ntuple::ExpressTuple(args.tree_name(), inputFile.get(), true));
-                const Long64_t n_entries = AllEventTuple->GetEntries();
+        analysis::ConfigReader config_reader;
+
+        SMBinDescriptorCollection file_descriptors;
+        SMFileConfigEntryReader file_entry_reader(file_descriptors);
+        config_reader.AddEntryReader("FILE", file_entry_reader, true);
+
+        config_reader.ReadConfig(args.file_cfg_name());
+        std::string name_sm;
+
+        for (auto file_descriptor : file_descriptors){ //loop on files
+            const SMBinDescriptor file_descriptor_element = file_descriptor.second;
+            const std::string& name = file_descriptor_element.name;
+
+            const Channel channel = Parse<Channel>(args.tree_name());
+            const Channel descriptor_channel = Parse<Channel>(file_descriptor_element.channel);
+            if (descriptor_channel != channel) continue;
+
+            //double count = 0;
+            for (auto single_file_path : file_descriptor_element.file_paths){ //loop on files
+
+                std::cout << "File descriptor characteristics: " << file_descriptor.first << ", " <<
+                             single_file_path << ", " << file_descriptor_element.fileType
+                          << std::endl;
+                std::string filename = args.input_path()  + "/" + single_file_path;
+                auto inputFile = root_ext::OpenRootFile(filename);
+                ntuple::EventTuple eventTuple(args.tree_name(), inputFile.get(), true, {},
+                                              GetEnabledBranches());
+                const Long64_t n_entries = eventTuple.GetEntries();
 
                 for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) { //loop on entries
+                    eventTuple.GetEntry(current_entry);
+                    const ntuple::Event& event = eventTuple.data();
+                    if (static_cast<EventEnergyScale>(event.eventEnergyScale) != analysis::EventEnergyScale::Central)
+                        continue;
+                    GenEventType genEventType = static_cast<GenEventType>(event.genEventType);
 
-                    AllEventTuple->GetEntry(current_entry);
-                    std::shared_ptr<ntuple::ExpressEvent> event(new ntuple::ExpressEvent(AllEventTuple->data()));
+                        sample_desc.gen_counts[genEventType] += event.genEventWeight;
+                        global_map.gen_counts[genEventType] += event.genEventWeight;
+                        if (file_descriptor_element.fileType == FileType::inclusive)
+                            inclusive.gen_counts[genEventType] += event.genEventWeight;
 
-                    //std::cout << "Mhh: " << event->lhe_hh_m << ", cosTheta: " << event->lhe_hh_cosTheta << std::endl;
-                    anaData.lhe_hh_m(name).Fill(event->lhe_hh_m);
-                    anaData.lhe_hh_cosTheta(name).Fill(event->lhe_hh_cosTheta);
-                    anaData.lhe_hh_cosTheta_vs_m(name).Fill(event->lhe_hh_m,event->lhe_hh_cosTheta);
+
                 } //end loop on entries
+            } // end loop on files
+            all_samples.push_back(sample_desc);
+        } //end loop n file_descriptors
 
-
-
-        for (const auto& file_descriptor : file_descriptors) {
-            const std::string& name = file_descriptor.second.name;
-
-            for (unsigned n = 0; n <= anaData.lhe_hh_cosTheta_vs_m(name).GetNbinsX()+1; ++n){
-                for (unsigned h = 0; h <= anaData.lhe_hh_cosTheta_vs_m(name).GetNbinsY()+1; ++h){
-                    if (anaData.lhe_hh_cosTheta_vs_m(name).GetBinContent(n,h) == 0)
-                        std::cout << name <<  " - Empty Bin! (" << n << "," << h << ")" << std::endl ;
-                }
-            }
-            anaData.weight(name).CopyContent(anaData.lhe_hh_cosTheta_vs_m(name_sm));
-            anaData.weight(name).Divide(&anaData.lhe_hh_cosTheta_vs_m(name));
-        }
     }
 };
 
