@@ -26,15 +26,14 @@ class SMFileMergerData : public root_ext::AnalyzerData {
 public:
     using AnalyzerData::AnalyzerData;
     TH1D_ENTRY(lhe_hh_m, 100, 0, 1000)
-    TH1D_ENTRY(lhe_hh_cosTheta, 300, -1.5, 1.5)
+    TH1D_ENTRY(lhe_hh_cosTheta, 6, -1.0, 1.0)
     //TH2D_ENTRY(lhe_hh_cosTheta_vs_m, 25, 200, 2000, 30, -1.1, 1.1)
     TH2D_ENTRY_CUSTOM(lhe_hh_cosTheta_vs_m, mhh_Bins(), cosTheta_Bins())
     TH2D_ENTRY_CUSTOM(weight, mhh_Bins(), cosTheta_Bins())
 
     virtual const std::vector<double>& cosTheta_Bins() const
     {
-        static const std::vector<double> bins = { -1.0, -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0.0,
-                                                0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};
+        static const std::vector<double> bins = { -1.0, -0.7, -0.4, -0.1, 0.2, 0.6, 1.0};
         return bins;
     }
 
@@ -99,7 +98,8 @@ private:
                 } //end loop on entries
 
             } //end loop on files
-            const double scale = 1 / anaData.lhe_hh_cosTheta_vs_m(name).Integral();
+            const double scale = 1 / anaData.lhe_hh_cosTheta_vs_m(name).Integral(0,anaData.lhe_hh_cosTheta_vs_m(name).GetNbinsX()+1,
+                                                                                 0, anaData.lhe_hh_cosTheta_vs_m(name).GetNbinsY()+1);
             anaData.lhe_hh_cosTheta_vs_m(name).Scale(scale);
             if (file_descriptor_element.fileType == FileType::sm)
                 name_sm = name;

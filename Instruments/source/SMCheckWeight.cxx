@@ -26,9 +26,9 @@ namespace sample_merging{
 class SMCheckWeightData : public root_ext::AnalyzerData {
 public:
     using AnalyzerData::AnalyzerData;
-    TH1D_ENTRY(m_sv, 200, 0, 400)
-    TH1D_ENTRY(m_bb, 200, 0, 400)
-    TH1D_ENTRY(m_kinFit, 500, 200, 1200)
+    TH1D_ENTRY(m_sv, 20, 0, 400)
+    TH1D_ENTRY(m_bb, 20, 0, 400)
+    TH1D_ENTRY(m_kinFit, 25, 200, 1200)
 };
 
 
@@ -145,8 +145,8 @@ private:
     double GetWeight(const TH2D& weight, double m_hh, double cos_Theta)
     {
         double sm_weight = 0;
-        Int_t bin_x = weight.GetXaxis()->FindBin(m_hh);
-        Int_t bin_y = weight.GetYaxis()->FindBin(cos_Theta);
+        const unsigned bin_x = weight.GetXaxis()->FindBin(m_hh);
+        const unsigned bin_y = weight.GetYaxis()->FindBin(cos_Theta);
 
         for (unsigned n = 0; n < weight.GetNbinsX(); ++n){
             for (unsigned h = 0; h < weight.GetNbinsY(); ++h){
