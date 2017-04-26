@@ -93,21 +93,24 @@ private:
 
                     double sm_weight = GetWeight(*weight, event.lhe_hh_m, event.lhe_hh_cosTheta);
 //                    std::cout << "SM weight: " << sm_weight << std::endl;
+                    LorentzVectorE_Float jet_1 = event.jets_p4.at(0);
+                    LorentzVectorE_Float jet_2 = event.jets_p4.at(1);
+                    if (!(std::abs(jet_1.eta()) < 2.1 && std::abs(jet_2.eta()) < 2.1)) continue;
 
-                    LorentzVectorE_Float bb= event.jets_p4.at(0) + event.jets_p4.at(1);
+                    LorentzVectorE_Float bb= jet_1 + jet_2;
 
                     if (file_descriptor_element.fileType == FileType::sm){
                         name_sm = name;
                         anaData.m_bb(name_sm).Fill(bb.M());
                         anaData.m_sv(name_sm).Fill(event.SVfit_p4.M());
-                        for (unsigned n = 0; n < event.kinFit_m.size(); ++n)
-                            anaData.m_kinFit(name_sm).Fill(event.kinFit_m.at(n));
+                        //for (unsigned n = 0; n < event.kinFit_m.size(); ++n)
+                        anaData.m_kinFit(name_sm).Fill(event.kinFit_m.at(0));
                     }
 
                     anaData.m_bb(name).Fill(bb.M(),sm_weight);
                     anaData.m_sv(name).Fill(event.SVfit_p4.M(),sm_weight);
-                    for (unsigned n = 0; n < event.kinFit_m.size(); ++n)
-                        anaData.m_kinFit(name).Fill(event.kinFit_m.at(n),sm_weight);
+                    //for (unsigned n = 0; n < event.kinFit_m.size(); ++n)
+                    anaData.m_kinFit(name).Fill(event.kinFit_m.at(0),sm_weight);
 
 
                 } //end loop on entries

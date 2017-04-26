@@ -33,7 +33,7 @@ public:
 
     virtual const std::vector<double>& cosTheta_Bins() const
     {
-        static const std::vector<double> bins = { -1.0, -0.7, -0.4, -0.1, 0.2, 0.6, 1.0};
+        static const std::vector<double> bins = { -1.0, -0.6, -0.2, 0.2, 0.6, 1.0 };
         return bins;
     }
 
