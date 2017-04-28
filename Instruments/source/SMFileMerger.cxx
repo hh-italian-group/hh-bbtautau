@@ -98,9 +98,10 @@ private:
                 } //end loop on entries
 
             } //end loop on files
-            const double scale = 1 / anaData.lhe_hh_cosTheta_vs_m(name).Integral(0,anaData.lhe_hh_cosTheta_vs_m(name).GetNbinsX()+1,
-                                                                                 0, anaData.lhe_hh_cosTheta_vs_m(name).GetNbinsY()+1);
-            anaData.lhe_hh_cosTheta_vs_m(name).Scale(scale);
+//            const double scale = 1 / anaData.lhe_hh_cosTheta_vs_m(name).Integral(0,anaData.lhe_hh_cosTheta_vs_m(name).GetNbinsX()+1,
+//                                                                                 0, anaData.lhe_hh_cosTheta_vs_m(name).GetNbinsY()+1);
+//            anaData.lhe_hh_cosTheta_vs_m(name).Scale(scale);
+            RenormalizeHistogram(anaData.lhe_hh_cosTheta_vs_m(name), 1, true);
             if (file_descriptor_element.fileType == FileType::sm)
                 name_sm = name;
         } //end loop n file_descriptors
@@ -108,8 +109,8 @@ private:
         for (const auto& file_descriptor : file_descriptors) {
             const std::string& name = file_descriptor.second.name;
 
-            for (unsigned n = 0; n <= anaData.lhe_hh_cosTheta_vs_m(name).GetNbinsX()+1; ++n){
-                for (unsigned h = 0; h <= anaData.lhe_hh_cosTheta_vs_m(name).GetNbinsY()+1; ++h){
+            for (Int_t n = 0; n <= anaData.lhe_hh_cosTheta_vs_m(name).GetNbinsX()+1; ++n){
+                for (Int_t h = 0; h <= anaData.lhe_hh_cosTheta_vs_m(name).GetNbinsY(); ++h){
                     if (anaData.lhe_hh_cosTheta_vs_m(name).GetBinContent(n,h) == 0)
                         std::cout << name <<  " - Empty Bin! (" << n << "," << h << ")" << std::endl ;
                 }

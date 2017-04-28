@@ -9,6 +9,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/NumericPrimitives.h"
 #include "Instruments/include/SampleDescriptor.h"
 #include "AnalysisTools/Core/include/AnalyzerData.h"
+#include "McCorrections/include/HH_BMStoSM_weight.h"
 
 
 struct Arguments {
@@ -34,6 +35,8 @@ public:
 
 class SMCheckWeight {
 public:
+    using HH_BMStoSM_weightPtr = std::shared_ptr<analysis::mc_corrections::HH_BMStoSM_weight>;
+
     SMCheckWeight(const Arguments& _args) :
         args(_args), output(root_ext::CreateRootFile(args.output_file())), anaData(output)
     {
@@ -46,6 +49,7 @@ private:
     Arguments args;
     std::shared_ptr<TFile> output;
     SMCheckWeightData anaData;
+    HH_BMStoSM_weightPtr smWeight;
 
     static const std::set<std::string>& GetEnabledBranches()
     {
@@ -57,9 +61,8 @@ private:
 
     void LoadInputs()
     {
-        auto inputFile_weight = root_ext::OpenRootFile(args.weight_file());
 
-        TH2D *weight = (TH2D*)inputFile_weight->Get("weight_node_BSM");
+        smWeight = HH_BMStoSM_weightPtr(new analysis::mc_corrections::HH_BMStoSM_weight(args.weight_file(),"weight_node_BSM"));
 
         analysis::ConfigReader config_reader;
 
@@ -88,23 +91,23 @@ private:
                     eventTuple.GetEntry(current_entry);
                     const ntuple::Event& event = eventTuple.data();
                     if (static_cast<EventEnergyScale>(event.eventEnergyScale) != analysis::EventEnergyScale::Central ||
-                            event.jets_p4.size() < 2)
+                            event.jets_p4.size() < 2 /*|| (event.q_1+event.q_2)!=0*/)
                         continue;
 
-                    double sm_weight = GetWeight(*weight, event.lhe_hh_m, event.lhe_hh_cosTheta);
-//                    std::cout << "SM weight: " << sm_weight << std::endl;
                     LorentzVectorE_Float jet_1 = event.jets_p4.at(0);
                     LorentzVectorE_Float jet_2 = event.jets_p4.at(1);
                     if (!(std::abs(jet_1.eta()) < 2.1 && std::abs(jet_2.eta()) < 2.1)) continue;
 
-                    LorentzVectorE_Float bb= jet_1 + jet_2;
+                    LorentzVectorE_Float bb = jet_1 + jet_2;
+
+//                    double elliptical_mass_cut=(pow(event.SVfit_p4.mass()-116.,2)/pow(35,2))+(pow(bb.M()-111,2)/pow(45,2));
+//                    if (!(elliptical_mass_cut<1)) continue;
+
+                    double sm_weight = smWeight->Get(event);
 
                     if (file_descriptor_element.fileType == FileType::sm){
                         name_sm = name;
-                        anaData.m_bb(name_sm).Fill(bb.M());
-                        anaData.m_sv(name_sm).Fill(event.SVfit_p4.M());
-                        //for (unsigned n = 0; n < event.kinFit_m.size(); ++n)
-                        anaData.m_kinFit(name_sm).Fill(event.kinFit_m.at(0));
+                        sm_weight = 1;
                     }
 
                     anaData.m_bb(name).Fill(bb.M(),sm_weight);
@@ -112,24 +115,19 @@ private:
                     //for (unsigned n = 0; n < event.kinFit_m.size(); ++n)
                     anaData.m_kinFit(name).Fill(event.kinFit_m.at(0),sm_weight);
 
-
                 } //end loop on entries
             } // end loop on files
 
-            const double scale_m_bb_sm = 1 / anaData.m_bb(name_sm).Integral();
-            anaData.m_bb(name_sm).Scale(scale_m_bb_sm);
-            const double scale_m_sv_sm = 1 / anaData.m_sv(name_sm).Integral();
-            anaData.m_sv(name_sm).Scale(scale_m_sv_sm);
-            const double scale_m_kinFit_sm = 1 / anaData.m_kinFit(name_sm).Integral();
-            anaData.m_kinFit(name_sm).Scale(scale_m_kinFit_sm);
+//            const double scale_m_bb = 1 / anaData.m_bb(name).Integral(0,anaData.m_bb(name).GetNbinsX()+1);//PUT OVERFLOW - USE RENORMALIZE
+//            anaData.m_bb(name).Scale(scale_m_bb);
+//            const double scale_m_sv = 1 / anaData.m_sv(name).Integral(0,anaData.m_sv(name).GetNbinsX()+1);
+//            anaData.m_sv(name).Scale(scale_m_sv);
+//            const double scale_m_kinFit = 1 / anaData.m_kinFit(name).Integral(0,anaData.m_kinFit(name).GetNbinsX()+1);
+//            anaData.m_kinFit(name).Scale(scale_m_kinFit);
 
-            const double scale_m_bb = 1 / anaData.m_bb(name).Integral();
-            anaData.m_bb(name).Scale(scale_m_bb);
-            const double scale_m_sv = 1 / anaData.m_sv(name).Integral();
-            anaData.m_sv(name).Scale(scale_m_sv);
-            const double scale_m_kinFit = 1 / anaData.m_kinFit(name).Integral();
-            anaData.m_kinFit(name).Scale(scale_m_kinFit);
-
+            RenormalizeHistogram(anaData.m_bb(name), 1, true);
+            RenormalizeHistogram(anaData.m_sv(name), 1, true);
+            RenormalizeHistogram(anaData.m_kinFit(name), 1, true);
 
         } //end loop n file_descriptors
 
@@ -145,20 +143,7 @@ private:
 
     }
 
-    double GetWeight(const TH2D& weight, double m_hh, double cos_Theta)
-    {
-        double sm_weight = 0;
-        const unsigned bin_x = weight.GetXaxis()->FindBin(m_hh);
-        const unsigned bin_y = weight.GetYaxis()->FindBin(cos_Theta);
 
-        for (unsigned n = 0; n < weight.GetNbinsX(); ++n){
-            for (unsigned h = 0; h < weight.GetNbinsY(); ++h){
-                sm_weight = weight.GetBinContent(bin_x,bin_y);
-            }
-        }
-
-        return sm_weight;
-    }
 };
 
 } //namespace sample_merging
