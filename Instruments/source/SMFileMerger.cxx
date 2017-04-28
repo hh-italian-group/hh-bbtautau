@@ -109,10 +109,12 @@ private:
         for (const auto& file_descriptor : file_descriptors) {
             const std::string& name = file_descriptor.second.name;
 
-            for (Int_t n = 0; n <= anaData.lhe_hh_cosTheta_vs_m(name).GetNbinsX()+1; ++n){
-                for (Int_t h = 0; h <= anaData.lhe_hh_cosTheta_vs_m(name).GetNbinsY(); ++h){
-                    if (anaData.lhe_hh_cosTheta_vs_m(name).GetBinContent(n,h) == 0)
+            for (Int_t n = 1; n <= anaData.lhe_hh_cosTheta_vs_m(name).GetNbinsX()+1; ++n){
+                for (Int_t h = 1; h <= anaData.lhe_hh_cosTheta_vs_m(name).GetNbinsY(); ++h){
+                    if (anaData.lhe_hh_cosTheta_vs_m(name).GetBinContent(n,h) == 0){
                         std::cout << name <<  " - Empty Bin! (" << n << "," << h << ")" << std::endl ;
+                        throw analysis::exception("Empty bins!");
+                    }
                 }
             }
             anaData.weight(name).CopyContent(anaData.lhe_hh_cosTheta_vs_m(name_sm));

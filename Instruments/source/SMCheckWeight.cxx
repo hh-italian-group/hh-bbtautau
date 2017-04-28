@@ -27,9 +27,9 @@ namespace sample_merging{
 class SMCheckWeightData : public root_ext::AnalyzerData {
 public:
     using AnalyzerData::AnalyzerData;
-    TH1D_ENTRY(m_sv, 20, 0, 400)
-    TH1D_ENTRY(m_bb, 20, 0, 400)
-    TH1D_ENTRY(m_kinFit, 25, 200, 1200)
+    TH1D_ENTRY(m_sv, 200, 0, 400)
+    TH1D_ENTRY(m_bb, 200, 0, 400)
+    TH1D_ENTRY(m_kinFit, 250, 200, 1200)
 };
 
 
@@ -91,7 +91,7 @@ private:
                     eventTuple.GetEntry(current_entry);
                     const ntuple::Event& event = eventTuple.data();
                     if (static_cast<EventEnergyScale>(event.eventEnergyScale) != analysis::EventEnergyScale::Central ||
-                            event.jets_p4.size() < 2 /*|| (event.q_1+event.q_2)!=0*/)
+                            event.jets_p4.size() < 2 )
                         continue;
 
                     LorentzVectorE_Float jet_1 = event.jets_p4.at(0);
@@ -99,9 +99,6 @@ private:
                     if (!(std::abs(jet_1.eta()) < 2.1 && std::abs(jet_2.eta()) < 2.1)) continue;
 
                     LorentzVectorE_Float bb = jet_1 + jet_2;
-
-//                    double elliptical_mass_cut=(pow(event.SVfit_p4.mass()-116.,2)/pow(35,2))+(pow(bb.M()-111,2)/pow(45,2));
-//                    if (!(elliptical_mass_cut<1)) continue;
 
                     double sm_weight = smWeight->Get(event);
 
@@ -118,12 +115,6 @@ private:
                 } //end loop on entries
             } // end loop on files
 
-//            const double scale_m_bb = 1 / anaData.m_bb(name).Integral(0,anaData.m_bb(name).GetNbinsX()+1);//PUT OVERFLOW - USE RENORMALIZE
-//            anaData.m_bb(name).Scale(scale_m_bb);
-//            const double scale_m_sv = 1 / anaData.m_sv(name).Integral(0,anaData.m_sv(name).GetNbinsX()+1);
-//            anaData.m_sv(name).Scale(scale_m_sv);
-//            const double scale_m_kinFit = 1 / anaData.m_kinFit(name).Integral(0,anaData.m_kinFit(name).GetNbinsX()+1);
-//            anaData.m_kinFit(name).Scale(scale_m_kinFit);
 
             RenormalizeHistogram(anaData.m_bb(name), 1, true);
             RenormalizeHistogram(anaData.m_sv(name), 1, true);
@@ -131,13 +122,30 @@ private:
 
         } //end loop n file_descriptors
 
+        using HistPtr = root_ext::SmartHistogram<TH1D>& (SMCheckWeightData::*)(const std::string& name);
+
+        const std::map<std::string, HistPtr> hists = {
+            { SMCheckWeightData::m_bb_Name(), &SMCheckWeightData::m_bb },
+            { SMCheckWeightData::m_sv_Name(), &SMCheckWeightData::m_sv },
+            { SMCheckWeightData::m_kinFit_Name(), &SMCheckWeightData::m_kinFit }
+        };
+
         for (const auto& file_descriptor : file_descriptors) {
-            if (file_descriptor.second.fileType == FileType::sm) continue;
+
             const std::string& name = file_descriptor.second.name;
 
-            std::cout << "KS m_bb: " << anaData.m_bb(name).KolmogorovTest(&anaData.m_bb(name_sm)) << std::endl;
-            std::cout << "KS m_sv: " << anaData.m_sv(name).KolmogorovTest(&anaData.m_sv(name_sm)) << std::endl;
-            std::cout << "KS m_kinFit: " << anaData.m_kinFit(name).KolmogorovTest(&anaData.m_kinFit(name_sm)) << std::endl;
+            for(const auto& hist : hists) {
+                const std::string name_rebin = name + "_rebin";
+                (anaData.*hist.second)(name_rebin).CopyContent((anaData.*hist.second)(name));
+                (anaData.*hist.second)(name_rebin).Rebin(10);
+
+                if (file_descriptor.second.fileType == FileType::sm) continue;
+                const double ks = (anaData.*hist.second)(name).KolmogorovTest(&((anaData.*hist.second)(name_sm)));
+                std::cout << "KS " << hist.first << ": " << ks << std::endl;
+                if (ks < 0.05)
+                    std::cerr << "ERROR: KS not passed " << std::endl;
+
+            }
 
         }
 
