@@ -103,7 +103,12 @@ private:
 			{
 				ttbar = std::sqrt(std::exp(0.0615 - 0.0005 * event->gen_top_pt) * std::exp(0.0615 - 0.0005*event->gen_topBar_pt));
 			}
-			tot_weight = tot_weight + (pu*ttbar*mc);
+            Double_t sm_weight = 1;
+            if(args.sample_type() == "bsm") //?????
+            {
+                sm_weight = eventWeights.GetBSMtoSMweight(*event);//// da all_events or channel by channel?
+            }
+            tot_weight = tot_weight + (pu*ttbar*mc*sm_weight);
 		}
 		return tot_weight;
 	}
