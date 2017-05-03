@@ -1,5 +1,5 @@
 /*! The ttbar weight.
-This file is part of https://github.com/hh-italian-group/h-tautau. */
+This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #pragma once
 
@@ -7,6 +7,7 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 #include "h-tautau/Analysis/include/EventTuple.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
 #include "AnalysisTools/Core/include/NumericPrimitives.h"
+#include "../../Instruments/include/TTFileDescriptor.h"
 
 
 namespace analysis {
@@ -16,32 +17,26 @@ class TTbar_weight {
 public:
     using Event = ntuple::Event;
 
-    TTbar_weight() : { }
-
-    double GetWeight(const std::string& config_file, const Event& event)
+    TTbar_weight(const std::string& sm_weight_file_name) :
     {
-        Range<int> genType;
-        double ttbar_weight = 1;
-        std::ifstream cfg(config_file);
-        while (cfg.good()) {
-            std::string cfgLine;
-            std::getline(cfg,cfgLine);
-            if (!cfgLine.size() || cfgLine.at(0) == '#') continue;
-            auto columns = ConfigEntryReader::ParseOrderedParameterList(cfgLine, true);
-            std::istringstream ss(cfgLine);
-            if(columns.size() >= 2)
-                ss >> genType;
-            if (columns.size() >= 7){
-                double col_weight = analysis::Parse<double>(columns.at(2));
-                if (genType.Contains(static_cast<int>(event.genEventType)))
-                    ttbar_weight = col_weight;
-            }
-            if(columns.size() != 2 && columns.size() != 7)
-                throw exception("Bad configuration file.");
-        }
-
-        return ttbar_weight;
+        ttbar_descriptors = analysis::sample_merging::TTBinDescriptor::LoadConfig(sm_weight_file_name);
+        GenEventType genEventType = static_cast<GenEventType>(event.genEventType);
     }
+
+    double Get(const Event& event)
+    {
+        double m_hh = event.lhe_hh_m;
+        double cos_Theta = event.lhe_hh_cosTheta;
+        const Int_t bin_x = sm_weight->GetXaxis()->FindBin(m_hh);
+        const Int_t bin_y = sm_weight->GetYaxis()->FindBin(cos_Theta);
+
+        return sm_weight->GetBinContent(bin_x,bin_y);
+    }
+
+private:
+    std::vector<analysis::sample_merging::TTBinDescriptor> ttbar_descriptors;
+    //std::map<> mappa di genEvent o del range??
+
 
 };
 

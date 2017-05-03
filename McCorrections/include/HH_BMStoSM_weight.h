@@ -1,5 +1,5 @@
 /*! The sm weight.
-This file is part of https://github.com/hh-italian-group/h-tautau. */
+This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #pragma once
 
