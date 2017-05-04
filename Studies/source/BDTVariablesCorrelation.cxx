@@ -737,4 +737,42 @@ public:
 
 }
 
-
+auto it = JSDivergence_vector.begin();
+int count = 0;
+while  (it != JSDivergence_vector.end()){
+    std::cout<<"count "<<count<<std::endl;
+    auto entry = JSDivergence_vector[count];
+    std::cout<<"entry size "<<entry.first.names.size()<<std::endl;
+    if (!entry.first.names.size()) break;
+    bool check = true;
+    if(entry.first.names.count(name)){
+        if (*entry.first.names.begin() == name && *entry.first.names.rbegin() == name)  {
+            ++it;
+            std::cout<<"continue"<<std::endl;
+            count++;
+            continue;
+        }
+        std::string other;
+        if (*entry.first.names.begin() == name )   other = *entry.first.names.rbegin();
+        if (*entry.first.names.rbegin() == name )  other = *entry.first.names.begin();
+        std::cout<<"other: "<<other<<std::endl;
+        if (not_corrected.count(other)) {
+            count++;
+            continue;
+        }
+        const VarPair var_pair = name < other ?
+                    VarPair(name, other) : VarPair(other, name);
+        const double MI_sgn = mutual_matrix_signal.at(var_pair);
+        const double MI_bkg = mutual_matrix_bkg.at(var_pair);
+        if(MI_sgn < threashold || MI_bkg < threashold) {
+            not_corrected.insert(other);
+            std::cout<<"not corrected size "<<not_corrected.size()<<" "<<other<<std::endl;
+            count--;
+            JSDivergence_vector.erase(it);
+            check = false;
+        }
+        else ++it;
+    }
+    else ++it;
+    count++;
+}

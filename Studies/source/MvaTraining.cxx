@@ -43,6 +43,62 @@ std::istream& operator>>(std::istream& is, SampleEntry& entry)
     return is;
 }
 
+class MvaVariablesTMVA : public MvaVariables {
+private:
+    static constexpr int BkgMass = -1;
+    using DataVector = std::vector<double>;
+    using MassData = std::map<int, std::dequeue<DataVector>>;
+
+    DataVector variables;
+    std::map<std::string, size_t> names;
+    std::map<bool, MassData> data;
+    std::shared_ptr<TMVA::DataLoader> loader;
+
+public:
+    MvaVariablesTMVA(std::shared_ptr<TMVA::DataLoader> dloader, uint_fast32_t seed, const VarNameSet& _enabled_vars,
+                     const VarNameSet& _disabled_vars) :
+        MvaVariables(true, seed, _enabled_vars, _disabled_vars), loader(dloader) {}
+
+    virtual void SetValue(const std::string& name, double value) override
+    {
+        if (!names.count(name)){
+            variables.push_back(0);
+            names[name] = variables.size()-1;
+            loader->AddVariable(name);
+        }
+        variables.at(names.at(name)) = value;
+    }
+
+    virtual void AddEventVariables( bool istraining, int mass, double weight) override
+    {
+        data[istraining][mass].push_back(variables);
+    }
+
+    void UploadEvents()
+    {
+        std::map<int, double> weights;
+        for(const auto& entry : data[true]) {
+            const int m = entry.first;
+            if(m == BkgMass) weights[m] = 1;
+            else weights[m] = 1. / ( data[true].at(m).size() + data[false][m].size() );
+        }
+
+        for(const auto& data_entry : data) {
+            const bool istraining = data_entry.first;
+            for(const auto& m_entry : data_entry.second) {
+                const int m = m_entry.first;
+                const std::string samplename = m != BkgMass ? "Signal" : "Background";
+                const TMVA::Types::ETreeType treetype = istraining ? TMVA::Types::kTraining : TMVA::Types::kTesting;
+                for(const auto& vars : m_entry.second) {
+                    loader->AddEvent(samplename, treetype, vars, weights.at(m));
+                }
+            }
+        }
+
+    }
+
+};
+
 class MvaVariables{
 private:
     std::vector<double> variables;
