@@ -15,23 +15,37 @@ class EventWeights_HH : public EventWeights {
 public:
     using Event = ntuple::Event;
     using HH_BMStoSM_weightPtr = std::shared_ptr<HH_BMStoSM_weight>;
+    using TTbar_weightPtr = std::shared_ptr<TTbar_weight>;
+    using DY_weightPtr = std::shared_ptr<DY_weight>;
 
-    EventWeights_HH()
+    EventWeights_HH(const std::string& channel_name)
     {
+        dy_weight = DY_weightPtr(new class DY_weight(Full_Cfg_Name("dyjets_weights.cfg")));
+        const Channel channel = Parse<Channel>(channel_name);
+        if(channel == Channel::ETau) ttbar_weight = TTbar_weightPtr(new class TTbar_weight(Full_Cfg_Name("ttbar_weights_eTau.cfg")));
+        if(channel == Channel::MuTau) ttbar_weight = TTbar_weightPtr(new class TTbar_weight(Full_Cfg_Name("ttbar_weights_muTau.cfg")));
+        if(channel == Channel::TauTau) ttbar_weight = TTbar_weightPtr(new class TTbar_weight(Full_Cfg_Name("ttbar_weights_tauTau.cfg")));
         sm_weight = HH_BMStoSM_weightPtr(new class
                                          HH_BMStoSM_weight(FullBSMtoSM_Name("weight_SM.root"),"weight_node_BSM"));
 
     }
 
     double GetBSMtoSMweight(const Event& event) const {return sm_weight ? sm_weight->Get(event) : 1;}
+    double GetTTbar_weight(const Event& event) const {return ttbar_weight ? ttbar_weight->Get(event) : 1;}
+    double GetDY_weight(const Event& event) const {return dy_weight ? dy_weight->Get(event) : 1;}
 
-    virtual double GetTotalWeight(const Event& event, bool apply_btag_weight = false, bool apply_bsm_to_sm_weight = false) override
+    virtual double GetTotalWeight(const Event& event, bool apply_btag_weight = false, bool apply_bsm_to_sm_weight = false,
+                                  bool apply_ttbar_weight = false, bool apply_dy_weight = false) override
     {
         double weight = GetPileUpWeight(event) * GetLeptonTotalWeight(event);
         if(apply_btag_weight)
             weight *= GetBtagWeight(event);
         if(apply_bsm_to_sm_weight)
             weight *= GetBSMtoSMweight(event);
+        if(apply_ttbar_weight)
+            weight *= GetTTbar_weight(event);
+        if(apply_dy_weight)
+            weight *= GetDY_weight(event);
         return weight;
     }
 
@@ -42,10 +56,15 @@ private:
         return FullName(fileName, path);
     }
 
+    static std::string Full_Cfg_Name(const std::string& fileName)
+    {
+        static const std::string path = "hh-bbtautau/Analysis/config";
+        return FullName(fileName, path);
+    }
+
 private:
-    PileUpWeightPtr pileUp;
-    LeptonWeightsPtr lepton;
-    BTagWeightPtr bTag;
+    DY_weightPtr dy_weight;
+    TTbar_weightPtr ttbar_weight;
     HH_BMStoSM_weightPtr sm_weight;
 };
 

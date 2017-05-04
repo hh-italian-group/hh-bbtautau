@@ -12,6 +12,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Run/include/EntryQueue.h"
 #include "AnalysisTools/Core/include/ProgressReporter.h"
 #include "h-tautau/McCorrections/include/EventWeights.h"
+#include "hh-bbtautau/McCorrections/include/EventWeights_HH.h"
 
 struct Arguments {
     REQ_ARG(std::string, treeName);
@@ -35,7 +36,8 @@ public:
 	using ExpressEvent = ntuple::ExpressEvent;
 	using ExpressPtr   = std::shared_ptr<ExpressEvent>;
 
-    TupleSkimmer(const Arguments& _args) : args(_args), processQueue(100000), writeQueue(100000), eventWeights(Period::Run2016, DiscriminatorWP::Medium) {}
+    TupleSkimmer(const Arguments& _args) : args(_args), processQueue(100000), writeQueue(100000), eventWeights(Period::Run2016, DiscriminatorWP::Medium),
+    eventWeights_HH(args.treeName()){}
 
     void Run()
     {
@@ -297,6 +299,7 @@ private:
 	std::vector<std::shared_ptr<TFile>> inputFiles;
 	
 	mc_corrections::EventWeights eventWeights;
+    mc_corrections::EventWeights_HH eventWeights_HH;
 	Float_t denominator;
 	
 	std::set<std::string> DisabledBranches_read;
