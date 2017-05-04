@@ -63,7 +63,7 @@ public:
 		}
 		
 		DisabledBranches_read = { "dphi_mumet", "dphi_metsv", "dR_taumu", "mT1", "mT2", "dphi_bbmet", "dphi_bbsv", "dR_bb", "m_bb", "n_jets",
-			"btag_weight", "ttbar_weight",  "PU_weight", "shape_denominator_weight", "trigger_accepts", "trigger_matches"};
+            "btag_weight", "ttbar_weight",  "PU_weight", "dy_weight", "ttbar_gen_weight", "sm_weight", "shape_denominator_weight", "trigger_accepts", "trigger_matches"};
 
 		DisabledBranches_write = { "lhe_particle_pdg", "lhe_particle_p4", "pfMET_cov", "genJets_partoFlavour", "genJets_hadronFlavour",
 			"genJets_p4", "genParticles_p4", "genParticles_pdg", "trigger_accepts", "trigger_matches", "tauId_keys_1", "tauId_values_1",
@@ -106,9 +106,9 @@ private:
 				ttbar = std::sqrt(std::exp(0.0615 - 0.0005 * event->gen_top_pt) * std::exp(0.0615 - 0.0005*event->gen_topBar_pt));
 			}
             Double_t sm_weight = 1;
-            if(args.sample_type() == "bsm") //?????
+            if(args.sample_type() == "bsm")
             {
-                sm_weight = eventWeights.GetBSMtoSMweight(*event);//// da all_events or channel by channel?
+                sm_weight = eventWeights.GetBSMtoSMweight(*event);
             }
             tot_weight = tot_weight + (pu*ttbar*mc*sm_weight);
 		}
@@ -252,6 +252,9 @@ private:
 		event.btag_weight = eventWeights.GetBtagWeight(event);
 		event.PU_weight = eventWeights.GetPileUpWeight(event);
 		event.ttbar_weight = eventWeights.GetTopPtWeight(event);
+        event.dy_weight = eventWeights_HH.GetDY_weight(event);
+        event.ttbar_gen_weight = eventWeights_HH.GetTTbar_weight(event);
+        event.sm_weight = eventWeights_HH.GetBSMtoSMweight(event);
 		event.shape_denominator_weight = denominator;
 		
 		// BDT Variables
