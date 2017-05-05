@@ -21,7 +21,7 @@ struct Arguments { // list of all program arguments
     REQ_ARG(std::string, cfg_file);
     REQ_ARG(std::string, tree_name);
     REQ_ARG(Long64_t, number_events);
-    REQ_ARG(Long64_t, number_variables);
+    REQ_ARG(size_t, number_variables);
 };
 
 #define MY_TREE_DATA() \
@@ -421,7 +421,7 @@ Name_NDDistance JensenDivergenceND(const VarData& sample_signal, const VarData& 
 std::set<std::string> CheckList(int mass,  MassVar sample, const Name_NDDistance& JSDivergenceND,
                                 const VarPairMI& mutual_matrix_signal, const VarPairMI& mutual_matrix_bkg,
                                 std::map<std::string, std::string>& eliminated, const MassVarBand& band,
-                                Long64_t number_variables, TDirectory* directory){
+                                size_t number_variables, TDirectory* directory){
 
     std::set<std::string> selected, not_corrected;
     VectorName_ND JSDivergence_vector(JSDivergenceND.begin(), JSDivergenceND.end());
@@ -561,7 +561,7 @@ std::set<std::string> CheckList(int mass,  MassVar sample, const Name_NDDistance
 std::set<std::string> CheckList_2(int min, int max, const std::map<int, double>& max_distance, MassVar sample,
                                   const MassName_ND& JSDivergenceND, const std::map<int, VectorName_ND>& vector,
                                   const MassVarPairMI& mutual_matrix, std::map<std::string, std::string>& eliminated,
-                                  const MassVarBand& band, Long64_t number_variables, TDirectory* directory){
+                                  const MassVarBand& band, size_t number_variables, TDirectory* directory){
 
     int count = 0;
     std::set<std::string> selected, checked, not_corrected;
@@ -880,7 +880,7 @@ void Plot(int massa, const std::set<std::string>& selected,const VarData& sample
         auto histo = std::make_shared<TH1D>((set_entry_1+"_"+mass).c_str(), (set_entry_1+"_"+mass).c_str(), 50,0,0);
         histo->SetCanExtend(TH1::kAllAxes);
         histo->SetXTitle((set_entry_1).c_str());
-        for(Long64_t i = 0; i < sample.at(set_entry_1).size(); i++){
+        for(size_t i = 0; i < sample.at(set_entry_1).size(); i++){
                 histo->Fill(sample.at(set_entry_1)[i]);
         }
         root_ext::WriteObject(*histo, dir);
@@ -907,7 +907,7 @@ void Plot2D(int massa, const std::set<std::string>& selected,const VarData& samp
             histo->SetCanExtend(TH1::kAllAxes);
             histo->SetXTitle((set_entry_1).c_str());
             histo->SetYTitle((set_entry_2).c_str());
-            for(Long64_t i = 0; i < sample.at(set_entry_1).size(); i++){
+            for(size_t i = 0; i < sample.at(set_entry_1).size(); i++){
                     histo->Fill(sample.at(set_entry_1)[i],sample.at(set_entry_2)[i]);
             }
             root_ext::WriteObject(*histo, dir);
@@ -956,7 +956,7 @@ void PlotJensenShannon(const MassName_ND& JSDivergenceND, TDirectory* directory)
 using VecVariables =  std::vector<std::string>;
 std::vector<VecVariables> VariableSelection( const MassVar& sample, const MassVarBand& band,
                         const MassVarPairMI& mutual_matrix, MassSetSelected& selected, RangeSelected& selected2,
-                        std::shared_ptr<TFile> outfile, Long64_t number_variables){
+                        std::shared_ptr<TFile> outfile, size_t number_variables){
 
     MassName_ND JSDivergenceND;
     std::cout<<"Jensen Shannon"<<std::endl;
