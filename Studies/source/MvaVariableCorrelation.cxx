@@ -435,13 +435,13 @@ std::set<std::string> CheckList(int mass,  MassVar sample, const Name_NDDistance
 //        std::cout<<JSDivergence_vector.size()<<" "<<selected.size()<<" "<<checked.size()<<" "<<not_corrected.size()<<std::endl;
 
         auto best_entry = JSDivergence_vector.front();
-        std::cout<<"coppia: "<<*best_entry.first.names.begin()<<" "<<*best_entry.first.names.rbegin()<<std::endl;
+//        std::cout<<"coppia: "<<*best_entry.first.names.begin()<<" "<<*best_entry.first.names.rbegin()<<std::endl;
 
         for(const auto& name : best_entry.first.names) {
-            std::cout<<"name: "<<name<<std::endl;
+//            std::cout<<"name: "<<name<<std::endl;
             eliminated[name] = "";
             if(selected.count(name)) {
-                std::cout<<" already selected!"<<std::endl;
+//                std::cout<<" already selected!"<<std::endl;
                 continue;
             }
 
@@ -452,7 +452,7 @@ std::set<std::string> CheckList(int mass,  MassVar sample, const Name_NDDistance
             }
 
             if (not_corrected.count(name)) {
-                std::cout<<" not corrected!"<<std::endl;
+//                std::cout<<" not corrected!"<<std::endl;
                 continue;
             }
             static constexpr double threashold = 0.5;
