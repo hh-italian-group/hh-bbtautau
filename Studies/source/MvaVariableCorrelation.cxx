@@ -1093,26 +1093,26 @@ std::vector<VecVariables> VariableSelection( const MassVar& sample, const MassVa
     directory_vardistr2d->mkdir("Range_united");
     auto directory_vardistrru2d = directory_vardistr2d->GetDirectory("Range_united");
     std::cout<<"plot"<<std::endl;
-    int i = 0;
-    for (const auto& range: ranges){
-        std::set<std::string> sel;
-        for (const auto& name : vec_union[i]){
-            sel.insert(name);
-        }
-        for (const auto& mass_entry : sample){
-            if (mass_entry.first == BkgMass) {
-                Plot(mass_entry.first, sel, sample.at(mass_entry.first), directory_vardistrru);
-                Plot2D(mass_entry.first, sel, sample.at(mass_entry.first), directory_vardistrru2d);
+//    int i = 0;
+//    for (const auto& range: ranges){
+//        std::set<std::string> sel;
+//        for (const auto& name : vec_union[i]){
+//            sel.insert(name);
+//        }
+//        for (const auto& mass_entry : sample){
+//            if (mass_entry.first == BkgMass) {
+//                Plot(mass_entry.first, sel, sample.at(mass_entry.first), directory_vardistrru);
+//                Plot2D(mass_entry.first, sel, sample.at(mass_entry.first), directory_vardistrru2d);
 
-            }
-            if (mass_entry.first > range.max || mass_entry.first < range.min ) continue;
-            else {
-                Plot(mass_entry.first, sel, sample.at(mass_entry.first), directory_vardistrru);
-                Plot2D(mass_entry.first, sel, sample.at(mass_entry.first), directory_vardistrru2d);
-            }
-        }
-        i++;
-    }
+//            }
+//            if (mass_entry.first > range.max || mass_entry.first < range.min ) continue;
+//            else {
+//                Plot(mass_entry.first, sel, sample.at(mass_entry.first), directory_vardistrru);
+//                Plot2D(mass_entry.first, sel, sample.at(mass_entry.first), directory_vardistrru2d);
+//            }
+//        }
+//        i++;
+//    }
     std::vector<VecVariables> vector_union;
     std::ofstream of("UnionVariables.csv", std::ofstream::out);
     int j = 0;
