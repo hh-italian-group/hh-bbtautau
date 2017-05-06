@@ -14,6 +14,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/StatEstimators.h"
 #include "hh-bbtautau/Analysis/include/MvaVariables.h"
 #include "AnalysisTools/Core/include/ProgressReporter.h"
+#include "AnalysisTools/Run/include/MultiThread.h"
 
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, input_path);
@@ -40,8 +41,9 @@ INITIALIZE_TREE(ntuple, MyTuple, MY_TREE_DATA)
 
 namespace analysis {
 
-static constexpr int BkgMass = -1;
-static constexpr int SMMass = 0;
+static constexpr int Bkg_mu = -1;
+static constexpr int Bke_e = -2;
+static constexpr int Signal_SM = 0;
 
 using clock = std::chrono::system_clock;
 
@@ -79,7 +81,7 @@ using VarPairCorr =  std::map<VarPair,double>;
 class MvaVariablesStudy : public MvaVariables {
 private:
     std::map<std::string, double> variables;
-    MassVar all_variables;
+    std::map<std::string, MassVar> all_variables;
 
 public:
     using MvaVariables::MvaVariables;
@@ -89,18 +91,18 @@ public:
         variables[name] = value;
     }
 
-    virtual void AddEventVariables(bool istraining, int mass, double weight) override
+    virtual void AddEventVariables(bool istraining, int mass, std::string tree, double weight) override
     {
-        VarData& sample_vars = all_variables[mass];
+        VarData& sample_vars = all_variables[tree][mass];
         for(const auto& name_value : variables) {
             const std::string& name = name_value.first;
             const double value = name_value.second;
             sample_vars[name].push_back(value);
         }
     }
-    const MassVar& GetSampleVariables() const
+    const MassVar& GetSampleVariables(std::string tree) const
     {
-        return all_variables;
+        return all_variables.at(tree);
     }
 };
 
@@ -137,7 +139,6 @@ struct Name_ND{
     const_iterator begin() const { return names.begin(); }
     const_iterator end() const { return names.end(); }
     size_t size() const { return names.size(); }
-//    const std::string& at(size_t n) const { return
 
     std::pair<std::string, std::string> ToPair() const
     {
@@ -157,14 +158,15 @@ struct Range {
 Range low_mass(250,270,280);
 Range medium_mass(300,350,400);
 Range high_energy(450,700,900);
-std::vector<Range> ranges{low_mass,medium_mass,high_energy};
+std::vector<Range> ranges{low_mass, medium_mass, high_energy};
 
 //Create optimal bandwidth for each variable for a single value of mass
 VarBand OptimalBandwidth(const VarData& sample){
     VarBand bandwidth;
     std::map<std::string, std::future<double>> bandwidth_future;
         for (const auto& var : sample){
-            bandwidth_future[var.first] = std::async(std::launch::async,stat_estimators::OptimalBandwith<double>,var.second, 0.01);
+//            bandwidth_future[var.first] = std::async(std::launch::async,stat_estimators::OptimalBandwith<double>,var.second, 0.01);
+            bandwidth_future[var.first] = run::async(stat_estimators::OptimalBandwith<double>,std::cref(var.second), 0.01);
         }
         for(auto& var : bandwidth_future) {
             var.second.wait();
@@ -183,6 +185,8 @@ VarBand OptimalBandwidth(const VarData& sample){
 //}
 
 //Create elements of mutual information matrix for a single value of mass
+
+
 VarPairMI Mutual(const VarData& sample, const VarBand& bandwidth){
     VarPairMI mutual_matrix;
     std::map<VarPair,std::future<double>> matrix_future;
@@ -190,9 +194,8 @@ VarPairMI Mutual(const VarData& sample, const VarBand& bandwidth){
         for(const auto& var_2 : sample) {
             const VarPair var_12(var_1.first, var_2.first);
             const VarPair var_21(var_2.first, var_1.first);
-            if(mutual_matrix.count(var_21))
-                continue;
-            matrix_future[var_12] = std::async(std::launch::async,stat_estimators::ScaledMutualInformation<double>, var_1.second, var_2.second, bandwidth.at(var_1.first), bandwidth.at(var_2.first));
+            if (var_2.first < var_1.first) continue;
+            matrix_future[var_12] = run::async(stat_estimators::ScaledMutualInformation<double>, std::cref(var_1.second), std::cref(var_2.second), bandwidth.at(var_1.first), bandwidth.at(var_2.first));
         }
     }
 
@@ -205,6 +208,7 @@ VarPairMI Mutual(const VarData& sample, const VarBand& bandwidth){
 
     return mutual_matrix;
 }
+
 //VarPairMI Mutual(const VarData& sample, const VarBand& bandwidth){
 //    VarPairMI mutual_matrix;
 
@@ -228,7 +232,8 @@ void MutualPlot(int mass, const VarPairMI& mutual_matrix_signal, const VarPairMI
     if (directory_s == nullptr) {
         directory->mkdir("1D");
         directory_s = directory->GetDirectory("1D");
-        auto histo = std::make_shared<TH1D>("MI_Bkg","MI_Bkg",50,0,1);
+        auto histo = std::make_shared<TH1D>("Background","MutualInformation_Background",50,0,1);
+        histo->SetXTitle("MI");
         for (const auto& entry : mutual_matrix_bkg){
             histo->Fill(entry.second);
         }
@@ -240,18 +245,19 @@ void MutualPlot(int mass, const VarPairMI& mutual_matrix_signal, const VarPairMI
         directory_2d = directory->GetDirectory("2D");
     }
     std::string m;
-    if ( mass ==  SMMass) m = "SM";
+    if ( mass ==  Signal_SM) m = "SM";
     else m = std::to_string(mass);
-    auto plot = std::make_shared<TH2D>(("MI_mass"+m).c_str(),("MI_mass"+m).c_str(),50,0,1,50,0,1);
-    plot->SetXTitle("MI Signal");
-    plot->SetYTitle("MI Bkg");
-    auto histo = std::make_shared<TH1D>(("Mass"+m).c_str(),("MI_mass"+m).c_str(),50,0,1);
+    auto histo2d = std::make_shared<TH2D>(("Signal_mass"+m+"_Background").c_str(),("MutualInformation_Signal_mass"+m+"_Background").c_str(),50,0,1,50,0,1);
+    histo2d->SetXTitle("MI Signal");
+    histo2d->SetYTitle("MI Background");
+    auto histo = std::make_shared<TH1D>(("Signal_mass"+m).c_str(),("MutualInformation_Signal_mass"+m).c_str(),50,0,1);
+    histo->SetXTitle("MI");
     for (const auto& entry : mutual_matrix_signal){
-        plot->Fill(entry.second, mutual_matrix_bkg.at(entry.first));
+        histo2d->Fill(entry.second, mutual_matrix_bkg.at(entry.first));
         histo->Fill(entry.second);
     }
     root_ext::WriteObject(*histo, directory_s);
-    root_ext::WriteObject(*plot, directory_2d);
+    root_ext::WriteObject(*histo2d, directory_2d);
 }
 
 //Estimate elements of covariance matrix for selected variables
@@ -298,14 +304,14 @@ VarPairCorr CovToCorr(const VarPairCorr& cov_matrix){
 //Create covariance(correlation/mutual information) histo matrix
 void CreateMatrixHistos(const MassVar& sample_vars, const MassVarPairMI& element, std::string type,
                         TDirectory* directory){
-    std::string mass= "", class_sample = "";
+    std::string mass, class_sample;
     for(const auto mass_entry: sample_vars){
         int bin =  mass_entry.second.size();
-        if (mass_entry.first == BkgMass && mass_entry.first != SMMass)
+        if (mass_entry.first == Bkg_mu && mass_entry.first != Signal_SM)
             class_sample =  "Background";
         else {
             class_sample =  "Signal";
-            if (mass_entry.first == SMMass) mass = "_SM";
+            if (mass_entry.first == Signal_SM) mass = "_SM";
             else mass = "_mass"+std::to_string(mass_entry.first);
         }
         auto matrix = std::make_shared<TH2D>((type+"_"+class_sample+mass).c_str(),(type+"_"+class_sample+mass).c_str(),bin,0,bin,bin,0,bin);
@@ -333,11 +339,11 @@ void CreateMatrixHistosMassSelected(int massa, const VarPairMI& element, const s
                                     std::string type, TDirectory* directory){
     std::string mass= "", class_sample = "";
     int bin =  selected.size();
-    if (massa == BkgMass && massa != SMMass)
+    if (massa == Bkg_mu && massa != Signal_SM)
         class_sample =  "Background";
     else {
         class_sample =  "Signal";
-        if (massa == SMMass) mass = "_SM";
+        if (massa == Signal_SM) mass = "_SM";
         else mass = "_mass"+std::to_string(massa);
     }
     auto matrix = std::make_shared<TH2D>((type+"_"+class_sample+mass).c_str(),(type+"_"+class_sample+mass).c_str(),bin,0,bin,bin,0,bin);
@@ -382,9 +388,9 @@ using VectorName_ND = std::deque<std::pair<Name_ND, double>>;
 using MassVectorName_ND = std::map<int, VectorName_ND>;
 using RangeSelected = std::map<int,std::set<std::string>>;
 
-Name_NDDistance JensenDivergenceND(const VarData& sample_signal, const VarData& sample_bkg,
+Name_NDDistance JensenDivergenceSB(const VarData& sample_signal, const VarData& sample_bkg,
                                    const VarBand& bandwidth_signal, const VarBand& bandwidth_bkg){
-    Name_NDDistance  JSDivergenceND;
+    Name_NDDistance  JSDivergenceSB;
     std::map<Name_ND,std::future<double>> JSDivergenceND_future;
     for (const auto& entry_1 : sample_signal){
         std::vector<const DataVector*> x;
@@ -395,17 +401,17 @@ Name_NDDistance JensenDivergenceND(const VarData& sample_signal, const VarData& 
         y.push_back(&sample_bkg.at(entry_1.first));
         band_x.push_back(bandwidth_signal.at(entry_1.first));
         band_y.push_back(bandwidth_bkg.at(entry_1.first));
-        JSDivergenceND_future[Name_ND{entry_1.first}] = std::async(std::launch::async,stat_estimators::JensenShannonDivergence_ND<double>, x, y, band_x, band_y);
+        JSDivergenceND_future[Name_ND{entry_1.first}] = run::async(stat_estimators::JensenShannonDivergence_ND<double>, x, y, band_x, band_y);
         for (const auto& entry_2 : sample_signal){
             if ( entry_1.first == entry_2.first )
                 continue;
-            if ( JSDivergenceND_future.count(Name_ND({entry_2.first,entry_1.first})) )
+            if (JSDivergenceND_future.count(Name_ND({entry_2.first,entry_1.first})) )
                 continue;
             x.push_back(&sample_signal.at(entry_2.first));
             y.push_back(&sample_bkg.at(entry_2.first));
             band_x.push_back(bandwidth_signal.at(entry_2.first));
             band_y.push_back(bandwidth_bkg.at(entry_2.first));
-            JSDivergenceND_future[Name_ND{entry_1.first,entry_2.first}] = std::async(std::launch::async,stat_estimators::JensenShannonDivergence_ND<double>, x, y, band_x, band_y);
+            JSDivergenceND_future[Name_ND{entry_1.first,entry_2.first}] = run::async(stat_estimators::JensenShannonDivergence_ND<double>, x, y, band_x, band_y);
             x.erase(x.end() - 1);
             y.erase(y.end() - 1);
             band_x.erase(band_x.end() - 1);
@@ -413,9 +419,9 @@ Name_NDDistance JensenDivergenceND(const VarData& sample_signal, const VarData& 
         }
     }
     for(auto& entry : JSDivergenceND_future) {
-        JSDivergenceND[entry.first] = entry.second.get();
+        JSDivergenceSB[entry.first] = entry.second.get();
     }
-    return JSDivergenceND;
+    return JSDivergenceSB;
 }
 
 std::set<std::string> CheckList(int mass,  MassVar sample, const Name_NDDistance& JSDivergenceND,
@@ -431,43 +437,31 @@ std::set<std::string> CheckList(int mass,  MassVar sample, const Name_NDDistance
                   [](const std::pair<Name_ND, double>& el1, const std::pair<Name_ND, double>& el2){
             return el1.second > el2.second;
         });
-
-//        std::cout<<JSDivergence_vector.size()<<" "<<selected.size()<<" "<<checked.size()<<" "<<not_corrected.size()<<std::endl;
-
         auto best_entry = JSDivergence_vector.front();
-//        std::cout<<"coppia: "<<*best_entry.first.names.begin()<<" "<<*best_entry.first.names.rbegin()<<std::endl;
 
         for(const auto& name : best_entry.first.names) {
-//            std::cout<<"name: "<<name<<std::endl;
-            eliminated[name] = "";
-            if(selected.count(name)) {
-//                std::cout<<" already selected!"<<std::endl;
+            if(selected.count(name))
                 continue;
-            }
-
             const double JS_1d = JSDivergenceND.at(Name_ND({name}));
             for(auto& entry : JSDivergence_vector) {
                 if(entry.first.names.count(name))
                     entry.second -= JS_1d;
             }
-
-            if (not_corrected.count(name)) {
-//                std::cout<<" not corrected!"<<std::endl;
+            if (not_corrected.count(name))
                 continue;
-            }
             static constexpr double threashold = 0.5;
-
             for(const auto& other_entry : sample.at(mass)) {
                 if(other_entry.first == name) continue;
                 const Name_ND names({name, other_entry.first});
                 const auto name_pair = names.ToPair();
-                if(mutual_matrix_signal.at(name_pair) < threashold && mutual_matrix_bkg.at(name_pair) < threashold)
+                if(mutual_matrix_signal.at(name_pair) < threashold && mutual_matrix_bkg.at(name_pair) < threashold){
+                    eliminated[other_entry.first] = "MI-"+name;
                     not_corrected.insert(other_entry.first);
+                }
             }
 
             selected.insert(name);
         }
-
         VectorName_ND copy;
         for (const auto& entry : JSDivergence_vector){
             if(entry.second <= 0) continue;
@@ -479,70 +473,32 @@ std::set<std::string> CheckList(int mass,  MassVar sample, const Name_NDDistance
                 copy.push_back(entry);
         }
         JSDivergence_vector = std::move(copy);
-
-
-
-
-
-
-
-//                if (!entry.first.names.size()) break;
-
-//                if(entry.first.names.count(name)){
-//                    if (*entry.first.names.begin() == name && *entry.first.names.rbegin() == name)  {
-//                        continue;
-//                    }
-//                    std::string other;
-//                    if (*entry.first.names.begin() == name )   other = *entry.first.names.rbegin();
-//                    if (*entry.first.names.rbegin() == name )  other = *entry.first.names.begin();
-//                    if (not_corrected.count(other)) continue;
-//                    const VarPair var_pair = name < other ?
-//                                VarPair(name, other) : VarPair(other, name);
-//                    const double MI_sgn = mutual_matrix_signal.at(var_pair);
-//                    const double MI_bkg = mutual_matrix_bkg.at(var_pair);
-//                    if(MI_sgn < threashold || MI_bkg < threashold) {
-//                        std::cout<<"not corrected: "<<other<<std::endl;
-//                        not_corrected.insert(other);
-//                    }
-//                }
-//            }
-
-//            selected.insert(name);
-//        }
-//        std::cout<<selected.size()<<std::endl;
-
-
     }
 
-    std::cout<<"directory"<<std::endl;
-    auto directory_v = directory->GetDirectory("Variables");
+    auto directory_v = directory->GetDirectory("Selected_variables");
     if (directory_v == nullptr) {
-        directory->mkdir("Variables");
-        directory_v = directory->GetDirectory("Variables");
+        directory->mkdir("Selected_variables");
+        directory_v = directory->GetDirectory("Selected_variables");
     }
-    directory_v->mkdir(("Mass"+std::to_string(mass)).c_str());
-    auto directory_m = directory_v->GetDirectory(("Mass"+std::to_string(mass)).c_str());
-     std::cout<<"histo"<<std::endl;
+    TDirectory* directory_m;
+    if (mass==Signal_SM){
+        directory_v->mkdir("Signal_SM");
+        directory_m = directory_v->GetDirectory("Signal_SM");
+    }
+    else{
+    directory_v->mkdir(("Signal_mass"+std::to_string(mass)).c_str());
+    directory_m = directory_v->GetDirectory(("Signal_mass"+std::to_string(mass)).c_str());
+    }
     for(const auto& selected_name : selected){
-        std::cout<<"selected  name "<<selected_name<<std::endl;
         std::shared_ptr<TGraph> plot;
-        plot = std::make_shared<TGraph>();
-        plot->SetLineColor(kGreen+1);
-        plot->SetLineWidth(1);
-        plot->SetMarkerColor(1);
-        plot->SetMarkerSize(1);
-        plot->SetMarkerStyle(3);
-        plot->SetTitle(("JSD_"+selected_name).c_str());
-        plot->SetName(("JSD_"+selected_name).c_str());
-        plot->GetHistogram()->GetXaxis()->SetTitle("mass");
-        plot->GetHistogram()->GetYaxis()->SetTitle("JSD");
+        plot = CreatePlot(("JSD_"+selected_name).c_str(),("JSD_"+selected_name).c_str(),"mass","JSD");
         int i = 0;
         std::vector<const DataVector*> sample_1;
         DataVector band_1;
         sample_1.push_back(&sample.at(mass).at(selected_name));
         band_1.push_back(band.at(mass).at(selected_name));
         for (const auto& mass_entry: sample){
-            if (mass_entry.first == BkgMass || mass_entry.first == SMMass) continue;
+            if (mass_entry.first == Bkg_mu) continue;
             std::vector<const DataVector*> sample_2;
             DataVector band_2;
             sample_2.push_back(&sample.at(mass_entry.first).at(selected_name));
@@ -553,7 +509,7 @@ std::set<std::string> CheckList(int mass,  MassVar sample, const Name_NDDistance
         }
         root_ext::WriteObject(*plot, directory_m);
     }
-
+    std::cout<<"fine"<<std::endl;
     return selected;
 }
 
@@ -570,9 +526,9 @@ std::set<std::string> CheckList_2(int min, int max, const std::map<int, double>&
     std::map<std::pair<int, int>, std::map<Name_ND,double>> JSDivergence_signal;
     std::ofstream ofc("Check2_JSD_bestentry"+std::to_string(min)+"-"+std::to_string(max)+".csv", std::ofstream::out);
     for (const auto& mass_1 : JSDivergenceND){
-        if (mass_1.first < min || mass_1.first > max || mass_1.first ==  SMMass) continue;
+        if (mass_1.first < min || mass_1.first > max || mass_1.first ==  Signal_SM) continue;
         for (const auto& mass_2 : JSDivergenceND){
-            if (mass_2.first < min || mass_2.first > max || mass_2.first ==  SMMass) continue;
+            if (mass_2.first < min || mass_2.first > max || mass_2.first ==  Signal_SM) continue;
             if (mass_2.first < mass_1.first) continue;
             std::pair<int,int> pair(mass_1.first, mass_2.first);
             histo_check[pair] = std::make_shared<TH1D>(("JSDrangecheck_"+std::to_string(mass_1.first)+"_"+std::to_string(mass_2.first)).c_str(), ("JensenShannonDivergence_"+std::to_string(mass_1.first)+"_"+std::to_string(mass_2.first)).c_str(), 30,0,1);
@@ -602,7 +558,7 @@ std::set<std::string> CheckList_2(int min, int max, const std::map<int, double>&
         for (const auto& entry: JSDivergence_vector.at(min)){
             double d = 0;
             for (const auto& mass: JSDivergenceND){
-                if (mass.first ==  SMMass) continue;
+                if (mass.first ==  Signal_SM) continue;
                 if (mass.first < min || mass.first > max) continue;
                 d+= (max_distance.at(mass.first)-mass.second.at(entry.first)) / max_distance.at(mass.first);
             }
@@ -622,7 +578,7 @@ std::set<std::string> CheckList_2(int min, int max, const std::map<int, double>&
                 continue;
             }
             for (const auto& mass : JSDivergenceND){
-                if (mass.first ==  SMMass) continue;
+                if (mass.first ==  Signal_SM) continue;
                 const double JS_1d = mass.second.at(Name_ND({name}));
                 for(auto& entry : JSDivergence_vector.at(mass.first)) {
                     if(entry.first.names.count(name))
@@ -632,31 +588,37 @@ std::set<std::string> CheckList_2(int min, int max, const std::map<int, double>&
 
             if (not_corrected.count(name)) continue;
             static const double threashold = 0.5;
-            for (const auto& mass : JSDivergenceND){
-                if (mass.first ==  SMMass) continue;
-                for (const auto& entry : JSDivergence_vector.at(mass.first)){
-                    if (!entry.first.names.size()) break;
 
-                    if(entry.first.names.count(name)){
-                        if (*entry.first.names.begin() == name && *entry.first.names.rbegin() == name)  {
-                            continue;
-                        }
-                        std::string other;
-                        if (*entry.first.names.begin() == name )   other = *entry.first.names.rbegin();
-                        if (*entry.first.names.rbegin() == name )  other = *entry.first.names.begin();
-                        const VarPair var_pair = name < other ?
-                                    VarPair(name, other) : VarPair(other, name);
-                        const double MI_sgn = mutual_matrix.at(mass.first).at(var_pair);
-                        const double MI_bkg = mutual_matrix.at(BkgMass).at(var_pair);
-                        if(MI_sgn < threashold || MI_bkg < threashold) {
-                            not_corrected.insert(other);
-                        }
+
+            for (const auto& mass : JSDivergenceND){
+                if (mass.first ==  Signal_SM) continue;
+                for(const auto& other_entry : sample.at(mass.first)) {
+                    if(other_entry.first == name) continue;
+                    const Name_ND names({name, other_entry.first});
+                    const auto name_pair = names.ToPair();
+                    if(mutual_matrix.at(mass.first).at(name_pair) < threashold && mutual_matrix.at(Bkg_mu).at(name_pair) < threashold){
+                        eliminated[other_entry.first] = "MI-"+name;
+                        not_corrected.insert(other_entry.first);
                     }
                 }
             }
             selected.insert(name);
-
         }
+        std::cout<<"selezionati "<<selected.size()<<std::endl;
+
+        VectorName_ND copy;
+        for (const auto& entry : JSDivergence_vector.at(min)){
+            if(entry.second <= 0) continue;
+            bool consider = true;
+            for(const auto& other : entry.first) {
+                consider = consider && !not_corrected.count(other);
+            }
+            if(consider)
+                copy.push_back(entry);
+        }
+        JSDivergence_vector.at(min) = std::move(copy);
+
+
         for(auto mass : JSDivergence_vector){
             int c = 0;
             for (auto entry : mass.second){
@@ -749,10 +711,10 @@ std::set<std::string> CheckList_2(int min, int max, const std::map<int, double>&
             int i_b = 0;
             std::vector<const DataVector*> sample_1_b;
             DataVector band_1_b;
-            sample_1_b.push_back(&sample.at(BkgMass).at(selected_name1));
-            sample_1_b.push_back(&sample.at(BkgMass).at(selected_name2));
-            band_1_b.push_back(band.at(BkgMass).at(selected_name1));
-            band_1_b.push_back(band.at(BkgMass).at(selected_name2));
+            sample_1_b.push_back(&sample.at(Bkg_mu).at(selected_name1));
+            sample_1_b.push_back(&sample.at(Bkg_mu).at(selected_name2));
+            band_1_b.push_back(band.at(Bkg_mu).at(selected_name1));
+            band_1_b.push_back(band.at(Bkg_mu).at(selected_name2));
             for (const auto& mass_entry: sample){
                 if (mass_entry.first < min || mass_entry.first > max) continue;
                 std::vector<const DataVector*> sample_2;
@@ -867,8 +829,8 @@ std::set<std::string> CheckList_2(int min, int max, const std::map<int, double>&
 void Plot(int massa, const std::set<std::string>& selected,const VarData& sample, TDirectory* directory){
     std::set<std::string> checked;
     std::string mass;
-    if (massa == BkgMass) mass = "Bkg";
-    else if (massa == SMMass) mass = "SM";
+    if (massa == Bkg_mu) mass = "Bkg";
+    else if (massa == Signal_SM) mass = "SM";
     else mass = std::to_string(massa);
     auto dir = directory->GetDirectory(mass.c_str());
     if (dir == nullptr){
@@ -891,8 +853,8 @@ void Plot(int massa, const std::set<std::string>& selected,const VarData& sample
 void Plot2D(int massa, const std::set<std::string>& selected,const VarData& sample, TDirectory* directory){
     std::set<std::string> checked;
     std::string mass;
-    if (massa == BkgMass) mass = "Bkg";
-    else if (massa == SMMass) mass = "SM";
+    if (massa == Bkg_mu) mass = "Bkg";
+    else if (massa == Signal_SM) mass = "SM";
     else mass = std::to_string(massa);
     auto dir = directory->GetDirectory(mass.c_str());
     if (dir == nullptr){
@@ -919,23 +881,14 @@ void PlotJensenShannon(const MassName_ND& JSDivergenceND, TDirectory* directory)
     std::map<std::string, std::shared_ptr<TGraph>> plot;
     int i = 0;
     for (const auto& mass_entry: JSDivergenceND){
-        if (mass_entry.first == BkgMass)
+        if (mass_entry.first == Bkg_mu)
             continue;
         for (const auto& var : mass_entry.second){
             if (var.first.names.size()!=1)
                 continue;
             const std::string name = *var.first.names.begin();
             if (plot.count(name) == 0) {
-                plot[name] = std::make_shared<TGraph>();
-                plot[name]->SetLineColor(kGreen+1);
-                plot[name]->SetLineWidth(1);
-                plot[name]->SetMarkerColor(1);
-                plot[name]->SetMarkerSize(1);
-                plot[name]->SetMarkerStyle(3);
-                plot[name]->SetTitle(("JSD_"+name+"_SignalBkg").c_str());
-                plot[name]->SetName(("JSD_"+name+"_SignalBkg").c_str());
-                plot[name]->GetHistogram()->GetXaxis()->SetTitle("mass");
-                plot[name]->GetHistogram()->GetYaxis()->SetTitle("JS Probability");
+                plot[name] = CreatePlot("JSD_"+name+"_SignalBkg","JSD_"+name+"_SignalBkg","mass","JSD");
             }
             plot[name]->SetPoint(i,mass_entry.first,JSDivergenceND.at(mass_entry.first).at(Name_ND({name})));
         }
@@ -954,25 +907,29 @@ void PlotJensenShannon(const MassName_ND& JSDivergenceND, TDirectory* directory)
 
 
 using VecVariables =  std::vector<std::string>;
-std::vector<VecVariables> VariableSelection( const MassVar& sample, const MassVarBand& band,
+std::vector<VecVariables> VariablesSelection(const MassVar& sample, const MassVarBand& band,
                         const MassVarPairMI& mutual_matrix, MassSetSelected& selected, RangeSelected& selected2,
                         std::shared_ptr<TFile> outfile, size_t number_variables){
 
-    MassName_ND JSDivergenceND;
-    std::cout<<"Jensen Shannon"<<std::endl;
+    MassName_ND JSDivergenceSB;
+    std::cout<<"Jensen Shannon Signal Background";
+    auto start = clock::now();
     for (const auto& mass_entry: sample){
-        if (mass_entry.first == BkgMass)
+        if (mass_entry.first == Bkg_mu)
             continue;
-        JSDivergenceND[mass_entry.first] = JensenDivergenceND(mass_entry.second, sample.at(BkgMass), band.at(mass_entry.first), band.at(BkgMass));
+        JSDivergenceSB[mass_entry.first] = JensenDivergenceSB(mass_entry.second, sample.at(Bkg_mu), band.at(mass_entry.first), band.at(Bkg_mu));
     }
-    std::cout<<"Plot Jensen Shannon"<<std::endl;
+    std::cout<<" - Plot Jensen Shannon"<<std::endl;
     outfile->mkdir("JensenShannonDivergence");
     auto directory_js = outfile->GetDirectory("JensenShannonDivergence");
-    directory_js->mkdir("Signal_Bkg");
-    auto directory_sb = directory_js->GetDirectory("Signal_Bkg");
-    directory_sb->mkdir("Variables");
-    auto directory_v = directory_sb->GetDirectory("Variables");
-    PlotJensenShannon(JSDivergenceND, directory_v);
+    directory_js->mkdir("Signal_Background");
+    auto directory_sb = directory_js->GetDirectory("Signal_Background");
+    directory_sb->mkdir("All_variables");
+    auto directory_v = directory_sb->GetDirectory("All_variables");
+    PlotJensenShannon(JSDivergenceSB, directory_v);
+    auto stop = clock::now();
+    std::cout<<"secondi: "<<std::chrono::duration_cast<std::chrono::seconds>(stop - start).count()<<std::endl;
+
     std::cout<<"Checklist1"<<std::endl;
     std::ofstream ofs("SelectedVariable.csv", std::ofstream::out);
     directory_sb->mkdir("1D");
@@ -981,31 +938,30 @@ std::vector<VecVariables> VariableSelection( const MassVar& sample, const MassVa
     auto directory_ss = directory_js->GetDirectory("Signal_Signal");
     directory_ss->mkdir("Check_Mass");
     auto directory_cm = directory_ss->GetDirectory("Check_Mass");
-
     for (const auto& mass_entry : sample){
         std::cout<<mass_entry.first<<" ";
         std::cout.flush();
-        if (mass_entry.first == BkgMass)
+        if (mass_entry.first == Bkg_mu)
             continue;
         std::map<std::string, std::string> eliminated;
-        selected[mass_entry.first] =  CheckList(mass_entry.first, sample,JSDivergenceND.at(mass_entry.first), mutual_matrix.at(mass_entry.first), mutual_matrix.at(BkgMass), eliminated, band, number_variables, directory_cm);
+        selected[mass_entry.first] =  CheckList(mass_entry.first, sample,JSDivergenceSB.at(mass_entry.first), mutual_matrix.at(mass_entry.first), mutual_matrix.at(Bkg_mu), eliminated, band, number_variables, directory_cm);
         ofs << mass_entry.first << std::endl;
         for(auto& entry_selected: selected[mass_entry.first]){
                 ofs << entry_selected<<",";
         }
         ofs << std::endl;
         std::string  mass = std::to_string(mass_entry.first);
-        if (mass_entry.first == SMMass) mass = "SM";
-        auto histo = std::make_shared<TH1D>(("JSD_"+mass+"_Bkg").c_str(), ("JensenShannonDivergence_mass"+mass+"_Bkg").c_str(), 50,0,1);
+        if (mass_entry.first == Signal_SM) mass = "SM";
+        auto histo = std::make_shared<TH1D>(("JSD_Signal"+mass+"_Background").c_str(), ("JensenShannonDivergence_Signal"+mass+"_Background").c_str(), 50,0,1);
         histo->SetXTitle("JSD");
         std::ofstream of("InformationTable_mass"+(std::to_string(mass_entry.first))+".csv", std::ofstream::out);
         of<<"Var_1"<<","<<"Var_2"<<","<<"JSD_ND"<<","<<"JSD_12-(JSD_1+JSD_2)"<<","<<"ScaledMI_Signal_12" <<","<<"ScaledMI_Bkg_12"<<","<<"selected"<<","<<"eliminated by"<<std::endl;
-        for(auto& entry : JSDivergenceND.at(mass_entry.first)){
+        for(auto& entry : JSDivergenceSB.at(mass_entry.first)){
              histo->Fill(entry.second);
              if ((entry.first).names.size() == 1){
                  auto name_1 = ((entry.first).names).begin();
                  bool selected_1 = selected[mass_entry.first].count(*name_1);
-                 of<<*name_1<<","<<"   "<<","<<JSDivergenceND.at(mass_entry.first).at(Name_ND({*name_1}))<<","<<","<<","<<","<<selected_1;
+                 of<<*name_1<<","<<"   "<<","<<JSDivergenceSB.at(mass_entry.first).at(Name_ND({*name_1}))<<","<<","<<","<<","<<selected_1;
                  if(eliminated.count(*name_1)) of<<","<<eliminated.at(*name_1);
                  of<<std::endl;
              }
@@ -1014,7 +970,7 @@ std::vector<VecVariables> VariableSelection( const MassVar& sample, const MassVa
                  auto name_2 = ((entry.first).names).rbegin();
                  bool selected_1 = selected[mass_entry.first].count(*name_1);
                  bool selected_2 = selected[mass_entry.first].count(*name_2);
-                 of<<*name_1<<","<<*name_2<<","<<JSDivergenceND.at(mass_entry.first).at(Name_ND({*name_1,*name_2}))<<","<<JSDivergenceND.at(mass_entry.first).at(Name_ND({*name_1,*name_2}))-(JSDivergenceND.at(mass_entry.first).at(Name_ND({*name_1}))+JSDivergenceND.at(mass_entry.first).at(Name_ND({*name_2})))<<","<<mutual_matrix.at(mass_entry.first).at(VarPair(*name_1,*name_2))<<","<<mutual_matrix.at(BkgMass).at(VarPair(*name_1,*name_2))<<","<<selected_1<<","<<selected_2;
+                 of<<*name_1<<","<<*name_2<<","<<JSDivergenceSB.at(mass_entry.first).at(Name_ND({*name_1,*name_2}))<<","<<JSDivergenceSB.at(mass_entry.first).at(Name_ND({*name_1,*name_2}))-(JSDivergenceSB.at(mass_entry.first).at(Name_ND({*name_1}))+JSDivergenceSB.at(mass_entry.first).at(Name_ND({*name_2})))<<","<<mutual_matrix.at(mass_entry.first).at(VarPair(*name_1,*name_2))<<","<<mutual_matrix.at(Bkg_mu).at(VarPair(*name_1,*name_2))<<","<<selected_1<<","<<selected_2;
                  if(eliminated.count(*name_1)) of<<","<<eliminated.at(*name_1);
                  if(eliminated.count(*name_2)) of<<","<<eliminated.at(*name_2);
                  of<<std::endl;
@@ -1039,8 +995,8 @@ std::vector<VecVariables> VariableSelection( const MassVar& sample, const MassVa
     for(const auto& mass_1: selected){
         int j = 1;
         std::string mass;
-        if (mass_1.first != BkgMass && mass_1.first != SMMass) mass = std::to_string(mass_1.first);
-        else if (mass_1.first == SMMass) mass = "SM";
+        if (mass_1.first != Bkg_mu && mass_1.first != Signal_SM) mass = std::to_string(mass_1.first);
+        else if (mass_1.first == Signal_SM) mass = "SM";
         matrix_intersection->GetXaxis()->SetBinLabel(k, (mass).c_str());
         matrix_intersection->GetYaxis()->SetBinLabel(k, (mass).c_str());
         for(const auto& mass_2: selected){
@@ -1071,7 +1027,7 @@ std::vector<VecVariables> VariableSelection( const MassVar& sample, const MassVa
     auto directory_vardistrms2d = directory_vardistr2d->GetDirectory("Mass_selected");
     std::cout<<"plot"<<std::endl;
     for (const auto& mass_entry : sample){
-        if (mass_entry.first == BkgMass) {
+        if (mass_entry.first == Bkg_mu) {
             Plot(mass_entry.first, selected.at(250), sample.at(mass_entry.first), directory_vardistrms);
             Plot2D(mass_entry.first, selected.at(250), sample.at(mass_entry.first), directory_vardistrms2d);
 
@@ -1100,7 +1056,7 @@ std::vector<VecVariables> VariableSelection( const MassVar& sample, const MassVa
 //            sel.insert(name);
 //        }
 //        for (const auto& mass_entry : sample){
-//            if (mass_entry.first == BkgMass) {
+//            if (mass_entry.first == Bkg_mu) {
 //                Plot(mass_entry.first, sel, sample.at(mass_entry.first), directory_vardistrru);
 //                Plot2D(mass_entry.first, sel, sample.at(mass_entry.first), directory_vardistrru2d);
 
@@ -1132,7 +1088,7 @@ std::vector<VecVariables> VariableSelection( const MassVar& sample, const MassVa
     std::map<int, VectorName_ND> JSDivergence_vector;
     std::map<int, double> max_distance;
     for (const auto& range: ranges){
-        for (const auto& mass: JSDivergenceND){
+        for (const auto& mass: JSDivergenceSB){
             if (mass.first < range.min || mass.first > range.max) continue;
             VectorName_ND  vector(mass.second.begin(), mass.second.end());
             JSDivergence_vector[mass.first] = vector;
@@ -1150,7 +1106,7 @@ std::vector<VecVariables> VariableSelection( const MassVar& sample, const MassVa
     directory_vardistr2d->mkdir("Range");
     auto directory_vardistrr2d = directory_vardistr2d->GetDirectory("Range");
     for (const auto& range: ranges){
-        selected2[range.min] = CheckList_2(range.min, range.max, max_distance, sample, JSDivergenceND, JSDivergence_vector, mutual_matrix, eliminated2, band, 20, directory_cr);
+        selected2[range.min] = CheckList_2(range.min, range.max, max_distance, sample, JSDivergenceSB, JSDivergence_vector, mutual_matrix, eliminated2, band, 20, directory_cr);
         std::cout<<"range: "<<range.min<<"-"<<range.max<<std::endl;
         ofr<<"range: "<<range.min<<"-"<<range.max<<std::endl;
         for (const auto& name : selected2[range.min]){
@@ -1158,7 +1114,7 @@ std::vector<VecVariables> VariableSelection( const MassVar& sample, const MassVa
         }
         ofr<<std::endl;
         for (const auto& mass_entry : sample){
-            if (mass_entry.first == BkgMass) {
+            if (mass_entry.first == Bkg_mu) {
                 Plot(mass_entry.first, selected2[range.min], sample.at(mass_entry.first), directory_vardistrr);
                 Plot2D(mass_entry.first, selected2[range.min], sample.at(mass_entry.first), directory_vardistrr2d);
             }
@@ -1204,8 +1160,8 @@ std::vector<VecVariables> VariableSelection( const MassVar& sample, const MassVa
 
                 sample_1.push_back(&entries);
                 band_1.push_back(band_s.at(selected_name));
-                sample_2.push_back(&sample.at(BkgMass).at(selected_name));
-                band_2.push_back(band.at(BkgMass).at(selected_name));
+                sample_2.push_back(&sample.at(Bkg_mu).at(selected_name));
+                band_2.push_back(band.at(Bkg_mu).at(selected_name));
 
                 auto test = stat_estimators::JensenShannonDivergence_ND(sample_1, sample_2, band_1, band_2);
                 plot->SetPoint(j,range.min,test);
@@ -1257,10 +1213,10 @@ std::vector<VecVariables> VariableSelection( const MassVar& sample, const MassVa
                     sample_1.push_back(&entries2);
                     band_1.push_back(band_s1.at(selected_name1));
                     band_1.push_back(band_s2.at(selected_name2));
-                    sample_2.push_back(&sample.at(BkgMass).at(selected_name1));
-                    band_2.push_back(band.at(BkgMass).at(selected_name1));
-                    sample_2.push_back(&sample.at(BkgMass).at(selected_name2));
-                    band_2.push_back(band.at(BkgMass).at(selected_name2));
+                    sample_2.push_back(&sample.at(Bkg_mu).at(selected_name1));
+                    band_2.push_back(band.at(Bkg_mu).at(selected_name1));
+                    sample_2.push_back(&sample.at(Bkg_mu).at(selected_name2));
+                    band_2.push_back(band.at(Bkg_mu).at(selected_name2));
                     auto test = stat_estimators::JensenShannonDivergence_ND(sample_1, sample_2, band_1, band_2);
                     plot->SetPoint(j,range.min,test);
                     j++;
@@ -1309,7 +1265,7 @@ void KolmogorovSignalPlotSelected(const MassVar& sample_signal, const VecVariabl
     std::map<std::string, std::shared_ptr<TGraph>> plot;
      int i = 0;
     for (const auto& mass_entry: sample_signal){
-        if ( mass_entry.first == BkgMass )
+        if ( mass_entry.first == Bkg_mu )
             continue;
         if (mass_entry.first < min || mass_entry.first > max)
             continue;
@@ -1395,146 +1351,167 @@ public:
     void Run()
     {
 
+        run::ThreadPull threads(8);
         auto start = clock::now();
-        for(const SampleEntry& entry:samples)
-        {
-            auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
-            EventTuple tuple(args.tree_name(), input_file.get(), true, {} , GetEnabledBranches());
-            std::cout << entry << " number of events: " << std::min(tuple.GetEntries(),args.number_events()) << std::endl;
 
-            for(Long64_t current_entry = 0; current_entry < std::min(tuple.GetEntries(),args.number_events()); ++current_entry) {
+        std::map<std::string, MassVar> sample_vars;
 
-                tuple.GetEntry(current_entry);
-                const Event& event = tuple.data();
-
-                if (event.eventEnergyScale != 0 || (event.q_1+event.q_2) != 0 || event.jets_p4.size() < 2
-                    || event.extraelec_veto == true || event.extramuon_veto == true || event.jets_p4[0].eta() > 2.4
-                    || event.jets_p4[1].eta() > 2.4)
-                    continue;
-
-                LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
-                double ellipse_cut = pow(event.SVfit_p4.mass()-116,2)/pow(35.,2) + pow(bb.mass()-111,2)/pow(45.,2);
-                if (ellipse_cut>1)
-                    continue;
-
-                vars.AddEvent(event, entry.mass, entry.weight);
-            }
-        }
-
-        auto stop = clock::now();
-        std::cout<<"secondi: "<<std::chrono::duration_cast<std::chrono::seconds>(stop - start).count()<<std::endl;
-
-        MassVar sample_vars = vars.GetSampleVariables();
-        std::cout << "n.variabili: " << sample_vars[BkgMass].size() << std::endl;
-        std::cout << "n.masse segnale: " << sample_vars.size() - 1 << " + " << 1 << " fondo."<<std::endl;
-
-        for (const auto& var: sample_vars){
-            auto map = var.second;
-            if (var.first != BkgMass && var.first != SMMass)
-                std::cout << "massa: " << var.first << ", eventi segnale: " << map["pt_l1"].size() << std::endl;           
-            else if (var.first == SMMass) std::cout << "eventi SM: "<< map["pt_l1"].size() << std::endl;
-            else if (var.first == BkgMass) std::cout << "eventi fondo: "<< map["pt_l1"].size() << std::endl;
-        }
-
-        MassVarBand bandwidth;
-        MassVarPairMI mutual_matrix;
-        std::cout << "bandwidth and mutual information" << std::endl;
-        outfile->mkdir("MutualInformation");
-        auto directory_mi = outfile->GetDirectory("MutualInformation");
-        start = clock::now();
-        for (const auto& sample: sample_vars){
-            std::cout<<sample.first<<std::endl;
-            std::cout<<"bandwidth"<<std::endl;
-            bandwidth[sample.first] = OptimalBandwidth(sample.second);
-            std::cout<<"mutual"<<std::endl;
-            mutual_matrix[sample.first] = Mutual(sample.second, bandwidth[sample.first]);
-            if (sample.first == BkgMass || !mutual_matrix.count(BkgMass))
-                continue;
-            else {
-                std::cout<<"mutual plot"<<std::endl;
-                MutualPlot(sample.first, mutual_matrix[sample.first], mutual_matrix[BkgMass], directory_mi);
-            }
-        }
-        std::cout << "mutual histos" << std::endl;
-        directory_mi->mkdir("Matrix");
-        auto directory_s = directory_mi->GetDirectory("Matrix");
-        CreateMatrixHistos(sample_vars,mutual_matrix,"Mutual_Information", directory_s);
-        stop = clock::now();
-        std::cout<<"secondi: "<<std::chrono::duration_cast<std::chrono::seconds>(stop - start).count()<<std::endl;
-
-        start = clock::now();
-        std::cout<<"selection variable"<<std::endl;
-        MassSetSelected selected;
-        RangeSelected selected2;
-        std::vector<VecVariables> union_selected = VariableSelection(sample_vars,bandwidth,mutual_matrix, selected, selected2, outfile, args.number_variables());
-        stop = clock::now();
-        std::cout<<"secondi: "<<std::chrono::duration_cast<std::chrono::seconds>(stop - start).count()<<std::endl;
-        std::cout<<"Kolmogorov"<<std::endl;
-        outfile->mkdir("Kolmogorov");
-        auto directory_ks = outfile->GetDirectory("Kolmogorov");
-        int count = 0;
-        for (const auto& range : ranges){
-            KolmogorovSignalPlotSelected(sample_vars,union_selected[0], range.min , range.max , range.med, directory_ks);
-            count++;
-        }
-
-        std::cout<<"Correlation mass selected"<<std::endl;
-        outfile->mkdir("Correlation");
-        auto directory_corr = outfile->GetDirectory("Correlation");
-        directory_corr->mkdir("MassSelected");
-        auto directory_ms = directory_corr->GetDirectory("MassSelected");
-        for (const auto& sample: sample_vars){
-            if (sample.first == BkgMass) continue;
-             if (selected.at(sample.first).size() == 0) continue;
-            VarPairEstCorr matrix_covariance = EstimateCovariance(selected.at(sample.first), sample_vars.at(sample.first), UINT_FAST32_MAX);
-            auto matrix_covariance_value = GetValue(matrix_covariance);
-            auto matrix_corr = CovToCorr(matrix_covariance_value);
-            CreateMatrixHistosMassSelected(sample.first, matrix_corr, selected.at(sample.first), "correlation", directory_ms);
-        }
-        std::cout<<"Correlation range union"<<std::endl;
-        directory_corr->mkdir("Range_Union");
-        auto directory_ru = directory_corr->GetDirectory("Range_Union");
-        int i = 0;
-        for (const auto& range: ranges){
-            std::set<std::string> selected;
-            for(const auto& var : union_selected[i]){
-                selected.insert(var);
-            }
-            if (!selected.size()) continue;
-            VarData vardata;
-            for(const auto& var : union_selected[i]){
-                for (const auto& sample: sample_vars){
-                    if (sample.first < range.min || sample.first > range.max) continue;
-                    for (const auto& element: sample_vars.at(sample.first).at(var)){
-                        vardata[var].push_back(element);
+        for (int i = 0; i<2; i++){
+            std::string tree;
+            if (i == 0) tree = "muTau";
+            if (i == 1) tree = "eTau";
+            for(const SampleEntry& entry:samples)
+            {
+                if ( i == 0 && entry.filename == "TT_ext3_eTau.root")  continue;
+                if ( i == 1 && entry.filename == "TT_ext3_muTau.root") continue;
+                auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
+                EventTuple tuple(tree, input_file.get(), true, {} , GetEnabledBranches());
+                std::cout << entry << " number of events: " << std::min(tuple.GetEntries(),args.number_events()) << std::endl;
+                Long64_t current_entry = 0;
+                Long64_t tot_entries = 0;
+                while(tot_entries < std::min(tuple.GetEntries(),args.number_events())) {
+                    tuple.GetEntry(current_entry);
+                    const Event& event = tuple.data();
+                    if (event.eventEnergyScale != 0 || (event.q_1+event.q_2) != 0 || event.jets_p4.size() < 2
+                        || event.extraelec_veto == true || event.extramuon_veto == true || event.jets_p4[0].eta() > 2.4
+                        || event.jets_p4[1].eta() > 2.4){
+                        current_entry++;
+                        continue;
                     }
+                    LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
+                    double ellipse_cut = pow(event.SVfit_p4.mass()-116,2)/pow(35.,2) + pow(bb.mass()-111,2)/pow(45.,2);
+                    if (ellipse_cut>1){
+                        current_entry++;
+                        continue;
+                    }
+                    vars.AddEvent(tree, event, entry.mass, entry.weight);
+                    current_entry++;
+                    tot_entries++;
                 }
             }
-            VarPairEstCorr matrix_covariance = EstimateCovariance(selected, vardata, UINT_FAST32_MAX);
-            auto matrix_covariance_value = GetValue(matrix_covariance);
-            auto matrix_corr = CovToCorr(matrix_covariance_value);
-            CreateMatrixHistosMassSelected(range.min, matrix_corr, selected, "correlation", directory_ru);
-            i++;
+            auto stop = clock::now();
+            std::cout<<"secondi: "<<std::chrono::duration_cast<std::chrono::seconds>(stop - start).count()<<std::endl;
+            sample_vars[tree] = vars.GetSampleVariables(tree);
         }
-        std::cout<<"Correlation range"<<std::endl;
-        directory_corr->mkdir("Range");
-        auto directory_r = directory_corr->GetDirectory("Range");
-        int j = 0;
-        for (const auto& range: ranges){
-            VarData vardata;
-            for(const auto& var : selected2.at(range.min)){
-                for (const auto& sample: sample_vars){
-                    if (sample.first < range.min || sample.first > range.max) continue;
-                    for (const auto& element: sample_vars.at(sample.first).at(var)){
-                        vardata[var].push_back(element);
+
+        std::cout<<"quanti tipi di fondo?"<<sample_vars.size()<<std::endl;
+
+        std::cout << "n.variabili: " << sample_vars.at("muTau").at(Bkg_mu).size() << std::endl;
+        std::cout << "n.masse segnale: " << sample_vars.at("muTau").size() - 1 << " + " << 1 << " fondo."<<std::endl;
+
+        for (const auto& sample_bkg: sample_vars){
+
+            outfile->mkdir((sample_bkg.first).c_str());
+            auto directory_bkg = outfile->GetDirectory((sample_bkg.first).c_str());
+
+            for (const auto& var: sample_bkg.second){
+                auto map = var.second;
+                if (var.first != Bkg_mu && var.first != Signal_SM)
+                    std::cout << "massa: " << var.first << ", eventi segnale: " << map["pt_l1"].size() << std::endl;
+                else if (var.first == Signal_SM) std::cout << "eventi SM: "<< map["pt_l1"].size() << std::endl;
+                else if (var.first == Bkg_mu) std::cout << "eventi fondo: "<< map["pt_l1"].size() << std::endl;
+            }
+
+            MassVarBand bandwidth;
+            MassVarPairMI mutual_matrix;
+            std::cout << "bandwidth and mutual information" << std::endl;
+            directory_bkg->mkdir("MutualInformation");
+            auto directory_mi = directory_bkg->GetDirectory("MutualInformation");
+//            start = clock::now();
+            for (const auto& sample: sample_bkg.second){
+                std::cout<<sample.first<<" bandwidth ";
+                bandwidth[sample.first] = OptimalBandwidth(sample.second);
+                std::cout<<" mutual ";
+                mutual_matrix[sample.first] = Mutual(sample.second, bandwidth[sample.first]);
+                if (sample.first == Bkg_mu || !mutual_matrix.count(Bkg_mu))
+                    continue;
+                else {
+                    std::cout<<" mutual plot ";
+                    MutualPlot(sample.first, mutual_matrix[sample.first], mutual_matrix[Bkg_mu], directory_mi);
+                }
+                std::cout<<std::endl;
+            }
+            std::cout <<"mutual histos" << std::endl;
+            directory_mi->mkdir("Matrix");
+            auto directory_s = directory_mi->GetDirectory("Matrix");
+            CreateMatrixHistos(sample_bkg.second,mutual_matrix,"MI", directory_s);
+//            stop = clock::now();
+//            std::cout<<"secondi: "<<std::chrono::duration_cast<std::chrono::seconds>(stop - start).count()<<std::endl;
+
+            start = clock::now();
+            std::cout<<"Selection variables"<<std::endl;
+            MassSetSelected selected;
+            RangeSelected selected2;
+            std::vector<VecVariables> union_selected = VariablesSelection(sample_bkg.second,bandwidth,mutual_matrix, selected, selected2, outfile, args.number_variables());
+//            stop = clock::now();
+//            std::cout<<"secondi: "<<std::chrono::duration_cast<std::chrono::seconds>(stop - start).count()<<std::endl;
+            std::cout<<"Kolmogorov"<<std::endl;
+            outfile->mkdir("Kolmogorov");
+            auto directory_ks = outfile->GetDirectory("Kolmogorov");
+            int count = 0;
+            for (const auto& range : ranges){
+                KolmogorovSignalPlotSelected(sample_bkg.second,union_selected[0], range.min , range.max , range.med, directory_ks);
+                count++;
+            }
+
+            std::cout<<"Correlation mass selected"<<std::endl;
+            outfile->mkdir("Correlation");
+            auto directory_corr = outfile->GetDirectory("Correlation");
+            directory_corr->mkdir("MassSelected");
+            auto directory_ms = directory_corr->GetDirectory("MassSelected");
+            for (const auto& sample: sample_bkg.second){
+                if (sample.first == Bkg_mu) continue;
+                 if (selected.at(sample.first).size() == 0) continue;
+                VarPairEstCorr matrix_covariance = EstimateCovariance(selected.at(sample.first), sample_bkg.second.at(sample.first), UINT_FAST32_MAX);
+                auto matrix_covariance_value = GetValue(matrix_covariance);
+                auto matrix_corr = CovToCorr(matrix_covariance_value);
+                CreateMatrixHistosMassSelected(sample.first, matrix_corr, selected.at(sample.first), "correlation", directory_ms);
+            }
+            std::cout<<"Correlation range union"<<std::endl;
+            directory_corr->mkdir("Range_Union");
+            auto directory_ru = directory_corr->GetDirectory("Range_Union");
+            int i = 0;
+            for (const auto& range: ranges){
+                std::set<std::string> selected;
+                for(const auto& var : union_selected[i]){
+                    selected.insert(var);
+                }
+                if (!selected.size()) continue;
+                VarData vardata;
+                for(const auto& var : union_selected[i]){
+                    for (const auto& sample: sample_bkg.second){
+                        if (sample.first < range.min || sample.first > range.max) continue;
+                        for (const auto& element: sample_bkg.second.at(sample.first).at(var)){
+                            vardata[var].push_back(element);
+                        }
                     }
                 }
+                VarPairEstCorr matrix_covariance = EstimateCovariance(selected, vardata, UINT_FAST32_MAX);
+                auto matrix_covariance_value = GetValue(matrix_covariance);
+                auto matrix_corr = CovToCorr(matrix_covariance_value);
+                CreateMatrixHistosMassSelected(range.min, matrix_corr, selected, "correlation", directory_ru);
+                i++;
             }
-            VarPairEstCorr matrix_covariance = EstimateCovariance(selected2.at(range.min), vardata, UINT_FAST32_MAX);
-            auto matrix_covariance_value = GetValue(matrix_covariance);
-            auto matrix_corr = CovToCorr(matrix_covariance_value);
-            CreateMatrixHistosMassSelected(range.min, matrix_corr, selected2.at(range.min), "correlation", directory_r);
-            j++;
+            std::cout<<"Correlation range"<<std::endl;
+            directory_corr->mkdir("Range");
+            auto directory_r = directory_corr->GetDirectory("Range");
+            int j = 0;
+            for (const auto& range: ranges){
+                VarData vardata;
+                for(const auto& var : selected2.at(range.min)){
+                    for (const auto& sample: sample_bkg.second){
+                        if (sample.first < range.min || sample.first > range.max) continue;
+                        for (const auto& element: sample_bkg.second.at(sample.first).at(var)){
+                            vardata[var].push_back(element);
+                        }
+                    }
+                }
+                VarPairEstCorr matrix_covariance = EstimateCovariance(selected2.at(range.min), vardata, UINT_FAST32_MAX);
+                auto matrix_covariance_value = GetValue(matrix_covariance);
+                auto matrix_corr = CovToCorr(matrix_covariance_value);
+                CreateMatrixHistosMassSelected(range.min, matrix_corr, selected2.at(range.min), "correlation", directory_r);
+                j++;
+            }
         }
 
     }

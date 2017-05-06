@@ -23,14 +23,14 @@ public:
 
     virtual ~MvaVariables() {}
     virtual void SetValue(const std::string& name, double value) = 0;
-    virtual void AddEventVariables(bool istraining, int mass, double weight) = 0;
+    virtual void AddEventVariables(bool istraining, int mass, std::string tree, double weight) = 0;
 
     bool IsEnabled(const std::string& name) const
     {
         return (enabled_vars.size() && enabled_vars.count(name)) || !disabled_vars.count(name);
     }
 
-    void AddEvent(const ntuple::Event& event, int mass = 1, double sample_weight = 1.)
+    void AddEvent(std::string tree, const ntuple::Event& event, int mass = 1, double sample_weight = 1.)
     {
         auto bb= event.jets_p4[0] + event.jets_p4[1];
         auto leptons= event.p4_1 + event.p4_2;
@@ -100,10 +100,10 @@ public:
         VAR("MT_l1l2", Calculate_MT(leptons, event.pfMET_p4));
         VAR("MT_tot", Calculate_TotalMT(event.p4_1,event.p4_2,event.pfMET_p4)); //Total transverse mass
         VAR("MT2", std::min(Calculate_MT2(event.p4_1,event.p4_2,event.jets_p4[0], event.jets_p4[1], event.pfMET_p4),Calculate_MT2(event.p4_1, event.jets_p4[1], event.p4_2,event.jets_p4[0], event.pfMET_p4))); //Stransverse mass
-        VAR("mass_H", ROOT::Math::VectorUtil::InvariantMass(bb,event.SVfit_p4));
+//        VAR("mass_H", ROOT::Math::VectorUtil::InvariantMass(bb,event.SVfit_p4));
         VAR("mass_top1", four_bodies::Calculate_topPairMasses(event.p4_1, event.p4_2, event.jets_p4[0], event.jets_p4[1], event.pfMET_p4).first);
         VAR("mass_top2", four_bodies::Calculate_topPairMasses(event.p4_1, event.p4_2, event.jets_p4[0], event.jets_p4[1], event.pfMET_p4).second);
-        VAR("MX", four_bodies::Calculate_MX(event.p4_1, event.p4_2, event.jets_p4[0], event.jets_p4[1], event.pfMET_p4));
+//        VAR("MX", four_bodies::Calculate_MX(event.p4_1, event.p4_2, event.jets_p4[0], event.jets_p4[1], event.pfMET_p4));
         VAR("dR_l1l2_boosted", four_bodies::Calculate_dR_boosted(event.p4_1, event.p4_2, event.SVfit_p4));
         VAR("dR_b1b2_boosted", four_bodies::Calculate_dR_boosted(event.jets_p4[0], event.jets_p4[1], bb));
         VAR("phi", four_bodies::Calculate_phi(event.p4_1,event.p4_2,event.jets_p4[0], event.jets_p4[1], event.SVfit_p4, bb));
@@ -121,7 +121,7 @@ public:
 
 
         const bool is_training = split_training_testing ? test_vs_training(gen) == 1 : true;
-        AddEventVariables(is_training, mass, sample_weight); // event.weight * sample_weight
+        AddEventVariables(is_training, mass, tree, sample_weight); // event.weight * sample_weight
     }
 
 private:
