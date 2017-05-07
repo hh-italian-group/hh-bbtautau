@@ -7,6 +7,8 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include <functional>
 #include <future>
 #include <initializer_list>
+#include <TCanvas.h>
+#include <TPad.h>
 #include "AnalysisTools/Run/include/program_main.h"
 #include "h-tautau/Analysis/include/EventTuple.h"
 #include "AnalysisTools/Core/include/exception.h"
@@ -43,6 +45,7 @@ namespace analysis {
 
 static constexpr int Bkg = -1;
 static constexpr int Signal_SM = 0;
+static constexpr double threashold_mi = 0.5;
 
 using clock = std::chrono::system_clock;
 
@@ -181,9 +184,8 @@ VarPairMI Mutual(const VarData& sample, const VarBand& bandwidth){
     std::map<VarPair,std::future<double>> matrix_future;
     for (const auto& var_1: sample){
         for(const auto& var_2 : sample) {
-            const VarPair var_12(var_1.first, var_2.first);
-            const VarPair var_21(var_2.first, var_1.first);
             if (var_2.first < var_1.first) continue;
+            const VarPair var_12(var_1.first, var_2.first);
             matrix_future[var_12] = run::async(stat_estimators::ScaledMutualInformation<double>, std::cref(var_1.second), std::cref(var_2.second), bandwidth.at(var_1.first), bandwidth.at(var_2.first));
         }
     }
@@ -236,10 +238,8 @@ VarPairEstCorr EstimateCovariance(const std::set<std::string>& selected, const V
     VarPairEstCorr covariance_matrix;
     for(const auto& var_1 : selected) {
         for(const auto& var_2 : selected) {
+            if (var_2 < var_1) continue;
             const VarPair var_12(var_1, var_2);
-            const VarPair var_21(var_2, var_1);
-            if(covariance_matrix.count(var_21))
-                continue;
             covariance_matrix[var_12] = stat_estimators::EstimateWithErrorsByResampling(stat_estimators::Covariance<double>,sample_vars.at(var_1),sample_vars.at(var_2),true,true,1000,0.31731, seed);
         }
     }
@@ -355,7 +355,6 @@ using Name_NDDistance = std::map<Name_ND, double>;
 using MassName_ND = std::map<int, Name_NDDistance>;
 using VectorName_ND = std::deque<std::pair<Name_ND, double>>;
 using MassVectorName_ND = std::map<int, VectorName_ND>;
-using RangeSelected = std::map<int,std::set<std::string>>;
 
 Name_NDDistance JensenDivergenceSB(const VarData& sample_signal, const VarData& sample_bkg,
                                    const VarBand& bandwidth_signal, const VarBand& bandwidth_bkg){
@@ -417,12 +416,12 @@ std::set<std::string> CheckList(int mass,  MassVar sample, const Name_NDDistance
             }
             if (not_corrected.count(name))
                 continue;
-            static constexpr double threashold = 0.5;
+
             for(const auto& other_entry : sample.at(mass)) {
                 if(other_entry.first == name) continue;
                 const Name_ND names({name, other_entry.first});
                 const auto name_pair = names.ToPair();
-                if(mutual_matrix_signal.at(name_pair) < threashold && mutual_matrix_bkg.at(name_pair) < threashold){
+                if(mutual_matrix_signal.at(name_pair) < threashold_mi && mutual_matrix_bkg.at(name_pair) < threashold_mi){
                     eliminated[other_entry.first] = "MI-"+name;
                     not_corrected.insert(other_entry.first);
                 }
@@ -522,14 +521,13 @@ std::set<std::string> CheckList_2(std::string tree, int min, int max, const std:
                 }
             }
             if (not_corrected.count(name)) continue;
-            static const double threashold = 0.5;
             for (const auto& mass : JSDivergenceND){
                 if (mass.first ==  Signal_SM) continue;
                 for(const auto& other_entry : sample.at(mass.first)) {
                     if(other_entry.first == name) continue;
                     const Name_ND names({name, other_entry.first});
                     const auto name_pair = names.ToPair();
-                    if(mutual_matrix.at(mass.first).at(name_pair) < threashold && mutual_matrix.at(Bkg).at(name_pair) < threashold){
+                    if(mutual_matrix.at(mass.first).at(name_pair) < threashold_mi && mutual_matrix.at(Bkg).at(name_pair) < threashold_mi){
                         not_corrected.insert(other_entry.first);
                     }
                 }
@@ -559,8 +557,6 @@ std::set<std::string> CheckList_2(std::string tree, int min, int max, const std:
             }
         }
     }
-    std::cout<<selected.size()<<std::endl;
-
     auto directory_s = directory->GetDirectory("Plot_PairSelected");
     if (directory_s == nullptr) {
         directory->mkdir("Plot_PairSelected");
@@ -774,7 +770,7 @@ void PlotJensenShannon(const MassName_ND& JSDivergenceND, TDirectory* directory)
 
 using VecVariables =  std::vector<std::string>;
 std::vector<VecVariables> VariablesSelection(std::string tree, const MassVar& sample, const MassVarBand& band,
-                        const MassVarPairMI& mutual_matrix, MassSetSelected& mass_selected, RangeSelected& range_selected,
+                        const MassVarPairMI& mutual_matrix, MassSetSelected& mass_selected, MassSetSelected& range_selected,
                         TDirectory* directory, size_t number_variables){
 
     MassName_ND JSDivergenceSB;
@@ -924,6 +920,7 @@ std::vector<VecVariables> VariablesSelection(std::string tree, const MassVar& sa
     stop = clock::now();
     std::cout<<"secondi: "<<std::chrono::duration_cast<std::chrono::seconds>(stop - start).count()<<std::endl;
 
+    start = clock::now();
     std::cout<<"Checklist2"<<std::endl;
     std::map<int, VectorName_ND> JSDivergence_vector;
     std::map<int, double> max_distance;
@@ -936,7 +933,6 @@ std::vector<VecVariables> VariablesSelection(std::string tree, const MassVar& sa
         max_distance[mass.first] = JSDivergence_vector.at(mass.first).front().second;
     }
 
-    start = clock::now();
     std::ofstream ofr(tree+"Selected_range.csv", std::ofstream::out);
     directory_ss->mkdir("Check_Range");
     auto directory_cr = directory_ss->GetDirectory("Check_Range");
@@ -947,7 +943,7 @@ std::vector<VecVariables> VariablesSelection(std::string tree, const MassVar& sa
 
     for (const auto& range: ranges){
         range_selected[range.min] = CheckList_2(tree, range.min, range.max, max_distance, sample, JSDivergenceSB, JSDivergence_vector, mutual_matrix, band, 20, directory_cr);
-        std::cout<<"range: "<<range.min<<"-"<<range.max<<std::endl;
+        std::cout<<" range: "<<range.min<<"-"<<range.max;
         ofr<<"range: "<<range.min<<"-"<<range.max<<std::endl;
         for (const auto& name : range_selected[range.min]){
             ofr<<name<<",";
@@ -961,14 +957,14 @@ std::vector<VecVariables> VariablesSelection(std::string tree, const MassVar& sa
     }
     ofr.close();
     stop = clock::now();
-    std::cout<<"secondi: "<<std::chrono::duration_cast<std::chrono::seconds>(stop - start).count()<<std::endl;
+    std::cout<<std::endl<<"secondi: "<<std::chrono::duration_cast<std::chrono::seconds>(stop - start).count()<<std::endl;
 
 
     directory_ss->mkdir("Range_Bkg");
     auto directory_rb = directory_ss->GetDirectory("Range_Bkg");
     directory_rb->mkdir("Selected");
     auto directory_s = directory_rb->GetDirectory("Selected");
-
+    std::cout<<"Plot range_bkg selected";
     for (int count_i = 0; count_i<3; count_i++){
         for (const auto& selected_name : range_selected[ranges[count_i].min]){
             std::shared_ptr<TGraph> plot = CreatePlot(("JSD_"+selected_name+"_SignalBKg").c_str(),
@@ -1002,12 +998,12 @@ std::vector<VecVariables> VariablesSelection(std::string tree, const MassVar& sa
     directory_rb->mkdir("Pair_selected");
     auto directory_ps = directory_rb->GetDirectory("Pair_selected");
     std::set<std::string> inserted;
-
+    std::cout<<" Plot pair selected"<<std::endl;
     for (int count_i = 0; count_i<3; count_i++){
         for (const auto& selected_name1 : range_selected[ranges[count_i].min]){
             inserted.insert(selected_name1);
             for (const auto& selected_name2 : range_selected[ranges[count_i].min]){
-                if (inserted.count(selected_name2)) continue;
+                if (selected_name2 < selected_name1) continue;
                 std::shared_ptr<TGraph> plot=CreatePlot(("JSD_"+selected_name1+"_"+selected_name2+"_SignalBKg").c_str(),
                                                         ("JSD_"+selected_name1+"_"+selected_name2+"_SignalBKg").c_str(),
                                                         "mass", "JSD");
@@ -1044,7 +1040,38 @@ std::vector<VecVariables> VariablesSelection(std::string tree, const MassVar& sa
             }
         }
     }
+//    directory_rb->mkdir("Comparison");
+//    auto directory_compare = directory_rb->GetDirectory("Comparison");
+//    auto directory_psb = directory_cr->GetDirectory("Plot_PairSelected_Bkg");
+//    for (const auto & range: ranges){
+//        for (const auto& selected_name1 : range_selected.at(range.min)){
+//            for (const auto& selected_name2 : range_selected.at(range.min))
+//            {
+//                if (selected_name2 < selected_name1) continue;
+////                TCanvas *canvas = new TCanvas();
+//////                TPad *pad = new TPad((selected_name1+"_"+selected_name2).c_str(),(selected_name1+"_"+selected_name2).c_str(), 0, 0, 1.0, 1.0);
+////                canvas->cd();
+//                TGraph *graph_tot = (TGraph*)directory_ps->GetObjectUnchecked(("JSD_"+selected_name1+"_"+selected_name2+"_SignalBkg").c_str());
+////                graph_tot->SetLineColor(kBlue+1);
+////                graph_tot->SetLineWidth(2);
+////                graph_tot->SetMarkerColor(7);
+////                graph_tot->SetMarkerSize(1);
+////                graph_tot->SetMarkerStyle(4);
+////                graph_tot->Draw();
 
+//                for (const auto & r: ranges){
+//                    TGraph *graph_range = (TGraph*)directory_ps->GetObjectUnchecked(("JSD_"+selected_name1+"_"+selected_name2+"_Range"+std::to_string(r.min)+"_"+std::to_string(r.max)+"_SignalBkg").c_str());
+////                    graph_range->Draw("same");
+//                }
+//                std::cout<<std::endl;
+////                root_ext::WriteObject(*canvas, directory_compare);
+
+//            }
+//        }
+
+//    }
+
+    std::cout<<"Intersection ranges"<<std::endl;
     auto matrix_intersection2 = std::make_shared<TH2D>("Intersection_ranges","Intersection of variables",ranges.size(), 0, ranges.size(), ranges.size(), 0, ranges.size());
     matrix_intersection2->SetXTitle("range");
     matrix_intersection2->SetYTitle("range");
@@ -1349,7 +1376,8 @@ public:
             int jj = 1;
              for (const auto& range2 : range_selected.at("muTau")){
                  VecVariables intersection;
-                 std::set_intersection(range1.second.begin(), range1.second.end(), range2.second.begin(), range2.second.end(),
+                 std::set_intersection(range1.second.begin(), range1.second.end(),
+                                       range2.second.begin(), range2.second.end(),
                                          std::back_inserter(intersection));
                  matrix_intersection->SetBinContent(kk, jj, intersection.size());
                  jj++;
@@ -1357,15 +1385,50 @@ public:
              kk++;
         }
 
-//        for (const auto& range : ranges){
-//            std::set<std::string> difference;
-//            for (const auto& range1 : range_selected.at("eTau")){
-//                for (const auto& range2 : range_selected.at("muTau")){
-//                    std::set_difference
-//                }
-//            }
+        std::ofstream ofb("DifferenceBkg.csv", std::ofstream::out);
+        for (const auto& range : ranges){
+            std::set<std::string> difference_mu_e, difference_e_mu;
+            std::set_difference(range_selected.at("muTau").at(range.min).begin(),
+                                range_selected.at("muTau").at(range.min).end(),
+                                range_selected.at("eTau").at(range.min).begin(),
+                                range_selected.at("eTau").at(range.min).end(),
+                                std::inserter(difference_mu_e, difference_mu_e.begin()));
+            std::set_difference(range_selected.at("eTau").at(range.min).begin(),
+                                range_selected.at("eTau").at(range.min).end(),
+                                range_selected.at("muTau").at(range.min).begin(),
+                                range_selected.at("muTau").at(range.min).end(),
+                                std::inserter(difference_e_mu, difference_e_mu.begin()));
+            ofb<<"muTau - eTau"<<std::endl;
+            for(const auto& var_mu : difference_mu_e){
+                ofb<<var_mu<<std::endl;
+                for(const auto& var_e : difference_e_mu){
+                    VarPair pair;
+                    if (var_mu < var_e) pair = {var_mu,var_e};
+                    else pair = {var_e, var_mu};
+                    for (const auto& mi : mutual_matrix.at("muTau")){
+                        if (mi.first < range.min || mi.first > range.max) continue;
+                        if (mi.second.at(pair) < threashold_mi)
+                            ofb<<pair.first<<","<<pair.second<<","<<mi.second.at(pair)<<","<<mi.first<<std::endl;
+                    }
+                }
+            }
 
-//        }
+            ofb<<std::endl;
+            ofb<<"eTau - muTau"<<std::endl;
+            for(const auto& var_e : difference_e_mu){
+                ofb<<var_e<<std::endl;
+                for(const auto& var_mu : difference_mu_e){
+                    VarPair pair;
+                    if (var_e < var_mu) pair = {var_e,var_mu};
+                    else pair = {var_mu, var_e};
+                    for (const auto& mi : mutual_matrix.at("eTau")){
+                        if (mi.first < range.min || mi.first > range.max) continue;
+                        if (mi.second.at(pair) < threashold_mi)
+                            ofb<<","<<pair.first<<","<<pair.second<<","<<mi.second.at(pair)<<","<<mi.first<<std::endl;
+                    }
+                }
+            }
+        }
         root_ext::WriteObject(*matrix_intersection, outfile.get());
         auto stop_tot = clock::now();
         std::cout<<"secondi totali: "<<std::chrono::duration_cast<std::chrono::seconds>(stop_tot - start_tot).count()<<std::endl;
