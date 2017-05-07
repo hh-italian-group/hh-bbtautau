@@ -164,7 +164,6 @@ VarBand OptimalBandwidth(const VarData& sample){
     VarBand bandwidth;
     std::map<std::string, std::future<double>> bandwidth_future;
         for (const auto& var : sample){
-//            bandwidth_future[var.first] = std::async(std::launch::async,stat_estimators::OptimalBandwith<double>,var.second, 0.01);
             bandwidth_future[var.first] = run::async(stat_estimators::OptimalBandwith<double>,std::cref(var.second), 0.01);
         }
         for(auto& var : bandwidth_future) {
@@ -175,17 +174,8 @@ VarBand OptimalBandwidth(const VarData& sample){
         }
     return bandwidth;
 }
-//VarBand OptimalBandwidth(const VarData& sample){
-//    VarBand bandwidth;
-//        for (const auto& var : sample){
-//            bandwidth[var.first] = stat_estimators::OptimalBandwith(var.second, 0.01);
-//        }
-//    return bandwidth;
-//}
 
 //Create elements of mutual information matrix for a single value of mass
-
-
 VarPairMI Mutual(const VarData& sample, const VarBand& bandwidth){
     VarPairMI mutual_matrix;
     std::map<VarPair,std::future<double>> matrix_future;
@@ -197,32 +187,14 @@ VarPairMI Mutual(const VarData& sample, const VarBand& bandwidth){
             matrix_future[var_12] = run::async(stat_estimators::ScaledMutualInformation<double>, std::cref(var_1.second), std::cref(var_2.second), bandwidth.at(var_1.first), bandwidth.at(var_2.first));
         }
     }
-
     for(auto& var : matrix_future) {
         var.second.wait();
         if(!var.second.valid())
             throw exception("future not valid");
         mutual_matrix[var.first] = var.second.get();
     }
-
     return mutual_matrix;
 }
-
-//VarPairMI Mutual(const VarData& sample, const VarBand& bandwidth){
-//    VarPairMI mutual_matrix;
-
-//    for (const auto& var_1: sample){
-//        for(const auto& var_2 : sample) {
-//            const VarPair var_12(var_1.first, var_2.first);
-//            const VarPair var_21(var_2.first, var_1.first);
-//            if(mutual_matrix.count(var_21))
-//                continue;
-//            mutual_matrix[var_12] = stat_estimators::ScaledMutualInformation(var_1.second, var_2.second, bandwidth.at(var_1.first), bandwidth.at(var_2.first));
-//        }
-//    }
-
-//    return mutual_matrix;
-//}
 
 //Create 2D plot of mutual information for signal and background
 void MutualPlot(int mass, const VarPairMI& mutual_matrix_signal, const VarPairMI& mutual_matrix_bkg,
@@ -262,7 +234,6 @@ void MutualPlot(int mass, const VarPairMI& mutual_matrix_signal, const VarPairMI
 //Estimate elements of covariance matrix for selected variables
 VarPairEstCorr EstimateCovariance(const std::set<std::string>& selected, const VarData& sample_vars, uint_fast32_t seed){
     VarPairEstCorr covariance_matrix;
-
     for(const auto& var_1 : selected) {
         for(const auto& var_2 : selected) {
             const VarPair var_12(var_1, var_2);
@@ -272,7 +243,6 @@ VarPairEstCorr EstimateCovariance(const std::set<std::string>& selected, const V
             covariance_matrix[var_12] = stat_estimators::EstimateWithErrorsByResampling(stat_estimators::Covariance<double>,sample_vars.at(var_1),sample_vars.at(var_2),true,true,1000,0.31731, seed);
         }
     }
-
     return covariance_matrix;
 }
 
@@ -459,6 +429,7 @@ std::set<std::string> CheckList(int mass,  MassVar sample, const Name_NDDistance
             }
             selected.insert(name);
         }
+        JSDivergence_vector.pop_front();
         VectorName_ND copy;
         for (const auto& entry : JSDivergence_vector){
             if(entry.second <= 0) continue;
@@ -472,10 +443,10 @@ std::set<std::string> CheckList(int mass,  MassVar sample, const Name_NDDistance
         JSDivergence_vector = std::move(copy);
     }
 
-    auto directory_v = directory->GetDirectory("Selected_variables");
+    auto directory_v = directory->GetDirectory("Plot_Selected_variables");
     if (directory_v == nullptr) {
-        directory->mkdir("Selected_variables");
-        directory_v = directory->GetDirectory("Selected_variables");
+        directory->mkdir("Plot_Selected_variables");
+        directory_v = directory->GetDirectory("Plot_Selected_variables");
     }
     TDirectory* directory_m;
     if (mass==Signal_SM){
@@ -518,6 +489,7 @@ std::set<std::string> CheckList_2(std::string tree, int min, int max, const std:
     std::set<std::string> selected, not_corrected;
     std::map<std::pair<int, int>, std::map<Name_ND,double>> JSDivergence_signal;
     std::map<int, VectorName_ND> JSDivergence_vector = vector;
+    std::ofstream ofb(tree+"_Best_entries_Range"+std::to_string(min)+"_"+std::to_string(max)+".csv", std::ofstream::out);
     while(selected.size() < number_variables && JSDivergence_vector.at(min).size()) {
         std::sort(JSDivergence_vector.at(min).begin(), JSDivergence_vector.at(min).end(), [](const std::pair<Name_ND, double>& el1, const std::pair<Name_ND, double>& el2){
             return el1.second > el2.second;
@@ -537,7 +509,10 @@ std::set<std::string> CheckList_2(std::string tree, int min, int max, const std:
         });
         const auto& best_entry = distance.front();
         for(const auto& name : best_entry.first.names) {
-            if(selected.count(name)) continue;
+            if(selected.count(name)) {
+                ofb<<"'"<<name<<"'"<<",";
+                continue;
+            }
             for (const auto& mass : JSDivergenceND){
                 if (mass.first ==  Signal_SM) continue;
                 const double JS_1d = mass.second.at(Name_ND({name}));
@@ -560,7 +535,9 @@ std::set<std::string> CheckList_2(std::string tree, int min, int max, const std:
                 }
             }
             selected.insert(name);
+            ofb<<name<<",";
         }
+        ofb<<std::endl;
         VectorName_ND copy;
         for (const auto& entry : JSDivergence_vector.at(min)){
             if(entry.second <= 0) continue;
@@ -994,17 +971,10 @@ std::vector<VecVariables> VariablesSelection(std::string tree, const MassVar& sa
 
     for (int count_i = 0; count_i<3; count_i++){
         for (const auto& selected_name : range_selected[ranges[count_i].min]){
-            std::shared_ptr<TGraph> plot;
-            plot = std::make_shared<TGraph>();
-            plot->SetLineColor(kGreen+1);
-            plot->SetLineWidth(1);
-            plot->SetMarkerColor(1);
-            plot->SetMarkerSize(1);
-            plot->SetMarkerStyle(3);
-            plot->SetTitle(("JSD_"+selected_name+"_SignalBKg").c_str());
-            plot->SetName(("JSD_"+selected_name+"_SignalBKg").c_str());
-            plot->GetHistogram()->GetXaxis()->SetTitle("mass");
-            plot->GetHistogram()->GetYaxis()->SetTitle("JSD");
+            std::shared_ptr<TGraph> plot = CreatePlot(("JSD_"+selected_name+"_SignalBKg").c_str(),
+                                                      ("JSD_"+selected_name+"_SignalBKg").c_str(),
+                                                       "mass","JSD");
+
             int j = 0;
             for (const auto& range: ranges){
                 std::vector<const DataVector*> sample_1, sample_2;
@@ -1017,12 +987,10 @@ std::vector<VecVariables> VariablesSelection(std::string tree, const MassVar& sa
                 }
                 VarData vardata{{selected_name, entries}};
                 VarBand band_s = OptimalBandwidth(vardata);
-
                 sample_1.push_back(&entries);
                 band_1.push_back(band_s.at(selected_name));
                 sample_2.push_back(&sample.at(Bkg).at(selected_name));
                 band_2.push_back(band.at(Bkg).at(selected_name));
-
                 auto test = stat_estimators::JensenShannonDivergence_ND(sample_1, sample_2, band_1, band_2);
                 plot->SetPoint(j,range.min,test);
                 j++;
@@ -1121,21 +1089,14 @@ void KolmogorovSignalPlotSelected(const MassVar& sample_signal, const VecVariabl
         for (const auto& var : selected){
             std::vector<double> vector_signal = sample_signal.at(mass_entry.first).at(var);
             std::sort(vector_signal.begin(), vector_signal.end());
-            std::vector<double> vector_signal_2 = sample_signal.at(medium).at(var);
+            std::vector<double> vector_signal_2 = sample_signal.at(min).at(var);
             std::sort(vector_signal_2.begin(), vector_signal_2.end());
             Double_t* v_s = vector_signal.data(), *v_s_2 = vector_signal_2.data();
             double k = TMath::KolmogorovTest(vector_signal.size(), v_s, vector_signal_2.size(), v_s_2, "");
             if (plot.count(var) == 0) {
-                plot[var] = std::make_shared<TGraph>();
-                plot[var]->SetLineColor(kGreen+1);
-                plot[var]->SetLineWidth(1);
-                plot[var]->SetMarkerColor(1);
-                plot[var]->SetMarkerSize(1);
-                plot[var]->SetMarkerStyle(3);
-                plot[var]->SetTitle(("KolmogorovSmirnov_"+var+"_Signal"+std::to_string(min)+"_"+std::to_string(max)).c_str());
-                plot[var]->SetName(("Ks_"+var+"_Signal"+std::to_string(min)+"_"+std::to_string(max)).c_str());
-                plot[var]->GetHistogram()->GetXaxis()->SetTitle("mass");
-                plot[var]->GetHistogram()->GetYaxis()->SetTitle("KS Probability");
+                plot[var] = CreatePlot(("KolmogorovSmirnov_"+var+"_Signal"+std::to_string(min)+"_"+std::to_string(max)).c_str(),
+                                       ("Ks_"+var+"_Signal"+std::to_string(min)+"_"+std::to_string(max)).c_str(),
+                                       "mass","KS Probability" );
             }
             plot[var]->SetPoint(i,mass_entry.first,k);
         }
@@ -1200,6 +1161,7 @@ public:
     void Run()
     {
 
+        auto start_tot = clock::now();
         run::ThreadPull threads(args.number_threads());
 
         std::map<std::string, MassVar> sample_vars;
@@ -1345,24 +1307,29 @@ public:
             auto directory_r = directory_corr->GetDirectory("Range");
             int j = 0;
             for (const auto& range: ranges){
-                VarData vardata;
+                VarData vardata_signal, vardata_bkg;
                 for(const auto& var : range_selected.at(sample_bkg.first).at(range.min)){
                     for (const auto& sample: sample_bkg.second){
                         if (sample.first < range.min || sample.first > range.max) continue;
                         for (const auto& element: sample_bkg.second.at(sample.first).at(var)){
-                            vardata[var].push_back(element);
+                            vardata_signal[var].push_back(element);
                         }
                     }
+                    for (const auto & element : sample_bkg.second.at(Bkg).at(var)){
+                        vardata_bkg[var].push_back(element);
+                    }
                 }
-                VarPairEstCorr matrix_covariance = EstimateCovariance(range_selected.at(sample_bkg.first).at(range.min), vardata, UINT_FAST32_MAX);
-                auto matrix_covariance_value = GetValue(matrix_covariance);
-                auto matrix_corr = CovToCorr(matrix_covariance_value);
-                CreateMatrixHistosMassSelected(range.min, matrix_corr, range_selected.at(sample_bkg.first).at(range.min), "correlation", directory_r);
+                VarPairEstCorr matrix_covariance_signal = EstimateCovariance(range_selected.at(sample_bkg.first).at(range.min), vardata_signal, UINT_FAST32_MAX);
+                auto matrix_covariance_value_signal = GetValue(matrix_covariance_signal);
+                auto matrix_corr_signal = CovToCorr(matrix_covariance_value_signal);
+                CreateMatrixHistosMassSelected(range.min, matrix_corr_signal, range_selected.at(sample_bkg.first).at(range.min), "correlation_signal", directory_r);
+                VarPairEstCorr matrix_covariance_bkg = EstimateCovariance(range_selected.at(sample_bkg.first).at(range.min), vardata_bkg, UINT_FAST32_MAX);
+                auto matrix_covariance_value_bkg = GetValue(matrix_covariance_bkg);
+                auto matrix_corr_bkg = CovToCorr(matrix_covariance_value_bkg);
+                CreateMatrixHistosMassSelected(range.min, matrix_corr_bkg, range_selected.at(sample_bkg.first).at(range.min), "correlation_background", directory_r);
                 j++;
             }
         }
-
-
         auto matrix_intersection = std::make_shared<TH2D>("Intersection_bkg","Intersection of variables for each range for different bkg",ranges.size(), 0, ranges.size(), ranges.size(), 0, ranges.size());
         matrix_intersection->SetXTitle("range muTau");
         matrix_intersection->SetYTitle("range eTau");
@@ -1378,7 +1345,6 @@ public:
             }
         }
         int kk = 1;
-
         for (const auto& range1 : range_selected.at("eTau")){
             int jj = 1;
              for (const auto& range2 : range_selected.at("muTau")){
@@ -1390,7 +1356,19 @@ public:
              }
              kk++;
         }
+
+//        for (const auto& range : ranges){
+//            std::set<std::string> difference;
+//            for (const auto& range1 : range_selected.at("eTau")){
+//                for (const auto& range2 : range_selected.at("muTau")){
+//                    std::set_difference
+//                }
+//            }
+
+//        }
         root_ext::WriteObject(*matrix_intersection, outfile.get());
+        auto stop_tot = clock::now();
+        std::cout<<"secondi totali: "<<std::chrono::duration_cast<std::chrono::seconds>(stop_tot - start_tot).count()<<std::endl;
 
 
     }
