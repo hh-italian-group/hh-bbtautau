@@ -1193,6 +1193,7 @@ std::vector<VecVariables> VariablesSelection(std::string tree, const MassVar& sa
             if (canvas.count(selected_name.first)) continue;
             canvas[selected_name.first] = new TCanvas((selected_name.first.first+"_"+selected_name.first.second+tree).c_str(), (selected_name.first.first+"_"+selected_name.first.second).c_str(), 10,10,800,800);
             canvas[selected_name.first]->DrawFrame(0,0,900,1);
+            canvas[selected_name.first]->SetTitle((selected_name.first.first+"_"+selected_name.first.second).c_str());
             canvas[selected_name.first]->SetGrid();
         }
     }
@@ -1200,7 +1201,7 @@ std::vector<VecVariables> VariablesSelection(std::string tree, const MassVar& sa
         std::cout<<plot_rangesignal_bkg.at(range.min).size()<<std::endl;
         for (const auto& selected_name : plot_rangesignal_bkg.at(range.min)){
             canvas[selected_name.first]->cd();
-            plot_rangesignal_bkg_tot.at(selected_name.first)->Draw();
+            plot_rangesignal_bkg_tot.at(selected_name.first)->Draw("P");
             for (const auto & r: ranges){
                 if (!plot_rangesignal_bkg.at(r.min).count(selected_name.first)) continue;
                 plot_rangesignal_bkg.at(r.min).at(selected_name.first)->Draw("same");
