@@ -1007,7 +1007,7 @@ std::vector<VecVariables> VariablesSelection(std::string tree, const MassVar& sa
     auto directory_s = directory_rb->GetDirectory("Selected");
 
     std::cout<<"Plot range selected";
-    for (int count_i = 0; count_i<ranges.size(); count_i++){
+    for (size_t count_i = 0; count_i<ranges.size(); count_i++){
         for (const auto& selected_name : range_selected[ranges[count_i].min]){
             std::shared_ptr<TGraph> plot = CreatePlot(("JSD_"+selected_name+"_SignalBKg").c_str(),
                                                       ("JSD_"+selected_name+"_SignalBKg").c_str(),
@@ -1045,7 +1045,7 @@ std::vector<VecVariables> VariablesSelection(std::string tree, const MassVar& sa
     std::map<VarPair, std::map<int, double>> JSD_sb_pair;
     std::map<int, std::vector<double>> JSDsb_vector;
     std::map<VarPair, std::shared_ptr<TGraph>> plot_rangesignal_bkg_tot;
-    for (int count_i = 0; count_i<ranges.size(); count_i++){
+    for (size_t count_i = 0; count_i<ranges.size(); count_i++){
         for (const auto& selected_name1 : range_selected[ranges[count_i].min]){
             inserted.insert(selected_name1);
             for (const auto& selected_name2 : range_selected[ranges[count_i].min]){
@@ -1120,7 +1120,7 @@ std::vector<VecVariables> VariablesSelection(std::string tree, const MassVar& sa
     auto directory_range = directory_mutinf->GetDirectory("Range");
     MassVar sample_band_tot_signal;
     MassVarPairMI element;
-    for (int count_i = 0; count_i<ranges.size(); count_i++){
+    for (size_t count_i = 0; count_i<ranges.size(); count_i++){
         for (const auto& selected_name1 : range_selected[ranges[count_i].min]){
             DataVector entries_s1;
             for (const auto& mass_entry: sample){
@@ -1152,7 +1152,7 @@ std::vector<VecVariables> VariablesSelection(std::string tree, const MassVar& sa
     }
 
     std::cout<<"histo MI range"<<std::endl;
-    for (int count_i = 0; count_i<ranges.size(); count_i++){
+    for (size_t count_i = 0; count_i<ranges.size(); count_i++){
         auto bin = sample_band_tot_signal.at(ranges[count_i].min).size();
         auto matrix = std::make_shared<TH2D>(("MIRange_"+std::to_string(ranges[count_i].min)).c_str(),("MIRange_"+std::to_string(ranges[count_i].min)).c_str(),bin,0,bin,bin,0,bin);
         int i = 1;
@@ -1209,7 +1209,11 @@ std::vector<VecVariables> VariablesSelection(std::string tree, const MassVar& sa
             root_ext::WriteObject<TCanvas>(*canvas[selected_name.first], directory_compare);
          }
     }
-
+    for (const auto & range: ranges){
+        for (const auto& selected_name : plot_rangesignal_bkg.at(range.min)){
+            canvas[selected_name.first]->Close();
+        }
+    }
     std::cout<<"Intersection ranges"<<std::endl;
     auto matrix_intersection2 = std::make_shared<TH2D>("Intersection_ranges","Intersection of variables",ranges.size(), 0, ranges.size(), ranges.size(), 0, ranges.size());
     matrix_intersection2->SetXTitle("range");
