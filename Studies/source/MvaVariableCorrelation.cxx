@@ -45,7 +45,7 @@ namespace analysis {
 
 static constexpr int Bkg = -1;
 static constexpr int Signal_SM = 0;
-static constexpr double threashold_mi = 0.5;
+static constexpr double threashold_mi = 0.7;
 
 using clock = std::chrono::system_clock;
 
@@ -493,7 +493,7 @@ std::set<std::string> CheckList_2(std::string tree, int min, int max, const std:
 
     std::set<std::string> selected, not_corrected;
     std::map<int, VectorName_ND> JSDivergence_vector = vector;
-    std::ofstream ofb(tree+"_Best_entries_Range"+std::to_string(min)+"_"+std::to_string(max)+".csv", std::ofstream::out);
+    std::ofstream ofb(tree+"_Best_entries_Range"+std::to_string(min)+"_"+std::to_string(max)+"2.csv", std::ofstream::out);
     while(selected.size() < number_variables && JSDivergence_vector.at(min).size()) {
         std::sort(JSDivergence_vector.at(min).begin(), JSDivergence_vector.at(min).end(), [](const std::pair<Name_ND, double>& el1, const std::pair<Name_ND, double>& el2){
             return el1.second > el2.second;
@@ -832,7 +832,7 @@ std::vector<VecVariables> VariablesSelection(std::string tree, const MassVar& sa
     std::cout<<"secondi: "<<std::chrono::duration_cast<std::chrono::seconds>(stop - start).count()<<std::endl;
 
     std::cout<<"Checklist1"<<std::endl;
-    std::ofstream ofs(tree+"_SelectedVariable.csv", std::ofstream::out);
+    std::ofstream ofs(tree+"_SelectedVariable2.csv", std::ofstream::out);
 
     directory_sb->mkdir("1D");
     auto directory_1d = directory_sb->GetDirectory("1D");
@@ -857,7 +857,7 @@ std::vector<VecVariables> VariablesSelection(std::string tree, const MassVar& sa
         if (mass_entry.first == Signal_SM) mass = "SM";
         auto histo = std::make_shared<TH1D>(("JSD_Signal"+mass+"_Background").c_str(), ("JensenShannonDivergence_Signal"+mass+"_Background").c_str(), 50,0,1);
         histo->SetXTitle("JSD");
-        std::ofstream of(tree+"InformationTable_mass"+(std::to_string(mass_entry.first))+".csv", std::ofstream::out);
+        std::ofstream of(tree+"InformationTable_mass"+(std::to_string(mass_entry.first))+"2.csv", std::ofstream::out);
         of<<"Var_1"<<","<<"Var_2"<<","<<"JSD_ND"<<","<<"JSD_12-(JSD_1+JSD_2)"<<","<<"ScaledMI_Signal_12" <<","<<"ScaledMI_Bkg_12"<<","<<"selected"<<","<<","<<"eliminated by"<<std::endl;
         for(auto& entry : JSDivergenceSB.at(mass_entry.first)){
              histo->Fill(entry.second);
@@ -915,7 +915,7 @@ std::vector<VecVariables> VariablesSelection(std::string tree, const MassVar& sa
         }
         k++;
     }
-    std::ofstream of(tree+"UnionVariables.csv", std::ofstream::out);
+    std::ofstream of(tree+"UnionVariables2.csv", std::ofstream::out);
     std::vector<VecVariables> vector_union;
     int count_range = 0;
     for (auto& names : vec_union){
@@ -972,7 +972,7 @@ std::vector<VecVariables> VariablesSelection(std::string tree, const MassVar& sa
         max_distance[mass.first] = JSDivergence_vector.at(mass.first).front().second;
     }
 
-    std::ofstream ofr(tree+"Selected_range.csv", std::ofstream::out);
+    std::ofstream ofr(tree+"Selected_range2.csv", std::ofstream::out);
     directory_ss->mkdir("Check_Range");
     auto directory_cr = directory_ss->GetDirectory("Check_Range");
     directory_vardistr1d->mkdir("Range");
@@ -1006,6 +1006,7 @@ std::vector<VecVariables> VariablesSelection(std::string tree, const MassVar& sa
     directory_rb->mkdir("Selected");
     auto directory_s = directory_rb->GetDirectory("Selected");
 
+    start = clock::now();
     std::cout<<"Plot range selected";
     for (size_t count_i = 0; count_i<ranges.size(); count_i++){
         for (const auto& selected_name : range_selected[ranges[count_i].min]){
@@ -1041,7 +1042,6 @@ std::vector<VecVariables> VariablesSelection(std::string tree, const MassVar& sa
     auto directory_ps = directory_rb->GetDirectory("Pair_selected");
     std::set<std::string> inserted;
     std::cout<<" Plot pair selected"<<std::endl;
-
     std::map<VarPair, std::map<int, double>> JSD_sb_pair;
     std::map<int, std::vector<double>> JSDsb_vector;
     std::map<VarPair, std::shared_ptr<TGraph>> plot_rangesignal_bkg_tot;
@@ -1088,12 +1088,14 @@ std::vector<VecVariables> VariablesSelection(std::string tree, const MassVar& sa
             }
         }
     }
+    stop = clock::now();
+    std::cout<<std::endl<<"secondi: "<<std::chrono::duration_cast<std::chrono::seconds>(stop - start).count()<<std::endl;
+    start = clock::now();
     std::cout<<"Plot matrix";
     directory_rb->mkdir("Matrix");
     auto directory_matrix = directory_rb->GetDirectory("Matrix");
     for (const auto& range: ranges){
         int bin = range_selected.at(range.min).size();
-        std::cout<<bin<<std::endl;
         auto matrix_jsd_sb = std::make_shared<TH2D>(("JSD_Signal_Bkg_Range"+std::to_string(range.min)+"_"+std::to_string(range.min)).c_str(),("JSD_Signal_Bkg_Range"+std::to_string(range.min)+"_"+std::to_string(range.min)).c_str(), bin, 0, bin, bin, 0, bin);
         int i = 1;
         for (const auto& var1: range_selected.at(range.min)){
@@ -1198,7 +1200,6 @@ std::vector<VecVariables> VariablesSelection(std::string tree, const MassVar& sa
         }
     }
     for (const auto & range: ranges){
-        std::cout<<plot_rangesignal_bkg.at(range.min).size()<<std::endl;
         for (const auto& selected_name : plot_rangesignal_bkg.at(range.min)){
             canvas[selected_name.first]->cd();
             plot_rangesignal_bkg_tot.at(selected_name.first)->Draw("P");
@@ -1242,7 +1243,8 @@ std::vector<VecVariables> VariablesSelection(std::string tree, const MassVar& sa
          kk++;
     }
     root_ext::WriteObject(*matrix_intersection2, directory);
-
+    stop = clock::now();
+    std::cout<<std::endl<<"secondi: "<<std::chrono::duration_cast<std::chrono::seconds>(stop - start).count()<<std::endl;
     return vector_union;
 }
 
@@ -1545,7 +1547,7 @@ public:
              kk++;
         }
 
-        std::ofstream ofd("DistanceDistributionVariableRanges.csv", std::ofstream::out);
+        std::ofstream ofd("DistanceDistributionVariableRanges2.csv", std::ofstream::out);
         for (const auto& range : ranges){
             ofd<<","<<"Variabile"<<","<<"JSD_ss"<<","<<"JSD_bb"<<std::endl;
             ofd<<"Range "<<std::to_string(range.min)<<"_"<<std::to_string(range.max)<<std::endl;
@@ -1570,7 +1572,7 @@ public:
         ofd.close();
 
 
-        std::ofstream ofb("DifferenceBkg.csv", std::ofstream::out);
+        std::ofstream ofb("DifferenceBkg2.csv", std::ofstream::out);
         for (const auto& range : ranges){
             std::set<std::string> difference_mu_e, difference_e_mu;
             std::set_difference(range_selected.at("muTau").at(range.min).begin(),
