@@ -1185,6 +1185,48 @@ std::vector<VecVariables> VariablesSelection(std::string tree, const MassVar& sa
         root_ext::WriteObject(*histo, directory_mijsd);
     }
 
+
+    std::map<int, VarPairCorr> matrix_corr_signal, matrix_corr_bkg;
+    for (const auto& range: ranges){
+        VarData vardata_signal, vardata_bkg;
+        for(const auto& var : sample.at(range.min)){
+            for (const auto& mass: sample){
+                if (mass.first < range.min || mass.first > range.max) continue;
+                for (const auto& element: mass.second.at(var.first)){
+                    vardata_signal[var.first].push_back(element);
+                }
+            }
+            for (const auto & element : sample.at(Bkg).at(var.first)){
+                vardata_bkg[var.first].push_back(element);
+            }
+        }
+        VarPairEstCorr matrix_covariance_signal = EstimateCovariance(range_selected.at(range.min), vardata_signal, UINT_FAST32_MAX);
+        auto matrix_covariance_value_signal = GetValue(matrix_covariance_signal);
+        matrix_corr_signal[range.min] = CovToCorr(matrix_covariance_value_signal);
+
+        VarPairEstCorr matrix_covariance_bkg = EstimateCovariance(range_selected.at(range.min), vardata_bkg, UINT_FAST32_MAX);
+        auto matrix_covariance_value_bkg = GetValue(matrix_covariance_bkg);
+        matrix_corr_bkg[range.min] = CovToCorr(matrix_covariance_value_bkg);
+    }
+
+
+    directory_mutinf->mkdir("MI_Correlation");
+    auto directory_micorr = directory_mutinf->GetDirectory("MI_Correlation");
+    for (const auto& range : sample_band_tot_signal){
+        auto histo = std::make_shared<TH2D>(("MI_CorrelationSignal_Range_"+std::to_string(range.first)).c_str(),("MI_Correlation_Range_"+std::to_string(range.first)).c_str(),50,0,1,50,0,1);
+        for (const auto pair: element.at(range.first)){
+            histo->Fill(pair.second, matrix_corr_signal.at(range.first).at(pair.first));
+        }
+        root_ext::WriteObject(*histo, directory_micorr);
+    }
+    for (const auto& range : sample_band_tot_signal){
+        auto histo = std::make_shared<TH2D>(("MI_CorrelationBkg_Range_"+std::to_string(range.first)).c_str(),("MI_Correlation_Range_"+std::to_string(range.first)).c_str(),50,0,1,50,0,1);
+        for (const auto pair: element.at(range.first)){
+            histo->Fill(pair.second, matrix_corr_signal.at(range.first).at(pair.first));
+        }
+        root_ext::WriteObject(*histo, directory_micorr);
+    }
+
     directory_rb->mkdir("Comparison");
     auto directory_compare = directory_rb->GetDirectory("Comparison");
 
