@@ -1395,7 +1395,9 @@ public:
                 std::cout << entry << " number of events: " << std::min(tuple.GetEntries(),args.number_events()) << std::endl;
                 Long64_t current_entry = 0;
                 Long64_t tot_entries = 0;
-                while(tot_entries < std::min(tuple.GetEntries(), args.number_events()) && current_entry < tuple.GetEntries()) {
+                Lon64_t max = std::min(tuple.GetEntries(), args.number_events());
+                if (entry.mass == Bkg) max = std::min(tuple.GetEntries(), args.number_events()*10);
+                while(tot_entries < max && current_entry < tuple.GetEntries()) {
                     tuple.GetEntry(current_entry);
                     const Event& event = tuple.data();
 
