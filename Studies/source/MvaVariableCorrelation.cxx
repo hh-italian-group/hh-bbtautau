@@ -1392,10 +1392,9 @@ public:
                 if ( i == 1 && entry.filename == "TT_ext3_muTau.root") continue;
                 auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
                 EventTuple tuple(tree, input_file.get(), true, {} , GetEnabledBranches());
-                std::cout << entry << " number of events: " << std::min(tuple.GetEntries(),args.number_events()) << std::endl;
                 Long64_t current_entry = 0;
                 Long64_t tot_entries = 0;
-                Lon64_t max = std::min(tuple.GetEntries(), args.number_events());
+                Long64_t max = std::min(tuple.GetEntries(), args.number_events());
                 if (entry.mass == Bkg) max = std::min(tuple.GetEntries(), args.number_events()*10);
                 while(tot_entries < max && current_entry < tuple.GetEntries()) {
                     tuple.GetEntry(current_entry);
@@ -1418,6 +1417,7 @@ public:
                     current_entry++;
                     tot_entries++;
                 }
+                std::cout << entry << " number of events: " << tot_entries << std::endl;
             }
             auto stop = clock::now();
             std::cout<<"secondi: "<<std::chrono::duration_cast<std::chrono::seconds>(stop - start).count()<<std::endl;
@@ -1593,7 +1593,7 @@ public:
 
         std::ofstream ofd("DistanceDistributionVariableRanges2.csv", std::ofstream::out);
         for (const auto& range : ranges){
-            ofd<<","<<"Variabile"<<","<<"JSD_ss"<<","<<"JSD_bb"<<std::endl;
+            ofd<<","<<"Variabile"<<","<<"KS_ss"<<","<<"KS_bb"<<std::endl;
             ofd<<"Range "<<std::to_string(range.min)<<"_"<<std::to_string(range.max)<<std::endl;
             VarData sample_mu, sample_e;
             for (const auto var: range_selected.at("muTau").at(range.min)){

@@ -23,14 +23,14 @@ public:
 
     virtual ~MvaVariables() {}
     virtual void SetValue(const std::string& name, double value) = 0;
-    virtual void AddEventVariables(bool istraining, int mass, std::string tree, double weight) = 0;
+    virtual void AddEventVariables(bool istraining, int mass, double weight) = 0;
 
     bool IsEnabled(const std::string& name) const
     {
         return (enabled_vars.size() && enabled_vars.count(name)) || !disabled_vars.count(name);
     }
 
-    void AddEvent(std::string tree, const ntuple::Event& event, int mass = 1, double sample_weight = 1.)
+    void AddEvent(const ntuple::Event& event, int mass = 1, double sample_weight = 1.)
     {
         auto bb= event.jets_p4[0] + event.jets_p4[1];
         auto leptons= event.p4_1 + event.p4_2;
@@ -121,7 +121,7 @@ public:
 
 
         const bool is_training = split_training_testing ? test_vs_training(gen) == 1 : true;
-        AddEventVariables(is_training, mass, tree, sample_weight); // event.weight * sample_weight
+        AddEventVariables(is_training, mass, sample_weight); // event.weight * sample_weight
     }
 
 private:
