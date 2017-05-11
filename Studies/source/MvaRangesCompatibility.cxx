@@ -1,4 +1,4 @@
-/*! Study of correlation matrix and mutual information of BDT variables
+/*! Study of correlation matrix, mutual information and Jensen Shannon Divergence to search range of masses.
 This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include <fstream>
@@ -687,7 +687,7 @@ std::vector<VecVariables> VariablesSelection(MassVar sample, const MassName_ND& 
             matrix_intersection->SetBinContent(k, j, intersection.size());
             int i = 0;
             for (const auto& range: ranges){
-                if (mass_1.first <= range.max && mass_1.first >= range.min && mass_2.first <= range.max && mass_1.first >= range.min){
+                if (range.Contains(mass_1.first) && range.Contains(mass_2.first)){
                      std::set_union(mass_1.second.begin(), mass_1.second.end(), mass_2.second.begin(), mass_2.second.end(),
                                                         std::back_inserter(vec_union[i]));
                 }
@@ -777,7 +777,7 @@ public:
         auto start = clock::now();
         for(const SampleEntry& entry:samples)
         {
-            if ( args.tree_name() == "muTau" && entry.filename == "TT_ext3_eTau.root")  continue;
+            if ( args.tree_name() == "muTau" && entry.filename == "TT_ext3_eTau.root") continue;
             if ( args.tree_name() == "eTau" && entry.filename == "TT_ext3_muTau.root") continue;
             auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
             EventTuple tuple(args.tree_name(), input_file.get(), true, {} , GetEnabledBranches());
