@@ -105,7 +105,7 @@ private:
             double weight_ttbar_pt = 1.;
             if(args.sample_type() == "ttbar")
             {
-                weight_ttbar_pt = eventWeights_HH.GetTTbar_pt_weight(*event);
+                weight_ttbar_pt = eventWeights.GetTopPtWeight(*event);
             }
 
             tot_weight.first = tot_weight.first + (pu*mc);
@@ -194,9 +194,8 @@ private:
     void ProcessThread()
     {
         EventPtr event;
-        ExpressPtr expressEvent;
         while(processQueue.Pop(event)) {
-            if(ProcessEvent(*event,*expressEvent))
+            if(ProcessEvent(*event))
                 writeQueue.Push(event);
         }
         writeQueue.SetAllDone();
@@ -220,7 +219,7 @@ private:
         outputTuple->Write();
     }
 
-    bool ProcessEvent(Event& event, const ExpressEvent& expressEvent)
+    bool ProcessEvent(Event& event)
     {
 	
 		if (event.jets_p4.size() < 2) return false;
@@ -234,16 +233,16 @@ private:
             "byMediumIsolationMVArun2v1DBoldDMwLT"
         };
 		
-        decltype(event.tauIDs_1) tauIDs_1, tauIDs_2;
-        for(const auto& name : tauID_Names) {
-            if(event.tauIDs_1.count(name))
-                tauIDs_1[name] = event.tauIDs_1.at(name);
-            if(event.tauIDs_2.count(name))
-                tauIDs_2[name] = event.tauIDs_2.at(name);
+//        decltype(event.tauIDs_1) tauIDs_1, tauIDs_2;
+//        for(const auto& name : tauID_Names) {
+//            if(event.tauIDs_1.count(name))
+//                tauIDs_1[name] = event.tauIDs_1.at(name);
+//            if(event.tauIDs_2.count(name))
+//                tauIDs_2[name] = event.tauIDs_2.at(name);
 
-        }
-        event.tauIDs_1 = tauIDs_1;
-        event.tauIDs_2 = tauIDs_2;
+//        }
+//        event.tauIDs_1 = tauIDs_1;
+//        event.tauIDs_2 = tauIDs_2;
 
 	
 		// Event Variables
@@ -252,7 +251,7 @@ private:
 		// Event Weights Variables
         event.weight_btag = eventWeights.GetBtagWeight(event);
         event.weight_PU = eventWeights.GetPileUpWeight(event);
-        event.weight_ttbar_pt = eventWeights_HH.GetTTbar_pt_weight(expressEvent);
+        event.weight_ttbar_pt = eventWeights.GetTopPtWeight(event);
         event.weight_dy = eventWeights_HH.GetDY_weight(event);
         event.weight_ttbar_merge = eventWeights_HH.GetTTbar_weight(event);
         event.weight_sm = eventWeights_HH.GetBSMtoSMweight(event);
