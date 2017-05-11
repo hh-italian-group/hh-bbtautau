@@ -22,9 +22,11 @@ struct Arguments { // list of all program arguments
     REQ_ARG(std::string, input_path);
     REQ_ARG(std::string, output_file);
     REQ_ARG(std::string, cfg_file);
+    REQ_ARG(std::string, tree_name);
     REQ_ARG(Long64_t, number_events);
     REQ_ARG(unsigned long, number_threads);
     REQ_ARG(size_t, number_variables);
+
 };
 
 #define MY_TREE_DATA() \
@@ -93,18 +95,18 @@ public:
         variables[name] = value;
     }
 
-    virtual void AddEventVariables(bool istraining, int mass, std::string tree, double weight) override
+    virtual void AddEventVariables(bool istraining, int mass, double weight) override
     {
-        VarData& sample_vars = all_variables[tree][mass];
+        VarData& sample_vars = all_variables[mass];
         for(const auto& name_value : variables) {
             const std::string& name = name_value.first;
             const double value = name_value.second;
             sample_vars[name].push_back(value);
         }
     }
-    const MassVar& GetSampleVariables(std::string tree) const
+    const MassVar& GetSampleVariables() const
     {
-        return all_variables.at(tree);
+        return all_variables;
     }
 };
 
@@ -122,7 +124,7 @@ struct Name_ND{
         }
         return false;
     }
-    Name_ND(std::initializer_list<std::string> _name):names(_name.begin(), _name.end()){}
+    Name_ND(std::initializer_list<std::string> _name) : names(_name.begin(), _name.end()){}
 
     bool IsSubset(const std::set<std::string>& other) const
     {
@@ -153,7 +155,8 @@ struct Name_ND{
 struct Range {
     int min, max;
     Range() : min(0), max(0){}
-    bool Contains(const int& v) const { return v >= min && v <= max; }
+    bool Contains(int v) const { return v >= min && v <= max; }
+
     Range(Double_t _min, Double_t _max ) : min(_min), max(_max) {}
 };
 

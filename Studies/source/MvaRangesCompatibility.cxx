@@ -1,26 +1,22 @@
-/*! Study of compatibility of range masses for each variable
+/*! Study of correlation matrix and mutual information of BDT variables
 This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
+#include <fstream>
+#include <random>
+#include <algorithm>
+#include <functional>
+#include <future>
+#include <initializer_list>
+#include <TCanvas.h>
+#include <TPad.h>
 #include "AnalysisTools/Run/include/program_main.h"
 #include "h-tautau/Analysis/include/EventTuple.h"
 #include "AnalysisTools/Core/include/exception.h"
 #include "AnalysisTools/Core/include/AnalyzerData.h"
 #include "AnalysisTools/Core/include/StatEstimators.h"
-#include "hh-bbtautau/Analysis/include/Lester_mt2_bisect.h"
-#include "TMVA/Factory.h"
-#include "TMVA/DataLoader.h"
-#include "TMVA/Tools.h"
-#include "TMVA/TMVAGui.h"
-#include "TMVA/DataSet.h"
-#include "TMVA/DataSetInfo.h"
-#include "TMVA/ClassInfo.h"
-#include "TMVA/VariableTransformBase.h"
-#include <TMatrixDEigen.h>
-#include <TH1.h>
-#include <TH2.h>
-#include <fstream>
-#include <random>
-#include <algorithm>
+#include "hh-bbtautau/Analysis/include/MvaVariables.h"
+#include "AnalysisTools/Core/include/ProgressReporter.h"
+#include "AnalysisTools/Run/include/MultiThread.h"
 
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, input_path);
@@ -28,587 +24,698 @@ struct Arguments { // list of all program arguments
     REQ_ARG(std::string, cfg_file);
     REQ_ARG(std::string, tree_name);
     REQ_ARG(Long64_t, number_events);
+    REQ_ARG(unsigned long, number_threads);
+    REQ_ARG(size_t, number_variables);
+    OPT_ARG(Long64_t, odd, -1);
+
 };
 
+#define MY_TREE_DATA() \
+    VAR(Float_t, var) \
+    /**/
+
+#define VAR(type, name) DECLARE_BRANCH_VARIABLE(type, name)
+DECLARE_TREE(ntuple, MyEvent, MyTuple, MY_TREE_DATA, "my")
+#undef VAR
+
+#define VAR(type, name) ADD_DATA_TREE_BRANCH(name)
+INITIALIZE_TREE(ntuple, MyTuple, MY_TREE_DATA)
+#undef VAR
+#undef MY_TREE_DATA
+
+
 namespace analysis {
+
+static constexpr int Bkg = -1;
+static constexpr int Signal_SM = 0;
+static constexpr double threashold_mi = 0.7;
+
+using clock = std::chrono::system_clock;
 
 struct SampleEntry{
   std::string filename;
   double weight;
-  bool issignal;
-  SampleEntry() : weight(-1), issignal(false){}
+  int mass;
+  SampleEntry() : weight(-1){}
 };
 
 std::ostream& operator<<(std::ostream& os, const SampleEntry& entry)
 {
-    os << entry.filename << " " << entry.weight << " " << std::boolalpha << entry.issignal;
+    os << entry.filename << " " << entry.mass << " " << entry.weight ;
     return os;
 }
 
 std::istream& operator>>(std::istream& is, SampleEntry& entry)
 {
-    is >> entry.filename >> entry.weight >> std::boolalpha >> entry.issignal;
+    is >> entry.filename >> entry.mass >> entry.weight ;
     return is;
 }
 
-class MvaVariables{
+using DataVector = std::vector<double>;
+using VarData = std::map<std::string, DataVector>;
+using MassVar = std::map<int, VarData>;
+using VarPair = std::pair<std::string,std::string>;
+using VarBand = std::map<std::string, double>;
+using VarPairMI =  std::map<VarPair,double>;
+using MassVarBand = std::map<int, VarBand>;
+using MassVarPairMI = std::map<int, VarPairMI>;
+using MassSetSelected =  std::map<int,std::set<std::string>>;
+using VarPairEstCorr = std::map<VarPair,stat_estimators::EstimatedQuantity>;
+using VarPairCorr =  std::map<VarPair,double>;
+
+class MvaVariablesStudy : public MvaVariables {
 private:
-    std::map<std::string, std::map<int, std::map<std::string, std::vector<double>>>> all_variables;
     std::map<std::string, double> variables;
+    MassVar all_variables;
 
 public:
-    MvaVariables(){}
+    using MvaVariables::MvaVariables;
 
-    double& operator[](std::string name)
+    virtual void SetValue(const std::string& name, double value) override
     {
-        return variables[name];
+        variables[name] = value;
     }
 
-    void AddEvent(const std::string& sample, int mass)
-           {
-               std::map<int, std::map<std::string, std::vector<double>>>& sample_map = all_variables[sample];
-               std::map<std::string, std::vector<double>>& sample_vars = sample_map[mass];
-               for(const auto& name_value : variables) {
-                   const std::string& name = name_value.first;
-                   const double value = name_value.second;
-                   sample_vars[name].push_back(value);
-               }
-           }
-
-    const std::map<int, std::map<std::string,std::vector<double>>>& GetSampleVariables(const std::string& sample) const
+    virtual void AddEventVariables(bool istraining, int mass,  double weight) override
     {
-        return all_variables.at(sample);
+        VarData& sample_vars = all_variables[mass];
+        for(const auto& name_value : variables) {
+            const std::string& name = name_value.first;
+            const double value = name_value.second;
+            sample_vars[name].push_back(value);
+        }
+    }
+
+    const MassVar& GetSampleVariables() const
+    {
+        return all_variables;
     }
 };
 
-using VarPair = std::pair<std::string,std::string>;
+struct Name_ND{
+    std::set<std::string> names;
+    using const_iterator = std::set<std::string>::const_iterator;
 
-template<typename LVector1, typename LVector2, typename LVector3, typename LVector4, typename LVector5 >
-double Calculate_MT2(const LVector1& lepton1_p4, const LVector2& lepton2_p4, const LVector3& bjet_1, const LVector4& bjet_2, const LVector5& met_p4)
-{
-    asymm_mt2_lester_bisect::disableCopyrightMessage();
-    const double mVisA = (lepton1_p4+bjet_1).mass();
-    const double pxA = (lepton1_p4+bjet_1).px();
-    const double pyA = (lepton1_p4+bjet_1).py();
-    const double mVisB = (lepton2_p4+bjet_2).mass();
-    const double pxB = (lepton2_p4+bjet_2).px();
-    const double pyB = (lepton2_p4+bjet_2).py();
-    const double pxMet = met_p4.px();
-    const double pyMet = met_p4.py();
-    double chiA = 0.; // hypothesised mass of invisible on side A.  Must be >=0.
-    double chiB = 0.; // hypothesised mass of invisible on side B.  Must be >=0.
-    double MT2 =  asymm_mt2_lester_bisect::get_mT2(mVisA, pxA, pyA,mVisB, pxB, pyB,pxMet, pyMet,chiA, chiB,0);
-    return MT2;
-}
-
-
-//Create a pair of histogram for each variable. The first one is for signal, the second for background.
-std::map<int, std::map<std::string, std::pair<TH1D*,TH1D*>>> GetHistos(std::map<int, std::map<std::string,std::vector<double>>> sample_signal, std::map<int, std::map<std::string,std::vector<double>>> sample_bkg, std::shared_ptr<TFile> outfile){
-
-    std::map<int, std::map<std::string, std::pair<TH1D*,TH1D*>>> histogram;
-    for(const auto& var_m : sample_signal){
-        std::map<std::string, std::pair<TH1D*,TH1D*>> histos;
-        std::map<std::string,std::vector<double>> v_b = sample_bkg[1];
-        std::string mass;
-        if (var_m.first != 1) mass = "_mass"+std::to_string(var_m.first);
-        else mass = "";
-        if (var_m.first == 2000) mass = "_SM";
-        for(const auto& var_1 : var_m.second) {
-            std::vector<double> vector_s = var_1.second;
-            std::vector<double> vector_b = v_b[var_1.first];
-
-            auto max_s = std::max_element(vector_s.begin(),vector_s.end());
-            auto min_s = std::min_element(vector_s.begin(),vector_s.end());
-            auto max_b = std::max_element(vector_b.begin(),vector_b.end());
-            auto min_b = std::min_element(vector_b.begin(),vector_b.end());
-            double max, min;
-            if (*min_s<=*min_b) min = *min_s;
-            else min = *min_b;
-            if (*max_s>=*max_b) max = *max_s;
-            else max = *max_b;
-
-            const int nbin = 50;
-            TH1D* h_s = new TH1D((var_1.first+"Signal"+mass).c_str(),(var_1.first+"Signal"+mass).c_str(),nbin,min-1,max+1);
-            h_s->SetXTitle((var_1.first).c_str());
-            for(Long64_t i = 0; i < vector_s.size(); i++){
-                h_s->Fill(vector_s[i]);
-            }
-            h_s->Scale(1/h_s->Integral());
-            root_ext::WriteObject(*h_s, outfile.get());
-
-            TH1D* h_b = new TH1D((var_1.first+"Bkg"+mass).c_str(),(var_1.first+"Bkg"+mass).c_str(),nbin,min-1,max+1);
-            h_b->SetXTitle((var_1.first).c_str());
-            for(Long64_t i = 0; i < vector_b.size(); i++){
-                h_b->Fill(vector_b[i]);
-            }
-            h_b->Scale(1/h_b->Integral());
-            root_ext::WriteObject(*h_b, outfile.get());
-            h_b->Delete();
-         }
-        histogram[var_m.first] = histos;
-    }
-    return histogram;
-}
-
-//Optimal Bandwidth
-std::map<int, std::map<std::string, double>> OptimalBandwidth(std::map<int, std::map<std::string,std::vector<double>>> sample_signal){
-    std::map<int, std::map<std::string, double>> bandwidth;
-    for(const auto& var_mass : sample_signal) {
-        if (var_mass.second.size() == 0) continue;
-        std::map<std::string, double> bandwidth_int;
-        for (const auto& var : var_mass.second){
-            bandwidth_int[var.first] = stat_estimators::OptimalBandwith(var.second);
+    bool operator<(const Name_ND& x) const
+    {
+        if (names.size() != x.names.size()) return names.size()<x.names.size();
+        if (names.size() == 0) return false;
+        auto x_iter = x.names.begin();
+        for(auto iter = names.begin(); iter != names.end(); ++iter, ++x_iter){
+            if(*iter != *x_iter) return *iter < *x_iter;
         }
-        bandwidth[var_mass.first] = bandwidth_int;
+        return false;
     }
+    Name_ND(std::initializer_list<std::string> _name) : names(_name.begin(), _name.end()){}
+
+    bool IsSubset(const std::set<std::string>& other) const
+    {
+        std::set<std::string> difference;
+        std::set_symmetric_difference(names.begin(),names.end(), other.begin(), other.end(), std::inserter(difference, difference.begin()));
+        return !difference.size();
+    }
+
+    bool Count(const std::pair<Name_ND, double> other) const
+    {
+        std::set<std::string> difference;
+        std::set_symmetric_difference(names.begin(),names.end(), other.first.names.begin(), other.first.names.end(), std::inserter(difference, difference.begin()));
+        return !difference.size();
+    }
+
+    const_iterator begin() const { return names.begin(); }
+    const_iterator end() const { return names.end(); }
+    size_t size() const { return names.size(); }
+
+    std::pair<std::string, std::string> ToPair() const
+    {
+        if(names.size() != 2)
+            throw exception("Can't convert to pair.");
+        return std::make_pair(*names.begin(), *names.rbegin());
+    }
+};
+
+struct Range {
+    int min, max;
+    Range() : min(0), max(0){}
+    bool Contains(int v) const { return v >= min && v <= max; }
+
+    Range(Double_t _min, Double_t _max ) : min(_min), max(_max) {}
+};
+
+Range low_mass(250, 280);
+Range medium_mass(300, 400);
+Range high_mass(450,900);
+std::vector<Range> ranges{low_mass, medium_mass, high_mass};
+
+//Create optimal bandwidth for each variable for a single value of mass
+VarBand OptimalBandwidth(const VarData& sample){
+    VarBand bandwidth;
+    std::map<std::string, std::future<double>> bandwidth_future;
+        for (const auto& var : sample){
+            bandwidth_future[var.first] = run::async(stat_estimators::OptimalBandwith<double>,std::cref(var.second), 0.01);
+        }
+        for(auto& var : bandwidth_future) {
+            var.second.wait();
+            if(!var.second.valid())
+                throw exception("future not valid");
+            bandwidth[var.first] = var.second.get();
+        }
     return bandwidth;
 }
 
-//Kolmogorov test
-std::map<int, std::map<std::string,double>> KolmogorovTest(std::map<int, std::map<std::string,std::vector<double>>> sample_signal, std::map<int, std::map<std::string,std::vector<double>>> sample_bkg){
-    std::map<int, std::map<std::string,double>> kolmogorov;
-    for(const auto& var_mass : sample_signal) {
-        if (var_mass.second.size() == 0) continue;
-        auto map_signal = var_mass.second;
-        auto map_bkg = sample_bkg[1];
-        std::map<std::string,double> k;
-        for (const auto& var : var_mass.second){
-            std::vector<double> vector_signal = map_signal[var.first];
-            std::sort(vector_signal.begin(), vector_signal.end());
-            std::vector<double> vector_bkg = map_bkg[var.first];
-            std::sort(vector_bkg.begin(), vector_bkg.end());
-            Double_t v_s[vector_signal.size()], v_b[vector_bkg.size()];
-            for(Long64_t i = 0; i < vector_signal.size(); i++){
-                v_s[i] = vector_signal[i];
-            }
-            for(Long64_t i = 0; i < vector_bkg.size(); i++){
-                v_b[i] = vector_bkg[i];
-            }
-            k[var.first] = TMath::KolmogorovTest(vector_signal.size(), v_s, vector_bkg.size(), v_b, "M");
+//Create elements of mutual information matrix for a single value o f mass
+VarPairMI Mutual(const VarData& sample, const VarBand& bandwidth){
+    VarPairMI mutual_matrix;
+    std::map<VarPair,std::future<double>> matrix_future;
+    for (const auto& var_1: sample){
+        for(const auto& var_2 : sample) {
+            if (var_2.first <= var_1.first) continue;
+            const VarPair var_12(var_1.first, var_2.first);
+            matrix_future[var_12] = run::async(stat_estimators::ScaledMutualInformation<double>,
+                                               std::cref(var_1.second), std::cref(var_2.second),
+                                               bandwidth.at(var_1.first), bandwidth.at(var_2.first));
         }
-        kolmogorov[var_mass.first] = k;
     }
-    return kolmogorov;
-
+    for(auto& var : matrix_future) {
+        var.second.wait();
+        if(!var.second.valid())
+            throw exception("future not valid");
+        mutual_matrix[var.first] = var.second.get();
+    }
+    return mutual_matrix;
 }
 
-//Create plots of Kolmogorv probability between signal and background for different values of mass
-void KolmogorovPlotSignalBkg(std::map<int, std::map<std::string,double>> kolmogorov, std::shared_ptr<TFile> outfile){
-    std::map<std::string, TGraph*> plot;
-    std::map<std::string,double> map_mass;
+//Create 2D plot of mutual information for signal and background
+void MutualPlot(int mass, const VarPairMI& mutual_matrix_signal, const VarPairMI& mutual_matrix_bkg,
+                TDirectory* directory){
+    auto directory_s = directory->GetDirectory("1D");
+    if (directory_s == nullptr) {
+        directory->mkdir("1D");
+        directory_s = directory->GetDirectory("1D");
+        auto histo = std::make_shared<TH1D>("Background","MutualInformation_Background",50,0,1);
+        histo->SetXTitle("MI");
+        for (const auto& entry : mutual_matrix_bkg){
+            histo->Fill(entry.second);
+        }
+        root_ext::WriteObject(*histo, directory_s);
+    }
+
+    auto directory_2d = directory->GetDirectory("2D");
+    if (directory_2d == nullptr) {
+        directory->mkdir("2D");
+        directory_2d = directory->GetDirectory("2D");
+    }
+    std::string m;
+    if ( mass ==  Signal_SM) m = "SM";
+    else m = std::to_string(mass);
+    auto histo2d = std::make_shared<TH2D>(("Signal_mass"+m+"_Background").c_str(),
+                                          ("MutualInformation_Signal_mass"+m+"_Background").c_str(),50,0,1,50,0,1);
+    histo2d->SetXTitle("MI Signal");
+    histo2d->SetYTitle("MI Background");
+    auto histo = std::make_shared<TH1D>(("Signal_mass"+m).c_str(),("MutualInformation_Signal_mass"+m).c_str(),50,0,1);
+    histo->SetXTitle("MI");
+    for (const auto& entry : mutual_matrix_signal){
+        histo2d->Fill(entry.second, mutual_matrix_bkg.at(entry.first));
+        histo->Fill(entry.second);
+    }
+    root_ext::WriteObject(*histo, directory_s);
+    root_ext::WriteObject(*histo2d, directory_2d);
+}
+
+//Estimate elements of covariance matrix for selected variables
+VarPairEstCorr EstimateCovariance(const VarData& sample_vars, uint_fast32_t seed){
+    VarPairEstCorr covariance_matrix;
+    for(const auto& var_1 : sample_vars) {
+        for(const auto& var_2 : sample_vars) {
+            if (var_2.first < var_1.first) continue;
+            const VarPair var_12(var_1.first, var_2.first);
+            covariance_matrix[var_12] = stat_estimators::EstimateWithErrorsByResampling(stat_estimators::Covariance<double>,
+                                                                                        sample_vars.at(var_1.first), sample_vars.at(var_2.first),
+                                                                                        true, true, 1000, 0.31731, seed);
+        }
+    }
+    return covariance_matrix;
+}
+
+VarPairCorr GetValue(const VarPairEstCorr & cov_matrix_signal){
+    VarPairCorr map;
+    for(const auto& var_1 : cov_matrix_signal) {
+        auto map_cov_varpair = cov_matrix_signal.at(var_1.first);
+        double value = map_cov_varpair.value;
+        map[var_1.first] = value;
+    }
+    return map;
+}
+
+VarPairCorr CovToCorr(const VarPairCorr& cov_matrix){
+    VarPairCorr correlation;
+    for(const auto& elements : cov_matrix) {
+        auto name_1 = elements.first;
+        const VarPair var_11(name_1.first, name_1.first);
+        double sigma_1 = std::sqrt(cov_matrix.at(var_11));
+        const VarPair var_22(name_1.second, name_1.second);
+        double sigma_2 = std::sqrt(cov_matrix.at(var_22));
+        const VarPair var_12(name_1.first, name_1.second);
+        correlation[var_12] = cov_matrix.at(var_12)/(sigma_1*sigma_2);
+    }
+    return correlation;
+}
+
+//Create covariance(correlation/mutual information) histo matrix
+void CreateMatrixHistos(const MassVar& sample_vars, const MassVarPairMI& element, std::string type,
+                        TDirectory* directory){
+    std::string mass, class_sample;
+    for(const auto mass_entry: sample_vars){
+        int bin =  mass_entry.second.size();
+        if (mass_entry.first == Bkg)
+            class_sample =  "Background";
+        else {
+            class_sample =  "Signal";
+            if (mass_entry.first == Signal_SM) mass = "_SM";
+            else mass = "_mass"+std::to_string(mass_entry.first);
+        }
+        auto matrix = std::make_shared<TH2D>((type+"_"+class_sample+mass).c_str(),(type+"_"+class_sample+mass).c_str(),
+                                             bin, 0, bin, bin, 0, bin);
+        int i = 1;
+        for(const auto& var_1 : mass_entry.second) {
+            int j = 1;
+            matrix->GetXaxis()->SetBinLabel(i, (var_1.first).c_str());
+            matrix->GetYaxis()->SetBinLabel(i, (var_1.first).c_str());
+            for(const auto& var_2 : mass_entry.second) {
+                const VarPair var_12(var_1.first, var_2.first);
+                if (element.at(mass_entry.first).count(var_12)){
+                    matrix->SetBinContent(i, j, element.at(mass_entry.first).at(var_12));
+                    matrix->SetBinContent(j, i, element.at(mass_entry.first).at(var_12));
+                }
+                j++;
+            }
+            i++;
+        }
+        root_ext::WriteObject(*matrix, directory);
+    }
+}
+
+std::shared_ptr<TGraph> CreatePlot(std::string title, std::string name, std::string x_axis, std::string y_axis){
+    auto plot = std::make_shared<TGraph>();
+    plot->SetLineColor(kGreen+1);
+    plot->SetLineWidth(1);
+    plot->SetMarkerColor(1);
+    plot->SetMarkerSize(1);
+    plot->SetMarkerStyle(3);
+    plot->SetTitle((title).c_str());
+    plot->SetName((name).c_str());
+    plot->GetHistogram()->GetXaxis()->SetTitle((x_axis).c_str());
+    plot->GetHistogram()->GetYaxis()->SetTitle((y_axis).c_str());
+    return plot;
+}
+
+using Name_NDDistance = std::map<Name_ND, double>;
+using MassName_ND = std::map<int, Name_NDDistance>;
+using VectorName_ND = std::deque<std::pair<Name_ND, double>>;
+using MassVectorName_ND = std::map<int, VectorName_ND>;
+
+Name_NDDistance JensenDivergenceSB(const VarData& sample_signal, const VarData& sample_bkg,
+                                   const VarBand& bandwidth_signal, const VarBand& bandwidth_bkg){
+    Name_NDDistance  JSDivergenceSB;
+    std::map<Name_ND,std::future<double>> JSDivergenceND_future;
+    for (const auto& entry_1 : sample_signal){
+        std::vector<const DataVector*> x;
+        std::vector<const DataVector*> y;
+        DataVector band_x;
+        DataVector band_y;
+        x.push_back(&sample_signal.at(entry_1.first));
+        y.push_back(&sample_bkg.at(entry_1.first));
+        band_x.push_back(bandwidth_signal.at(entry_1.first));
+        band_y.push_back(bandwidth_bkg.at(entry_1.first));
+        JSDivergenceND_future[Name_ND{entry_1.first}] = run::async(stat_estimators::JensenShannonDivergence_ND<double>,
+                                                                   x, y, band_x, band_y);
+        for (const auto& entry_2 : sample_signal){
+            if ( entry_1.first == entry_2.first )
+                continue;
+            if (JSDivergenceND_future.count(Name_ND({entry_2.first,entry_1.first})) )
+                continue;
+            x.push_back(&sample_signal.at(entry_2.first));
+            y.push_back(&sample_bkg.at(entry_2.first));
+            band_x.push_back(bandwidth_signal.at(entry_2.first));
+            band_y.push_back(bandwidth_bkg.at(entry_2.first));
+            JSDivergenceND_future[Name_ND{entry_1.first,entry_2.first}] = run::async(stat_estimators::JensenShannonDivergence_ND<double>,
+                                                                                     x, y, band_x, band_y);
+            x.erase(x.end() - 1);
+            y.erase(y.end() - 1);
+            band_x.erase(band_x.end() - 1);
+            band_y.erase(band_y.end() - 1);
+        }
+    }
+    for(auto& entry : JSDivergenceND_future) {
+        JSDivergenceSB[entry.first] = entry.second.get();
+    }
+    return JSDivergenceSB;
+}
+
+std::set<std::string> CheckList(int mass,  MassVar sample, const Name_NDDistance& JSDivergenceND,
+                                const VarPairMI& mutual_matrix_signal, const VarPairMI& mutual_matrix_bkg,
+                                std::map<std::string, std::string>& eliminated, const MassVarBand& band,
+                                size_t number_variables, TDirectory* directory){
+
+    std::set<std::string> selected, not_corrected;
+    VectorName_ND JSDivergence_vector(JSDivergenceND.begin(), JSDivergenceND.end());
+
+    while(selected.size() < number_variables && JSDivergence_vector.size()) {
+        std::sort(JSDivergence_vector.begin(), JSDivergence_vector.end(),
+                  [](const std::pair<Name_ND, double>& el1, const std::pair<Name_ND, double>& el2){
+            return el1.second > el2.second;
+        });
+        auto best_entry = JSDivergence_vector.front();
+        for(const auto& name : best_entry.first.names) {
+            if(selected.count(name))
+                continue;
+            const double JS_1d = JSDivergenceND.at(Name_ND({name}));
+            for(auto& entry : JSDivergence_vector) {
+                if(entry.first.names.count(name))
+                    entry.second -= JS_1d;
+            }
+            if (not_corrected.count(name))
+                continue;
+
+            for(const auto& other_entry : sample.at(mass)) {
+                if(other_entry.first == name) continue;
+                const Name_ND names({name, other_entry.first});
+                const auto name_pair = names.ToPair();
+                if(mutual_matrix_signal.at(name_pair) < threashold_mi && mutual_matrix_bkg.at(name_pair) < threashold_mi){
+                    eliminated[other_entry.first] = "MI-"+name;
+                    not_corrected.insert(other_entry.first);
+                }
+            }
+            selected.insert(name);
+        }
+        JSDivergence_vector.pop_front();
+        VectorName_ND copy;
+        for (const auto& entry : JSDivergence_vector){
+            if(entry.second <= 0) continue;
+            bool consider = true;
+            for(const auto& other : entry.first) {
+                consider = consider && !not_corrected.count(other);
+            }
+            if(consider)
+                copy.push_back(entry);
+        }
+        JSDivergence_vector = std::move(copy);
+    }
+    auto directory_v = directory->GetDirectory("Plot_Selected_variables");
+    if (directory_v == nullptr) {
+        directory->mkdir("Plot_Selected_variables");
+        directory_v = directory->GetDirectory("Plot_Selected_variables");
+    }
+    TDirectory* directory_m;
+    if (mass==Signal_SM){
+        directory_v->mkdir("Signal_SM");
+        directory_m = directory_v->GetDirectory("Signal_SM");
+    }
+    else{
+    directory_v->mkdir(("Signal_mass"+std::to_string(mass)).c_str());
+    directory_m = directory_v->GetDirectory(("Signal_mass"+std::to_string(mass)).c_str());
+    }
+
+    std::map<std::string, std::map<int, std::future<double>>> JSDss_selected_future;
+    std::map<std::string, std::map<int, double>> JSDss_selected;
+    std::map<std::string, std::shared_ptr<TGraph>> plot;
+    for(const auto& selected_name : selected){
+        plot[selected_name] = CreatePlot(("JSD_"+selected_name).c_str(),("JSD_"+selected_name).c_str(),"mass","JSD");
+        std::vector<const DataVector*> sample_1;
+        DataVector band_1;
+        sample_1.push_back(&sample.at(mass).at(selected_name));
+        band_1.push_back(band.at(mass).at(selected_name));
+        for (const auto& mass_entry: sample){
+            if (mass_entry.first == Bkg) continue;
+            std::vector<const DataVector*> sample_2;
+            DataVector band_2;
+            sample_2.push_back(&sample.at(mass_entry.first).at(selected_name));
+            band_2.push_back(band.at(mass_entry.first).at(selected_name));
+            JSDss_selected_future[selected_name][mass_entry.first] = run::async(stat_estimators::JensenShannonDivergence_ND<double>, sample_1, sample_2, band_1, band_2);
+        }
+    }
+    for(auto& var : JSDss_selected_future) {
+        int i = 0;
+        for(auto& mass : var.second) {
+            mass.second.wait();
+            if(!mass.second.valid())
+                throw exception("future not valid");
+            JSDss_selected[var.first][mass.first] = mass.second.get();
+            plot.at(var.first)->SetPoint(i,mass.first,JSDss_selected.at(var.first).at(mass.first));
+            i++;
+        }
+        root_ext::WriteObject(*plot.at(var.first), directory_m);
+    }
+    auto directory_distribution = directory->GetDirectory("Distribution");
+    if (directory_distribution == nullptr) {
+        directory->mkdir("Distribution");
+        directory_distribution = directory->GetDirectory("Distribution");
+    }
+    std::string  massa = std::to_string(mass);
+    TDirectory* directory_mass;
+    if (mass == Signal_SM){
+        directory_distribution->mkdir("Signal_SM");
+        directory_mass = directory_distribution->GetDirectory("Signal_SM");
+    }
+    else{
+    directory_distribution->mkdir(("Signal_mass"+massa).c_str());
+    directory_mass = directory_distribution->GetDirectory(("Signal_mass"+massa).c_str());
+    }
+    if (mass == Signal_SM) massa = "SM";
+
+    std::map<int, std::shared_ptr<TH1D>> histo;
+    for (const auto& mass_entry: sample){
+        if (mass_entry.first == Bkg) continue;
+        histo[mass_entry.first] = std::make_shared<TH1D>(("JSD_Signal"+massa+"_Signal"+std::to_string(mass_entry.first)).c_str(),
+                                                         ("JensenShannonDivergence_Signal"+massa+"_"+std::to_string(mass_entry.first)).c_str(), 20,0,1);
+        histo.at(mass_entry.first)->SetXTitle("JSD");
+
+    }
+    for(const auto& selected_name : selected){
+        for (const auto& mass_entry: sample){
+            if (mass_entry.first == Bkg) continue;
+            histo.at(mass_entry.first)->Fill(JSDss_selected.at(selected_name).at(mass_entry.first));
+        }
+    }
+    for (const auto& mass_entry: sample){
+        if (mass_entry.first == Bkg) continue;
+        root_ext::WriteObject(*histo[mass_entry.first], directory_mass);
+    }
+    return selected;
+}
+
+void PlotJensenShannon(const MassName_ND& JSDivergenceND, TDirectory* directory){
+    std::map<std::string, std::shared_ptr<TGraph>> plot;
     int i = 0;
-    for(const auto& var_mass : kolmogorov) {
-        map_mass = var_mass.second;
-        if (var_mass.second.size() == 0) continue;
-        auto map = var_mass.second;
-        for (const auto& var : map){
-            if (plot.count(var.first)==0) plot[var.first] = new TGraph(kolmogorov.size());
-            plot[var.first]->SetPoint(i,var_mass.first,var.second);
-            plot[var.first]->SetLineColor(kGreen+1);
-            plot[var.first]->SetLineWidth(1);
-            plot[var.first]->SetMarkerColor(1);
-            plot[var.first]->SetMarkerSize(1);
-            plot[var.first]->SetMarkerStyle(3);
-            plot[var.first]->SetTitle(("Kolmogorov_"+ var.first+"_SignalBkg").c_str());
-            plot[var.first]->SetName(("Kolmogorov_"+ var.first+"_SignalBkg").c_str());
-            plot[var.first]->GetHistogram()->GetXaxis()->SetTitle("mass");
-            plot[var.first]->GetHistogram()->GetYaxis()->SetTitle("KS Distance");
+    for (const auto& mass_entry: JSDivergenceND){
+        if (mass_entry.first == Bkg)
+            continue;
+        for (const auto& var : mass_entry.second){
+            if (var.first.names.size()!=1)
+                continue;
+            const std::string name = *var.first.names.begin();
+            if (plot.count(name) == 0) {
+                plot[name] = CreatePlot("JSD_"+name+"_SignalBkg","JSD_"+name+"_SignalBkg","mass","JSD");
+            }
+            plot[name]->SetPoint(i,mass_entry.first,JSDivergenceND.at(mass_entry.first).at(Name_ND({name})));
         }
         i++;
     }
-    for(const auto& var: map_mass){
-        root_ext::WriteObject(*plot[var.first], outfile.get());
+    for(const auto& var: plot){
+        root_ext::WriteObject(*var.second, directory);
     }
 }
 
-//Create plots of Jensen Shannon Divergence Divergence between signal and background for different values of mass
-void KLDPlotSignalBkg(std::map<int, std::map<std::string,std::vector<double>>> sample_signal, std::map<int, std::map<std::string,std::vector<double>>> sample_bkg, std::map<int, std::map<std::string, double>> band_signal, std::map<int, std::map<std::string, double>> band_bkg, std::shared_ptr<TFile> outfile){
-    std::map<std::string, TGraph*> plot;
-    auto map_bkg = sample_bkg[1];
-    int i = 0;
-    auto bandwidth_bkg = band_bkg[1];
-    for(const auto& var_mass_2 : sample_signal){
-        if (var_mass_2.second.size() == 0) continue;
-        auto map_signal_2 = var_mass_2.second;
-        auto bandwidth_signal = band_signal[var_mass_2.first];
-        for (const auto& var : var_mass_2.second){
-            double k = stat_estimators::JensenShannonDivergence(map_bkg[var.first], map_signal_2[var.first], bandwidth_bkg[var.first],bandwidth_signal[var.first]);
-            if (plot.count(var.first)==0) plot[var.first] = new TGraph();
-            plot[var.first]->SetPoint(i,var_mass_2.first, k);
-            plot[var.first]->SetLineColor(kGreen+1);
-            plot[var.first]->SetLineWidth(1);
-            plot[var.first]->SetMarkerColor(1);
-            plot[var.first]->SetMarkerSize(1);
-            plot[var.first]->SetMarkerStyle(3);
-            plot[var.first]->SetTitle(("JSD_"+var.first+"_SignalBkg").c_str());
-            plot[var.first]->SetName(("JSD_"+var.first+"_SignalBkg").c_str());
-            plot[var.first]->GetHistogram()->GetXaxis()->SetTitle("mass");
-            plot[var.first]->GetHistogram()->GetYaxis()->SetTitle("JS Divergence");
-        }
-        i++;
+void KolmogorovSignalCompatibility(int mass, const MassVar& sample_var, const std::set<std::string>& selected, TDirectory* directory){
+    auto directory_v = directory->GetDirectory("Plot_Selected_variables");
+    if (directory_v == nullptr) {
+        directory->mkdir("Plot_Selected_variables");
+        directory_v = directory->GetDirectory("Plot_Selected_variables");
     }
-    for(const auto& var: map_bkg){
-        root_ext::WriteObject(*plot[var.first], outfile.get());
+    TDirectory* directory_m;
+    if (mass == Signal_SM){
+        directory_v->mkdir("Signal_SM");
+        directory_m = directory_v->GetDirectory("Signal_SM");
     }
-}
-
-//Create plots of Kolmogorv probability for compatibility of signal at different mass
-void CompatibilitySignalPlotKolmogorov(std::map<int, std::map<std::string,std::vector<double>>> sample_signal, std::shared_ptr<TFile> outfile){
-    std::map<std::string, TGraph*> plot;
-
-    auto var_mass = *sample_signal.begin();
-    auto map_signal = var_mass.second;
+    else{
+    directory_v->mkdir(("Signal_mass"+std::to_string(mass)).c_str());
+    directory_m = directory_v->GetDirectory(("Signal_mass"+std::to_string(mass)).c_str());
+    }
+    auto directory_distribution = directory->GetDirectory("Distribution");
+    if (directory_distribution == nullptr) {
+        directory->mkdir("Distribution");
+        directory_distribution = directory->GetDirectory("Distribution");
+    }
+    std::string  massa = std::to_string(mass);
+    if (mass == Signal_SM) massa = "SM";
+    TDirectory* directory_mass;
+    if (mass == Signal_SM){
+        directory_distribution->mkdir("Signal_SM");
+        directory_mass = directory_distribution->GetDirectory("Signal_SM");
+    }
+    else{
+    directory_distribution->mkdir(("Signal_mass"+massa).c_str());
+    directory_mass = directory_distribution->GetDirectory(("Signal_mass"+massa).c_str());
+    }
+    std::map<std::string, std::shared_ptr<TGraph>> plot;
+    std::map<int, std::shared_ptr<TH1D>> histo;
+    std::map<int, std::map<std::string, double>> kolmogorov;
     int i = 0;
-    for(const auto& var_mass_2 : sample_signal){
-        if (var_mass_2.second.size() == 0) continue;
-        auto map_signal_2 = var_mass_2.second;
-        for (const auto& var : var_mass.second){
-            std::vector<double> vector_signal = map_signal[var.first];
-            std::sort(vector_signal.begin(), vector_signal.end());
-            std::vector<double> vector_signal_2 = map_signal_2[var.first];
+    for (const auto& mass_entry: sample_var){
+        if ( mass_entry.first == Bkg )
+            continue;
+        for (const auto& var : selected){
+            std::vector<double> vector_signal = sample_var.at(mass_entry.first).at(var);
+            std::sort(vector_signal.begin(), vector_signal.end());\
+            std::vector<double> vector_signal_2 = sample_var.at(mass).at(var);
             std::sort(vector_signal_2.begin(), vector_signal_2.end());
-            Double_t v_s[vector_signal.size()], v_s_2[vector_signal_2.size()];
-            for(Long64_t i = 0; i < vector_signal.size(); i++){
-                v_s[i] = vector_signal[i];
+            Double_t* v_s = vector_signal.data(), *v_s_2 = vector_signal_2.data();
+            kolmogorov[mass_entry.first][var] = TMath::KolmogorovTest(vector_signal.size(), v_s, vector_signal_2.size(), v_s_2, "");
+            if (plot.count(var) == 0) {
+                plot[var] = CreatePlot(("KolmogorovSmirnov_"+var).c_str(),
+                                       ("KolmogorovSmirnov_"+var).c_str(),
+                                       "mass","KS Probability" );
             }
-            for(Long64_t i = 0; i < vector_signal_2.size(); i++){
-                v_s_2[i] = vector_signal_2[i];
-            }
-            double k = TMath::KolmogorovTest(vector_signal.size(), v_s, vector_signal_2.size(), v_s_2, "");
-            if (plot.count(var.first)==0) plot[var.first] = new TGraph();
-            plot[var.first]->SetPoint(i,var_mass_2.first,k);
-            plot[var.first]->SetLineColor(kGreen+1);
-            plot[var.first]->SetLineWidth(1);
-            plot[var.first]->SetMarkerColor(1);
-            plot[var.first]->SetMarkerSize(1);
-            plot[var.first]->SetMarkerStyle(3);
-            plot[var.first]->SetTitle(("Kolmogorov_"+var.first+"_Signal").c_str());
-            plot[var.first]->SetName(("Kolmogorov_"+var.first+"_Signal").c_str());
-            plot[var.first]->GetHistogram()->GetXaxis()->SetTitle("mass");
-            plot[var.first]->GetHistogram()->GetYaxis()->SetTitle("KS Probability");
+            plot[var]->SetPoint(i,mass_entry.first,kolmogorov.at(mass_entry.first).at(var));
         }
         i++;
+        histo[mass_entry.first] = std::make_shared<TH1D>(("KolmogorovSmirnov_Signal"+massa+"_Signal"+std::to_string(mass_entry.first)).c_str(),
+                                                         ("KolmogorovSmirnov_Signal"+massa+"_"+std::to_string(mass_entry.first)).c_str(), 20,0,1);
+        histo.at(mass_entry.first)->SetXTitle("KS");
+
     }
-    for(const auto& var: map_signal){
-        root_ext::WriteObject(*plot[var.first], outfile.get());
+
+    for (const auto& mass_entry: sample_var){
+        if (mass_entry.first == Bkg) continue;
+        for(const auto& selected_name : selected){
+            histo.at(mass_entry.first)->Fill(kolmogorov.at(mass_entry.first).at(selected_name));
+        }
+    }
+    for(const auto& var: selected){
+        root_ext::WriteObject(*plot[var], directory_m);
+    }
+    for (const auto& mass_entry: sample_var){
+        if (mass_entry.first == Bkg) continue;
+        root_ext::WriteObject(*histo[mass_entry.first], directory_mass);
     }
 }
 
-//Create plots of Jensen Shannon Divergence for compatibility of signal at different mass
-void CompatibilitySignalPlotKLD(std::map<int, std::map<std::string,std::vector<double>>> sample_signal, std::map<int, std::map<std::string, double>> bandwidth, std::shared_ptr<TFile> outfile){
-    std::map<std::string, TGraph*> plot;
+using VecVariables =  std::vector<std::string>;
+std::vector<VecVariables> VariablesSelection(MassVar sample, const MassName_ND& JSDivergenceSB,
+                                             const MassVarBand& bandwidth, const MassVarPairMI& mutual_matrix,
+                                             MassSetSelected& mass_selected, std::shared_ptr<TFile> outfile, size_t number_variables){
 
-    auto var_mass = *sample_signal.begin();
-    auto bandwidth_signal_1 = bandwidth[var_mass.first];
-    auto map_signal = var_mass.second;
-    int i = 0;
-    for(const auto& var_mass_2 : sample_signal){
-        if (var_mass_2.second.size() == 0) continue;
-        auto map_signal_2 = var_mass_2.second;
-        auto bandwidth_signal_2 = bandwidth[var_mass_2.first];
-        for (const auto& var : var_mass.second){
-            double k = stat_estimators::JensenShannonDivergence(map_signal_2[var.first], map_signal[var.first], bandwidth_signal_2[var.first], bandwidth_signal_1[var.first]);
-            if (plot.count(var.first)==0) plot[var.first] = new TGraph();
-            plot[var.first]->SetPoint(i,var_mass_2.first,k);
-            plot[var.first]->SetLineColor(kGreen+1);
-            plot[var.first]->SetLineWidth(1);
-            plot[var.first]->SetMarkerColor(1);
-            plot[var.first]->SetMarkerSize(1);
-            plot[var.first]->SetMarkerStyle(3);
-            plot[var.first]->SetTitle(("JSD_"+var.first+"_Signal").c_str());
-            plot[var.first]->SetName(("JSD_"+var.first+"_Signal").c_str());
-            plot[var.first]->GetHistogram()->GetXaxis()->SetTitle("mass");
-            plot[var.first]->GetHistogram()->GetYaxis()->SetTitle("JS Divergence");
+    outfile->mkdir("Kolmogorov");
+    auto directory_ks = outfile->GetDirectory("Kolmogorov");
+
+    auto directory_jensenshannon = outfile->GetDirectory("JensenShannonDivergence");
+    auto directory_jenshan_sgnlbkg = directory_jensenshannon->GetDirectory("Signal_Background");
+    std::cout<<"Checklist1"<<std::endl;
+    directory_jenshan_sgnlbkg->mkdir("Distribution");
+    auto directory_jenshan_distrib = directory_jenshan_sgnlbkg->GetDirectory("Distribution");
+    directory_jensenshannon->mkdir("Signal_Signal");
+    auto directory_jenshan_sgnlsgnl = directory_jensenshannon->GetDirectory("Signal_Signal");
+    directory_jenshan_sgnlsgnl->mkdir("Check_Mass");
+    auto directory_jenshan_mass = directory_jenshan_sgnlsgnl->GetDirectory("Check_Mass");
+
+    std::ofstream ofs("SelectedVariable.csv", std::ofstream::out);
+    for (const auto& mass_entry : sample){
+        ofs << mass_entry.first << ",";
+        std::cout<<mass_entry.first<<" ";
+        std::cout.flush();
+        if (mass_entry.first == Bkg)
+            continue;
+        std::map<std::string, std::string> eliminated;
+        mass_selected[mass_entry.first] =  CheckList(mass_entry.first, sample,JSDivergenceSB.at(mass_entry.first),
+                                                     mutual_matrix.at(mass_entry.first), mutual_matrix.at(Bkg),
+                                                     eliminated, bandwidth, number_variables, directory_jenshan_mass);
+
+        KolmogorovSignalCompatibility(mass_entry.first, sample, mass_selected[mass_entry.first], directory_ks);
+        ofs << mass_entry.first << std::endl;
+        for(auto& entry_selected: mass_selected[mass_entry.first]){
+                ofs << entry_selected<<",";
         }
-        i++;
-    }
-    for(const auto& var: map_signal){
-        root_ext::WriteObject(*plot[var.first], outfile.get());
-    }
-}
+        ofs << std::endl;
+        std::string  mass = std::to_string(mass_entry.first);
 
-//Create 2Dhisto of Kolmogorov Distance for compatibility of signal at different mass
-std::map<std::string,TH2D*> CompatibilitySignalHistoKolmogorov(std::map<int, std::map<std::string,std::vector<double>>> sample_signal, std::shared_ptr<TFile> outfile){
-
-    int bin = sample_signal.size();
-    std::map<std::string,TH2D*> map_histo;
+        if (mass_entry.first == Signal_SM) mass = "SM";
+        auto histo = std::make_shared<TH1D>(("JSD_Signal"+mass+"_Background").c_str(), ("JensenShannonDivergence_Signal"+mass+"_Background").c_str(), 50,0,1);
+        histo->SetXTitle("JSD");
+        std::ofstream of("InformationTable_mass"+(std::to_string(mass_entry.first))+".csv", std::ofstream::out);
+        of<<"Var_1"<<","<<"Var_2"<<","<<"JSD_ND"<<","<<"JSD_12-(JSD_1+JSD_2)"<<","<<"ScaledMI_Signal_12" <<","<<"ScaledMI_Bkg_12"<<","<<"selected"<<","<<","<<"eliminated by"<<std::endl;
+        for(auto& entry : JSDivergenceSB.at(mass_entry.first)){
+             histo->Fill(entry.second);
+             if ((entry.first).names.size() == 1){
+                 auto name_1 = ((entry.first).names).begin();
+                 bool selected_1 = mass_selected[mass_entry.first].count(*name_1);
+                 of<<*name_1<<","<<"   "<<","<<JSDivergenceSB.at(mass_entry.first).at(Name_ND({*name_1}))<<","<<","<<","<<","<<selected_1;
+                 if(eliminated.count(*name_1)) of<<","<<","<<eliminated.at(*name_1);
+                 of<<std::endl;
+             }
+             else  if ((entry.first).names.size() == 2){
+                 auto name_1 = ((entry.first).names).begin();
+                 auto name_2 = ((entry.first).names).rbegin();
+                 bool selected_1 = mass_selected[mass_entry.first].count(*name_1);
+                 bool selected_2 = mass_selected[mass_entry.first].count(*name_2);
+                 of<<*name_1<<","<<*name_2<<","<<JSDivergenceSB.at(mass_entry.first).at(Name_ND({*name_1,*name_2}))<<","<<JSDivergenceSB.at(mass_entry.first).at(Name_ND({*name_1,*name_2}))-(JSDivergenceSB.at(mass_entry.first).at(Name_ND({*name_1}))+JSDivergenceSB.at(mass_entry.first).at(Name_ND({*name_2})))<<","<<mutual_matrix.at(mass_entry.first).at(VarPair(*name_1,*name_2))<<","<<mutual_matrix.at(Bkg).at(VarPair(*name_1,*name_2))<<","<<selected_1<<","<<selected_2;
+                 if(eliminated.count(*name_1)) of<<","<<eliminated.at(*name_1);
+                 if(eliminated.count(*name_2)) of<<","<<eliminated.at(*name_2);
+                 of<<std::endl;
+             }
+        }
+        of.close();
+        root_ext::WriteObject(*histo, directory_jenshan_distrib);
+    }
+    std::cout<<std::endl<<"Intersection and Union"<<std::endl;
+    int bin = mass_selected.size();
+    auto matrix_intersection = std::make_shared<TH2D>("Intersection","Intersection of variables",bin, 0, bin, bin, 0, bin);
+    matrix_intersection->SetXTitle("mass");
+    matrix_intersection->SetYTitle("mass");
     int k = 1;
-    auto var_mass = *sample_signal.begin();
-    for (const auto& var : var_mass.second){
-         TH2D* histo= new TH2D(("Kolmogorov"+var.first+"CompatibilitySignal").c_str(),("Kolmogorov"+var.first+"CompatibilitySignal").c_str(),bin,0,0,bin,0,0);
-         histo->SetCanExtend(TH1::kAllAxes);
-         histo->SetBins(bin, 0, bin, bin, 0, bin);
-         histo->GetXaxis()->SetTitle("mass");
-         histo->GetYaxis()->SetTitle("mass");
-         map_histo[var.first] = histo;
-    }
-    for(const auto& var_mass : sample_signal){
-        for (const auto& var : var_mass.second){
-            if (var_mass.first == 2000 ) {
-                map_histo[var.first]->GetXaxis()->SetBinLabel(k, "SM");
-                map_histo[var.first]->GetYaxis()->SetBinLabel(k, "SM");
+    std::vector<VecVariables> vec_union(3);
+    for(const auto& mass_1: mass_selected){
+        int j = 1;
+        std::string mass;
+        if (mass_1.first == Signal_SM) mass = "SM";
+        else mass = std::to_string(mass_1.first);
+        matrix_intersection->GetXaxis()->SetBinLabel(k, (mass).c_str());
+        matrix_intersection->GetYaxis()->SetBinLabel(k, (mass).c_str());
+        for(const auto& mass_2: mass_selected){
+            VecVariables intersection;
+            std::set_intersection(mass_1.second.begin(), mass_1.second.end(), mass_2.second.begin(), mass_2.second.end(),
+                                    std::back_inserter(intersection));
+            matrix_intersection->SetBinContent(k, j, intersection.size());
+            int i = 0;
+            for (const auto& range: ranges){
+                if (mass_1.first <= range.max && mass_1.first >= range.min && mass_2.first <= range.max && mass_1.first >= range.min){
+                     std::set_union(mass_1.second.begin(), mass_1.second.end(), mass_2.second.begin(), mass_2.second.end(),
+                                                        std::back_inserter(vec_union[i]));
+                }
+                i++;
             }
-            else{
-                map_histo[var.first]->GetXaxis()->SetBinLabel(k, (std::to_string(var_mass.first)).c_str());
-                map_histo[var.first]->GetYaxis()->SetBinLabel(k, (std::to_string(var_mass.first)).c_str());
-            }
+            j++;
         }
         k++;
     }
-    int i = 1;
-    for(const auto& var_mass : sample_signal){
-        auto map_signal = var_mass.second;
-        if (map_signal.size() == 0) continue;
-        int j = 1;
-        for(const auto& var_mass_2 : sample_signal){
-
-            auto map_signal_2 = var_mass_2.second;
-            if (map_signal_2.size() == 0) continue;
-            for (const auto& var : var_mass.second){
-                std::vector<double> vector_signal = map_signal[var.first];
-                std::sort(vector_signal.begin(), vector_signal.end());
-                std::vector<double> vector_signal_2 = map_signal_2[var.first];
-                std::sort(vector_signal_2.begin(), vector_signal_2.end());
-                Double_t v_s[vector_signal.size()], v_s_2[vector_signal_2.size()];
-                for(Long64_t i = 0; i < vector_signal.size(); i++){
-                    v_s[i] = vector_signal[i];
-                }
-                for(Long64_t i = 0; i < vector_signal_2.size(); i++){
-                    v_s_2[i] = vector_signal_2[i];
-                }
-                double k = TMath::KolmogorovTest(vector_signal.size(), v_s, vector_signal_2.size(), v_s_2, "");
-                map_histo[var.first]->SetBinContent(i, j, k);
-            }
-            j++;
+    root_ext::WriteObject(*matrix_intersection, outfile.get());
+    std::ofstream of("UnionVariables.csv", std::ofstream::out);
+    std::vector<VecVariables> vector_union;
+    int count_range = 0;
+    for (auto& names : vec_union){
+        std::sort(names.begin(),names.end() );
+        names.erase( std::unique( names.begin(), names.end() ), names.end() );
+        of<<"Range"<<ranges[count_range].min<<"-"<<ranges[count_range].max<<std::endl;
+        for (const auto& entry: names){
+            of<<entry<<",";
         }
-        i++;
+        of<<std::endl;
+        vector_union.emplace_back(names);
+        count_range++;
     }
-    for(const auto& var: var_mass.second){
-        root_ext::WriteObject(*map_histo[var.first], outfile.get());
-    }
-    return map_histo;
+    of.close();
+    std::cout<<"#variabli per range dopo unione: "<<vec_union[0].size()<<" "<<vec_union[1].size()<<" "<<vec_union[2].size()<<std::endl;
+    return vector_union;
 }
-
-//Create 2Dhisto of Jensen Shannon Divergence Divergence for compatibility of signal at different mass
-std::map<std::string,TH2D*> CompatibilitySignalHistoKLD(std::map<int, std::map<std::string,std::vector<double>>> sample_signal, std::map<int, std::map<std::string, double>> bandwidth, std::shared_ptr<TFile> outfile){
-    int bin = sample_signal.size();
-    std::map<std::string,TH2D*> map_histo;
-    int k = 1;
-    auto var_mass = *sample_signal.begin();
-    for (const auto& var : var_mass.second){
-         TH2D* histo= new TH2D(("JSD_"+var.first+"CompatibilitySignal").c_str(),("JSD_"+var.first+"CompatibilitySignal").c_str(),bin,0,0,bin,0,0);
-         histo->SetCanExtend(TH1::kAllAxes);
-         histo->SetBins(bin, 0, bin, bin, 0, bin);
-         histo->GetXaxis()->SetTitle("mass");
-         histo->GetYaxis()->SetTitle("mass");
-         map_histo[var.first] = histo;
-    }
-    for(const auto& var_mass : sample_signal){
-        for (const auto& var : var_mass.second){
-            if (var_mass.first == 2000 ) {
-                map_histo[var.first]->GetXaxis()->SetBinLabel(k, "SM");
-                map_histo[var.first]->GetYaxis()->SetBinLabel(k, "SM");
-            }
-            else{
-                map_histo[var.first]->GetXaxis()->SetBinLabel(k, (std::to_string(var_mass.first)).c_str());
-                map_histo[var.first]->GetYaxis()->SetBinLabel(k, (std::to_string(var_mass.first)).c_str());
-            }
-        }
-        k++;
-    }
-    int i = 1;
-    for(const auto& var_mass : sample_signal){
-        auto map_signal = var_mass.second;
-        if (map_signal.size() == 0) continue;
-        int j = 1;
-        auto bandwidth_signal_1 = bandwidth[var_mass.first];
-        for(const auto& var_mass_2 : sample_signal){
-            auto map_signal_2 = var_mass_2.second;
-            if (map_signal_2.size() == 0) continue;
-            auto bandwidth_signal_2 = bandwidth[var_mass_2.first];
-            for (const auto& var : var_mass.second){
-            double k = stat_estimators::JensenShannonDivergence(map_signal_2[var.first],map_signal[var.first], bandwidth_signal_1[var.first],bandwidth_signal_2[var.first]);
-            map_histo[var.first]->SetBinContent(i, j, k);
-            }
-            j++;
-        }
-        i++;
-    }
-    for(const auto& var: var_mass.second){
-        root_ext::WriteObject(*map_histo[var.first], outfile.get());
-    }
-    return map_histo;
-}
-
-
-//For each variable study ranges compatibility and for each of them compute the kolmogorov test between signal and background
-void CompatibilityRangeKolmogorov(std::map<std::string,TH2D*> map_histo, std::map<int, std::map<std::string,std::vector<double>>> sample_signal, std::map<int, std::map<std::string,std::vector<double>>> sample_bkg, std::map<int, std::map<std::string, double>> bandwidth_bkg, std::shared_ptr<TFile> outfile){
-
-    sample_signal.erase(--sample_signal.rbegin().base());
-    double masse[sample_signal.size()];
-    int i = 0;
-    for (const auto& var : sample_signal){
-        if (i<(sample_signal.size())) masse[i] = var.first;
-        i++;
-    }
-
-    std::map<std::string, double> band_bkg = bandwidth_bkg[1];
-    auto map_bkg = sample_bkg[1];
-    auto var_mass = *sample_signal.begin();
-
-    struct element{
-        std::map<int, std::vector<int>> ranges;
-        std::map<int, double> kolmogorov;
-        std::map<int, double> kullback;
-        std::map<int, double> entropy;
-        std::map<int, double> kullback_ss;
-    };
-    std::vector<std::pair<std::string, element>> vector_pair;
-    int count = 0;
-
-    TH1D* histo_nrange =  new TH1D("Number of ranges", "Number of ranges",20,0,20);
-    TH1D* histo_end_1 =  new TH1D("End of first range", "End of first range",sample_signal.size(),0,1000);
-    TH1D* histo_end_2 =  new TH1D("End of second range", "End of second range",sample_signal.size(),0,1000);
-    histo_end_1->SetBins(sample_signal.size()-1,masse);
-    histo_end_2->SetBins(sample_signal.size()-1,masse);
-    histo_nrange->SetXTitle("# range");
-    histo_end_1->SetXTitle("mass");
-    histo_end_2->SetXTitle("mass");
-
-
-    for (const auto& var : var_mass.second){
-        element el;
-        std::vector<int> range;
-        int j;
-        for (Long64_t i = 1; i <=(sample_signal.size()); i++){
-            j = i;
-            double bin_content = 1;
-            int k = 0;
-            while(bin_content>0.05 && j<=(sample_signal.size()) && bin_content!=0){
-                j++;
-                bin_content = map_histo[var.first]->GetBinContent(i,j);
-                k++;
-            }
-            range.push_back(k);
-            i = j-1;
-        }
-        auto vec_bkg = map_bkg[var.first];
-        double vector_bkg[vec_bkg.size()];
-        for (Long64_t i = 1; i <vec_bkg.size(); i++) vector_bkg[i] = vec_bkg[i];
-
-        int z = 0;
-        std::map<int, std::vector<int>> map_ranges;
-        std::map<int, double> map_kolmogorov;
-        std::map<int, double> map_kullback;
-        std::map<int, double> map_kullback_ss;
-        std::map<int, double> map_entropy;
-        std::map<int, double> map_bandwidth;
-        std::map<int,std::vector<double>> total_mass;
-        for (Long64_t i = 0; i <range.size(); i++){
-            std::vector<int> vec_masse;
-            std::vector<double> p_sum;
-            int k = range[i];
-            int j = 0;
-            while(j<k){
-                int mass = masse[z];
-                vec_masse.push_back(mass);
-                auto map_signal = sample_signal[mass];
-                auto vec_signal = map_signal[var.first];
-                std::copy(std::begin(vec_signal),  std::end(vec_signal), std::back_inserter(p_sum));
-                z++;
-                j++;
-            }
-            map_ranges[i] = vec_masse;
-            total_mass[i] = p_sum;
-
-            double vector_signal[p_sum.size()];
-            for (Long64_t i = 1; i <p_sum.size(); i++) vector_signal[i] = p_sum[i];
-            map_kolmogorov[i] = TMath::KolmogorovTest(p_sum.size(), vector_signal, vec_bkg.size(), vector_bkg, "M");
-            map_bandwidth[i] = stat_estimators::OptimalBandwith(p_sum,0.01);
-            double kull = stat_estimators::JensenShannonDivergence(vec_bkg, total_mass[i], map_bandwidth[i],band_bkg[var.first]);
-            map_entropy[i] = stat_estimators::Entropy(total_mass[i], map_bandwidth[i]);
-            map_kullback[i] = kull;
-            if (i>0) {
-                double kull_ss = stat_estimators::JensenShannonDivergence(total_mass[i-1], p_sum, map_bandwidth[i],map_bandwidth[i-1]);
-                map_kullback_ss[i] = kull_ss;
-            }
-        }
-        el.entropy = map_entropy;
-        el.kullback = map_kullback;
-        el.kullback_ss = map_kullback_ss;
-        el.kolmogorov = map_kolmogorov;
-        el.ranges = map_ranges;
-        vector_pair.emplace_back(var.first, el);
-        count++;
-    }
-
-    std::sort(vector_pair.begin(), vector_pair.end(), [](std::pair<std::string, element>& el1,  std::pair<std::string, element>& el2 ){
-        auto first = el1.second;
-        auto second = el2.second;
-        return first.ranges.size()<second.ranges.size();
-    });
-
-    std::ofstream ofs("compatibility_no250.csv", std::ofstream::out);
-    for (Long64_t i = 0; i<vector_pair.size(); i++){
-
-        auto element = vector_pair[i].second;
-        std::map<int, std::vector<int>> element_range = element.ranges;
-        std::map<int, double> element_kolmogorov = element.kolmogorov;
-        std::map<int, double> element_kullback = element.kullback;
-        std::map<int, double> element_kullback_ss = element.kullback_ss;
-        std::map<int, double> element_entropy = element.entropy;
-        ofs<<vector_pair[i].first<<","<<" n.range:"<<element_range.size()<<std::endl;
-        ofs<<",";
-        histo_nrange->Fill(element_range.size());
-        for (Long64_t j=1; j<=element_range.size();j++){
-            ofs<<"Range"<<j<<",";
-        }
-        ofs<<std::endl;
-        ofs<<"Mass: "<<",";
-        int j = 0;
-        for (const auto& var : element_range){
-            auto vector_element_range = element_range[var.first];
-            if (vector_element_range.size()>1) ofs<<vector_element_range.front()<<"-"<<vector_element_range.back()<<",";
-            else if (vector_element_range.size()==1) ofs<<vector_element_range.front()<<",";
-            if (j == 0) histo_end_1->Fill(vector_element_range.back());
-            if (j == 1) histo_end_2->Fill(vector_element_range.back());
-            j++;
-        }
-
-        ofs<<std::endl;
-        ofs<<"KS-distance: ";
-        for (const auto& var : element_range){
-            double k = element_kolmogorov[var.first];
-            ofs<<","<<k;
-        }
-        ofs<<std::endl;
-        ofs<<"JSD: ";
-        for (const auto& var : element_range){
-            double k = element_kullback[var.first];
-            ofs<<","<<k;
-        }
-        ofs<<std::endl;
-        ofs<<"Entropy: ";
-        for (const auto& var : element_range){
-            double k = element_entropy[var.first];
-            ofs<<","<<k;
-        }
-        std::string name = vector_pair[i].first;
-        double s = stat_estimators::Entropy(map_bkg[name], band_bkg[name]);
-        ofs<<","<<s;
-        ofs<<std::endl;
-        ofs<<"JSD-prev: ";
-        for (const auto& var : element_range){
-            double k = element_kullback_ss[var.first];
-            ofs<<","<<k;
-        }
-        ofs<<std::endl;
-    }
-    root_ext::WriteObject(*histo_nrange, outfile.get());
-    root_ext::WriteObject(*histo_end_1, outfile.get());
-    root_ext::WriteObject(*histo_end_2, outfile.get());
-}
-
 
 
 using SampleEntryCollection = std::vector<SampleEntry>;
@@ -618,15 +725,25 @@ public:
     using Event = ntuple::Event;
     using EventTuple = ntuple::EventTuple;
 
-    static const std::set<std::string>& GetDisabledBranches()
+    static const std::set<std::string>& GetEnabledBranches()
     {
-        static const std::set<std::string> DisabledBranches_read = {
-            "dphi_mumet", "dphi_metsv", "dR_taumu", "mT1", "mT2", "dphi_bbmet", "dphi_bbsv", "dR_bb", "m_bb", "n_jets",
-            "btag_weight", "ttbar_weight",  "PU_weight", "shape_denominator_weight", "trigger_accepts", "trigger_matches",
-            "event.tauId_keys_1","event.tauId_keys_2","event.tauId_values_1","event.tauId_values_2"
+
+        static const std::set<std::string> EnabledBranches_read = {
+            "eventEnergyScale", "q_1", "q_2", "jets_p4", "extraelec_veto", "extramuon_veto ", "SVfit_p4",
+            "pfMET_p4", "p4_1", "p4_2"
         };
-        return DisabledBranches_read;
+        return EnabledBranches_read;
     }
+
+//    static const std::set<std::string>& GetDisabledBranches()
+//    {
+//        static const std::set<std::string> DisabledBranches_read = {
+//            "dphi_mumet", "dphi_metsv", "dR_taumu", "mT1", "mT2", "dphi_bbmet", "dphi_bbsv", "dR_bb", "m_bb", "n_jets",
+//            "btag_weight", "ttbar_weight",  "PU_weight", "shape_denominator_weight", "trigger_accepts", "trigger_matches",
+//            "event.tauId_keys_1","event.tauId_keys_2","event.tauId_values_1","event.tauId_values_2"
+//        };
+//        return DisabledBranches_read;
+//    }
 
     static SampleEntryCollection ReadConfig(const std::string& cfg_file){
         std::ifstream f(cfg_file);
@@ -634,7 +751,8 @@ public:
         while(f.good()){
             std::string line;
             std::getline(f, line);
-            if (line.size()==0 || line.at(0)=='#') continue;
+            if (line.size()==0 || line.at(0)=='#')
+                continue;
             std::istringstream s(line);
             SampleEntry entry;
             s>>entry;
@@ -644,243 +762,165 @@ public:
     }
 
     MvaClassification(const Arguments& _args): args(_args), samples(ReadConfig(args.cfg_file())),
-        outfile(root_ext::CreateRootFile(args.output_file())), vars()
+        outfile(root_ext::CreateRootFile(args.output_file())), split_training_testing(false),
+        vars(split_training_testing,UINT_FAST32_MAX, enabled_vars, disabled_vars)
     {
     }
 
     void Run()
     {
-        const double mass_top = 173.21;
-        int m[20] = {250,260,270,280,300,320,340,350,400,450,500,550,600,650,700,750,800,900,2000,1};
-        int i=0;
+
+        auto start_tot = clock::now();
+        run::ThreadPull threads(args.number_threads());
+
+        MassVar sample_vars;
+        auto start = clock::now();
         for(const SampleEntry& entry:samples)
         {
-            int mass = m[i];
-            auto input_file=root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
-            EventTuple tuple(args.tree_name(), input_file.get(), true, GetDisabledBranches());
-            std::cout<<entry<<" number of events: "<<std::min(tuple.GetEntries(),args.number_events())<<std::endl;
-            std::string samplename = entry.issignal ? "Signal" : "Background";
-
-            for(Long64_t current_entry = 0; current_entry < std::min(tuple.GetEntries(),args.number_events()); ++current_entry) {
-
+            if ( args.tree_name() == "muTau" && entry.filename == "TT_ext3_eTau.root")  continue;
+            if ( args.tree_name() == "eTau" && entry.filename == "TT_ext3_muTau.root") continue;
+            auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
+            EventTuple tuple(args.tree_name(), input_file.get(), true, {} , GetEnabledBranches());
+            Long64_t current_entry = 0, entries = 0, tot_entries = 0;
+            while(entries < std::min(tuple.GetEntries(), args.number_events()) && current_entry < tuple.GetEntries()) {
                 tuple.GetEntry(current_entry);
                 const Event& event = tuple.data();
-
-                if (event.eventEnergyScale!=0 || (event.q_1+event.q_2)!=0 || event.jets_p4.size() < 2
-                    || event.extraelec_veto==true || event.extramuon_veto==true) continue;
-
-                LorentzVectorE_Float bb= event.jets_p4[0] + event.jets_p4[1];
-                LorentzVectorM_Float leptons= event.p4_1 + event.p4_2;
-                LorentzVectorM_Float leptonsMET= event.p4_1 + event.p4_2 + event.pfMET_p4;
-
-                double circular_cut=std::sqrt(pow(event.SVfit_p4.mass()-116.,2)+pow(bb.M()-111,2));
-                if (circular_cut>40) continue;
-
-                vars["pt_l1"] = event.p4_1.pt();
-                vars["pt_l2"] = event.p4_2.pt();
-                vars["pt_b1"] = event.jets_p4[0].pt();
-                vars["pt_b2"] = event.jets_p4[1].pt();
-                vars["pt_l1l2"] = leptons.pt();
-                vars["pt_htautau"] = event.SVfit_p4.pt();
-                vars["pt_l1l2met"] = leptonsMET.pt();
-                vars["pt_hbb"] = bb.pt();
-                vars["pt_met"] = event.pfMET_p4.pt();
-
-                vars["p_zeta"] = Calculate_Pzeta(event.p4_1, event.p4_2, event.pfMET_p4);
-                vars["p_zetavisible"] = Calculate_visiblePzeta(event.p4_1,event.p4_2);
-
-                vars["abs(dphi_l1l2)"] = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.p4_1, event.p4_2));
-                vars["dphi_l1l2"] = (ROOT::Math::VectorUtil::DeltaPhi(event.p4_1, event.p4_2));
-                vars["abs(dphi_b1b2)"] = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.jets_p4[0], event.jets_p4[1]));
-                vars["dphi_b1b2"] = (ROOT::Math::VectorUtil::DeltaPhi(event.jets_p4[0], event.jets_p4[1]));
-                vars["abs(dphi_l1met)"] = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.p4_1, event.pfMET_p4));
-                vars["dphi_l1met"] = (ROOT::Math::VectorUtil::DeltaPhi(event.p4_1, event.pfMET_p4));
-                vars["abs(dphi_l2met)"] = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.p4_2, event.pfMET_p4));
-                vars["dphi_l2met"] = (ROOT::Math::VectorUtil::DeltaPhi(event.p4_2, event.pfMET_p4));
-                vars["abs(dphi_l1l2met)"] = std::abs(ROOT::Math::VectorUtil::DeltaPhi(leptons, event.pfMET_p4));
-                vars["dphi_l1l2met"] = (ROOT::Math::VectorUtil::DeltaPhi(leptons, event.pfMET_p4));
-                vars["abs(dphi_htautaumet)"] = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.SVfit_p4, event.pfMET_p4));
-                vars["dphi_htautaumet"] = (ROOT::Math::VectorUtil::DeltaPhi(event.SVfit_p4, event.pfMET_p4));
-                vars["abs(dphi_hbbmet)"] = std::abs(ROOT::Math::VectorUtil::DeltaPhi(bb, event.pfMET_p4));
-                vars["dphi_hbbmet"] = (ROOT::Math::VectorUtil::DeltaPhi(bb, event.pfMET_p4));
-                vars["abs(dphi_hbbhatutau)"] = std::abs(ROOT::Math::VectorUtil::DeltaPhi(bb, event.SVfit_p4));
-                vars["dphi_hbbhtautau"] = (ROOT::Math::VectorUtil::DeltaPhi(bb, event.SVfit_p4));
-
-                vars["abs(deta_l1l2)"] = std::abs(event.p4_1.eta() - event.p4_2.eta());
-                vars["deta_l1l2"] = (event.p4_1.eta() - event.p4_2.eta());
-                vars["abs(deta_b1b2)"] = std::abs(event.jets_p4[0].eta() - event.jets_p4[1].eta());
-                vars["deta_b1b2"] = (event.jets_p4[0].eta() - event.jets_p4[1].eta());
-                vars["abs(deta_l1met)"] = std::abs(event.p4_1.eta()-event.pfMET_p4.eta());
-                vars["deta_l1met"] = (event.p4_1.eta()-event.pfMET_p4.eta());
-                vars["abs(deta_l2met)"] = std::abs(event.p4_2.eta()-event.pfMET_p4.eta());
-                vars["deta_l2met"] = (event.p4_2.eta()-event.pfMET_p4.eta());
-                vars["abs(deta_l1l2met)"] = std::abs(leptons.eta()-event.pfMET_p4.eta());
-                vars["deta_l1l2met"] = (leptons.eta()-event.pfMET_p4.eta());
-                vars["abs(deta_htautaumet)"] = std::abs(event.SVfit_p4.eta()-event.pfMET_p4.eta());
-                vars["deta_hatutaumet"] = (event.SVfit_p4.eta()-event.pfMET_p4.eta());
-                vars["abs(deta_hbbmet)"] = std::abs(bb.eta()-event.pfMET_p4.eta());
-                vars["deta_hbbmet"] = (bb.eta()-event.pfMET_p4.eta());
-                vars["abs(deta_hbbhtautau)"] = std::abs(bb.eta()-event.SVfit_p4.eta());
-                vars["deta_hbbhatutau"] = bb.eta()-event.SVfit_p4.eta();
-
-                vars["dR_l1l2"] = (ROOT::Math::VectorUtil::DeltaR(event.p4_1, event.p4_2));
-                vars["dR_b1b2"] = (ROOT::Math::VectorUtil::DeltaR(event.jets_p4[0], event.jets_p4[1]));
-                vars["dR_l1met"] = (ROOT::Math::VectorUtil::DeltaR(event.p4_1, event.pfMET_p4));
-                vars["dR_l2met"] = (ROOT::Math::VectorUtil::DeltaR(event.p4_2, event.pfMET_p4));
-                vars["dR_l1l2met"] = (ROOT::Math::VectorUtil::DeltaR(leptons, event.pfMET_p4));
-                vars["dR_htautaumet"] = (ROOT::Math::VectorUtil::DeltaR(event.SVfit_p4, event.pfMET_p4));
-                vars["dR_hbbmet"] = (ROOT::Math::VectorUtil::DeltaR(bb, event.pfMET_p4));
-                vars["dR_hbbhtautau"] = (ROOT::Math::VectorUtil::DeltaR(bb, event.SVfit_p4));
-
-                vars["dR_b1b2Pt_hbb"] = (ROOT::Math::VectorUtil::DeltaR(event.jets_p4[0], event.jets_p4[1]))*bb.Pt();
-                vars["dR_l1l2Pt_htautau"] = (ROOT::Math::VectorUtil::DeltaR(event.p4_1, event.p4_2))*event.SVfit_p4.Pt();
-
-                vars["mass_l1l2met"] = ROOT::Math::VectorUtil::InvariantMass(leptons,event.pfMET_p4); //
-                vars["mass_htautau"] = event.SVfit_p4.M();
-                vars["mass_l1l2"] = std::sqrt(pow(event.p4_1.Et()+event.p4_2.Et(),2)-pow(event.p4_1.px()+event.p4_2.px(),2)+pow(event.p4_1.py()+event.p4_2.py(),2));//
-                vars["mass_hbb"] = bb.M();
-                vars["MT_l1"] = Calculate_MT(event.p4_1,event.pfMET_p4);
-                vars["MT_l2"] = Calculate_MT(event.p4_2,event.pfMET_p4);
-                vars["MT_hatutau"] = Calculate_MT(event.SVfit_p4, event.pfMET_p4);
-                vars["MT_l1l2"] = Calculate_MT(leptons, event.pfMET_p4);
-                vars["MT_tot"] = Calculate_TotalMT(event.p4_1,event.p4_2,event.pfMET_p4); //Total transverse mass
-                vars["MT2"] = std::min(Calculate_MT2(event.p4_1,event.p4_2,event.jets_p4[0], event.jets_p4[1], event.pfMET_p4),Calculate_MT2(event.p4_1, event.jets_p4[1], event.p4_2,event.jets_p4[0], event.pfMET_p4)); //Stransverse mass
-                vars["mass_H"] = ROOT::Math::VectorUtil::InvariantMass(bb,event.SVfit_p4);
-
-                LorentzVectorM_Float a1 = event.p4_1 + event.jets_p4[0] + event.pfMET_p4;
-                LorentzVectorM_Float b1 = event.p4_2 + event.jets_p4[1];
-                LorentzVectorM_Float a2 = event.p4_1 + event.jets_p4[0];
-                LorentzVectorM_Float b2 = event.p4_2 + event.jets_p4[1] + event.pfMET_p4;
-                LorentzVectorM_Float a3 = event.p4_1 + event.jets_p4[1] + event.pfMET_p4;
-                LorentzVectorM_Float b3 = event.p4_2 + event.jets_p4[0];
-                LorentzVectorM_Float a4 = event.p4_1 + event.jets_p4[1];
-                LorentzVectorM_Float b4 = event.p4_2 + event.jets_p4[0] + event.pfMET_p4;
-
-                double d1 = pow(std::abs(a1.mass() - mass_top),2) + pow (std::abs(b1.mass() - mass_top),2);
-                double d2 = pow(std::abs(a2.mass() - mass_top),2) + pow (std::abs(b2.mass() - mass_top),2);
-                double d3 = pow(std::abs(a3.mass() - mass_top),2) + pow (std::abs(b3.mass() - mass_top),2);
-                double d4 = pow(std::abs(a4.mass() - mass_top),2) + pow (std::abs(b4.mass() - mass_top),2);
-
-                if (d1<d2 && d1<d3 && d1<d4) {
-                    vars["Mass_top1"] = a1.mass();
-                    vars["Mass_top2"] = b1.mass();
+                if (event.eventEnergyScale != 0 || (event.q_1+event.q_2) != 0 || event.jets_p4.size() < 2
+                    || event.extraelec_veto == true || event.extramuon_veto == true || event.jets_p4[0].eta() > 2.4
+                    || event.jets_p4[1].eta() > 2.4){
+                    current_entry++;
+                    continue;
                 }
-                if (d2<d1 && d2<d3 && d2<d4) {
-                    vars["Mass_top1"] = a2.mass();
-                    vars["Mass_top2"] = b2.mass();
+                LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
+                double ellipse_cut = pow(event.SVfit_p4.mass()-116,2)/pow(35.,2) + pow(bb.mass()-111,2)/pow(45.,2);
+                if (ellipse_cut>1){
+                    current_entry++;
+                    continue;
                 }
-                if (d3<d1 && d3<d2 && d3<d4) {
-                    vars["Mass_top1"] = a3.mass();
-                    vars["Mass_top2"] = b3.mass();
+                current_entry++;
+                entries++;
+                if (args.odd() == -1) {
+                    tot_entries++;
+                    vars.AddEvent(event, entry.mass, entry.weight);
                 }
-                if (d4<d1 && d4<d3 && d4<d2) {
-                    vars["Mass_top1"] = a4.mass();
-                    vars["Mass_top2"] = b4.mass();
+                else if (args.odd() == 0 && entries%2 == 0) {
+                    tot_entries++;
+                    vars.AddEvent(event, entry.mass, entry.weight);
                 }
-
-                const analysis::LorentzVectorXYZ sv(event.SVfit_p4.px(),event.SVfit_p4.py(),event.SVfit_p4.pz(),event.SVfit_p4.e());
-                const auto boosted_tau1 = ROOT::Math::VectorUtil::boost(event.p4_1, sv.BoostToCM());
-//                vars["theta_l1"] = std::acos(ROOT::Math::VectorUtil::CosTheta(boosted_tau1, sv)); //theta angle between the first final state lepton and the direction of flight of h_tautau in the h_tautau rest frame
-//                vars["phi_l1"] = std::atan(boosted_tau1.py()/boosted_tau1.px()); //phi angle between the first final state lepton and the direction of flight of h_tautau in the h_tautau rest frame
-                const auto boosted_tau2 = ROOT::Math::VectorUtil::boost(event.p4_2, sv.BoostToCM());
-//                vars["theta_l2"] = std::acos(ROOT::Math::VectorUtil::CosTheta(boosted_tau2, sv)); //angle between the second final state lepton and the direction of flight of h_tautau in the h_tautau rest frame
-//                vars["phi_l2"] = std::atan(boosted_tau2.py()/boosted_tau2.px()); //phi angle between the second final state lepton and the direction of flight of h_tautau in the h_tautau rest frame
-                vars["R_l1l2"] = ROOT::Math::VectorUtil::DeltaR(boosted_tau1, boosted_tau2); // R between the two final state leptons in the h_tautau rest frame
-
-                const analysis::LorentzVectorXYZ hbb(bb.px(),bb.py(),bb.pz(),bb.e());
-                const auto boosted_b1 = ROOT::Math::VectorUtil::boost(event.jets_p4[0], hbb.BoostToCM());
-//                vars["theta_b1"] = std::acos(ROOT::Math::VectorUtil::CosTheta(boosted_b1, hbb)); //angle between the first final state bjet and the direction of flight of h_bb in the h_bb rest frame
-//                vars["phi_b1"] = std::atan(boosted_b1.py()/boosted_b1.px()); //phi angle between the first final state bjet and the direction of flight of h_bb in the h_bb rest frame
-                const auto boosted_b2 = ROOT::Math::VectorUtil::boost(event.jets_p4[2], hbb.BoostToCM());
-//                vars["theta_b2"] = std::acos(ROOT::Math::VectorUtil::CosTheta(boosted_b2, hbb)); //angle between the second final state bjet and the direction of flight of h_bb in the h_bb rest frame
-//                if (boosted_b2.px()!=0) vars["phi_b2(h)"] = std::atan(boosted_b2.py()/boosted_b2.px()); //phi angle between the second final state bjet and the direction of flight of h_bb in the h_bb rest frame
-                vars["R_b1b2"] = ROOT::Math::VectorUtil::DeltaR(boosted_b1, boosted_b2); // R between the two final state b-jetsin the h_bb rest frame
-
-                LorentzVectorE_Float H = bb + event.SVfit_p4;
-                const analysis::LorentzVectorXYZ vec_H(H.px(),H.py(),H.pz(),H.e());
-                const auto boosted_l1 = ROOT::Math::VectorUtil::boost(event.p4_1, vec_H.BoostToCM());
-                const auto boosted_l2 = ROOT::Math::VectorUtil::boost(event.p4_2, vec_H.BoostToCM());
-                const auto boosted_j1 = ROOT::Math::VectorUtil::boost(event.jets_p4[0], vec_H.BoostToCM());
-                const auto boosted_j2 = ROOT::Math::VectorUtil::boost(event.jets_p4[1], vec_H.BoostToCM());
-                const TVector3 vec_l1(boosted_l1.px(),boosted_l1.py(),boosted_l1.pz());
-                const TVector3 vec_l2(boosted_l2.px(),boosted_l2.py(),boosted_l2.pz());
-                const TVector3 vec_j1(boosted_j1.px(),boosted_j1.py(),boosted_j1.pz());
-                const TVector3 vec_j2(boosted_j2.px(),boosted_j2.py(),boosted_j2.pz());
-                const auto n1 = vec_l1.Cross(vec_l2);
-                const auto n2 = vec_j1.Cross(vec_j2);
-                vars["phi"] = ROOT::Math::VectorUtil::Angle(n1, n2); //angle between the decay planes of the four final state elements expressed in the H rest frame
-
-                const auto boosted_htautau = ROOT::Math::VectorUtil::boost(event.SVfit_p4, vec_H.BoostToCM());
-                vars["theta_star1"] = std::acos(ROOT::Math::VectorUtil::CosTheta(boosted_htautau, ROOT::Math::Cartesian3D<>(0, 0, 1))); // Is the production angle of the h_tautau defined in the H rest frame
-
-                const auto boosted_hbb = ROOT::Math::VectorUtil::boost(bb, vec_H.BoostToCM());
-                vars["theta_star2"] = std::acos(ROOT::Math::VectorUtil::CosTheta(boosted_hbb, ROOT::Math::Cartesian3D<>(0, 0, 1)));// Is the production angle of the h_bb defined in the H rest frame
-
-                const TVector3 vec_htautau(boosted_htautau.px(),boosted_htautau.py(),boosted_htautau.pz());
-                TVector3 z_axis(0,0,1);
-                const auto n3 = vec_htautau.Cross(z_axis);
-                vars["phi_1"] = ROOT::Math::VectorUtil::Angle(n1,n3); //Angle between the decay plane of the lepton pair and a plane defined by the vector of the h_tautau in the H rest frame and the positive direction of z axis
-
-                const TVector3 vec_hbb(boosted_hbb.px(),boosted_hbb.py(),boosted_hbb.pz());
-                const auto n4 = vec_hbb.Cross(z_axis);
-                vars["phi_2"] = ROOT::Math::VectorUtil::Angle(n2,n4); //Angle between the decay plane of the b-jets pair and a plane defined by the vector of the h_bb in the H rest frame and the positive direction of z axis
-
-//                vars["phi_htautau(H)"] = std::atan(boosted_htautau.py()/boosted_htautau.px()); //Phi angle of h_tautau in the H rest frame
-//                vars["phi_hbb(H)"] = std::atan(boosted_hbb.py()/boosted_hbb.px()); //Phi angle of h_bb in the H rest frame
-
-                vars.AddEvent(samplename,mass); //vars.AddEvent(samplename,1) to loop over all the masses, vars.AddEvent(samplename,mass) to look at every mass individually
+                else if (args.odd() == 1 && entries%2 != 0) {
+                    tot_entries++;
+                    vars.AddEvent(event, entry.mass, entry.weight);
+                }
             }
-            i++;
+            std::cout << entry << " number of events: " << tot_entries << std::endl;
         }
+        auto stop = clock::now();
+        std::cout<<"secondi: "<<std::chrono::duration_cast<std::chrono::seconds>(stop - start).count()<<std::endl;
 
-        std::map<int, std::map<std::string,std::vector<double>>> sample_vars_signal = vars.GetSampleVariables("Signal");
-        sample_vars_signal.erase(250);
-        std::map<int, std::map<std::string,std::vector<double>>> sample_vars_bkg = vars.GetSampleVariables("Background");
-        std::cout<<"n.variabili: "<<sample_vars_bkg[1].size()<<std::endl;
-        std::cout<<"n.masse: "<<sample_vars_signal.size()<<" + "<<sample_vars_bkg.size()<<" fondo."<<std::endl;
-        for (const auto& var: sample_vars_signal){
-            if (var.second.size() == 0) continue;
-            int mass = var.first;
-            auto map = var.second;
-            auto vector = map["pt_l1"];
-            if (mass != 1 && mass != 2000) {
-                std::cout<<"massa: "<<mass<<", eventi segnale: "<<vector.size()<<std::endl;
+        sample_vars = vars.GetSampleVariables();
+
+        std::cout << "n.variabili: " << sample_vars.at(Bkg).size() << std::endl;
+        std::cout << "n.masse segnale: " << sample_vars.size() - 1 << " + " << 1 << " fondo."<<std::endl;
+        std::cout << "n.eventi 250: " << sample_vars.at(250).at("pt_l1").size() << " + " << sample_vars.at(Bkg).at("pt_l1").size() <<std::endl;
+
+        MassVarPairMI mutual_matrix;
+        MassVarBand bandwidth;
+        MassVarPairMI correlation_matrix;
+
+        std::cout << "Bandwidth and Mutual Information" << std::endl;
+        outfile->mkdir("MutualInformation");
+        auto directory_mutinf = outfile->GetDirectory("MutualInformation");
+        start = clock::now();
+        for (const auto& sample: sample_vars){
+            std::cout<<"----"<<sample.first<<"----"<<std::endl;
+            std::cout<<"covariance  ";
+            auto matrix_covariance = EstimateCovariance(sample.second, UINT_FAST32_MAX);
+            auto matrix_covariance_value = GetValue(matrix_covariance);
+            correlation_matrix[sample.first] = CovToCorr(matrix_covariance_value);
+            std::cout<<"bandwidth  ";
+            bandwidth[sample.first] = OptimalBandwidth(sample.second);
+            std::cout<<"mutual  ";
+            mutual_matrix[sample.first] = Mutual(sample.second, bandwidth.at(sample.first));
+            if (sample.first == Bkg || !mutual_matrix.count(Bkg)){
+                std::cout<<std::endl;
+                continue;
             }
             else {
-                if (mass == 2000) std::cout<<"eventi SM: "<<vector.size()<<std::endl;
-                else std::cout<<"eventi segnale: "<<vector.size()<<std::endl;
+                std::cout<<"mutual plot  ";
+                MutualPlot(sample.first, mutual_matrix.at(sample.first), mutual_matrix.at(Bkg), directory_mutinf);
             }
+            std::cout<<std::endl;
         }
+        std::cout <<"Mutual histos" << std::endl;
+        directory_mutinf->mkdir("Matrix");
+        auto directory_mutinf_matrix = directory_mutinf->GetDirectory("Matrix");
+        CreateMatrixHistos(sample_vars, mutual_matrix, "MI", directory_mutinf_matrix);
 
-        std::map<int, std::map<std::string, double>> bandwith_signal = OptimalBandwidth(sample_vars_signal);
-        std::map<int, std::map<std::string, double>> bandwidth_bkg = OptimalBandwidth(sample_vars_bkg);
+        std::cout <<"Correlation histos" << std::endl;
+        outfile->mkdir("Correlation");
+        auto directory_correlation = outfile->GetDirectory("Correlation");
+        CreateMatrixHistos(sample_vars, correlation_matrix, "correlation", directory_correlation);
+        stop = clock::now();
+        std::cout<<"secondi: "<<std::chrono::duration_cast<std::chrono::seconds>(stop - start).count()<<std::endl;
 
-        for (const auto& var: sample_vars_bkg){
-            if (var.second.size() == 0) continue;
-            auto map = var.second;
-            auto vector = map["pt_l1"];
-            std::cout<<"eventi fondo: "<<vector.size()<<std::endl;
+        outfile->mkdir("MI_Correlation");
+        auto directory_mi_corr = outfile->GetDirectory("MI_Correlation");
+        for(const auto& sample : sample_vars){
+            std::string mass= "";
+            if (sample.first == Signal_SM) mass = "_SM";
+            else if (sample.first == Bkg) mass = "_Background";
+            else mass = "_mass"+std::to_string(sample.first);
+            auto histo = std::make_shared<TH2D>(("MI_Correlation_"+mass).c_str(),("MI_Correlation_"+mass).c_str(),50,0,1,50,0,1);
+            histo->SetXTitle("MI");
+            histo->SetYTitle("Correlation");
+            for (const auto pair: mutual_matrix.at(sample.first)){
+                histo->Fill(pair.second, std::abs(correlation_matrix.at(sample.first).at(pair.first)));
+            }
+            root_ext::WriteObject(*histo, directory_mi_corr);
+            }
+
+
+        MassName_ND JSDivergenceSB;
+        std::cout<<"Jensen Shannon Signal Background";
+        start = clock::now();
+        for (const auto& mass_entry: sample_vars){
+            if (mass_entry.first == Bkg)
+                continue;
+            JSDivergenceSB[mass_entry.first] = JensenDivergenceSB(mass_entry.second, sample_vars.at(Bkg),
+                                                                  bandwidth.at(mass_entry.first), bandwidth.at(Bkg));
         }
+        std::cout<<" - Plot Jensen Shannon"<<std::endl;
+        outfile->mkdir("JensenShannonDivergence");
+        auto directory_jensenshannon = outfile->GetDirectory("JensenShannonDivergence");
+        directory_jensenshannon->mkdir("Signal_Background");
+        auto directory_jenshan_sgnlbkg = directory_jensenshannon->GetDirectory("Signal_Background");
+        directory_jenshan_sgnlbkg->mkdir("All_variables");
+        auto directory_jenshan_allvars = directory_jenshan_sgnlbkg->GetDirectory("All_variables");
+        PlotJensenShannon(JSDivergenceSB, directory_jenshan_allvars);
+        stop = clock::now();
+        std::cout<<"secondi: "<<std::chrono::duration_cast<std::chrono::seconds>(stop - start).count()<<std::endl;
 
-        std::map<int, std::map<std::string, std::pair<TH1D*,TH1D*>>> histos = GetHistos(sample_vars_signal, sample_vars_bkg, outfile);
+        std::cout<<"Selection variables"<<std::endl;
+        MassSetSelected mass_selected;
+        std::vector<VecVariables> union_selected = VariablesSelection(sample_vars, JSDivergenceSB, bandwidth, mutual_matrix,
+                                                                      mass_selected, outfile, args.number_variables());
 
-        std::map<int, std::map<std::string,double>> kolmogorov = KolmogorovTest(sample_vars_signal, sample_vars_bkg);
-        KolmogorovPlotSignalBkg(kolmogorov, outfile);
-        KLDPlotSignalBkg(sample_vars_signal,sample_vars_bkg,bandwith_signal,bandwidth_bkg,outfile);
-        std::map<std::string,TH2D*> map_histo_kolmogorov = CompatibilitySignalHistoKolmogorov(sample_vars_signal,outfile);
-        std::map<std::string,TH2D*> map_histo_KLD = CompatibilitySignalHistoKLD(sample_vars_signal,bandwith_signal,outfile);
-        CompatibilityRangeKolmogorov(map_histo_kolmogorov,sample_vars_signal,sample_vars_bkg, bandwidth_bkg, outfile);
-        CompatibilitySignalPlotKolmogorov(sample_vars_signal,outfile);
-        CompatibilitySignalPlotKLD(sample_vars_signal, bandwith_signal,outfile);
 
+
+        auto stop_tot = clock::now();
+        std::cout<<"secondi totali: "<<std::chrono::duration_cast<std::chrono::seconds>(stop_tot - start_tot).count()<<std::endl;
     }
 private:
     Arguments args;
     SampleEntryCollection samples;
     std::shared_ptr<TFile> outfile;
-    MvaVariables vars;
+    bool split_training_testing;
+    std::mt19937 gen;
+    std::uniform_int_distribution<> test_vs_training;
+    MvaVariables::VarNameSet enabled_vars, disabled_vars;
+    MvaVariablesStudy vars;
 };
 }
 
 PROGRAM_MAIN(analysis::MvaClassification, Arguments) // definition of the main program function
-//./run.sh MvaVariableCorrelation --input_path ~/Desktop/tuples --output_file ranges.root --cfg_file hh-bbtautau/Studies/config/mva_config.cfg --tree_name muTau --number_events 50000
+

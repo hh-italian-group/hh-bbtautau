@@ -154,8 +154,7 @@ public:
             if ( args.tree_name() == "eTau" && entry.filename == "TT_ext3_muTau.root") continue;
             auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
             EventTuple tuple(args.tree_name(), input_file.get(), true, {} , GetEnabledBranches());
-            Long64_t current_entry = 0;
-            Long64_t tot_entries = 0;
+            Long64_t current_entry = 0, tot_entries = 0;
 
             while(current_entry < tuple.GetEntries()) {
                 tuple.GetEntry(current_entry);
@@ -224,4 +223,4 @@ private:
 }
 
 PROGRAM_MAIN(analysis::MvaClassification, Arguments) // definition of the main program function
-
+// /run.sh VariableDistribution --input_path ~/Desktop/tuples --output_file VariableDistribution_eTau.root --cfg_file hh-bbtautau/Studies/config/mva_config.cfg --tree_name eTau
