@@ -77,7 +77,6 @@ public:
             if (circular_cut>40) continue;
             anaData.MttMbb_cut("signal").Fill(event.SVfit_p4.mass(),bb.M());
 
-
         }
 
         Double_t scale = 1/anaData.PtTau("signal").Integral();
