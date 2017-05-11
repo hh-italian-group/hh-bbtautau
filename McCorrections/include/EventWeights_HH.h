@@ -71,6 +71,11 @@ private:
         return FullName(fileName, path);
     }
 
+    static std::string FullName(const std::string& fileName, const std::string& path)
+    {
+        return path + "/" + fileName;
+    }
+
 private:
     DY_weightPtr dy_weight;
     TTbar_weightPtr ttbar_weight;

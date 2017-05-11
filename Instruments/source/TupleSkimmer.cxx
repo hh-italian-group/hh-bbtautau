@@ -103,10 +103,10 @@ private:
             double mc = event->genEventWeight;
 			
             double weight_ttbar_pt = 1.;
-			if(args.sample_type() == "ttbar")
-			{
-                weight_ttbar_pt = eventWeights_HH.GetTTbar_pt_weight(event);
-			}
+            if(args.sample_type() == "ttbar")
+            {
+                weight_ttbar_pt = eventWeights_HH.GetTTbar_pt_weight(*event);
+            }
 
             tot_weight.first = tot_weight.first + (pu*mc);
             tot_weight.second = tot_weight.second + (pu*weight_ttbar_pt*mc);
@@ -194,8 +194,9 @@ private:
     void ProcessThread()
     {
         EventPtr event;
+        ExpressPtr expressEvent;
         while(processQueue.Pop(event)) {
-            if(ProcessEvent(*event))
+            if(ProcessEvent(*event,*expressEvent))
                 writeQueue.Push(event);
         }
         writeQueue.SetAllDone();
@@ -219,7 +220,7 @@ private:
         outputTuple->Write();
     }
 
-	bool ProcessEvent(Event& event)
+    bool ProcessEvent(Event& event, const ExpressEvent& expressEvent)
     {
 	
 		if (event.jets_p4.size() < 2) return false;
@@ -251,7 +252,7 @@ private:
 		// Event Weights Variables
         event.weight_btag = eventWeights.GetBtagWeight(event);
         event.weight_PU = eventWeights.GetPileUpWeight(event);
-        event.weight_ttbar_pt = eventWeights.GetTopPtWeight(event);
+        event.weight_ttbar_pt = eventWeights_HH.GetTTbar_pt_weight(expressEvent);
         event.weight_dy = eventWeights_HH.GetDY_weight(event);
         event.weight_ttbar_merge = eventWeights_HH.GetTTbar_weight(event);
         event.weight_sm = eventWeights_HH.GetBSMtoSMweight(event);
