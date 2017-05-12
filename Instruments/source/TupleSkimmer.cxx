@@ -108,8 +108,14 @@ private:
                 weight_ttbar_pt = eventWeights.GetTopPtWeight(*event);
             }
 
-            tot_weight.first = tot_weight.first + (pu*mc);
-            tot_weight.second = tot_weight.second + (pu*weight_ttbar_pt*mc);
+            double weight_sm = 1.;
+            if(args.sample_type() == "sm")
+            {
+                weight_sm = eventWeights_HH.GetBSMtoSMweight(*event);
+            }
+
+            tot_weight.first = tot_weight.first + (pu*mc*weight_sm);
+            tot_weight.second = tot_weight.second + (pu*weight_ttbar_pt*mc*weight_sm);
 		}
 		return tot_weight;
 	}
@@ -250,6 +256,7 @@ private:
 
 		// Event Weights Variables
         event.weight_btag = eventWeights.GetBtagWeight(event);
+        event.weight_lepton = eventWeights.GetLeptonTotalWeight(event);
         event.weight_PU = eventWeights.GetPileUpWeight(event);
         event.weight_ttbar_pt = eventWeights.GetTopPtWeight(event);
         event.weight_dy = eventWeights_HH.GetDY_weight(event);

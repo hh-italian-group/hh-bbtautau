@@ -154,6 +154,7 @@ private:
 
         for (auto file_descriptor : file_descriptors){ //loop on DYJets files
             const TTBinDescriptor file_descriptor_element = file_descriptor.second;
+            if (!(file_descriptor_element.fileType == FileType::inclusive)) continue;
 
             for (auto single_file_path : file_descriptor_element.file_paths){ //loop on files
 
@@ -169,7 +170,7 @@ private:
                 for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) { //loop on entries
                     summaryTuple.GetEntry(current_entry);
 
-                    if (!(file_descriptor_element.fileType == FileType::inclusive)) continue;
+
                     totalNevents += summaryTuple.data().numberOfProcessedEvents;
 
 
