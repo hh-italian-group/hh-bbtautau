@@ -24,7 +24,8 @@ public:
         std::vector<analysis::sample_merging::DYBinDescriptor> dy_descriptors = analysis::sample_merging::DYBinDescriptor::LoadConfig(dy_weight_file_name);
         for (unsigned n = 0; n < dy_descriptors.size(); ++n){
             const analysis::sample_merging::DYBinDescriptor dybin_descriptor = dy_descriptors.at(n);
-            dy_weight_map[dybin_descriptor.n_jet][dybin_descriptor.n_bjet][dybin_descriptor.n_ht] = dybin_descriptor.weight.GetValue();
+            dy_weight_map[dybin_descriptor.n_jet][dybin_descriptor.n_bjet][dybin_descriptor.n_ht]
+                    = dybin_descriptor.weight.GetValue()/dybin_descriptor.inclusive_integral;
         }
     }
 

@@ -23,7 +23,8 @@ public:
                 analysis::sample_merging::TTBinDescriptor::LoadConfig(ttbar_weight_file_name);
         for (unsigned n = 0; n < ttbar_descriptors.size(); ++n){
             const analysis::sample_merging::TTBinDescriptor ttbin_descriptor = ttbar_descriptors.at(n);
-            genEventType_weight_map[ttbin_descriptor.genType.min()] = ttbin_descriptor.weight.GetValue();
+            genEventType_weight_map[ttbin_descriptor.genType.min()]
+                    = ttbin_descriptor.weight.GetValue()/ttbin_descriptor.inclusive_integral;
         }
     }
 

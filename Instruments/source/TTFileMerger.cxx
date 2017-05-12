@@ -30,6 +30,8 @@ public:
     TTFileMerger(const Arguments& _args) : args(_args)
     {
         LoadInputs();
+        totalNumerOfevents = LoadTotalNevents();
+        std::cout << "totalNumerOfevents in summeryTuple: " << totalNumerOfevents << std::endl;
         output_bins = TTBinDescriptor::LoadConfig(args.cfg_name());
     }
 
@@ -50,6 +52,7 @@ private:
     SampleDescriptor<TTBinDescriptor, GenEventTypeMap> inclusive;
     VectorSampleDescriptor all_samples;
     VectorDYBinDescriptor output_bins;
+    Int_t totalNumerOfevents;
     Arguments args;
 
 
@@ -130,13 +133,53 @@ private:
                               sqrt(sample_contribution));
         output_bin.nu = nu_incl;
         output_bin.weight = weight;
-        output_bin.inclusive_integral = inclusive.Integral();
+        //output_bin.inclusive_integral = inclusive.Integral();
+        output_bin.inclusive_integral = totalNumerOfevents;
 
         if(output_bin.nu.GetStatisticalError() == std::numeric_limits<double>::infinity())
             throw exception("ref not found");
     }
 
 
+    Int_t LoadTotalNevents()
+    {
+        Int_t totalNevents = 0;
+        analysis::ConfigReader config_reader;
+
+        TTBinDescriptorCollection file_descriptors;
+        TTFileConfigEntryReader file_entry_reader(file_descriptors);
+        config_reader.AddEntryReader("FILE", file_entry_reader, true);
+
+        config_reader.ReadConfig(args.file_cfg_name());
+
+        for (auto file_descriptor : file_descriptors){ //loop on DYJets files
+            const TTBinDescriptor file_descriptor_element = file_descriptor.second;
+
+            for (auto single_file_path : file_descriptor_element.file_paths){ //loop on files
+
+
+                std::cout << "LoadTotalNevents - File descriptor characteristics: " << file_descriptor.first << ", " <<
+                             single_file_path << ", " << file_descriptor_element.fileType
+                          << std::endl;
+                std::string filename = args.input_path()  + "/" + single_file_path;
+                auto inputFile = root_ext::OpenRootFile(filename);
+                ntuple::SummaryTuple summaryTuple("summary", inputFile.get(), true);
+                const Long64_t n_entries = summaryTuple.GetEntries();
+
+                for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) { //loop on entries
+                    summaryTuple.GetEntry(current_entry);
+
+                    if (!(file_descriptor_element.fileType == FileType::inclusive)) continue;
+                    totalNevents += summaryTuple.data().numberOfProcessedEvents;
+
+
+                } //end loop on entries
+
+            } // end loop on files
+
+        } //end loop n file_descriptors
+        return totalNevents;
+    }
 
 };
 
