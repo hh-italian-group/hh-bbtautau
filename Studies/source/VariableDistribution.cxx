@@ -8,73 +8,26 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/AnalyzerData.h"
 #include "AnalysisTools/Core/include/StatEstimators.h"
 #include "hh-bbtautau/Analysis/include/MvaVariables.h"
-
+#include "hh-bbtautau/Analysis/include/MvaConfiguration.h"
+#include "h-tautau/Cuts/include/Btag_2016.h"
+#include "h-tautau/Analysis/include/AnalysisTypes.h"
 
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, input_path);
     REQ_ARG(std::string, output_file);
     REQ_ARG(std::string, cfg_file);
     REQ_ARG(std::string, tree_name);
+    OPT_ARG(bool, split, false);
+    OPT_ARG(bool, istraining, false);
 };
 
 namespace analysis {
 
-static constexpr int Bkg = -1;
-static constexpr int Signal_SM = 0;
-
 using clock = std::chrono::system_clock;
-
-struct SampleEntry{
-  std::string filename;
-  double weight;
-  int mass;
-  SampleEntry() : weight(-1){}
-};
-
-std::ostream& operator<<(std::ostream& os, const SampleEntry& entry)
-{
-    os << entry.filename << " " << entry.mass << " " << entry.weight ;
-    return os;
-}
-
-std::istream& operator>>(std::istream& is, SampleEntry& entry)
-{
-    is >> entry.filename >> entry.mass >> entry.weight ;
-    return is;
-}
 
 using DataVector = std::vector<double>;
 using VarData = std::map<std::string, DataVector>;
 using MassVar = std::map<int, VarData>;
-
-
-class MvaVariablesStudy : public MvaVariables {
-private:
-    std::map<std::string, double> variables;
-    MassVar all_variables;
-
-public:
-    using MvaVariables::MvaVariables;
-
-    virtual void SetValue(const std::string& name, double value) override
-    {
-        variables[name] = value;
-    }
-
-    virtual void AddEventVariables(bool istraining, int mass,  double weight) override
-    {
-        VarData& sample_vars = all_variables[mass];
-        for(const auto& name_value : variables) {
-            const std::string& name = name_value.first;
-            const double value = name_value.second;
-            sample_vars[name].push_back(value);
-        }
-    }
-    const MassVar& GetSampleVariables() const
-    {
-        return all_variables;
-    }
-};
 
 void Histo1D(const VarData& sample, TDirectory* directory){
     for (const auto & var : sample){
@@ -96,16 +49,16 @@ void Histo2D(const VarData& sample, TDirectory* directory){
             histo->SetXTitle((var_1.first).c_str());
             histo->SetYTitle((var_2.first).c_str());
             for(size_t i = 0; i < var_1.second.size(); i++){
-                    histo->Fill(var_1.second[i],var_2.second[i]);
+                if (var_1.second.size() != var_2.second.size())
+                    throw analysis::exception("Different vector size.");
+                histo->Fill(var_1.second[i],var_2.second[i]);
             }
             root_ext::WriteObject(*histo, directory);
         }
     }
 }
 
-using SampleEntryCollection = std::vector<SampleEntry>;
-
-class MvaClassification {
+class VariablesDistribution {
 public:
     using Event = ntuple::Event;
     using EventTuple = ntuple::EventTuple;
@@ -119,67 +72,46 @@ public:
         return EnabledBranches_read;
     }
 
-    static SampleEntryCollection ReadConfig(const std::string& cfg_file){
-        std::ifstream f(cfg_file);
-        SampleEntryCollection collection;
-        while(f.good()){
-            std::string line;
-            std::getline(f, line);
-            if (line.size()==0 || line.at(0)=='#')
-                continue;
-            std::istringstream s(line);
-            SampleEntry entry;
-            s>>entry;
-            collection.push_back(entry);
-        }
-        return collection;
-    }
-
-    MvaClassification(const Arguments& _args): args(_args), samples(ReadConfig(args.cfg_file())),
-        outfile(root_ext::CreateRootFile(args.output_file())), split_training_testing(false),
-        vars(split_training_testing,UINT_FAST32_MAX, enabled_vars, disabled_vars)
+    VariablesDistribution(const Arguments& _args): args(_args), samples(ReadConfig(args.cfg_file())),
+        outfile(root_ext::CreateRootFile(args.output_file())), split_training_testing(args.split()),
+        vars(split_training_testing, UINT_FAST32_MAX, enabled_vars, disabled_vars)
     {
     }
-
     void Run()
     {
-
         auto start_tot = clock::now();
-        MassVar sample_vars;
 
+        MassVar sample_vars;
         auto start = clock::now();
         for(const SampleEntry& entry:samples)
         {
-            if ( args.tree_name() == "muTau" && entry.filename == "TT_ext3_eTau.root")  continue;
-            if ( args.tree_name() == "eTau" && entry.filename == "TT_ext3_muTau.root") continue;
+            if ( entry.channel != "" && args.tree_name() != entry.channel ) continue;
             auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
             EventTuple tuple(args.tree_name(), input_file.get(), true, {} , GetEnabledBranches());
-            Long64_t current_entry = 0, tot_entries = 0;
-
-            while(current_entry < tuple.GetEntries()) {
+            Long64_t tot_entries = 0;
+            for (Long64_t  current_entry = 0; current_entry < tuple.GetEntries(); current_entry++) {
                 tuple.GetEntry(current_entry);
                 const Event& event = tuple.data();
+
                 if (event.eventEnergyScale != 0 || (event.q_1+event.q_2) != 0 || event.jets_p4.size() < 2
-                    || event.extraelec_veto == true || event.extramuon_veto == true || event.jets_p4[0].eta() > 2.4
-                    || event.jets_p4[1].eta() > 2.4){
-                    current_entry++;
+                    || event.extraelec_veto == true || event.extramuon_veto == true || event.jets_p4[0].eta() > cuts::btag_2016::eta
+                    || event.jets_p4[1].eta() > cuts::btag_2016::eta)
                     continue;
-                }
+
                 LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
                 double ellipse_cut = pow(event.SVfit_p4.mass()-116,2)/pow(35.,2) + pow(bb.mass()-111,2)/pow(45.,2);
-                if (ellipse_cut>1){
-                    current_entry++;
+                if (ellipse_cut>1)
                     continue;
-                }
-                vars.AddEvent(event, entry.mass, entry.weight);
-                current_entry++;
+
                 tot_entries++;
+                vars.AddEvent(event, entry.mass, entry.weight);
             }
             std::cout << entry << " number of events: " << tot_entries << std::endl;
         }
         auto stop = clock::now();
         std::cout<<"secondi: "<<std::chrono::duration_cast<std::chrono::seconds>(stop - start).count()<<std::endl;
-        sample_vars = vars.GetSampleVariables();
+
+        sample_vars = vars.GetSampleVariables(args.istraining());
 
         outfile->mkdir("Distribution1D");
         auto directory_distribution1d = outfile->GetDirectory("Distribution1D");
@@ -222,5 +154,6 @@ private:
 };
 }
 
-PROGRAM_MAIN(analysis::MvaClassification, Arguments) // definition of the main program function
-// /run.sh VariableDistribution --input_path ~/Desktop/tuples --output_file VariableDistribution_eTau.root --cfg_file hh-bbtautau/Studies/config/mva_config.cfg --tree_name eTau
+PROGRAM_MAIN(analysis::VariablesDistribution, Arguments) // definition of the main program function
+
+//./run.sh VariableDistribution --input_path ~/Desktop/tuples --output_file VariableDistribution_muTau.root --cfg_file hh-bbtautau/Studies/config/mva_config.cfg --tree_name muTau

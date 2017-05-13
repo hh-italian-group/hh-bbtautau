@@ -129,7 +129,7 @@ public:
 
 using SampleEntryCollection = std::vector<SampleEntry>;
 
-class MvaClassification {
+class VariableDistribution {
 public:
     using Event = ntuple::Event;
     using EventTuple = ntuple::EventTuple;
@@ -160,7 +160,7 @@ public:
         return collection;
     }
 
-    MvaClassification(const Arguments& _args): args(_args), samples(ReadConfig(args.cfg_file())),
+    VariableDistribution(const Arguments& _args): args(_args), samples(ReadConfig(args.cfg_file())),
         outfile(root_ext::CreateRootFile(args.output_file())),
         factory(new TMVA::Factory ("myFactory", outfile.get(),"!V:!Silent:Color:DrawProgressBar:Transformations=I,D:AnalysisType=Classification")),
         dataloader(new TMVA::DataLoader ("mydataloader")), vars(dataloader),
