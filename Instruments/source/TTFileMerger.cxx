@@ -15,6 +15,7 @@ struct Arguments {
     run::Argument<std::string> input_path{"input_path", "Input path of the samples"};
     run::Argument<std::string> cfg_name{"cfg_name", "cfg bin splitting"};
     run::Argument<std::string> file_cfg_name{"file_cfg_name", "TT file cfg"};
+    run::Argument<std::string> file_tmp_cfg_name{"file_tmp_cfg_name", "TT file incl cfg"};
     run::Argument<std::string> output_file{"output_file", "Output file"};
 };
 
@@ -150,7 +151,7 @@ private:
         TTFileConfigEntryReader file_entry_reader(file_descriptors);
         config_reader.AddEntryReader("FILE", file_entry_reader, true);
 
-        config_reader.ReadConfig(args.file_cfg_name());
+        config_reader.ReadConfig(args.file_tmp_cfg_name());
 
         for (auto file_descriptor : file_descriptors){ //loop on DYJets files
             const TTBinDescriptor file_descriptor_element = file_descriptor.second;
