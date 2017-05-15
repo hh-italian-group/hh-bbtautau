@@ -157,6 +157,10 @@ private:
             const TTBinDescriptor file_descriptor_element = file_descriptor.second;
             if (!(file_descriptor_element.fileType == FileType::inclusive)) continue;
 
+            const Channel channel = Parse<Channel>(args.tree_name());
+            const Channel descriptor_channel = Parse<Channel>(file_descriptor_element.channel);
+            if (descriptor_channel != channel) continue;
+
             for (auto single_file_path : file_descriptor_element.file_paths){ //loop on files
 
 
