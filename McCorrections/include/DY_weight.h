@@ -21,32 +21,45 @@ public:
 
     DY_weight(const std::string& dy_weight_file_name) :
     {
-        std::vector<analysis::sample_merging::DYBinDescriptor> dy_descriptors = analysis::sample_merging::DYBinDescriptor::LoadConfig(dy_weight_file_name);
+        std::vector<analysis::sample_merging::DYBinDescriptor> dy_descriptors =
+                analysis::sample_merging::DYBinDescriptor::LoadConfig(dy_weight_file_name);
+
         for (unsigned n = 0; n < dy_descriptors.size(); ++n){
             const analysis::sample_merging::DYBinDescriptor dybin_descriptor = dy_descriptors.at(n);
-            dy_weight_map[dybin_descriptor.n_jet][dybin_descriptor.n_bjet][dybin_descriptor.n_ht]
-                    = dybin_descriptor.weight.GetValue()/dybin_descriptor.inclusive_integral;
+            const double weight = dybin_descriptor.weight.GetValue()/dybin_descriptor.inclusive_integral;
+            for(int n_jet = dybin_descriptor.n_jet.min(); n_jet <= dybin_descriptor.n_jet.max(); ++n_jet) {
+                if(!dy_weight_map.count(n_jet)) {
+                    dy_weight_map[n_jet] = std::make_shared<DoubleRange_map>();
+                }
+                DoubleRange_map& njet_map = *dy_weight_map.at(n_jet);
+                for(int n_bjet = dybin_descriptor.n_bjet.min(); n_bjet <= dybin_descriptor.n_bjet.max(); ++n_bjet) {
+                    if(!njet_map.count(n_bjet))
+                        njet_map[n_bjet] = std::make_shared<Range_weight_map>();
+                    Range_weight_map& nbjet_map = *njet_map.at(n_bjet);
+                    for(int ht = dybin_descriptor.n_ht.min(); ht <= dybin_descriptor.n_ht.max(); ++ht) {
+                        if(nbjet_map.count(ht))
+                            throw exception("Repeated bin");
+                        nbjet_map[ht] = weight;
+                    }
+                }
+            }
         }
     }
 
     double Get(const Event& event)
     {
-        for (auto iter : dy_weight_map){
-            Range<int> n_jet = iter.first;
-            if (!(n_jet.Contains(event.lhe_n_partons))) continue;
-            DoubleRange_map doubleRange_map = iter.second;
-            for (auto iter_1 : doubleRange_map){
-                Range<int> n_bjet = iter_1.first;
-                if (!(n_bjet.Contains(event.lhe_n_b_partons))) continue;
-                Range_weight_map range_weight_map = iter_1.second;
-                for (auto iter_2 : range_weight_map){
-                    Range<int> n_ht = iter_2.first;
-                    if (n_ht.Contains(event.lhe_HT))
-                        return iter_2.second;
-                }
+        auto njet_iter = dy_weight_map.find(event.lhe_n_partons);
+        if(njet_iter != dy_weight_map.end()) {
+            const auto& nbjet_map = *njet_iter->second;
+            auto nbjet_iter = nbjet_map.find(event.lhe_n_b_partons);
+            if(nbjet_iter != nbjet_map.end()){
+                const auto& nht_map = *nbjet_iter->second;
+                auto nht_iter = nht_map.find(event.lhe_HT);
+                if(nht_iter != nht_map.end())
+                    return nht_iter->second;
             }
         }
-        throw analysis::exception("drell-yan merge weight not found.");
+        throw exception("weight not found.");
     }
 
 private:
