@@ -105,7 +105,7 @@ private:
             double weight_ttbar_pt = 1.;
             if(args.sample_type() == "ttbar")
             {
-                weight_ttbar_pt = eventWeights.GetTopPtWeight(*event);
+                weight_ttbar_pt = eventWeights.GetTopPtWeight_express(*event);
             }
 
             double weight_sm = 1.;
@@ -228,8 +228,8 @@ private:
     bool ProcessEvent(Event& event)
     {
 	
-        LorentzVectorE first_jet = event.jets_p4.at(0);
-        LorentzVectorE second_jet = event.jets_p4.at(1);
+        LorentzVectorE_Float first_jet = event.jets_p4.at(0);
+        LorentzVectorE_Float second_jet = event.jets_p4.at(1);
         if (event.jets_p4.size() < 2 || event.extraelec_veto == false || event.extramuon_veto == false ||
                  std::abs(first_jet.eta()) >= cuts::btag_2016::eta ||
                  std::abs(second_jet.eta()) >= cuts::btag_2016::eta) return false;
@@ -267,7 +267,7 @@ private:
         event.weight_dy = eventWeights_HH.GetDY_weight(event);
         event.weight_ttbar_merge = eventWeights_HH.GetTTbar_weight(event);
         event.weight_sm = eventWeights_HH.GetBSMtoSMweight(event);
-		event.shape_denominator_weight = denominator;
+//		event.shape_denominator_weight = denominator;
 		
 		// BDT Variables
 //		event.dphi_mumet = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.p4_1    , event.pfMET_p4));

@@ -18,9 +18,10 @@ public:
     using Event = ntuple::Event;
 
     TTbar_weight(const std::string& ttbar_weight_file_name) :
+        ttbar_descriptors(analysis::sample_merging::TTBinDescriptor::LoadConfig(ttbar_weight_file_name))
     {
-        std::vector<analysis::sample_merging::TTBinDescriptor> ttbar_descriptors =
-                analysis::sample_merging::TTBinDescriptor::LoadConfig(ttbar_weight_file_name);
+//        std::vector<analysis::sample_merging::TTBinDescriptor> ttbar_descriptors =
+//                analysis::sample_merging::TTBinDescriptor::LoadConfig(ttbar_weight_file_name);
         for (unsigned n = 0; n < ttbar_descriptors.size(); ++n){
             const analysis::sample_merging::TTBinDescriptor ttbin_descriptor = ttbar_descriptors.at(n);
             genEventType_weight_map[ttbin_descriptor.genType.min()]
@@ -37,12 +38,13 @@ public:
 
         auto iter = genEventType_weight_map.find(event.genEventType);
         if(iter != genEventType_weight_map.end())
-            return *iter->second;
+            return iter->second;
         throw analysis::exception("ttbar merge weight not found.");
     }
 
 private:
     std::map<int, double> genEventType_weight_map;
+    std::vector<analysis::sample_merging::TTBinDescriptor> ttbar_descriptors;
 
 
 };

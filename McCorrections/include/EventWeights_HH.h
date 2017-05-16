@@ -31,8 +31,11 @@ public:
 
     }
 
+    template<typename Event>
     double GetBSMtoSMweight(const Event& event) const {return sm_weight ? sm_weight->Get(event) : 1;}
+    template<typename Event>
     double GetTTbar_weight(const Event& event) const {return ttbar_weight ? ttbar_weight->Get(event) : 1;}
+    template<typename Event>
     double GetDY_weight(const Event& event) const {return dy_weight ? dy_weight->Get(event) : 1;}
 
     double GetTotalWeight(const Event& event,  bool apply_btag_weight = false, bool apply_bsm_to_sm_weight = false,
