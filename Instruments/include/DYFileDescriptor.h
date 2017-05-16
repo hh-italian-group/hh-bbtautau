@@ -82,7 +82,7 @@ struct DYBinDescriptor {
             throw analysis::exception("Unable to create outputfile'");
         cfg.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 
-        static const std::vector<int> column_widths = { 9,9,9,9,9,11,15,15,15,15,15,20 };
+        static const std::vector<int> column_widths = { 12,12,12,12,12,14,18,18,18,18,18,23 };
 
         cfg << std::setw(column_widths.at(0)) << "#n_jet_min " <<
                std::setw(column_widths.at(1)) << "n_jet_max " <<
@@ -105,7 +105,8 @@ struct DYBinDescriptor {
                    std::setw(column_widths.at(3)) << output_bin.n_bjet.max() << " " <<
                    std::setw(column_widths.at(4)) << output_bin.n_ht.min() << " " <<
                    std::setw(column_widths.at(5)) << output_bin.n_ht.max() << " " <<
-                   std::setw(column_widths.at(6)) << output_bin.weight.GetValue() << " " <<
+                   std::setw(column_widths.at(6)) << std::setprecision(std::numeric_limits<double>::digits10 + 1) <<
+                   output_bin.weight.GetValue() << " " <<
                    std::setw(column_widths.at(7)) << output_bin.weight.GetRelativeStatisticalError() << " " <<
                    std::setw(column_widths.at(8)) << output_bin.nu.GetValue() << " " <<
                    std::setw(column_widths.at(9)) << output_bin.nu.GetRelativeStatisticalError() << " " <<

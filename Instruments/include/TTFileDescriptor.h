@@ -90,7 +90,8 @@ struct TTBinDescriptor {
         {
             cfg << std::setw(column_widths.at(0)) << output_bin.genType.min() << " " <<
                    std::setw(column_widths.at(1)) << output_bin.genType.max()  << " " <<
-                   std::setw(column_widths.at(2)) << output_bin.weight.GetValue() << " " <<
+                   std::setw(column_widths.at(2)) << std::setprecision(std::numeric_limits<double>::digits10 + 1) <<
+                   output_bin.weight.GetValue() << " " <<
                    std::setw(column_widths.at(3)) << output_bin.weight.GetRelativeStatisticalError() << " " <<
                    std::setw(column_widths.at(4)) << output_bin.nu.GetValue() << " " <<
                    std::setw(column_widths.at(5)) << output_bin.nu.GetRelativeStatisticalError() << " " <<

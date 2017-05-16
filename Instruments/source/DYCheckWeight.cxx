@@ -8,6 +8,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "Instruments/include/DYFileConfigEntryReader.h"
 #include "AnalysisTools/Core/include/NumericPrimitives.h"
 #include "Instruments/include/SampleDescriptor.h"
+#include <iostream>
 
 
 struct Arguments {
@@ -83,7 +84,7 @@ private:
 
         config_reader.ReadConfig(args.file_cfg_name());
 
-        Float_t totalWeight = 0;
+        double totalWeight = 0;
         for (auto file_descriptor : file_descriptors){ //loop on DYJets files
             const DYBinDescriptor file_descriptor_element = file_descriptor.second;
 
@@ -107,9 +108,10 @@ private:
                         UInt_t n_b_partons =  summaryTuple.data().lhe_n_b_partons.at(i);
                         UInt_t ht =  summaryTuple.data().lhe_ht10_bin.at(i);
                         double weight = GetWeight(n_partons,n_b_partons,ht);
-                        std::cout << "weight: " << weight << std::endl;
+                        std::cout.unsetf ( std::ios::floatfield );
+                        std::cout << std::setprecision(std::numeric_limits<double>::digits10 + 1) << weight << ": weight" <<  std::endl;
                         double weight_prime = nevents * weight;
-                        std::cout << "weight_prime: " << weight_prime << std::endl;
+                        std::cout << std::setprecision(std::numeric_limits<double>::digits10 + 1) << weight_prime << ": weight_prime" <<std::endl;
                         totalWeight += weight_prime;
 
                     } // end loop on gen event info
@@ -118,7 +120,7 @@ private:
             } // end loop on files
 
         } //end loop n file_descriptors
-        std::cout << "Total weight: " << totalWeight << std::endl;
+        std::cout <<  std::setprecision(std::numeric_limits<double>::digits10 + 1) << totalWeight << ": Total weight" << std::endl;
 
     }
 

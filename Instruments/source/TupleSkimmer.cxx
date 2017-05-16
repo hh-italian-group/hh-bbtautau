@@ -228,8 +228,12 @@ private:
     bool ProcessEvent(Event& event)
     {
 	
-		if (event.jets_p4.size() < 2) return false;
-	
+        LorentzVectorE first_jet = event.jets_p4.at(0);
+        LorentzVectorE second_jet = event.jets_p4.at(1);
+        if (event.jets_p4.size() < 2 || event.extraelec_veto == false || event.extramuon_veto == false ||
+                 std::abs(first_jet.eta()) >= cuts::btag_2016::eta ||
+                 std::abs(second_jet.eta()) >= cuts::btag_2016::eta) return false;
+
         //const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
         //if(es != EventEnergyScale::Central) return false;
 
@@ -253,6 +257,7 @@ private:
 	
 		// Event Variables
 		event.n_jets = event.jets_p4.size();
+        event.ht_other_jets = analysis::Calculate_HT(event.jets_p4.begin()+2,event.jets_p4.end());
 
 		// Event Weights Variables
         event.weight_btag = eventWeights.GetBtagWeight(event);

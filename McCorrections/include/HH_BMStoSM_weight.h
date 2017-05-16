@@ -19,6 +19,7 @@ public:
     HH_BMStoSM_weight(const std::string& sm_weight_file_name, const std::string& hist_name) :
         sm_weight(LoadSMweight(sm_weight_file_name, hist_name)) { }
 
+    template<typename Event>
     double Get(const Event& event)
     {
         double m_hh = event.lhe_hh_m;

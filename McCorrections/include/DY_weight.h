@@ -46,6 +46,7 @@ public:
         }
     }
 
+    template<typename Event>
     double Get(const Event& event)
     {
         auto njet_iter = dy_weight_map.find(event.lhe_n_partons);

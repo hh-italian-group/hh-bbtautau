@@ -28,11 +28,17 @@ public:
         }
     }
 
+    template<typename Event>
     double Get(const Event& event)
     {
-        if (!(genEventType_weight_map.count(event.genEventType)))
-            throw analysis::exception("ttbar merge weight not found.");
-        return genEventType_weight_map.at(event.genEventType);
+//        if (!(genEventType_weight_map.count(event.genEventType)))
+//            throw analysis::exception("ttbar merge weight not found.");
+//        return genEventType_weight_map.at(event.genEventType);
+
+        auto iter = genEventType_weight_map.find(event.genEventType);
+        if(iter != genEventType_weight_map.end())
+            return *iter->second;
+        throw analysis::exception("ttbar merge weight not found.");
     }
 
 private:
