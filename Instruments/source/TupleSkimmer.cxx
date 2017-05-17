@@ -105,7 +105,7 @@ private:
             double weight_ttbar_pt = 1.;
             if(args.sample_type() == "ttbar")
             {
-                weight_ttbar_pt = eventWeights.GetTopPtWeight_express(*event);
+                weight_ttbar_pt = eventWeights.GetTopPtWeight(*event);
             }
 
             double weight_sm = 1.;

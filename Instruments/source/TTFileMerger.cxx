@@ -170,6 +170,7 @@ private:
                 std::string filename = args.input_path()  + "/" + single_file_path;
                 auto inputFile = root_ext::OpenRootFile(filename);
                 ntuple::SummaryTuple summaryTuple("summary", inputFile.get(), true);
+                if(!summaryTuple) continue;
                 const Long64_t n_entries = summaryTuple.GetEntries();
 
                 for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) { //loop on entries
