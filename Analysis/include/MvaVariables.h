@@ -3,34 +3,99 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #pragma once
 
+#include <iostream>
 #include <random>
 #include "h-tautau/Analysis/include/EventTuple.h"
 #include "hh-bbtautau/Analysis/include/MT2.h"
+#include "AnalysisTools/Core/include/EnumNameMap.h"
+#include "AnalysisTools/Core/include/TextIO.h"
 
 namespace analysis {
+namespace mva_study{
+
+//ENUM_ISTREAM_OPERATORS()
+ENUM_OSTREAM_OPERATOR()
+
+enum class SampleType { Sgn_Res, Sgn_NonRes, Bkg_TTbar };
+
+struct SampleId {
+    SampleType sampleType;
+    int mass;
+
+    bool operator<(const SampleId& x) const
+    {
+        if (mass != x.mass) return mass < x.mass;
+        else return false;
+    }
+
+    bool IsSignal() const { return sampleType == SampleType::Sgn_Res || sampleType == SampleType::Sgn_NonRes; }
+    bool IsBackground() const { return !IsSignal(); }
+    bool IsSM() const { return sampleType == SampleType::Sgn_NonRes; }
+};
+
+
+ENUM_NAMES(SampleType) = {
+    {SampleType::Sgn_Res, "Sgn_Res"},
+    {SampleType::Sgn_NonRes, "SM"},
+    {SampleType::Bkg_TTbar, "TT"}
+};
+
+static const SampleId Bkg{SampleType::Bkg_TTbar, -1};
+
+inline std::ostream& operator<<(std::ostream& os, const SampleId& id)
+{
+    if(id.sampleType == SampleType::Sgn_NonRes || id.sampleType == SampleType::Bkg_TTbar)
+        os << id.sampleType;
+    else
+        os << "M" << id.mass;
+    return os;
+}
+
+inline std::istream& operator>>(std::istream& is, SampleId& id)
+{
+    std::string type;
+    is >> type;
+    if(!TryParse(type, id.sampleType)) {
+        if(!type.size() || type.at(0) != 'M')
+            throw exception("Bad sample id");
+        id.sampleType = SampleType::Sgn_Res;
+        id.mass = Parse<int>(type.substr(1));
+    } else {
+        if (type.at(0) == 'S'){
+            id.sampleType = SampleType::Sgn_NonRes;
+            id.mass = 0;
+        }
+        else{
+            if (type.at(0) == 'T'){
+                id.sampleType = SampleType::Bkg_TTbar;
+                id.mass = -1;
+            }
+        }
+    }
+    return is;
+}
 
 #define VAR(name, formula) if(IsEnabled(name)) SetValue(name, formula)
 class MvaVariables {
 public:
-    using VarNameSet = std::set<std::string>;
+    using VarNameSet = std::unordered_set<std::string>;
 
-    MvaVariables(bool _split_training_testing = false, uint_fast32_t seed = UINT_FAST32_MAX, const VarNameSet& _enabled_vars = {0},
-                 const VarNameSet& _disabled_vars = {0}) :
-        split_training_testing(_split_training_testing), gen(seed), test_vs_training(0, 1),
-        enabled_vars(_enabled_vars), disabled_vars(_disabled_vars)
+    MvaVariables(size_t _number_set = 1, uint_fast32_t seed = std::numeric_limits<uint_fast32_t>::max(),
+                 const  VarNameSet& _enabled_vars = {}) :
+        gen(seed), which_set(0, _number_set-1), enabled_vars(_enabled_vars)
     {
     }
 
     virtual ~MvaVariables() {}
     virtual void SetValue(const std::string& name, double value) = 0;
-    virtual void AddEventVariables(bool is_training, int mass, double weight) = 0;
+    virtual void AddEventVariables(size_t which_set, const SampleId& mass, double weight) = 0;
 
     bool IsEnabled(const std::string& name) const
     {
-        return (enabled_vars.size() && enabled_vars.count(name)) || !disabled_vars.count(name);
+        return !enabled_vars.size() || enabled_vars.count(name);
     }
 
-    void AddEvent(const ntuple::Event& event, int mass = 1, double sample_weight = 1.)
+    void AddEvent(const ntuple::Event& event, const SampleId& mass , double sample_weight = 1.)
     {
         auto bb= event.jets_p4[0] + event.jets_p4[1];
         auto leptons= event.p4_1 + event.p4_2;
@@ -121,16 +186,14 @@ public:
         VAR("costheta_l1l2METhh", four_bodies::Calculate_cosTheta_2bodies(leptonsMET, bb+event.SVfit_p4));
         VAR("costheta_l1l2METhhMET", four_bodies::Calculate_cosTheta_2bodies(leptonsMET, bb+leptonsMET));
 
-        const bool is_training = split_training_testing ? test_vs_training(gen) == 1 : false;
-        AddEventVariables(is_training, mass, sample_weight); // event.weight * sample_weight
+        AddEventVariables(which_set(gen), mass, sample_weight); // event.weight * sample_weight
     }
 
 private:
-    bool split_training_testing;
     std::mt19937 gen;
-    std::uniform_int_distribution<> test_vs_training;
-    VarNameSet enabled_vars, disabled_vars;
+    std::uniform_int_distribution<size_t> which_set;
+    VarNameSet enabled_vars;
 };
 #undef VAR
-
+}
 }
