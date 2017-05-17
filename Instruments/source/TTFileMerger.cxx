@@ -144,7 +144,7 @@ private:
 
     Int_t LoadTotalNevents()
     {
-        Int_t totalNevents = 0;
+        size_t totalNevents = 0;
         analysis::ConfigReader config_reader;
 
         TTBinDescriptorCollection file_descriptors;
@@ -170,19 +170,20 @@ private:
                 std::string filename = args.input_path()  + "/" + single_file_path;
                 auto inputFile = root_ext::OpenRootFile(filename);
                 //ntuple::SummaryTuple summaryTuple("summary", inputFile.get(), true);
+                try {
+                    std::shared_ptr<ntuple::SummaryTuple> summaryTuple(new ntuple::SummaryTuple("summary", inputFile.get(), true));
+//                    if(!summaryTuple) continue;
+                    const Long64_t n_entries = summaryTuple->GetEntries();
 
-                std::shared_ptr<ntuple::SummaryTuple> summaryTuple(new ntuple::SummaryTuple("summary", inputFile.get(), true));
-                if(!summaryTuple) continue;
-                const Long64_t n_entries = summaryTuple->GetEntries();
+                    for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) { //loop on entries
+                        summaryTuple->GetEntry(current_entry);
+                        totalNevents += summaryTuple->data().numberOfProcessedEvents;
+                    } //end loop on entries
 
-                for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) { //loop on entries
-                    summaryTuple->GetEntry(current_entry);
+                } catch(std::runtime_error& error) {
+                    std::cerr << "ERROR: Tree not found " << error.what() << std::endl;
+                }
 
-
-                    totalNevents += summaryTuple->data().numberOfProcessedEvents;
-
-
-                } //end loop on entries
 
             } // end loop on files
 
