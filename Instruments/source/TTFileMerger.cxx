@@ -169,15 +169,17 @@ private:
                           << std::endl;
                 std::string filename = args.input_path()  + "/" + single_file_path;
                 auto inputFile = root_ext::OpenRootFile(filename);
-                ntuple::SummaryTuple summaryTuple("summary", inputFile.get(), true);
+                //ntuple::SummaryTuple summaryTuple("summary", inputFile.get(), true);
+
+                std::shared_ptr<ntuple::SummaryTuple> summaryTuple(new ntuple::SummaryTuple("summary", inputFile.get(), true));
                 if(!summaryTuple) continue;
-                const Long64_t n_entries = summaryTuple.GetEntries();
+                const Long64_t n_entries = summaryTuple->GetEntries();
 
                 for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) { //loop on entries
-                    summaryTuple.GetEntry(current_entry);
+                    summaryTuple->GetEntry(current_entry);
 
 
-                    totalNevents += summaryTuple.data().numberOfProcessedEvents;
+                    totalNevents += summaryTuple->data().numberOfProcessedEvents;
 
 
                 } //end loop on entries
