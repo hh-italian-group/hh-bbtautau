@@ -33,11 +33,11 @@ public:
 };
 
 
-class SMCheckWeight {
+class SMWeight_t {
 public:
     using HH_BMStoSM_weightPtr = std::shared_ptr<analysis::mc_corrections::HH_BMStoSM_weight>;
 
-    SMCheckWeight(const Arguments& _args) :
+    SMWeight_t(const Arguments& _args) :
         args(_args), output(root_ext::CreateRootFile(args.output_file())), anaData(output)
     {
         LoadInputs();
@@ -158,4 +158,4 @@ private:
 
 } //namespace analysis
 
-PROGRAM_MAIN(analysis::sample_merging::SMCheckWeight, Arguments)
+PROGRAM_MAIN(analysis::sample_merging::SMWeight_t, Arguments)

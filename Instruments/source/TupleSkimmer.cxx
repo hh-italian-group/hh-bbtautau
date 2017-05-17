@@ -37,7 +37,6 @@ public:
 	using ExpressPtr   = std::shared_ptr<ExpressEvent>;
 
     TupleSkimmer(const Arguments& _args) : args(_args), processQueue(100000), writeQueue(100000),
-        eventWeights(Period::Run2016, DiscriminatorWP::Medium),
         eventWeights_HH(Parse<Channel>(args.treeName()),Period::Run2016, DiscriminatorWP::Medium)
     { }
 
@@ -99,13 +98,13 @@ private:
 		{
 			AllEventTuple->GetEntry(current_entry);
 			ExpressPtr event(new ExpressEvent(AllEventTuple->data()));
-            double pu = eventWeights.GetPileUpWeight(*event);
+            double pu = eventWeights_HH.GetPileUpWeight(*event);
             double mc = event->genEventWeight;
 			
             double weight_ttbar_pt = 1.;
             if(args.sample_type() == "ttbar")
             {
-                weight_ttbar_pt = eventWeights.GetTopPtWeight(*event);
+                weight_ttbar_pt = eventWeights_HH.GetTopPtWeight(*event);
             }
 
             double weight_sm = 1.;
@@ -260,37 +259,14 @@ private:
         event.ht_other_jets = analysis::Calculate_HT(event.jets_p4.begin()+2,event.jets_p4.end());
 
 		// Event Weights Variables
-        event.weight_btag = eventWeights.GetBtagWeight(event);
-        event.weight_lepton = eventWeights.GetLeptonTotalWeight(event);
-        event.weight_PU = eventWeights.GetPileUpWeight(event);
-        event.weight_ttbar_pt = eventWeights.GetTopPtWeight(event);
+        event.weight_btag = eventWeights_HH.GetBtagWeight(event);
+        event.weight_lepton = eventWeights_HH.GetLeptonTotalWeight(event);
+        event.weight_PU = eventWeights_HH.GetPileUpWeight(event);
+        event.weight_ttbar_pt = eventWeights_HH.GetTopPtWeight(event);
         event.weight_dy = eventWeights_HH.GetDY_weight(event);
         event.weight_ttbar_merge = eventWeights_HH.GetTTbar_weight(event);
         event.weight_sm = eventWeights_HH.GetBSMtoSMweight(event);
 //		event.shape_denominator_weight = denominator;
-		
-		// BDT Variables
-//		event.dphi_mumet = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.p4_1    , event.pfMET_p4));
-//		event.dphi_metsv = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.SVfit_p4, event.pfMET_p4));
-//		event.dR_taumu = std::abs(ROOT::Math::VectorUtil::DeltaR(event.p4_1, event.p4_2));
-//		event.mT1 = Calculate_MT(event.p4_1, event.pfMET_p4);
-//		event.mT2 = Calculate_MT(event.p4_2, event.pfMET_p4);
-		
-//		if (event.jets_p4.size() >= 2)
-//		{
-//			ROOT::Math::LorentzVector<ROOT::Math::PtEtaPhiE4D<float>> bsum = event.jets_p4[0] + event.jets_p4[1];
-//			event.dphi_bbmet = std::abs(ROOT::Math::VectorUtil::DeltaPhi(bsum, event.pfMET_p4));
-//			event.dphi_bbsv = std::abs(ROOT::Math::VectorUtil::DeltaPhi(bsum, event.SVfit_p4));
-//			event.dR_bb = std::abs(ROOT::Math::VectorUtil::DeltaR(event.jets_p4[0], event.jets_p4[1]));
-//			event.m_bb = bsum.M();
-//		}
-//		else
-//		{
-//			std::cout << "Less than 2 jets in run:lumi:evt -->" << event.run << ":" << event.lumi << ":" << event.evt << std::endl;
-//			event.dphi_bbmet = -1.;
-//			event.dphi_bbsv = -1.;
-//			event.dR_bb = -1.;
-//		}
 	
 		// Jets Variables Resizing
 		event.jets_csv.resize(2);
@@ -313,7 +289,6 @@ private:
 	std::shared_ptr<TFile> additional2File;
 	std::vector<std::shared_ptr<TFile>> inputFiles;
 	
-	mc_corrections::EventWeights eventWeights;
     mc_corrections::EventWeights_HH eventWeights_HH;
     std::pair<double,double> denominator;
 	

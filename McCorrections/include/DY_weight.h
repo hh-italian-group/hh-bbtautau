@@ -28,13 +28,13 @@ public:
             const analysis::sample_merging::DYBinDescriptor dybin_descriptor = dy_descriptors.at(n);
             const double weight = dybin_descriptor.weight.GetValue()/dybin_descriptor.inclusive_integral;
             for(int n_jet = dybin_descriptor.n_jet.min(); n_jet <= dybin_descriptor.n_jet.max(); ++n_jet) {
-                if(!dy_weight_map.count(n_jet)) {
-                    dy_weight_map[n_jet] = DoubleRange_map();
-                }
+//                if(!dy_weight_map.count(n_jet)) {
+//                    dy_weight_map[n_jet] = DoubleRange_map();
+//                }
                 DoubleRange_map& njet_map = dy_weight_map.at(n_jet);
                 for(int n_bjet = dybin_descriptor.n_bjet.min(); n_bjet <= dybin_descriptor.n_bjet.max(); ++n_bjet) {
-                    if(!njet_map.count(n_bjet))
-                        njet_map[n_bjet] = Range_weight_map();
+//                    if(!njet_map.count(n_bjet))
+//                        njet_map[n_bjet] = Range_weight_map();
                     Range_weight_map& nbjet_map = njet_map.at(n_bjet);
                     for(int ht = dybin_descriptor.n_ht.min(); ht <= dybin_descriptor.n_ht.max(); ++ht) {
                         if(nbjet_map.count(ht))
@@ -49,18 +49,28 @@ public:
     template<typename Event>
     double Get(const Event& event)
     {
-        auto njet_iter = dy_weight_map.find(event.lhe_n_partons);
+        return GetWeight(event.lhe_n_partons,event.lhe_n_b_partons,event.lhe_HT);
+    }
+
+    double GetWeight(Int_t n_partons, Int_t n_b_partons, Int_t ht)
+    {
+        auto njet_iter = dy_weight_map.find(n_partons);
         if(njet_iter != dy_weight_map.end()) {
             const auto& nbjet_map = njet_iter->second;
-            auto nbjet_iter = nbjet_map.find(event.lhe_n_b_partons);
+            auto nbjet_iter = nbjet_map.find(n_b_partons);
             if(nbjet_iter != nbjet_map.end()){
                 const auto& nht_map = nbjet_iter->second;
-                auto nht_iter = nht_map.find(event.lhe_HT);
+                auto nht_iter = nht_map.find(ht);
                 if(nht_iter != nht_map.end())
                     return nht_iter->second;
             }
         }
         throw exception("weight not found.");
+
+//        if(!dy_weight_map.count(n_partons) || !dy_weight_map.at(n_partons)->count(n_b_partons)
+//                || !dy_weight_map.at(n_partons)->at(n_b_partons)->count(ht))
+//            throw exception("weight not found.");
+//        return dy_weight_map.at(n_partons)->at(n_b_partons)->at(ht);
     }
 
 private:

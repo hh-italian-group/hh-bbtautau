@@ -15,7 +15,6 @@ struct Arguments {
     run::Argument<std::string> input_path{"input_path", "Input path of the samples"};
     run::Argument<std::string> cfg_name{"cfg_name", "cfg bin splitting"};
     run::Argument<std::string> file_cfg_name{"file_cfg_name", "TT file cfg"};
-    run::Argument<std::string> file_tmp_cfg_name{"file_tmp_cfg_name", "TT file incl cfg"};
     run::Argument<std::string> output_file{"output_file", "Output file"};
 };
 
@@ -31,7 +30,6 @@ public:
     TTFileMerger(const Arguments& _args) : args(_args)
     {
         LoadInputs();
-        totalNumerOfevents = LoadTotalNevents();
         std::cout << "totalNumerOfevents in summeryTuple: " << totalNumerOfevents << std::endl;
         output_bins = TTBinDescriptor::LoadConfig(args.cfg_name());
     }
@@ -53,7 +51,7 @@ private:
     SampleDescriptor<TTBinDescriptor, GenEventTypeMap> inclusive;
     VectorSampleDescriptor all_samples;
     VectorDYBinDescriptor output_bins;
-    Int_t totalNumerOfevents;
+    size_t totalNumerOfevents;
     Arguments args;
 
 
@@ -68,6 +66,7 @@ private:
     
     void LoadInputs()
     {
+        size_t totalNevents = 0;
         analysis::ConfigReader config_reader;
 
         TTBinDescriptorCollection file_descriptors;
@@ -115,9 +114,35 @@ private:
 
 
                 } //end loop on entries
+
+
+                //TOTAL WEIGHT PART
+                if (!(file_descriptor_element.fileType == FileType::inclusive)) continue;
+                std::cout << "LoadTotalNevents - File descriptor characteristics: " << file_descriptor.first << ", " <<
+                             single_file_path << ", " << file_descriptor_element.fileType
+                          << std::endl;
+
+
+                //ntuple::SummaryTuple summaryTuple("summary", inputFile.get(), true);
+                try {
+                    std::shared_ptr<ntuple::SummaryTuple> summaryTuple(new ntuple::SummaryTuple("summary", inputFile.get(), true));
+//                    if(!summaryTuple) continue;
+                    const Long64_t n_entries = summaryTuple->GetEntries();
+
+                    for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) { //loop on entries
+                        summaryTuple->GetEntry(current_entry);
+                        totalNevents += summaryTuple->data().numberOfProcessedEvents;
+                    } //end loop on entries
+
+                } catch(std::runtime_error& error) {
+                    std::cerr << "ERROR: " << error.what() << std::endl;
+                }
+
+
             } // end loop on files
             all_samples.push_back(sample_desc);
         } //end loop n file_descriptors
+        totalNumerOfevents = totalNevents;
     }
 
 
@@ -142,54 +167,7 @@ private:
     }
 
 
-    Int_t LoadTotalNevents()
-    {
-        size_t totalNevents = 0;
-        analysis::ConfigReader config_reader;
 
-        TTBinDescriptorCollection file_descriptors;
-        TTFileConfigEntryReader file_entry_reader(file_descriptors);
-        config_reader.AddEntryReader("FILE", file_entry_reader, true);
-
-        config_reader.ReadConfig(args.file_tmp_cfg_name());
-
-        for (auto file_descriptor : file_descriptors){ //loop on DYJets files
-            const TTBinDescriptor file_descriptor_element = file_descriptor.second;
-            if (!(file_descriptor_element.fileType == FileType::inclusive)) continue;
-
-            const Channel channel = Parse<Channel>(args.tree_name());
-            const Channel descriptor_channel = Parse<Channel>(file_descriptor_element.channel);
-            if (descriptor_channel != channel) continue;
-
-            for (auto single_file_path : file_descriptor_element.file_paths){ //loop on files
-
-
-                std::cout << "LoadTotalNevents - File descriptor characteristics: " << file_descriptor.first << ", " <<
-                             single_file_path << ", " << file_descriptor_element.fileType
-                          << std::endl;
-                std::string filename = args.input_path()  + "/" + single_file_path;
-                auto inputFile = root_ext::OpenRootFile(filename);
-                //ntuple::SummaryTuple summaryTuple("summary", inputFile.get(), true);
-                try {
-                    std::shared_ptr<ntuple::SummaryTuple> summaryTuple(new ntuple::SummaryTuple("summary", inputFile.get(), true));
-//                    if(!summaryTuple) continue;
-                    const Long64_t n_entries = summaryTuple->GetEntries();
-
-                    for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) { //loop on entries
-                        summaryTuple->GetEntry(current_entry);
-                        totalNevents += summaryTuple->data().numberOfProcessedEvents;
-                    } //end loop on entries
-
-                } catch(std::runtime_error& error) {
-                    std::cerr << "ERROR: Tree not found " << error.what() << std::endl;
-                }
-
-
-            } // end loop on files
-
-        } //end loop n file_descriptors
-        return totalNevents;
-    }
 
 };
 
