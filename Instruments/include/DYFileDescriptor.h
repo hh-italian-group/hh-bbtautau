@@ -81,21 +81,30 @@ struct DYBinDescriptor {
             throw analysis::exception("Unable to create outputfile'");
         cfg.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 
-        static const std::vector<int> column_widths = { 12,12,12,12,12,14,18,18,18,18,18,23 };
+        std::vector<std::string> headers = { "#n_jet_min","n_jet_max","n_bjet_min","n_bjet_max",
+                                           "ht_bin_min","ht_bin_max","weight","rel_err_w","nu",
+                                           "rel_err_nu","incl_integral","ref_sample"};
+        const std::vector<int> column_widths(headers.size());
 
-        cfg << std::setw(column_widths.at(0)) << "#n_jet_min " <<
-               std::setw(column_widths.at(1)) << "n_jet_max " <<
-               std::setw(column_widths.at(2)) << "n_bjet_min " <<
-               std::setw(column_widths.at(3)) << "n_bjet_max " <<
-               std::setw(column_widths.at(4)) << "ht_bin_min " <<
-               std::setw(column_widths.at(5)) << "ht_bin_max " <<
-               std::setw(column_widths.at(6)) << "weight " <<
-               std::setw(column_widths.at(7)) << " rel_err_w " <<
-               std::setw(column_widths.at(8)) << " nu " <<
-               std::setw(column_widths.at(9)) << " rel_err_nu  " <<
-               std::setw(column_widths.at(10)) << " incl_integral  " <<
-               std::setw(column_widths.at(11)) << " ref_sample \n";
+        //for(n = 0..5) column_widths[n] = headers[n].size()
+        //for(n 5...) widths[n] = std::numeric_limits<double>::digits10 + 2
 
+        static const std::vector<int> column_widths = { 10,9,10,10,10,10,21,21,21,21,21,26 };
+
+        cfg << std::setw(column_widths.at(0)) << "#n_jet_min" <<
+               std::setw(column_widths.at(1)) << "n_jet_max" <<
+               std::setw(column_widths.at(2)) << "n_bjet_min" <<
+               std::setw(column_widths.at(3)) << "n_bjet_max" <<
+               std::setw(column_widths.at(4)) << "ht_bin_min" <<
+               std::setw(column_widths.at(5)) << "ht_bin_max" <<
+               std::setw(column_widths.at(6)) << "weight" <<
+               std::setw(column_widths.at(7)) << "rel_err_w" <<
+               std::setw(column_widths.at(8)) << "nu" <<
+               std::setw(column_widths.at(9)) << "rel_err_nu" <<
+               std::setw(column_widths.at(10)) << "incl_integral" <<
+               std::setw(column_widths.at(11)) << "ref_sample\n";
+
+        cfg << std::setprecision(std::numeric_limits<double>::digits10 + 1);
         for(auto& output_bin : output_bins)
         {
             cfg << std::setw(column_widths.at(0)) << output_bin.n_jet.min() << " " <<
@@ -104,8 +113,7 @@ struct DYBinDescriptor {
                    std::setw(column_widths.at(3)) << output_bin.n_bjet.max() << " " <<
                    std::setw(column_widths.at(4)) << output_bin.n_ht.min() << " " <<
                    std::setw(column_widths.at(5)) << output_bin.n_ht.max() << " " <<
-                   std::setw(column_widths.at(6)) << std::setprecision(std::numeric_limits<double>::digits10 + 1) <<
-                   output_bin.weight.GetValue() << " " <<
+                   std::setw(column_widths.at(6)) << output_bin.weight.GetValue() << " " <<
                    std::setw(column_widths.at(7)) << output_bin.weight.GetRelativeStatisticalError() << " " <<
                    std::setw(column_widths.at(8)) << output_bin.nu.GetValue() << " " <<
                    std::setw(column_widths.at(9)) << output_bin.nu.GetRelativeStatisticalError() << " " <<
