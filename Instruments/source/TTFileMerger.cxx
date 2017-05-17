@@ -135,7 +135,7 @@ private:
                     } //end loop on entries
 
                 } catch(std::runtime_error& error) {
-                    std::cerr << "ERROR: " << error.what() << std::endl;
+                    std::cout << "Summary " << error.what() << std::endl;
                 }
 
 

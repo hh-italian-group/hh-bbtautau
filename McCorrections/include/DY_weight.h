@@ -3,11 +3,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #pragma once
 
-#include "AnalysisTools/Core/include/RootExt.h"
-#include "h-tautau/Analysis/include/EventTuple.h"
-#include "h-tautau/Analysis/include/AnalysisTypes.h"
-#include "AnalysisTools/Core/include/NumericPrimitives.h"
-#include "../../Instruments/include/DYFileDescriptor.h"
+#include "hh-bbtautau/Instruments/include/DYFileDescriptor.h"
 
 
 namespace analysis {
@@ -19,23 +15,18 @@ public:
     using Range_weight_map = std::map<int, double>;
     using DoubleRange_map = std::map<int, Range_weight_map>;
 
-    DY_weight(const std::string& dy_weight_file_name) :
-        dy_descriptors(analysis::sample_merging::DYBinDescriptor::LoadConfig(dy_weight_file_name))
+    DY_weight(const std::string& dy_weight_file_name)
     {
-        //std::vector<analysis::sample_merging::DYBinDescriptor> dy_descriptors = analysis::sample_merging::DYBinDescriptor::LoadConfig(dy_weight_file_name);
+        std::vector<analysis::sample_merging::DYBinDescriptor> dy_descriptors =
+                analysis::sample_merging::DYBinDescriptor::LoadConfig(dy_weight_file_name);
 
         for (unsigned n = 0; n < dy_descriptors.size(); ++n){
             const analysis::sample_merging::DYBinDescriptor dybin_descriptor = dy_descriptors.at(n);
             const double weight = dybin_descriptor.weight.GetValue()/dybin_descriptor.inclusive_integral;
             for(int n_jet = dybin_descriptor.n_jet.min(); n_jet <= dybin_descriptor.n_jet.max(); ++n_jet) {
-//                if(!dy_weight_map.count(n_jet)) {
-//                    dy_weight_map[n_jet] = DoubleRange_map();
-//                }
-                DoubleRange_map& njet_map = dy_weight_map.at(n_jet);
+                DoubleRange_map& njet_map = dy_weight_map[n_jet];
                 for(int n_bjet = dybin_descriptor.n_bjet.min(); n_bjet <= dybin_descriptor.n_bjet.max(); ++n_bjet) {
-//                    if(!njet_map.count(n_bjet))
-//                        njet_map[n_bjet] = Range_weight_map();
-                    Range_weight_map& nbjet_map = njet_map.at(n_bjet);
+                    Range_weight_map& nbjet_map = njet_map[n_bjet];
                     for(int ht = dybin_descriptor.n_ht.min(); ht <= dybin_descriptor.n_ht.max(); ++ht) {
                         if(nbjet_map.count(ht))
                             throw exception("Repeated bin");
@@ -47,12 +38,12 @@ public:
     }
 
     template<typename Event>
-    double Get(const Event& event)
+    double Get(const Event& event) const
     {
         return GetWeight(event.lhe_n_partons,event.lhe_n_b_partons,event.lhe_HT);
     }
 
-    double GetWeight(Int_t n_partons, Int_t n_b_partons, Int_t ht)
+    double GetWeight(Int_t n_partons, Int_t n_b_partons, Int_t ht) const
     {
         auto njet_iter = dy_weight_map.find(n_partons);
         if(njet_iter != dy_weight_map.end()) {
@@ -66,18 +57,10 @@ public:
             }
         }
         throw exception("weight not found.");
-
-//        if(!dy_weight_map.count(n_partons) || !dy_weight_map.at(n_partons)->count(n_b_partons)
-//                || !dy_weight_map.at(n_partons)->at(n_b_partons)->count(ht))
-//            throw exception("weight not found.");
-//        return dy_weight_map.at(n_partons)->at(n_b_partons)->at(ht);
     }
 
 private:
     std::map<int, DoubleRange_map> dy_weight_map;
-    std::vector<analysis::sample_merging::DYBinDescriptor> dy_descriptors;
-
-
 };
 
 } // namespace mc_corrections

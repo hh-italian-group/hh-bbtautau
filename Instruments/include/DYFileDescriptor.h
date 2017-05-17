@@ -45,7 +45,6 @@ struct DYBinDescriptor {
     static std::vector<DYBinDescriptor> LoadConfig(const std::string& config_file)
     {
         std::vector<DYBinDescriptor> dyBinDescriptors;
-        dyBinDescriptors.clear();
         std::ifstream cfg(config_file);
         while (cfg.good()) {
             std::string cfgLine;
