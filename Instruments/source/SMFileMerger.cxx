@@ -33,13 +33,13 @@ public:
 
     virtual const std::vector<double>& cosTheta_Bins() const
     {
-        static const std::vector<double> bins = { -1.0, -0.6, -0.2, 0.2, 0.6, 1.0 };
+        static const std::vector<double> bins = { 0.0,0.4,0.6,0.8, 0.9,1.0 };
         return bins;
     }
 
     virtual const std::vector<double>& mhh_Bins() const
     {
-        static const std::vector<double> bins = { 250.,270.,300.,330.,360.,390., 420.,450.,500.,550.,600.,700.,800.,1000. };
+        static const std::vector<double> bins = { 245.,270.,300.,330.,360.,390., 420.,450.,500.,550.,600.,700.,800.,1000.,1500. };
         return bins;
     }
 };
@@ -94,7 +94,7 @@ private:
                     //std::cout << "Mhh: " << event->lhe_hh_m << ", cosTheta: " << event->lhe_hh_cosTheta << std::endl;
                     anaData.lhe_hh_m(name).Fill(event->lhe_hh_m);
                     anaData.lhe_hh_cosTheta(name).Fill(event->lhe_hh_cosTheta);
-                    anaData.lhe_hh_cosTheta_vs_m(name).Fill(event->lhe_hh_m,event->lhe_hh_cosTheta);
+                    anaData.lhe_hh_cosTheta_vs_m(name).Fill(event->lhe_hh_m,std::abs(event->lhe_hh_cosTheta));
                 } //end loop on entries
 
             } //end loop on files
