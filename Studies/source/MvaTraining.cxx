@@ -27,18 +27,20 @@ struct Arguments { // list of all program arguments
     REQ_ARG(Long64_t, range);
     REQ_ARG(std::string, tree_name);
     REQ_ARG(Long64_t, number_events);
+    OPT_ARG(int, number_sets, 2);
 };
 
 namespace analysis {
 namespace mva_study{
 
-Range<int> low_mass(250, 280),  medium_mass(300, 400), high_mass(450,900);
-std::vector<Range<int>> ranges{low_mass, medium_mass, high_mass};
+namespace {
+Range<int> low_mass(250, 280),  medium_mass1(300, 350), medium_mass2(400, 550), high_mass(600,900);
+std::vector<Range<int>> ranges{low_mass, medium_mass1, medium_mass2, high_mass};
+}
 
-
-static VarNameSet ReadVars(const std::string& var_file){
+static std::unordered_set<std::string> ReadVars(const std::string& var_file){
     std::ifstream f(var_file);
-    VarNameSet enabled_vars;
+    std::unordered_set<std::string> enabled_vars;
     while(f.good()){
         std::string var;
         std::getline ( f, var );
@@ -52,18 +54,17 @@ static VarNameSet ReadVars(const std::string& var_file){
 class MvaVariablesTMVA : public MvaVariables{
 private:
     using DataVector = std::vector<double>;
-    using MassData = std::map<int, std::deque<DataVector>>;
+    using MassData = std::map<SampleId, std::deque<DataVector>>;
 
     DataVector variables;
     std::map<std::string, size_t> names;
-    std::map<bool, MassData> data;
+    std::map<size_t, MassData> data;
     std::shared_ptr<TMVA::DataLoader> loader;
     VarNameSet enabled;
 
 public:
-    MvaVariablesTMVA(std::shared_ptr<TMVA::DataLoader> dloader, uint_fast32_t seed, const VarNameSet& _enabled_vars,
-                     const VarNameSet& _disabled_vars) :
-        MvaVariables(true, seed, _enabled_vars), loader(dloader), enabled(_enabled_vars) {}
+    MvaVariablesTMVA(std::shared_ptr<TMVA::DataLoader> dloader, uint_fast32_t seed, const VarNameSet& _enabled_vars) :
+        MvaVariables(), loader(dloader), enabled(_enabled_vars) {}
 
     virtual void SetValue(const std::string& name, double value) override
     {
@@ -75,33 +76,32 @@ public:
         variables.at(names.at(name)) = value;
     }
 
-    virtual void AddEventVariables( bool istraining, int mass, double weight) override
+    virtual void AddEventVariables(size_t istraining, const SampleId& mass, double weight) override
     {
         data[istraining][mass].push_back(variables);
     }
 
     void UploadEvents()
     {
-        std::map<int, double> weights;
-        for(const auto& entry : data[true]) {
-            const int m = entry.first;
-            if(m == Bkg) weights[m] = 1;
-            else weights[m] = 1. / (data[true].at(m).size() + data[false][m].size() );
+        std::map<SampleId, double> weights;
+        for(const auto& entry : data[0]) {
+            const SampleId m = entry.first;
+            if(m.mass == -1) weights[m] = 1;
+            else weights[m] = 1. / (data[0].at(m).size() + data[1][m].size() );
         }
 
         for(const auto& data_entry : data) {
             const bool istraining = data_entry.first;
             const TMVA::Types::ETreeType treetype = istraining ? TMVA::Types::kTraining : TMVA::Types::kTesting;
             for(const auto& m_entry : data_entry.second) {
-                const int m = m_entry.first;
-                const std::string samplename = m != Bkg ? "Signal" : "Background";
+                const SampleId m = m_entry.first;
+                const std::string samplename = m.mass != -1 ? "Signal" : "Background";
                 for(const auto& vars : m_entry.second) {
                     loader->AddEvent(samplename, treetype, vars, weights.at(m));
                 }
             }
         }
     }
-
 };
 
 
@@ -109,15 +109,6 @@ class MVATraining {
 public:
     using Event = ntuple::Event;
     using EventTuple = ntuple::EventTuple;
-
-    static const VarNameSet& GetEnabledBranches()
-    {
-        static const VarNameSet EnabledBranches_read = {
-            "eventEnergyScale", "q_1", "q_2", "jets_p4", "extraelec_veto", "extramuon_veto ", "SVfit_p4",
-            "pfMET_p4", "p4_1", "p4_2"
-        };
-        return EnabledBranches_read;
-    }
 
 //    static const std::set<std::string>& GetDisabledBranches()
 //    {
@@ -130,7 +121,7 @@ public:
 //    }
 
 
-    MVATraining(const Arguments& _args): args(_args), samples(ReadConfig(args.cfg_file())),
+    MVATraining(const Arguments& _args): args(_args), samples(SampleEntry::ReadConfig(args.cfg_file())),
         outfile(root_ext::CreateRootFile(args.output_file())),
         factory(new TMVA::Factory ("myFactory", outfile.get(),"!V:!Silent:Color:DrawProgressBar:Transformations=I,D:AnalysisType=Classification")),
         dataloader(new TMVA::DataLoader ("mydataloader")), enabled_vars(ReadVars(args.variables_file())),
@@ -147,24 +138,21 @@ public:
             if (!range.Contains(args.range())) continue;
             for(const SampleEntry& entry : samples)
             {
-                if (entry.mass != Bkg && !range.Contains(entry.mass)) continue;
+                if (entry.id.mass != -1 && !range.Contains(entry.id.mass)) continue;
                 if ( entry.channel != "" && args.tree_name() != entry.channel ) continue;
                 auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
-                EventTuple tuple(args.tree_name(), input_file.get(), true, {} , GetEnabledBranches());
+                EventTuple tuple(args.tree_name(), input_file.get(), true, {} ,GetMvaBranches());
                 Long64_t tot_entries = 0, current_entry = 0;
 
                 while(tot_entries < args.number_events() && current_entry < tuple.GetEntries()) {
                     tuple.GetEntry(current_entry);
-
                     const Event& event = tuple.data();
-
                     if (event.eventEnergyScale != 0 || (event.q_1+event.q_2) != 0 || event.jets_p4.size() < 2
                         || event.extraelec_veto == true || event.extramuon_veto == true || event.jets_p4[0].eta() > cuts::btag_2016::eta
                         || event.jets_p4[1].eta() > cuts::btag_2016::eta){
                         current_entry++;
                         continue;
                     }
-
                     LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
                     double ellipse_cut = pow(event.SVfit_p4.mass()-116,2)/pow(35.,2) + pow(bb.mass()-111,2)/pow(45.,2);
                     if (ellipse_cut>1){
@@ -174,7 +162,7 @@ public:
 
                     current_entry++;
                     tot_entries++;
-                    vars.AddEvent(event, entry.mass, entry.weight);
+                    vars.AddEvent(event, entry.id, entry.weight);
                 }
                 std::cout << entry << " number of events: " << tot_entries << std::endl;
             }
@@ -182,7 +170,6 @@ public:
 
         vars.UploadEvents();
         dataloader->PrepareTrainingAndTestTree( "","", "SplitMode=Random" );
-
 
         factory->BookMethod( dataloader.get(), TMVA::Types::kBDT, "BDTG",
                              "!H:!V:NTrees=1000:MinNodeSize=2.5%:BoostType=Grad:Shrinkage=0.10:UseBaggedBoost:BaggedSampleFraction=0.5:nCuts=20:MaxDepth=6");
@@ -212,6 +199,6 @@ private:
 }
 
 
-PROGRAM_MAIN(analysis::MVATraining, Arguments) // definition of the main program function
+PROGRAM_MAIN(analysis::mva_study::MVATraining, Arguments) // definition of the main program function
 //./run.sh MvaTraining --input_path ~/Desktop/tuples --output_file myfile.root --cfg_file hh-bbtautau/Studies/config/mva_config.cfg --tree_name muTau --number_events 10000000
 

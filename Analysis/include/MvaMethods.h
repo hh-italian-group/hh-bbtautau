@@ -2,10 +2,11 @@
  * and bandwidth.
 This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
+#pragma once
+
 #include "hh-bbtautau/Analysis/include/MvaConfiguration.h"
 #include "AnalysisTools/Core/include/RootExt.h"
-
-#pragma once
+#include <TCanvas.h>
 
 namespace  analysis {
 namespace mva_study{
@@ -18,11 +19,13 @@ using NameElementFuture =  std::map<Name_ND, std::future<double>>;
 using SampleIdNameElement = std::map<SampleId, NameElement>;
 using VectorName_ND = std::deque<std::pair<Name_ND, double>>;
 using SampleIdVectorName_ND = std::map<SampleId, VectorName_ND>;
+using SamplePair = std::pair<SampleId,SampleId>;
 
 
-inline NameElement CollectFutures(NameElementFuture& futures)
+template<typename Key, typename Value>
+std::map<Key, Value> CollectFutures(std::map<Key, std::future<Value>>& futures)
 {
-    NameElement values;
+    std::map<Key, Value> values;
     for(auto& var : futures) {
         values[var.first] = var.second.get();
     }
@@ -30,7 +33,8 @@ inline NameElement CollectFutures(NameElementFuture& futures)
 }
 
 //Calculate optimal bandwidth for each variable for a single value of mass
-NameElement OptimalBandwidth(const VarData& sample){
+inline NameElement OptimalBandwidth(const VarData& sample)
+{
     NameElementFuture bandwidth_future;
     for (const auto& var : sample){
         bandwidth_future[Name_ND{var.first}] = run::async(stat_estimators::OptimalBandwith<double>, std::cref(var.second), 0.01);
@@ -39,11 +43,11 @@ NameElement OptimalBandwidth(const VarData& sample){
 }
 
 //Create elements of mutual information matrix for a single value o f mass
-NameElement Mutual(const VarData& sample_vars, const NameElement& bandwidth){
+inline NameElement Mutual(const VarData& sample_vars, const NameElement& bandwidth)
+{
    NameElementFuture matrix_future;
    for(auto var_1 = sample_vars.begin(); var_1 != sample_vars.end(); ++var_1){
-       for(auto var_2 = std::next(var_1); var_2 != sample_vars.end(); ++var_2) {
-            if (var_2->first <= var_1->first) continue;
+       for(auto var_2 = var_1; var_2 != sample_vars.end(); ++var_2) {
             matrix_future[Name_ND{var_1->first, var_2->first}] = run::async(stat_estimators::ScaledMutualInformation<double>, std::cref(var_1->second),
                                                                           std::cref(var_2->second), bandwidth.at(Name_ND{var_1->first}), bandwidth.at(Name_ND{var_2->first}));
         }
@@ -52,7 +56,8 @@ NameElement Mutual(const VarData& sample_vars, const NameElement& bandwidth){
 }
 
 //Estimate elements of covariance matrix for selected variables
-NameElement Correlation(const VarData& sample_vars){
+inline NameElement Correlation(const VarData& sample_vars)
+{
     NameElementFuture corr_matrix_future;
     for(auto var_1 = sample_vars.begin(); var_1 != sample_vars.end(); ++var_1){
         for(auto var_2 = var_1; var_2 != sample_vars.end(); ++var_2) {
@@ -63,25 +68,26 @@ NameElement Correlation(const VarData& sample_vars){
 }
 
 //Create histos of mutual information for signal and background
-void MutualHisto(const SampleId& mass, const NameElement& mutual_matrix_signal, const NameElement& mutual_matrix_bkg, TDirectory* directory){
+inline void MutualHisto(const SampleId& mass, const NameElement& mutual_matrix_signal, const NameElement& mutual_matrix_bkg, TDirectory* directory)
+{
     auto directory_1d = directory->GetDirectory("1D");
     if (directory_1d == nullptr) {
         directory_1d = root_ext::GetDirectory(*directory, "1D");
         auto histo = std::make_shared<TH1D>("Background","MutualInformation_Background", 50, 0, 1);
-        histo->SetXTitle("MI");
+        histo->SetXTitle("1-MI");
         for (const auto& entry : mutual_matrix_bkg){
             histo->Fill(entry.second);
         }
         root_ext::WriteObject(*histo, directory_1d);
     }
     auto directory_2d = root_ext::GetDirectory(*directory, "2D");
-    std::string value = "_"+ ToString(mass);
-    auto histo2d = std::make_shared<TH2D>(("Signal_"+value+"_Background").c_str(),
-                                          ("MutualInformation_Signal"+value+"_Background").c_str(),50,0,1,50,0,1);
+    std::string value = "Signal_"+ ToString(mass);
+    auto histo2d = std::make_shared<TH2D>((value+"_Background").c_str(),
+                                          ("MutualInformation_"+value+"_Background").c_str(),50,0,1,50,0,1);
     histo2d->SetXTitle("MI Signal");
     histo2d->SetYTitle("MI Background");
-    auto histo = std::make_shared<TH1D>(("Signal"+value).c_str(),("MutualInformation_Signal"+value).c_str(),50,0,1);
-    histo->SetXTitle("MI");
+    auto histo = std::make_shared<TH1D>(value.c_str(),("MutualInformation_"+value).c_str(),50,0,1);
+    histo->SetXTitle("1-MI");
     for (const auto& entry : mutual_matrix_signal){
         histo2d->Fill(entry.second, mutual_matrix_bkg.at(entry.first));
         histo->Fill(entry.second);
@@ -91,24 +97,24 @@ void MutualHisto(const SampleId& mass, const NameElement& mutual_matrix_signal, 
 }
 
 //Create correlation/mutual information/JSD histo matrix
-void CreateMatrixHistos(const SampleIdVarData sample_vars, const SampleIdNameElement& element, const std::string& type, TDirectory* directory){
-    std::string mass;
-    for(const auto& mass_entry: sample_vars){
+inline void CreateMatrixHistos(const SampleIdVarData& samples_mass, const SampleIdNameElement& element,
+                               const std::string& type, TDirectory* directory, bool draw_diagonal = false)
+{
+    for(const auto& mass_entry: samples_mass){
         if (!element.count(mass_entry.first)) continue;
         int bin =  mass_entry.second.size();
-        auto matrix = std::make_shared<TH2D>((type+"_"+ ToString(mass_entry.first)).c_str(),(type+"_"+ToString(mass_entry.first)).c_str(),
+        std::string value = type+"_"+ ToString(mass_entry.first);
+        auto matrix = std::make_shared<TH2D>(value.c_str(), value.c_str(),
                                              bin, 0, bin, bin, 0, bin);
         int i = 1;
         for(auto var_1 = mass_entry.second.begin(); var_1 != mass_entry.second.end(); ++var_1){
-            int j = i;
+            int j = i + !draw_diagonal;
             matrix->GetXaxis()->SetBinLabel(i, (var_1->first).c_str());
             matrix->GetYaxis()->SetBinLabel(i, (var_1->first).c_str());
-            for(auto var_2 = var_1; var_2 != mass_entry.second.end(); ++var_2) {
+            for(auto var_2 = std::next(var_1, !draw_diagonal); var_2 != mass_entry.second.end(); ++var_2) {
                 Name_ND var_12{var_1->first, var_2->first};
-                if (element.at(mass_entry.first).count(var_12)){
-                    matrix->SetBinContent(i, j, element.at(mass_entry.first).at(var_12));
-                    matrix->SetBinContent(j, i, element.at(mass_entry.first).at(var_12));
-                }
+                matrix->SetBinContent(i, j, element.at(mass_entry.first).at(var_12));
+                matrix->SetBinContent(j, i, element.at(mass_entry.first).at(var_12));
                 j++;
             }
             i++;
@@ -117,7 +123,33 @@ void CreateMatrixHistos(const SampleIdVarData sample_vars, const SampleIdNameEle
     }
 }
 
-std::shared_ptr<TGraph> CreatePlot(const std::string& title, const std::string& name, const std::string& x_axis, const std::string& y_axis){
+inline void CreateMatrixHistosCompatibility(const SampleIdVarData& samples_mass, const std::map<SamplePair, double>& values,
+                                            const std::string& name, TDirectory* directory)
+{
+    int k = 1;
+    int bin = samples_mass.size() - 1;
+    auto  histo_sgn_compatibility = std::make_shared<TH2D>(name.c_str(),name.c_str(), bin, 0, bin, bin, 0, bin);
+    for(auto mass_entry_1 = samples_mass.begin(); mass_entry_1 != samples_mass.end(); ++mass_entry_1) {
+        if ( mass_entry_1->first.IsBackground())
+            continue;
+        histo_sgn_compatibility->GetXaxis()->SetBinLabel(k, (ToString(mass_entry_1->first)).c_str());
+        histo_sgn_compatibility->GetYaxis()->SetBinLabel(k, (ToString(mass_entry_1->first)).c_str());
+        int j = k;
+        for(auto mass_entry_2 = std::next(mass_entry_1); mass_entry_2 != samples_mass.end(); ++mass_entry_2) {
+            if ( mass_entry_2->first.IsBackground())
+                continue;
+            SamplePair mass_pair(mass_entry_1->first, mass_entry_2->first);
+            histo_sgn_compatibility->SetBinContent(k, j, values.at(mass_pair));
+            histo_sgn_compatibility->SetBinContent(j, k, values.at(mass_pair));
+            j++;
+        }
+        k++;
+    }
+    root_ext::WriteObject(*histo_sgn_compatibility, directory);
+}
+
+inline std::shared_ptr<TGraph> CreatePlot(const std::string& title, const std::string& name, const std::string& x_axis, const std::string& y_axis)
+{
     auto plot = std::make_shared<TGraph>();
     plot->SetLineColor(kGreen+1);
     plot->SetLineWidth(1);
@@ -131,8 +163,9 @@ std::shared_ptr<TGraph> CreatePlot(const std::string& title, const std::string& 
     return plot;
 }
 
-NameElement JensenDivergenceSB(const VarData& sample_signal, const VarData& sample_bkg,
-                               const NameElement& bandwidth_signal, const NameElement& bandwidth_bkg){
+inline NameElement JensenDivergenceSB(const VarData& sample_signal, const VarData& sample_bkg,
+                               const NameElement& bandwidth_signal, const NameElement& bandwidth_bkg)
+{
     NameElementFuture JSDivergenceND_future;
     for(auto entry_1 = sample_signal.begin(); entry_1 != sample_signal.end(); ++entry_1) {
         std::vector<const DataVector*> x;
@@ -159,5 +192,43 @@ NameElement JensenDivergenceSB(const VarData& sample_signal, const VarData& samp
     }
     return CollectFutures(JSDivergenceND_future);
 }
+
+struct TimeReporter {
+public:
+    using clock = std::chrono::system_clock;
+    TimeReporter() : start(clock::now()), start_tot(clock::now()) {}
+
+    void TimeReport(bool tot = false)
+    {
+
+        auto stop = clock::now();
+        auto delta = tot ? stop - start_tot : stop - start;
+        std::cout<<"secondi";
+        if(tot)
+            std::cout << " totali";
+        std::cout << ": " << std::chrono::duration_cast<std::chrono::seconds>(delta).count()<<std::endl;
+        if(!tot)
+            start = stop;
+    }
+
+private:
+    clock::time_point start, start_tot;
+};
+
+inline VectorName_ND CopySelectedVariables(const VectorName_ND& JSDivergence_vector, const Name_ND& best_entry, const SetNamesVar& not_corrected)
+{
+    VectorName_ND copy;
+    for (const auto& entry : JSDivergence_vector){
+        if(entry.second <= 0) continue;
+        bool consider = entry.first != best_entry;
+        for(const auto& other : entry.first) {
+            consider = consider && !not_corrected.count(other);
+        }
+        if(consider)
+            copy.push_back(entry);
+    }
+    return copy;
+}
+
 }
 }

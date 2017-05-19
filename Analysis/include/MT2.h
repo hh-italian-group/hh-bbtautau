@@ -1,3 +1,8 @@
+/*! Wrapper for MT2
+This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
+
+#pragma once
+
 #include "Lester_mt2_bisect.h"
 
 namespace  analysis {

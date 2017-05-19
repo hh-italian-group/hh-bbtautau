@@ -1,8 +1,8 @@
-/*! Study of correlation matrix and mutual information of BDT variables
+/*! Study of correlation matrix, mutual information and Jensen Shannon Divergence to search
+ * best varia bles for each range of mass.
 This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include <fstream>
-#include <random>
 #include <algorithm>
 #include <functional>
 #include <future>
@@ -22,6 +22,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Cuts/include/Btag_2016.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
+#include "AnalysisTools/Core/include/RootExt.h"
 
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, input_path);
@@ -42,8 +43,8 @@ namespace mva_study{
 using clock = std::chrono::system_clock;
 
 namespace {
-Range<int> low_mass(250, 280),  medium_mass(300, 400), high_mass(450,900);
-std::vector<Range<int>> ranges{low_mass, medium_mass, high_mass};
+Range<int> low_mass(250, 280),  medium_mass1(300, 350), medium_mass2(400, 550), high_mass(600,900);
+std::vector<Range<int>> ranges{low_mass, medium_mass1, medium_mass2, high_mass};
 }
 
 class VariableDistribution {
@@ -56,7 +57,7 @@ public:
 
     VariableDistribution(const Arguments& _args): args(_args), samples(SampleEntry::ReadConfig(args.cfg_file())),
               outfile(root_ext::CreateRootFile(args.output_file())), vars(args.number_sets(), args.seed()),
-              start(clock::now()), start_tot(clock::now())
+              reporter(std::make_shared<TimeReporter>())
     {
     }
 
@@ -76,79 +77,103 @@ public:
         return corr_matrix;
     }
 
-    static constexpr double threashold_mi = 0.7;
-    SetNamesVar FindBestRangeVariables(int min, int max, const std::map<SampleId, double>& max_distance,
+
+    SetNamesVar FindBestRangeVariables(const Range<int>& range, const std::map<SampleId, double>& max_distance,
                                       std::map<SampleId, VectorName_ND> JSDivergence_vector) const{
 
+        static constexpr double threashold_mi = 0.7;
         SetNamesVar selected, not_corrected;
-        std::ofstream ofb("Best_entries_Range"+std::to_string(min)+"_"+std::to_string(max)+"_"+std::to_string(args.set())+"_"+std::to_string(args.number_sets())+args.tree_name()+".csv", std::ofstream::out);
-        ofb<<","<<","<<"JSD_sb"<<","<<"MI_sgn"<<","<<"Mi_bkg"<<std::endl;
-        const SampleId minSample{SampleType::Sgn_Res, min};
+        std::ofstream best_entries_file("Best_entries_Range"+std::to_string(range.min())+"_"+std::to_string(range.max())+"_"+std::to_string(args.set())+"_"+std::to_string(args.number_sets())+args.tree_name()+".csv", std::ofstream::out);
+        best_entries_file << "," << "," << "JSD_sb" << "," << "MI_sgn" << "," << "Mi_bkg" << std::endl;
+        const SampleId minSample{SampleType::Sgn_Res, range.min()};
         auto& JSDivergence_min = JSDivergence_vector.at(minSample);
-        while(selected.size() < args.number_variables() && JSDivergence_vector.at(minSample).size()) {
-            std::sort(JSDivergence_vector.at(minSample).begin(), JSDivergence_vector.at(minSample).end(), [](const auto& el1, const auto& el2){
+        static const std::map<std::pair<size_t, size_t>, std::string> prefixes = {
+            { { 0, 0 }, "" }, { { 0, 1 }, "*" }, { { 1, 0 }, "-" }
+        };
+        while(selected.size() < args.number_variables() && JSDivergence_min.size()) {
+            std::sort(JSDivergence_min.begin(), JSDivergence_min.end(), [](const auto& el1, const auto& el2){
                 return el1.second > el2.second;
             });
             VectorName_ND distance;
-            for (const auto& var_entry: JSDivergence_vector.at(SampleId{SampleType::Sgn_Res, min})){
+            for (const auto& var_entry: JSDivergence_min){
                 double d = 0;
                 for (const auto& entry : JSDivergenceSB){
-                    if (entry.first.mass < min || entry.first.mass > max) continue;
-                    d+= (max_distance.at(entry.first)-entry.second.at(var_entry.first)) / max_distance.at(entry.first);
+                    if (entry.first.IsSM() || !range.Contains(entry.first.mass)) continue;
+                    d+= entry.second.at(var_entry.first) / max_distance.at(entry.first);
                 }
-                distance.emplace_back(var_entry.first,d);
+                distance.emplace_back(var_entry.first, d);
             }
             std::sort(distance.begin(), distance.end(), [](const auto& el1, const auto& el2){
-                return el1.second < el2.second;
+                return el1.second > el2.second;
             });
             const auto& best_entry = distance.front();
-            for(const auto& name : best_entry.first.names) {
-                if(selected.count(name)) {
-                    ofb<<"''"<<name<<"''"<<",";
+            for(const auto& name : best_entry.first) {
+                const auto counts = std::make_pair(selected.count(name), not_corrected.count(name));
+                const auto& prefix = prefixes.at(counts);
+                best_entries_file << prefix << name << prefix << ",";
+                if(counts.first || counts.second)
                     continue;
-                }
                 for (const auto& entry : JSDivergenceSB){
-                    if (entry.first.sampleType ==  SampleType::Sgn_NonRes) continue;
-                    const double JS_1d = entry.second.at(Name_ND({name}));
+                    if (entry.first.IsSM() || !range.Contains(entry.first.mass)) continue;
+                    const double JS_1d = entry.second.at(name);
                     for(auto& var : JSDivergence_vector.at(entry.first)) {
-                        if(var.first.names.count(name))
+                        if(var.first.count(name))
                             var.second -= JS_1d;
                     }
                 }
                 for (const auto& entry : JSDivergenceSB){
-                    if (entry.first.sampleType ==  SampleType::Sgn_NonRes) continue;
+                    if (entry.first.IsSM() || !range.Contains(entry.first.mass)) continue;
                     for(const auto& other_entry : samples_mass.at(entry.first)) {
                         if(other_entry.first == name) continue;
                         const Name_ND names({name, other_entry.first});
-                        if(mutual_matrix.at(entry.first).at(names) < threashold_mi && mutual_matrix.at(Bkg).at(names) < threashold_mi){
+                        if(mutual_matrix.at(entry.first).at(names) < threashold_mi && mutual_matrix.at(SampleType::Bkg_TTbar).at(names) < threashold_mi){
                             not_corrected.insert(other_entry.first);
                         }
                     }
                 }
                 selected.insert(name);
-                ofb<<name<<",";
             }
-            if (selected.count(*best_entry.first.names.begin()) && selected.count(*best_entry.first.names.rbegin())){
-                    ofb << JSDivergenceSB.at(SampleId{SampleType::Sgn_Res, min}).at(Name_ND({*best_entry.first.names.begin(), *best_entry.first.names.rbegin()})) << "," <<
-                           mutual_matrix.at(SampleId{SampleType::Sgn_Res, min}).at(Name_ND{*best_entry.first.names.begin(), *best_entry.first.names.rbegin()}) << "," <<
-                           mutual_matrix.at(Bkg).at(Name_ND{*best_entry.first.names.begin(), *best_entry.first.names.rbegin()});;
+            if (best_entry.first.IsSubset(selected)){
+                    best_entries_file << JSDivergenceSB.at(minSample).at(best_entry.first) << "," <<
+                           mutual_matrix.at(minSample).at(best_entry.first) << "," <<
+                           mutual_matrix.at(SampleType::Bkg_TTbar).at(best_entry.first);;
             }
-            ofb<<std::endl;
-            VectorName_ND copy;
-            for (const auto& entry : JSDivergence_vector.at(SampleId{SampleType::Sgn_Res, min})){
-                if(entry.second <= 0) continue;
-                bool consider = entry.first != best_entry.first;
-                for(const auto& other : entry.first) {
-                    consider = consider && !not_corrected.count(other);
-                }
-                if(consider)
-                    copy.push_back(entry);
-            }
-            JSDivergence_vector.at(SampleId{SampleType::Sgn_Res, min}) = std::move(copy);
+            best_entries_file << std::endl;
+            JSDivergence_min = CopySelectedVariables(JSDivergence_min, best_entry.first, not_corrected);
         }
        return selected;
     }
 
+    void CreateMatrixIntersection(const SampleIdSetNamesVar& range_selected) const
+    {
+        std::cout << std::endl << "Intersection ranges" << std::endl;
+        auto matrix_intersection = std::make_shared<TH2D>("Intersection", "Intersection of variables", ranges.size(), 0, ranges.size(),
+                                                          ranges.size(), 0, ranges.size());
+        matrix_intersection->SetXTitle("range");
+        matrix_intersection->SetYTitle("range");
+        int c_label = 1;
+        int k_row = 1;
+        for (const auto& range1: ranges){
+            int j_column = 1;
+            for (const auto& range2: ranges){
+                if (range1.min() == range2.min()) {
+                    std::string label = std::to_string(range1.min()) + "-" + std::to_string(range1.max());
+                    matrix_intersection->GetXaxis()->SetBinLabel(c_label, (label).c_str());
+                    matrix_intersection->GetYaxis()->SetBinLabel(c_label, (label).c_str());
+                    c_label++;
+                }
+                std::vector<std::string> intersection;
+                std::set_intersection(range_selected.at(SampleId{SampleType::Sgn_Res, range1.min()}).begin(), range_selected.at(SampleId{SampleType::Sgn_Res, range1.min()}).end(),
+                                      range_selected.at(SampleId{SampleType::Sgn_Res, range2.min()}).begin(), range_selected.at(SampleId{SampleType::Sgn_Res, range2.min()}).end(),
+                                      std::back_inserter(intersection));
+                matrix_intersection->SetBinContent(k_row, j_column, intersection.size());
+                j_column++;
+            }
+            k_row++;
+        }
+        root_ext::WriteObject(*matrix_intersection, outfile.get());
+        TimeReport();
+    }
 
     SampleIdSetNamesVar VariablesSelection(){
         SampleIdSetNamesVar range_selected;
@@ -164,90 +189,81 @@ public:
             max_distance[entry.first] = JSDivergence_vector.at(entry.first).front().second;
         }
         for (const auto& range: ranges){
-            std::ofstream ofr(("Selected_range"+std::to_string(range.min())+"_"+std::to_string(range.max())+"_"+std::to_string(args.set())+"_"+std::to_string(args.number_sets())+args.tree_name()+".txt").c_str(), std::ofstream::out);
-            range_selected[SampleId{SampleType::Sgn_Res, range.min()}] = FindBestRangeVariables(range.min(), range.max(), max_distance, JSDivergence_vector);
+            std::ofstream list_variables(("Selected_range"+std::to_string(range.min())+"_"+std::to_string(range.max())+"_"+std::to_string(args.set())+"_"+std::to_string(args.number_sets())+args.tree_name()+".txt").c_str(), std::ofstream::out);
+            range_selected[SampleId{SampleType::Sgn_Res, range.min()}] = FindBestRangeVariables(range, max_distance, JSDivergence_vector);
             std::cout<<" range: "<<range.min()<<"-"<<range.max();
             std::cout.flush();
             for (const auto& name : range_selected[SampleId{SampleType::Sgn_Res, range.min()}]){
-                ofr<<name<<std::endl;
+                list_variables << name << std::endl;
             }
-            ofr<<std::endl;
+            list_variables << std::endl;
         }
         TimeReport();
+        CreateMatrixIntersection(range_selected);
         return range_selected;
     }
 
-    void KolmogorovSignalPlotSelected(const SetNamesVar& selected, int min, int max, TDirectory* directory){
+    void KolmogorovSignalPlotSelected(const SetNamesVar& selected, const Range<int>& range, TDirectory* directory){
         std::map<std::string, std::shared_ptr<TGraph>> plot;
         int i = 0;
         for (const auto& mass_entry: samples_mass){
-            if (mass_entry.first.mass < min || mass_entry.first.mass > max)
+            if (!range.Contains(mass_entry.first.mass))
                 continue;
             for (const auto& var : selected){
                 std::vector<double> vector_signal = samples_mass.at(mass_entry.first).at(var);
                 std::sort(vector_signal.begin(), vector_signal.end());
-                std::vector<double> vector_signal_2 = samples_mass.at(SampleId{SampleType::Sgn_Res, min}).at(var);
+                std::vector<double> vector_signal_2 = samples_mass.at(SampleId{SampleType::Sgn_Res, range.min()}).at(var);
                 std::sort(vector_signal_2.begin(), vector_signal_2.end());
                 Double_t* v_s = vector_signal.data(), *v_s_2 = vector_signal_2.data();
                 double k = TMath::KolmogorovTest(vector_signal.size(), v_s, vector_signal_2.size(), v_s_2, "");
                 if (plot.count(var) == 0) {
-                    plot[var] = CreatePlot(("KolmogorovSmirnov_"+var+"_Signal"+std::to_string(min)+"_"+std::to_string(max)).c_str(),
-                                           ("Ks_"+var+"_Signal"+std::to_string(min)+"_"+std::to_string(max)).c_str(),
-                                           "mass","KS Probability" );
+                    std::string name = var+"_Signal"+std::to_string(range.min())+"_"+std::to_string(range.max());
+                    plot[var] = CreatePlot(name.c_str(), ("Ks_"+name).c_str(), "mass","KS Probability" );
                 }
                 plot[var]->SetPoint(i, mass_entry.first.mass, k);
             }
             i++;
         }
-
         for(const auto& var: selected){
             root_ext::WriteObject(*plot[var], directory);
         }
     }
 
-    void Run()
-    {
-        run::ThreadPull threads(args.number_threads());
-
+    void LoadData(){
         for(const SampleEntry& entry : samples)
         {
             if ( entry.channel != "" && args.tree_name() != entry.channel ) continue;
             auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
             EventTuple tuple(args.tree_name(), input_file.get(), true, {} , GetMvaBranches());
-            Long64_t tot_entries = 0, current_entry = 0;
-            while(tot_entries < args.number_events() && current_entry < tuple.GetEntries()) {
+            Long64_t tot_entries = 0;
+            for(Long64_t current_entry = 0; tot_entries < args.number_events() && current_entry < tuple.GetEntries(); ++current_entry) {
                 tuple.GetEntry(current_entry);
                 const Event& event = tuple.data();
-
                 if (static_cast<EventEnergyScale>(event.eventEnergyScale) != EventEnergyScale::Central || (event.q_1+event.q_2) != 0 || event.jets_p4.size() < 2
                     || event.extraelec_veto == true || event.extramuon_veto == true || event.jets_p4[0].eta() > cuts::btag_2016::eta
-                    || event.jets_p4[1].eta() > cuts::btag_2016::eta){
-                    current_entry++;
+                    || event.jets_p4[1].eta() > cuts::btag_2016::eta)
                     continue;
-                }
-
-                LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
-
-                if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideEllipse(event.SVfit_p4.mass(), bb.mass())){
-                    current_entry++;
+                auto bb = event.jets_p4[0] + event.jets_p4[1];
+                if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideEllipse(event.SVfit_p4.mass(), bb.mass()))
                     continue;
-                }
-
-                current_entry++;
                 tot_entries++;
                 vars.AddEvent(event, entry.id, entry.weight);
             }
             std::cout << entry << " number of events: " << tot_entries << std::endl;
         }
-
         TimeReport();
         samples_mass = vars.GetSampleVariables(args.set());
-        std::cout << "n.variabili: " << samples_mass.at(Bkg).size() << std::endl;
+    }
+
+    void Run()
+    {
+        run::ThreadPull threads(args.number_threads());
+        LoadData();
+        std::cout << "n.variabili: " << samples_mass.at(SampleType::Bkg_TTbar).size() << std::endl;
         std::cout << "n.masse segnale: " << samples_mass.size() - 1 << " + " << 1 << " fondo."<<std::endl;
 
         std::cout << "Bandwidth and Mutual Information" << std::endl;
-        outfile->mkdir("MutualInformation");
-        auto directory_mutinf = outfile->GetDirectory("MutualInformation");
+        auto directory_mutinf = root_ext::GetDirectorty(*outfile, "MutualInformation");
         for (const auto& sample: samples_mass){
             std::cout<<"----"<<ToString(sample.first)<<"----"<<" entries: "<<sample.second.at("pt_l1").size()<<std::endl;
             std::cout<<"bandwidth  ";
@@ -264,11 +280,10 @@ public:
         std::map<Name_ND, std::shared_ptr<TGraph>> plot_jsd;
         int i = 0;
         for (const auto& sample : samples_mass){
-            if ( sample.first.sampleType == SampleType::Bkg_TTbar )
+            if ( sample.first.IsBackground() )
                 continue;
-            std::cout<<ToString(sample.first)<<" ";
-            std::cout.flush();
-            JSDivergenceSB[sample.first] = JensenDivergenceSB(sample.second, samples_mass.at(Bkg), bandwidth.at(sample.first), bandwidth.at(Bkg));
+            std::cout << ToString(sample.first) << "    " <<std::flush;
+            JSDivergenceSB[sample.first] = JensenDivergenceSB(sample.second, samples_mass.at(SampleType::Bkg_TTbar), bandwidth.at(sample.first), bandwidth.at(SampleType::Bkg_TTbar));
             for (const auto& var : JSDivergenceSB.at(sample.first)){
                 if (!plot_jsd.count(var.first)) plot_jsd[var.first] = CreatePlot("","","","");
                 plot_jsd.at(var.first)->SetPoint(i, sample.first.mass, JSDivergenceSB.at(sample.first).at(var.first));
@@ -277,93 +292,63 @@ public:
         }
         std::cout<<std::endl;
 
-        outfile->mkdir("JensenShannonDivergence");
-        auto directory_jensenshannon = outfile->GetDirectory("JensenShannonDivergence");
+        auto directory_jensenshannon = root_ext::GetDirectorty(*outfile,"JensenShannonDivergence");
         std::cout<<"Selection variables"<<std::endl;
         SampleIdSetNamesVar range_selected = VariablesSelection();
-
-        std::cout<<"Intersection ranges"<<std::endl;
-        auto matrix_intersection = std::make_shared<TH2D>("Intersection_ranges","Intersection of variables",
-                                                          ranges.size(), 0, ranges.size(),ranges.size(), 0, ranges.size());
-        matrix_intersection->SetXTitle("range");
-        matrix_intersection->SetYTitle("range");
-        int c_label = 1;
-        int k_row = 1;
-        for (const auto& range1: ranges){
-            int j_column = 1;
-            for (const auto& range2: ranges){
-                if (range1.min() == range2.min()) {
-                    std::string label;
-                    label = std::to_string(range1.min()) + "-" + std::to_string(range1.max());
-                    matrix_intersection->GetXaxis()->SetBinLabel(c_label, (label).c_str());
-                    matrix_intersection->GetYaxis()->SetBinLabel(c_label, (label).c_str());
-                    c_label++;
-                }
-                std::vector<std::string> intersection;
-                std::set_intersection(range_selected.at(SampleId{SampleType::Sgn_Res, range1.min()}).begin(), range_selected.at(SampleId{SampleType::Sgn_Res, range1.min()}).end(),
-                                      range_selected.at(SampleId{SampleType::Sgn_Res, range2.min()}).begin(), range_selected.at(SampleId{SampleType::Sgn_Res, range2.min()}).end(),
-                                      std::back_inserter(intersection));
-                matrix_intersection->SetBinContent(k_row, j_column, intersection.size());
-                j_column++;
-            }
-            k_row++;
-        }
-        root_ext::WriteObject(*matrix_intersection, outfile.get());
-        TimeReport();
 
         std::cout<<"Signal Compatibility"<<std::endl;
         std::map<std::pair<int,int>, std::map<Name_ND, double>> JSDvars_range_ss;
         std::map<int, std::map<Name_ND, std::shared_ptr<TGraph>>> plot_ss;
         std::map<std::pair<int,int>, std::shared_ptr<TH1D>> histo_distribution;
-        outfile->mkdir("Kolmogorov");
-        auto directory_ks = outfile->GetDirectory("Kolmogorov");
+        auto directory_ks = root_ext::GetDirectorty(*outfile,"Kolmogorov");
         auto directory_jenshan_ss = root_ext::GetDirectory(*directory_jensenshannon, "Range_SignalSignal");
         auto directory_plotselected = root_ext::GetDirectory(*directory_jenshan_ss, "Plot_RangeSelected");
         for (const auto& range : ranges){
-            KolmogorovSignalPlotSelected(range_selected.at(SampleId{SampleType::Sgn_Res, range.min()}), range.min(), range.max(), directory_ks);
+            KolmogorovSignalPlotSelected(range_selected.at(SampleId{SampleType::Sgn_Res, range.min()}), range, directory_ks);
             std::map<std::pair<int,int>, std::map<Name_ND, std::future<double>>> JSDvars_range_ss_future;
             for (const auto& sample_mass: samples_mass){
                 if (!range.Contains(sample_mass.first.mass)) continue;
                 std::pair<int, int> mass_pair(range.min(), sample_mass.first.mass);
                 histo_distribution[mass_pair] = std::make_shared<TH1D>(("JSDrange_"+std::to_string(range.min())+"_"+std::to_string(sample_mass.first.mass)).c_str(), ("JSDrange_"+std::to_string(range.min())+"_"+std::to_string(sample_mass.first.mass)).c_str(), 50,0,1);
                 histo_distribution[mass_pair]->SetXTitle("JSD");
-                for (const auto& var: range_selected.at(SampleId{SampleType::Sgn_Res, range.min()})){
-                    if (!plot_ss[range.min()].count(Name_ND{var})){
-                        plot_ss[range.min()][Name_ND{var}] = CreatePlot(("JSD_"+var+"_Range"+std::to_string(range.min())+"_"+std::to_string(range.max())).c_str(),
-                                                           ("JSD_"+var+"_Range"+std::to_string(range.min())+"_"+std::to_string(range.max())).c_str(), "mass", "JSD");
+                for (const auto& var_1: range_selected.at(SampleId{SampleType::Sgn_Res, range.min()})){
+                    if (!plot_ss[range.min()].count(var_1)){
+                        plot_ss[range.min()][var_1] = CreatePlot(("JSD_"+var_1+"_Range"+std::to_string(range.min())+"_"+std::to_string(range.max())).c_str(),
+                                                           ("JSD_"+var_1+"_Range"+std::to_string(range.min())+"_"+std::to_string(range.max())).c_str(), "mass", "JSD");
 
-                        plot_ss[range.min()][Name_ND{var}]->SetLineColor(range.min()/100);
-                        plot_ss[range.min()][Name_ND{var}]->SetMarkerColor(1);
-                        plot_ss[range.min()][Name_ND{var}]->SetMarkerSize(1);
-                        plot_ss[range.min()][Name_ND{var}]->SetMarkerStyle(8);
+                        plot_ss[range.min()][var_1]->SetLineColor(range.min()/100);
+                        plot_ss[range.min()][var_1]->SetMarkerColor(1);
+                        plot_ss[range.min()][var_1]->SetMarkerSize(1);
+                        plot_ss[range.min()][var_1]->SetMarkerStyle(8);
                     }
                     std::vector<const DataVector*> sample_1, sample_2;
                     DataVector band_1, band_2;
-                    sample_1.push_back(&samples_mass.at(SampleId{SampleType::Sgn_Res, range.min()}).at(var));
-                    band_1.push_back(bandwidth.at(SampleId{SampleType::Sgn_Res, range.min()}).at(Name_ND{var}));
-                    sample_2.push_back(&samples_mass.at(sample_mass.first).at(var));
-                    band_2.push_back( bandwidth.at(sample_mass.first).at(Name_ND{var}));
-                    JSDvars_range_ss_future[mass_pair][Name_ND{var}]  = run::async(stat_estimators::JensenShannonDivergence_ND<double>,
+                    sample_1.push_back(&samples_mass.at(SampleId{SampleType::Sgn_Res, range.min()}).at(var_1));
+                    band_1.push_back(bandwidth.at(SampleId{SampleType::Sgn_Res, range.min()}).at(var_1));
+                    sample_2.push_back(&samples_mass.at(sample_mass.first).at(var_1));
+                    band_2.push_back( bandwidth.at(sample_mass.first).at(var_1));
+                    JSDvars_range_ss_future[mass_pair][var_1]  = run::async(stat_estimators::JensenShannonDivergence_ND<double>,
                                                                           sample_1, sample_2, band_1, band_2);
                     for (const auto& var2: range_selected.at(SampleId{SampleType::Sgn_Res, range.min()})){
-                        if (var2 < var) continue;
-                        if (!plot_ss[range.min()].count(Name_ND{var, var2})) {
-                            plot_ss[range.min()][Name_ND{var, var2}] = std::make_shared<TGraph>();
-                            plot_ss[range.min()][Name_ND{var, var2}]->SetLineColor(4);
-                            plot_ss[range.min()][Name_ND{var, var2}]->SetLineWidth(1);
-                            plot_ss[range.min()][Name_ND{var, var2}]->SetMarkerColor(7);
-                            plot_ss[range.min()][Name_ND{var, var2}]->SetMarkerSize(1);
-                            plot_ss[range.min()][Name_ND{var, var2}]->SetMarkerStyle(8);
-                            plot_ss[range.min()][Name_ND{var, var2}]->SetTitle(("JSD_"+var+"_"+var2+"_Range"+std::to_string(range.min())+"_"+std::to_string(range.max())).c_str());
-                            plot_ss[range.min()][Name_ND{var, var2}]->SetName(("JSD_"+var+"_"+var2+"_Range"+std::to_string(range.min())+"_"+std::to_string(range.max())).c_str());
-                            plot_ss[range.min()][Name_ND{var, var2}]->GetHistogram()->GetXaxis()->SetTitle("mass");
-                            plot_ss[range.min()][Name_ND{var, var2}]->GetHistogram()->GetYaxis()->SetTitle("JSD");
+                        if (var2 < var_1) continue;
+                        Name_ND var_pair{var_1, var2};
+                        if (!plot_ss[range.min()].count(var_pair)) {
+                            plot_ss[range.min()][var_pair] = std::make_shared<TGraph>();
+                            plot_ss[range.min()][var_pair]->SetLineColor(4);
+                            plot_ss[range.min()][var_pair]->SetLineWidth(1);
+                            plot_ss[range.min()][var_pair]->SetMarkerColor(7);
+                            plot_ss[range.min()][var_pair]->SetMarkerSize(1);
+                            plot_ss[range.min()][var_pair]->SetMarkerStyle(8);
+                            plot_ss[range.min()][var_pair]->SetTitle(("JSD_"+var_1+"_"+var2+"_Range"+std::to_string(range.min())+"_"+std::to_string(range.max())).c_str());
+                            plot_ss[range.min()][var_pair]->SetName(("JSD_"+var_1+"_"+var2+"_Range"+std::to_string(range.min())+"_"+std::to_string(range.max())).c_str());
+                            plot_ss[range.min()][var_pair]->GetHistogram()->GetXaxis()->SetTitle("mass");
+                            plot_ss[range.min()][var_pair]->GetHistogram()->GetYaxis()->SetTitle("JSD");
                         }
                         sample_1.push_back(&samples_mass.at(SampleId{SampleType::Sgn_Res, range.min()}).at(var2));
-                        band_1.push_back(bandwidth.at(SampleId{SampleType::Sgn_Res, range.min()}).at(Name_ND{var2}));
+                        band_1.push_back(bandwidth.at(SampleId{SampleType::Sgn_Res, range.min()}).at(var2));
                         sample_2.push_back(&samples_mass.at(sample_mass.first).at(var2));
-                        band_2.push_back( bandwidth.at(sample_mass.first).at(Name_ND{var2}));
-                        JSDvars_range_ss_future[mass_pair][Name_ND{var, var2}] = run::async(stat_estimators::JensenShannonDivergence_ND<double>,
+                        band_2.push_back( bandwidth.at(sample_mass.first).at(var2));
+                        JSDvars_range_ss_future[mass_pair][var_pair] = run::async(stat_estimators::JensenShannonDivergence_ND<double>,
                                                                                             sample_1, sample_2, band_1, band_2);
 
                         sample_1.erase(sample_1.end() - 1);
@@ -407,20 +392,20 @@ public:
             for (const auto& var: range_selected.at(SampleId{SampleType::Sgn_Res, range.min()})){
                 for (const auto& sample_mass : samples_mass){
                     if (!range.Contains(sample_mass.first.mass)) continue;
+
                     for (const auto& entry : sample_mass.second.at(var)){
                         samples_range[SampleId{SampleType::Sgn_Res, range.min()}][var].push_back(entry);
                     }
                 }
             }
         }
-        outfile->mkdir("Correlation");
-        auto directory_correlation = outfile->GetDirectory("Correlation");
+        auto directory_correlation = root_ext::GetDirectorty(*outfile,"Correlation");
         for (const auto& sample: samples_range){
-            std::cout<<"----Range"<<ToString(sample.first)<<"----"<<" entries: "<<sample.second.at("pt_l1").size()<<std::endl;
+            std::cout<<"----Range"<<ToString(sample.first)<<"----"<<" entries: "<<sample.second.begin()->second.size()<<std::endl;
             std::cout<<"correlation  ";
             std::cout.flush();
             correlation_matrix_range_signal[sample.first] = CorrelationSelected(sample.second, range_selected.at(sample.first));
-            correlation_matrix_range_bkg[sample.first] = CorrelationSelected(samples_mass.at(Bkg), range_selected.at(sample.first));
+            correlation_matrix_range_bkg[sample.first] = CorrelationSelected(samples_mass.at(SampleType::Bkg_TTbar), range_selected.at(sample.first));
             int bin = range_selected.at(SampleId{SampleType::Sgn_Res, sample.first.mass}).size();
             auto matrix = std::make_shared<TH2D>(("Bkg_"+std::to_string(sample.first.mass)).c_str(),("Bkg_"+std::to_string(sample.first.mass)).c_str(),bin,0,bin,bin,0,bin);
             int i = 1;
@@ -447,7 +432,7 @@ public:
             }
             else {
                 std::cout<<"mutual plot  ";
-                MutualHisto(sample.first, mutual_matrix.at(sample.first), mutual_matrix.at(Bkg), directory_mutinf);
+                MutualHisto(sample.first, mutual_matrix.at(sample.first), mutual_matrix.at(SampleType::Bkg_TTbar), directory_mutinf);
             }
             std::cout<<std::endl;
         }
@@ -456,7 +441,7 @@ public:
         auto directory_mutinf_matrix = root_ext::GetDirectory(*directory_mutinf, "Matrix");
         CreateMatrixHistos(samples_range, mutual_matrix_range, "MI", directory_mutinf_matrix);
         std::cout <<"Correlation histos" << std::endl;
-        CreateMatrixHistos(samples_range, correlation_matrix_range_signal, "correlation_signal", directory_correlation);
+        CreateMatrixHistos(samples_range, correlation_matrix_range_signal, "Signal", directory_correlation);
         TimeReport();
 
         std::cout<<"Jensen Shannon union Signal Backgound"<<std::endl;
@@ -472,40 +457,41 @@ public:
                                                                           50,0,1);
                 histo_distribution_sb[range.min()]->SetXTitle("JSD");
                 for (const auto& var: range_selected.at(SampleId{SampleType::Sgn_Res, range.min()})){
-                    if (!plot_sb.count(Name_ND{var})){
-                        plot_sb[Name_ND{var}] = CreatePlot(("JSD_"+var+"_SignalBkg").c_str(), ("JSD_"+var+"_SignalBkg").c_str(), "mass", "JSD");
-                        plot_sb[Name_ND{var}]->SetLineColor(kRed+2);
-                        plot_sb[Name_ND{var}]->SetMarkerColor(2);
-                        plot_sb[Name_ND{var}]->SetMarkerSize(1);
-                        plot_sb[Name_ND{var}]->SetMarkerStyle(5);
+                    if (!plot_sb.count(var)){
+                        plot_sb[var] = CreatePlot(("JSD_"+var+"_SignalBkg").c_str(), ("JSD_"+var+"_SignalBkg").c_str(), "mass", "JSD");
+                        plot_sb[var]->SetLineColor(kRed+2);
+                        plot_sb[var]->SetMarkerColor(2);
+                        plot_sb[var]->SetMarkerSize(1);
+                        plot_sb[var]->SetMarkerStyle(5);
                     }
                     std::vector<const DataVector*> sample_1, sample_2;
                     DataVector band_1, band_2;
                     sample_1.push_back(&sample.second.at(var));
-                    band_1.push_back(bandwidth_range.at(SampleId{SampleType::Sgn_Res, range.min()}).at(Name_ND{var}));
-                    sample_2.push_back(&samples_mass.at(Bkg).at(var));
-                    band_2.push_back(bandwidth.at(Bkg).at(Name_ND{var}));
-                    JSDvars_range_sb_future[range.min()][Name_ND{var}]  = run::async(stat_estimators::JensenShannonDivergence_ND<double>,
+                    band_1.push_back(bandwidth_range.at(SampleId{SampleType::Sgn_Res, range.min()}).at(var));
+                    sample_2.push_back(&samples_mass.at(SampleType::Bkg_TTbar).at(var));
+                    band_2.push_back(bandwidth.at(SampleType::Bkg_TTbar).at(var));
+                    JSDvars_range_sb_future[range.min()][var]  = run::async(stat_estimators::JensenShannonDivergence_ND<double>,
                                                                           sample_1, sample_2, band_1, band_2);
                     for (const auto& var2: range_selected.at(SampleId{SampleType::Sgn_Res, range.min()})){
                         if (var2 <= var) continue;
+                        Name_ND var_pair{var, var2};
                         if (!plot_sb.count(Name_ND{var, var2})) {
-                            plot_sb[Name_ND{var, var2}] = std::make_shared<TGraph>();
-                            plot_sb[Name_ND{var, var2}]->SetLineColor(kRed+2);
-                            plot_sb[Name_ND{var, var2}]->SetLineWidth(1);
-                            plot_sb[Name_ND{var, var2}]->SetMarkerColor(2);
-                            plot_sb[Name_ND{var, var2}]->SetMarkerSize(1);
-                            plot_sb[Name_ND{var, var2}]->SetMarkerStyle(5);
-                            plot_sb[Name_ND{var, var2}]->SetTitle(("JSD_"+var+"_"+var2+"_SignalBkg").c_str());
-                            plot_sb[Name_ND{var, var2}]->SetName(("JSD_"+var+"_"+var2+"_SignalBkg").c_str());
-                            plot_sb[Name_ND{var, var2}]->GetHistogram()->GetXaxis()->SetTitle("mass");
-                            plot_sb[Name_ND{var, var2}]->GetHistogram()->GetYaxis()->SetTitle("JSD");
+                            plot_sb[var_pair] = std::make_shared<TGraph>();
+                            plot_sb[var_pair]->SetLineColor(kRed+2);
+                            plot_sb[var_pair]->SetLineWidth(1);
+                            plot_sb[var_pair]->SetMarkerColor(2);
+                            plot_sb[var_pair]->SetMarkerSize(1);
+                            plot_sb[var_pair]->SetMarkerStyle(5);
+                            plot_sb[var_pair]->SetTitle(("JSD_"+var+"_"+var2+"_SignalBkg").c_str());
+                            plot_sb[var_pair]->SetName(("JSD_"+var+"_"+var2+"_SignalBkg").c_str());
+                            plot_sb[var_pair]->GetHistogram()->GetXaxis()->SetTitle("mass");
+                            plot_sb[var_pair]->GetHistogram()->GetYaxis()->SetTitle("JSD");
                         }
                         sample_1.push_back(&sample.second.at(var2));
-                        band_1.push_back(bandwidth_range.at(SampleId{SampleType::Sgn_Res, range.min()}).at(Name_ND{var2}));
-                        sample_2.push_back(&samples_mass.at(Bkg).at(var2));
-                        band_2.push_back(bandwidth.at(Bkg).at(Name_ND{var2}));
-                        JSDvars_range_sb_future[range.min()][Name_ND{var, var2}] = run::async(stat_estimators::JensenShannonDivergence_ND<double>,
+                        band_1.push_back(bandwidth_range.at(SampleId{SampleType::Sgn_Res, range.min()}).at(var2));
+                        sample_2.push_back(&samples_mass.at(SampleType::Bkg_TTbar).at(var2));
+                        band_2.push_back(bandwidth.at(SampleType::Bkg_TTbar).at(var2));
+                        JSDvars_range_sb_future[range.min()][var_pair] = run::async(stat_estimators::JensenShannonDivergence_ND<double>,
                                                                                             sample_1, sample_2, band_1, band_2);
 
                         sample_1.erase(sample_1.end() - 1);
@@ -553,7 +539,7 @@ public:
                     int jj = 1;
                     for (const auto& var2: range_selected.at(SampleId{SampleType::Sgn_Res, range.min()})){
                         if (var1 == var2){
-                            matrix_jsd_sb->SetBinContent(i, i, JSDvars_range_sb.at(range.min()).at(Name_ND{var1}));
+                            matrix_jsd_sb->SetBinContent(i, i, JSDvars_range_sb.at(range.min()).at(var1));
                         }
                         if (jj > i){
                             matrix_jsd_sb->SetBinContent(i, jj, JSDvars_range_sb.at(range.min()).at(Name_ND{var1, var2}));
@@ -571,10 +557,7 @@ public:
         for (const auto & range: ranges){
             for (const auto& selected_name : plot_ss.at(range.min())){
                 if (canvas.count(selected_name.first)) continue;
-                if (selected_name.first.size() == 1)
-                    canvas[selected_name.first] = new TCanvas((*selected_name.first.names.begin()).c_str(), (*selected_name.first.names.begin()).c_str(), 10,10,800,800);
-                else
-                    canvas[selected_name.first] = new TCanvas((*selected_name.first.names.begin()+"_"+*selected_name.first.names.rbegin()).c_str(), (*selected_name.first.names.begin()+"_"+*selected_name.first.names.rbegin()).c_str(), 10,10,800,800);
+                canvas[selected_name.first] = new TCanvas(selected_name.first.ToString().c_str(), selected_name.first.ToString().c_str(), 10,10,800,800);
                 canvas[selected_name.first]->DrawFrame(200,0,1000,1);
                 canvas[selected_name.first]->SetGrid();
             }
@@ -594,23 +577,17 @@ public:
         TimeReport(true);
     }
 
-    void TimeReport(bool tot = false)
+    void TimeReport(bool tot = false) const
     {
-        auto stop = clock::now();
-        auto delta = tot ? stop - start_tot : stop - start;
-        std::cout<<"secondi";
-        if(tot)
-            std::cout << " totali";
-        std::cout << ": " << std::chrono::duration_cast<std::chrono::seconds>(delta).count()<<std::endl;
-        if(!tot)
-            start = stop;
+        reporter->TimeReport(tot);
     }
+
 private:
     Arguments args;
     SampleEntryCollection samples;
     std::shared_ptr<TFile> outfile;
     MvaVariablesStudy vars;
-    clock::time_point start, start_tot;
+    std::shared_ptr<TimeReporter> reporter;
 };
 }
 }

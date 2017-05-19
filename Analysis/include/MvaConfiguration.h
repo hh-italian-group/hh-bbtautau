@@ -8,8 +8,6 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Run/include/MultiThread.h"
 #include "hh-bbtautau/Analysis/include/MvaVariables.h"
 
-
-
 namespace  analysis {
 namespace mva_study{
 
@@ -89,7 +87,7 @@ public:
     }
 };
 
-static const std::set<std::string>& GetMvaBranches()
+inline const std::set<std::string>& GetMvaBranches()
 {
     static const std::set<std::string> EnabledBranches_read = {
         "eventEnergyScale", "q_1", "q_2", "jets_p4", "extraelec_veto", "extramuon_veto ", "SVfit_p4",
@@ -99,9 +97,14 @@ static const std::set<std::string>& GetMvaBranches()
 }
 
 struct Name_ND{
+private:
     std::set<std::string> names;
 
+public:
     using const_iterator = std::set<std::string>::const_iterator;
+
+    Name_ND(const std::string& name) { names.insert(name); }
+    Name_ND(std::initializer_list<std::string> _names) : names(_names.begin(), _names.end()){}
 
     bool operator<(const Name_ND& x) const
     {
@@ -113,7 +116,6 @@ struct Name_ND{
         }
         return false;
     }
-    Name_ND(std::initializer_list<std::string> _name) : names(_name.begin(), _name.end()){}
 
     const_iterator begin() const { return names.begin(); }
     const_iterator end() const { return names.end(); }
@@ -128,6 +130,14 @@ struct Name_ND{
         return *std::next(begin(), n);
     }
 
+    template<typename Set>
+    bool IsSubset(const Set& set) const
+    {
+        for(const auto& name : names)
+            if(!set.count(name)) return false;
+        return true;
+    }
+
     bool operator==(const Name_ND& other) const
     {
         if (names.size() != other.size()) return false;
@@ -140,6 +150,16 @@ struct Name_ND{
 
     bool operator !=(const Name_ND& other) const { return !(*this == other); }
 
+    std::string ToString(const std::string& sep = "_") const
+    {
+        std::ostringstream ss;
+        auto iter = names.begin();
+        if(iter != names.end())
+            ss << *iter;
+        for(iter = std::next(iter); iter != names.end(); ++iter)
+            ss << sep << *iter;
+        return ss.str();
+    }
 };
 }
 }

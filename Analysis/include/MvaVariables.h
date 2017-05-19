@@ -16,23 +16,28 @@ namespace mva_study{
 //ENUM_ISTREAM_OPERATORS()
 ENUM_OSTREAM_OPERATOR()
 
-enum class SampleType { Sgn_Res, Sgn_NonRes, Bkg_TTbar };
+enum class SampleType { Sgn_Res = 1, Sgn_NonRes = 0, Bkg_TTbar = -1 };
 
 struct SampleId {
     SampleType sampleType;
     int mass;
 
+    SampleId() : sampleType(SampleType::Sgn_Res), mass(0) {}
+    SampleId(SampleType _sampleType, int _mass = 0) : sampleType(_sampleType), mass(_mass) {}
+
     bool operator<(const SampleId& x) const
     {
-        if (mass != x.mass) return mass < x.mass;
-        else return false;
+        if (sampleType != x.sampleType) return static_cast<int>(sampleType) < static_cast<int>(x.sampleType);
+        return mass < x.mass;
     }
 
     bool IsSignal() const { return sampleType == SampleType::Sgn_Res || sampleType == SampleType::Sgn_NonRes; }
     bool IsBackground() const { return !IsSignal(); }
     bool IsSM() const { return sampleType == SampleType::Sgn_NonRes; }
+
 };
 
+//static const SampleId Bkg{SampleType::Bkg_TTbar, -1};
 
 ENUM_NAMES(SampleType) = {
     {SampleType::Sgn_Res, "Sgn_Res"},
@@ -40,7 +45,6 @@ ENUM_NAMES(SampleType) = {
     {SampleType::Bkg_TTbar, "TT"}
 };
 
-static const SampleId Bkg{SampleType::Bkg_TTbar, -1};
 
 inline std::ostream& operator<<(std::ostream& os, const SampleId& id)
 {
@@ -55,12 +59,13 @@ inline std::istream& operator>>(std::istream& is, SampleId& id)
 {
     std::string type;
     is >> type;
+    id.mass = 0;
     if(!TryParse(type, id.sampleType)) {
         if(!type.size() || type.at(0) != 'M')
             throw exception("Bad sample id");
         id.sampleType = SampleType::Sgn_Res;
         id.mass = Parse<int>(type.substr(1));
-    } else {
+    }/* else {
         if (type.at(0) == 'S'){
             id.sampleType = SampleType::Sgn_NonRes;
             id.mass = 0;
@@ -71,7 +76,7 @@ inline std::istream& operator>>(std::istream& is, SampleId& id)
                 id.mass = -1;
             }
         }
-    }
+    }*/
     return is;
 }
 

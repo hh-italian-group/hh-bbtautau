@@ -12,6 +12,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Cuts/include/Btag_2016.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
+#include "hh-bbtautau/Analysis/include/MvaMethods.h"
 
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, input_path);
@@ -33,7 +34,7 @@ public:
     SampleIdVarData sample_vars;
 
     VariablesDistribution(const Arguments& _args): args(_args), samples(SampleEntry::ReadConfig(args.cfg_file())),
-        outfile(root_ext::CreateRootFile(args.output_file())), start(clock::now()), start_tot(clock::now())
+        outfile(root_ext::CreateRootFile(args.output_file())), reporter(std::make_shared<TimeReporter>())
     {
     }
 
@@ -123,16 +124,9 @@ public:
         TimeReport(true);
     }
 
-    void TimeReport(bool tot = false)
+    void TimeReport(bool tot = false) const
     {
-        auto stop = clock::now();
-        auto delta = tot ? stop - start_tot : stop - start;
-        std::cout<<"secondi";
-        if(tot)
-            std::cout << " totali";
-        std::cout << ": " << std::chrono::duration_cast<std::chrono::seconds>(delta).count()<<std::endl;
-        if(!tot)
-            start = stop;
+        reporter->TimeReport(tot);
     }
 
 private:
@@ -140,7 +134,7 @@ private:
     SampleEntryCollection samples;
     std::shared_ptr<TFile> outfile;
     MvaVariablesStudy vars;
-    clock::time_point start, start_tot;
+    std::shared_ptr<TimeReporter> reporter;
 };
 }
 }
