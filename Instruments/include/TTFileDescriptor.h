@@ -76,25 +76,43 @@ struct TTBinDescriptor {
             throw analysis::exception("Unable to create outputfile'");
         cfg.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 
-        static const std::vector<int> column_widths = { 9,9,15,15,15,15,15 };
+        std::vector<std::string> headers = { "#genType_min","genType_max","weight","rel_err_w",
+                                           "nu","rel_err_nu","inclusive_integral"};
+        std::cout << "headers size:" << headers.size() << std::endl;
 
-        cfg << std::setw(column_widths.at(0)) << "#genType_min " <<
-               std::setw(column_widths.at(1)) << "genType_max " <<
-               std::setw(column_widths.at(2)) << "weight " <<
-               std::setw(column_widths.at(3)) << " rel_err_w " <<
-               std::setw(column_widths.at(4)) << " nu " <<
+        std::vector<int> column_widths(headers.size());
+
+        std::cout << "column_widths size:" << column_widths.size() << std::endl;
+
+        column_widths[0] = headers[0].size();
+        column_widths[1] = headers[1].size()+1;
+
+        for(unsigned h = 2; h < headers.size(); ++h){
+          column_widths[h] = std::numeric_limits<double>::digits10 + 6;
+          std::cout << "column_widths n:" << column_widths[h] << std::endl;
+        }
+
+        //static const std::vector<int> column_widths = { 9,9,15,15,15,15,15 };
+
+        cfg << std::setw(column_widths.at(0)) << "#genType_min" <<
+               std::setw(column_widths.at(1)) << "genType_max" <<
+               std::setw(column_widths.at(2)) << "weight" <<
+               std::setw(column_widths.at(3)) << " rel_err_w" <<
+               std::setw(column_widths.at(4)) << " nu" <<
                std::setw(column_widths.at(5)) << " rel_err_nu" <<
-               std::setw(column_widths.at(6)) << " inclusive_integral \n";
+               std::setw(column_widths.at(6)) << " inclusive_integral\n";
+
+        cfg << std::setprecision(std::numeric_limits<double>::digits10);
 
         for(auto& output_bin : output_bins)
         {
-            cfg << std::setw(column_widths.at(0)) << output_bin.genType.min() << " " <<
-                   std::setw(column_widths.at(1)) << output_bin.genType.max()  << " " <<
-                   std::setw(column_widths.at(2)) << output_bin.weight.GetValue() << " " <<
-                   std::setw(column_widths.at(3)) << output_bin.weight.GetRelativeStatisticalError() << " " <<
-                   std::setw(column_widths.at(4)) << output_bin.nu.GetValue() << " " <<
-                   std::setw(column_widths.at(5)) << output_bin.nu.GetRelativeStatisticalError() << " " <<
-                   std::setw(column_widths.at(6)) << output_bin.inclusive_integral << " \n";
+            cfg << std::setw(column_widths.at(0)) << output_bin.genType.min() <<
+                   std::setw(column_widths.at(1)) << output_bin.genType.max()  <<
+                   std::setw(column_widths.at(2)) << output_bin.weight.GetValue() <<
+                   std::setw(column_widths.at(3)) << output_bin.weight.GetRelativeStatisticalError() <<
+                   std::setw(column_widths.at(4)) << output_bin.nu.GetValue() <<
+                   std::setw(column_widths.at(5)) << output_bin.nu.GetRelativeStatisticalError() <<
+                   std::setw(column_widths.at(6)) << output_bin.inclusive_integral << "\n";
         }
         return cfg;
     }

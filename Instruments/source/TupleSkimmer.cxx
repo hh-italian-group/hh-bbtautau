@@ -12,6 +12,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Run/include/EntryQueue.h"
 #include "AnalysisTools/Core/include/ProgressReporter.h"
 #include "h-tautau/McCorrections/include/EventWeights.h"
+#include "hh-bbtautau/McCorrections/include/EventWeights_HH.h"
 
 struct Arguments {
     REQ_ARG(std::string, treeName);
@@ -35,7 +36,9 @@ public:
 	using ExpressEvent = ntuple::ExpressEvent;
 	using ExpressPtr   = std::shared_ptr<ExpressEvent>;
 
-    TupleSkimmer(const Arguments& _args) : args(_args), processQueue(100000), writeQueue(100000), eventWeights(Period::Run2016, DiscriminatorWP::Medium) {}
+    TupleSkimmer(const Arguments& _args) : args(_args), processQueue(100000), writeQueue(100000),
+        eventWeights_HH(Parse<Channel>(args.treeName()),Period::Run2016, DiscriminatorWP::Medium)
+    { }
 
     void Run()
     {
@@ -59,13 +62,14 @@ public:
 			inputFiles.push_back(additional2File);
 			std::cout << "  --> there is another additional file <-- " <<std::endl;
 		}
-		
-		DisabledBranches_read = { "dphi_mumet", "dphi_metsv", "dR_taumu", "mT1", "mT2", "dphi_bbmet", "dphi_bbsv", "dR_bb", "m_bb", "n_jets",
-			"btag_weight", "ttbar_weight",  "PU_weight", "shape_denominator_weight", "trigger_accepts", "trigger_matches"};
+        //BDT variables: "dphi_mumet", "dphi_metsv", "dR_taumu", "mT1", "mT2", "dphi_bbmet", "dphi_bbsv", "dR_bb", "m_bb",
+        DisabledBranches_read = {"n_jets", "weight_btag", "weight_ttbar_pt",  "weight_PU", "weight_dy", "weight_ttbar_merge",
+                                 "weight_sm", "shape_denominator_weight", "trigger_accepts", "trigger_matches"};
 
-		DisabledBranches_write = { "lhe_particle_pdg", "lhe_particle_p4", "pfMET_cov", "genJets_partoFlavour", "genJets_hadronFlavour",
-			"genJets_p4", "genParticles_p4", "genParticles_pdg", "trigger_accepts", "trigger_matches", "tauId_keys_1", "tauId_values_1",
-			"tauId_keys_2", "tauId_values_2"};
+        DisabledBranches_write = { "lhe_particle_pdg", "lhe_particle_p4", "pfMET_cov", "genJets_partoFlavour",
+                                   "genJets_hadronFlavour", "genJets_p4", "genParticles_p4", "genParticles_pdg",
+                                   "trigger_accepts", "trigger_matches", "tauId_keys_1", "tauId_values_1",
+                                   "tauId_keys_2", "tauId_values_2"};
 		
 		denominator = GetShapeDenominatorWeight(args.originalFileName());
 
@@ -83,27 +87,34 @@ public:
     }
 
 private:
-	Float_t GetShapeDenominatorWeight(const std::string& originalFileName)
+    std::pair<double,double> GetShapeDenominatorWeight(const std::string& originalFileName)
 	{
 		std::cout << "Calculating denominator for shape changing weights..." << std::endl;
-		
+        std::pair<double,double> tot_weight; //first without ttbar_pt, second with ttbar_pt
 		std::shared_ptr<ExpressTuple> AllEventTuple(new ExpressTuple("all_events", originalFile.get(), true));
 		
-		Float_t tot_weight = 1.;
 		const Long64_t all_entries = AllEventTuple->GetEntries();
 		for(Long64_t current_entry = 0; current_entry < all_entries; ++current_entry)
 		{
 			AllEventTuple->GetEntry(current_entry);
 			ExpressPtr event(new ExpressEvent(AllEventTuple->data()));
-			Float_t pu = eventWeights.GetPileUpWeight(*event);
-			Float_t mc = event->genEventWeight;
+            double pu = eventWeights_HH.GetPileUpWeight(*event);
+            double mc = event->genEventWeight;
 			
-			Float_t ttbar = 1.;
-			if(args.sample_type() == "ttbar")
-			{
-				ttbar = std::sqrt(std::exp(0.0615 - 0.0005 * event->gen_top_pt) * std::exp(0.0615 - 0.0005*event->gen_topBar_pt));
-			}
-			tot_weight = tot_weight + (pu*ttbar*mc);
+            double weight_ttbar_pt = 1.;
+            if(args.sample_type() == "ttbar")
+            {
+                weight_ttbar_pt = eventWeights_HH.GetTopPtWeight(*event);
+            }
+
+            double weight_sm = 1.;
+            if(args.sample_type() == "sm")
+            {
+                weight_sm = eventWeights_HH.GetBSMtoSMweight(*event);
+            }
+
+            tot_weight.first = tot_weight.first + (pu*mc*weight_sm);
+            tot_weight.second = tot_weight.second + (pu*weight_ttbar_pt*mc*weight_sm);
 		}
 		return tot_weight;
 	}
@@ -213,62 +224,49 @@ private:
         outputTuple->Write();
     }
 
-	bool ProcessEvent(Event& event)
+    bool ProcessEvent(Event& event)
     {
 	
-		if (event.jets_p4.size() < 2) return false;
-	
+        LorentzVectorE_Float first_jet = event.jets_p4.at(0);
+        LorentzVectorE_Float second_jet = event.jets_p4.at(1);
+        if (event.jets_p4.size() < 2 || event.extraelec_veto == false || event.extramuon_veto == false ||
+                 std::abs(first_jet.eta()) >= cuts::btag_2016::eta ||
+                 std::abs(second_jet.eta()) >= cuts::btag_2016::eta) return false;
+
         //const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
         //if(es != EventEnergyScale::Central) return false;
 
+        //old WP for isolation: "byTightIsolationMVArun2v1DBoldDMwLT", "byVTightIsolationMVArun2v1DBoldDMwLT"
         static const std::set<std::string> tauID_Names = {
             "againstMuonTight3", "againstElectronVLooseMVA6", "againstElectronTightMVA6", "againstMuonLoose3",
-            "byTightIsolationMVArun2v1DBoldDMwLT", "byVTightIsolationMVArun2v1DBoldDMwLT"
+            "byMediumIsolationMVArun2v1DBoldDMwLT"
         };
 		
-        /*decltype(event.tauIDs_1) tauIDs_1, tauIDs_2;
-        for(const auto& name : tauID_Names) {
-            if(event.tauIDs_1.count(name))
-                tauIDs_1[name] = event.tauIDs_1.at(name);
-            if(event.tauIDs_2.count(name))
-                tauIDs_2[name] = event.tauIDs_2.at(name);
+//        decltype(event.tauIDs_1) tauIDs_1, tauIDs_2;
+//        for(const auto& name : tauID_Names) {
+//            if(event.tauIDs_1.count(name))
+//                tauIDs_1[name] = event.tauIDs_1.at(name);
+//            if(event.tauIDs_2.count(name))
+//                tauIDs_2[name] = event.tauIDs_2.at(name);
 
-        }
-        event.tauIDs_1 = tauIDs_1;
-        event.tauIDs_2 = tauIDs_2;
-		*/
+//        }
+//        event.tauIDs_1 = tauIDs_1;
+//        event.tauIDs_2 = tauIDs_2;
+
 	
 		// Event Variables
 		event.n_jets = event.jets_p4.size();
+        event.ht_other_jets = analysis::Calculate_HT(event.jets_p4.begin()+2,event.jets_p4.end());
 
 		// Event Weights Variables
-		event.btag_weight = eventWeights.GetBtagWeight(event);
-		event.PU_weight = eventWeights.GetPileUpWeight(event);
-		event.ttbar_weight = eventWeights.GetTopPtWeight(event);
-		event.shape_denominator_weight = denominator;
-		
-		// BDT Variables
-		event.dphi_mumet = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.p4_1    , event.pfMET_p4));
-		event.dphi_metsv = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.SVfit_p4, event.pfMET_p4));
-		event.dR_taumu = std::abs(ROOT::Math::VectorUtil::DeltaR(event.p4_1, event.p4_2));
-		event.mT1 = Calculate_MT(event.p4_1, event.pfMET_p4);
-		event.mT2 = Calculate_MT(event.p4_2, event.pfMET_p4);
-		
-		if (event.jets_p4.size() >= 2)
-		{
-			ROOT::Math::LorentzVector<ROOT::Math::PtEtaPhiE4D<float>> bsum = event.jets_p4[0] + event.jets_p4[1];
-			event.dphi_bbmet = std::abs(ROOT::Math::VectorUtil::DeltaPhi(bsum, event.pfMET_p4));
-			event.dphi_bbsv = std::abs(ROOT::Math::VectorUtil::DeltaPhi(bsum, event.SVfit_p4));
-			event.dR_bb = std::abs(ROOT::Math::VectorUtil::DeltaR(event.jets_p4[0], event.jets_p4[1]));
-			event.m_bb = bsum.M();
-		}
-		else
-		{
-			std::cout << "Less than 2 jets in run:lumi:evt -->" << event.run << ":" << event.lumi << ":" << event.evt << std::endl;
-			event.dphi_bbmet = -1.;
-			event.dphi_bbsv = -1.;
-			event.dR_bb = -1.;
-		}
+        event.weight_btag = eventWeights_HH.GetBtagWeight(event);
+        event.weight_lepton = eventWeights_HH.GetLeptonTotalWeight(event);
+        event.weight_PU = eventWeights_HH.GetPileUpWeight(event);
+        event.weight_ttbar_pt = eventWeights_HH.GetTopPtWeight(event);
+        event.weight_dy = eventWeights_HH.GetDY_weight(event);
+        event.weight_ttbar_merge = eventWeights_HH.GetTTbar_weight(event);
+        event.weight_sm = eventWeights_HH.GetBSMtoSMweight(event);
+//		event.shape_denominator_weight = denominator;
 	
 		// Jets Variables Resizing
 		event.jets_csv.resize(2);
@@ -291,8 +289,8 @@ private:
 	std::shared_ptr<TFile> additional2File;
 	std::vector<std::shared_ptr<TFile>> inputFiles;
 	
-	mc_corrections::EventWeights eventWeights;
-	Float_t denominator;
+    mc_corrections::EventWeights_HH eventWeights_HH;
+    std::pair<double,double> denominator;
 	
 	std::set<std::string> DisabledBranches_read;
 	std::set<std::string> DisabledBranches_write;

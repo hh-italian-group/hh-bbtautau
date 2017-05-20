@@ -17,4 +17,4 @@ foreach(exe_name ${EXE_LIST})
     target_link_libraries("${exe_name}" HTT-utilities HHKinFit2)
 endforeach()
 
-set_target_properties(LimitConfigurationProducer BjetEffSF bbetauAnalyzer bbmutauAnalyzer bbtautauAnalyzer BjetSelectionStudy MvaTraining KinFitStudy TupleSkimmer PROPERTIES EXCLUDE_FROM_ALL 1)
+set_target_properties(LimitConfigurationProducer bbetauAnalyzer bbmutauAnalyzer bbtautauAnalyzer BjetSelectionStudy MvaTraining BjetEffSF KinFitStudy PROPERTIES EXCLUDE_FROM_ALL 1)
