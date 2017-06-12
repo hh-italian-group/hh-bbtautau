@@ -1,4 +1,4 @@
-/*! Definition of the file descriptor for DY sample merging.
+/*! Definition of the file descriptor for DY and Wjets sample merging.
 This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #pragma once
@@ -17,7 +17,7 @@ namespace analysis {
 
 namespace sample_merging{
 
-struct DYBinDescriptor {
+struct NJets_HT_BinFileDescriptor {
     std::string name;
     std::vector<std::string> file_paths;
     FileType fileType;
@@ -31,7 +31,7 @@ struct DYBinDescriptor {
     FileType ref_fileType;
     size_t inclusive_integral;
 
-    DYBinDescriptor()
+    NJets_HT_BinFileDescriptor()
         : n_jet(0,0), n_bjet(0,0),n_ht(0,0),nu(0.0, std::numeric_limits<double>::infinity()),
           weight(std::numeric_limits<double>::quiet_NaN()) {}
 
@@ -42,9 +42,9 @@ struct DYBinDescriptor {
               n_ht.Contains(genId.ht10_bin);
     }
 
-    static std::vector<DYBinDescriptor> LoadConfig(const std::string& config_file)
+    static std::vector<NJets_HT_BinFileDescriptor> LoadConfig(const std::string& config_file)
     {
-        std::vector<DYBinDescriptor> dyBinDescriptors;
+        std::vector<NJets_HT_BinFileDescriptor> jetBinDescriptors;
         std::ifstream cfg(config_file);
         while (cfg.good()) {
             std::string cfgLine;
@@ -52,7 +52,7 @@ struct DYBinDescriptor {
             if (!cfgLine.size() || cfgLine.at(0) == '#') continue;
             auto columns = ConfigEntryReader::ParseOrderedParameterList(cfgLine, true);
             std::istringstream ss(cfgLine);
-            DYBinDescriptor descriptor;
+            NJets_HT_BinFileDescriptor descriptor;
             if(columns.size() >= 6)
                 ss >> descriptor.n_jet >> descriptor.n_bjet >> descriptor.n_ht;
             if (columns.size() >= 12){
@@ -68,13 +68,13 @@ struct DYBinDescriptor {
             }
             if(columns.size() != 6 && columns.size() != 12)
                 throw exception("Bad configuration file.");
-            dyBinDescriptors.push_back(descriptor);
+            jetBinDescriptors.push_back(descriptor);
         }
-        return dyBinDescriptors;
+        return jetBinDescriptors;
     }
 
 
-    static std::ofstream SaveCfg(const std::string& output_file, const std::vector<DYBinDescriptor>& output_bins)
+    static std::ofstream SaveCfg(const std::string& output_file, const std::vector<NJets_HT_BinFileDescriptor>& output_bins)
     {
         std::ofstream cfg(output_file);
         if(cfg.fail())
@@ -142,7 +142,7 @@ struct DYBinDescriptor {
     }
 };
 
-using DYBinDescriptorCollection = std::unordered_map<std::string, DYBinDescriptor>;
+using NJets_HT_BinDescriptorCollection = std::unordered_map<std::string, NJets_HT_BinFileDescriptor>;
 
 } //namespace sample_merging
 
