@@ -58,7 +58,7 @@ using SampleEntryCollection = std::vector<SampleEntry>;
 class MvaVariablesStudy : public MvaVariables {
 private:
     std::map<std::string, double> variables;
-    using SplittedSampleIdVarData = std::map<int, SampleIdVarData>;
+    using SplittedSampleIdVarData = std::map<size_t, SampleIdVarData>;
     SplittedSampleIdVarData all_variables;
 
 public:
@@ -69,7 +69,7 @@ public:
         variables[name] = value;
     }
 
-    virtual void AddEventVariables(size_t set, const SampleId& mass,  double weight) override
+    virtual void AddEventVariables(size_t set, const SampleId& mass,  double /*weight*/) override
     {
         VarData& sample_vars = all_variables[set][mass];
         for(const auto& name_value : variables) {
@@ -127,7 +127,7 @@ public:
     {
         if(n >= size())
             throw exception("Number of name dimensions = %1%, which is less than %2%") % size() % n;
-        return *std::next(begin(), n);
+        return *std::next(begin(), static_cast<long>(n));
     }
 
     template<typename Set>

@@ -14,7 +14,7 @@ namespace analysis {
 namespace mva_study{
 
 //ENUM_ISTREAM_OPERATORS()
-ENUM_OSTREAM_OPERATOR()
+ENUM_OSTREAM_OPERATORS()
 
 enum class SampleType { Sgn_Res = 1, Sgn_NonRes = 0, Bkg_TTbar = -1 };
 

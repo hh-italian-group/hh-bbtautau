@@ -87,7 +87,7 @@ public:
     }
 
 private:
-    std::pair<double,double> GetShapeDenominatorWeight(const std::string& originalFileName)
+    std::pair<double,double> GetShapeDenominatorWeight(const std::string& /*originalFileName*/)
 	{
 		std::cout << "Calculating denominator for shape changing weights..." << std::endl;
         std::pair<double,double> tot_weight; //first without ttbar_pt, second with ttbar_pt
@@ -119,7 +119,7 @@ private:
 		return tot_weight;
 	}
 
-    void ReadThread(const std::string& treeName, const std::string& originalFileName)
+    void ReadThread(const std::string& treeName, const std::string& /*originalFileName*/)
     {
 		if(args.sample_type() == "data")
 		{
@@ -130,16 +130,16 @@ private:
 
 		tools::ProgressReporter reporter(10, std::cout, "Starting skimming...");
 		const Long64_t n_entries = originalTuple->GetEntries();
-		reporter.SetTotalNumberOfEvents(n_entries);
+        reporter.SetTotalNumberOfEvents(static_cast<size_t>(n_entries));
 		for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry)
 		{
 			originalTuple->GetEntry(current_entry);
-			reporter.Report(current_entry);
+            reporter.Report(static_cast<size_t>(current_entry));
 			EventPtr event(new Event(originalTuple->data()));
 			processQueue.Push(event);
 		}
 		processQueue.SetAllDone();
-		reporter.Report(n_entries, true);
+        reporter.Report(static_cast<size_t>(n_entries), true);
     }
 
 	void ReadThread2(const std::string& treeName)
@@ -163,7 +163,7 @@ private:
 		}
 
 		std::cout << "   Total entries: " << tot_entries << std::endl;
-		reporter.SetTotalNumberOfEvents(tot_entries);
+        reporter.SetTotalNumberOfEvents(static_cast<size_t>(tot_entries));
 		
 		for (size_t n = 0; n<inputTuples.size(); ++n)
 		{
@@ -174,14 +174,14 @@ private:
 			for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry)
 			{
 			 	inputTuples.at(n)->GetEntry(current_entry);
-				reporter.Report(current_entry);
+                reporter.Report(static_cast<size_t>(current_entry));
 				EventPtr event(new Event(inputTuples.at(n)->data()));
 				processQueue.Push(event);
 			}
 		}
 		
 		processQueue.SetAllDone();
-		reporter.Report(tot_entries, true);
+        reporter.Report(static_cast<size_t>(tot_entries), true);
 	}
 
 	void SaveSummaryTree()
@@ -206,7 +206,7 @@ private:
         writeQueue.SetAllDone();
     }
 
-    void WriteThread(const std::string& treeName, const std::string& outputFileName)
+    void WriteThread(const std::string& treeName, const std::string& /*outputFileName*/)
     {
 		if(args.sample_type() == "data")
 		{
@@ -255,8 +255,8 @@ private:
 
 	
 		// Event Variables
-		event.n_jets = event.jets_p4.size();
-        event.ht_other_jets = analysis::Calculate_HT(event.jets_p4.begin()+2,event.jets_p4.end());
+        event.n_jets = static_cast<unsigned>(event.jets_p4.size());
+        event.ht_other_jets = static_cast<float>(analysis::Calculate_HT(event.jets_p4.begin()+2,event.jets_p4.end()));
 
 		// Event Weights Variables
         event.weight_btag = eventWeights_HH.GetBtagWeight(event);

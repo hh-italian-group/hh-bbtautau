@@ -102,7 +102,7 @@ inline void CreateMatrixHistos(const SampleIdVarData& samples_mass, const Sample
 {
     for(const auto& mass_entry: samples_mass){
         if (!element.count(mass_entry.first)) continue;
-        int bin =  mass_entry.second.size();
+        int bin = static_cast<int>(mass_entry.second.size());
         std::string value = type+"_"+ ToString(mass_entry.first);
         auto matrix = std::make_shared<TH2D>(value.c_str(), value.c_str(),
                                              bin, 0, bin, bin, 0, bin);
@@ -127,7 +127,7 @@ inline void CreateMatrixHistosCompatibility(const SampleIdVarData& samples_mass,
                                             const std::string& name, TDirectory* directory)
 {
     int k = 1;
-    int bin = samples_mass.size() - 1;
+    int bin = static_cast<int>(samples_mass.size()) - 1;
     auto  histo_sgn_compatibility = std::make_shared<TH2D>(name.c_str(),name.c_str(), bin, 0, bin, bin, 0, bin);
     for(auto mass_entry_1 = samples_mass.begin(); mass_entry_1 != samples_mass.end(); ++mass_entry_1) {
         if ( mass_entry_1->first.IsBackground())

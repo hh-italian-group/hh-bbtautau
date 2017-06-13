@@ -32,9 +32,9 @@ struct Arguments { // list of all program arguments
     REQ_ARG(unsigned, number_threads);
     REQ_ARG(size_t, number_variables);
     OPT_ARG(Long64_t, number_events, 1000000);
-    OPT_ARG(int, number_sets, 0);
-    OPT_ARG(int, set, 0);
-    OPT_ARG(Long64_t, seed, 10000);
+    OPT_ARG(size_t, number_sets, 0);
+    OPT_ARG(size_t, set, 0);
+    OPT_ARG(uint_fast32_t, seed, 10000);
 };
 
 namespace analysis {
@@ -215,7 +215,8 @@ public:
                 std::vector<double> vector_signal_2 = samples_mass.at(SampleId{SampleType::Sgn_Res, range.min()}).at(var);
                 std::sort(vector_signal_2.begin(), vector_signal_2.end());
                 Double_t* v_s = vector_signal.data(), *v_s_2 = vector_signal_2.data();
-                double k = TMath::KolmogorovTest(vector_signal.size(), v_s, vector_signal_2.size(), v_s_2, "");
+                double k = TMath::KolmogorovTest(static_cast<int>(vector_signal.size()), v_s,
+                                                 static_cast<int>(vector_signal_2.size()), v_s_2, "");
                 if (plot.count(var) == 0) {
                     std::string name = var+"_Signal"+std::to_string(range.min())+"_"+std::to_string(range.max());
                     plot[var] = CreatePlot(name.c_str(), ("Ks_"+name).c_str(), "mass","KS Probability" );
@@ -263,7 +264,7 @@ public:
         std::cout << "n.masse segnale: " << samples_mass.size() - 1 << " + " << 1 << " fondo."<<std::endl;
 
         std::cout << "Bandwidth and Mutual Information" << std::endl;
-        auto directory_mutinf = root_ext::GetDirectorty(*outfile, "MutualInformation");
+        auto directory_mutinf = root_ext::GetDirectory(*outfile, "MutualInformation");
         for (const auto& sample: samples_mass){
             std::cout<<"----"<<ToString(sample.first)<<"----"<<" entries: "<<sample.second.at("pt_l1").size()<<std::endl;
             std::cout<<"bandwidth  ";
@@ -292,7 +293,7 @@ public:
         }
         std::cout<<std::endl;
 
-        auto directory_jensenshannon = root_ext::GetDirectorty(*outfile,"JensenShannonDivergence");
+        auto directory_jensenshannon = root_ext::GetDirectory(*outfile,"JensenShannonDivergence");
         std::cout<<"Selection variables"<<std::endl;
         SampleIdSetNamesVar range_selected = VariablesSelection();
 
@@ -300,7 +301,7 @@ public:
         std::map<std::pair<int,int>, std::map<Name_ND, double>> JSDvars_range_ss;
         std::map<int, std::map<Name_ND, std::shared_ptr<TGraph>>> plot_ss;
         std::map<std::pair<int,int>, std::shared_ptr<TH1D>> histo_distribution;
-        auto directory_ks = root_ext::GetDirectorty(*outfile,"Kolmogorov");
+        auto directory_ks = root_ext::GetDirectory(*outfile,"Kolmogorov");
         auto directory_jenshan_ss = root_ext::GetDirectory(*directory_jensenshannon, "Range_SignalSignal");
         auto directory_plotselected = root_ext::GetDirectory(*directory_jenshan_ss, "Plot_RangeSelected");
         for (const auto& range : ranges){
@@ -316,7 +317,7 @@ public:
                         plot_ss[range.min()][var_1] = CreatePlot(("JSD_"+var_1+"_Range"+std::to_string(range.min())+"_"+std::to_string(range.max())).c_str(),
                                                            ("JSD_"+var_1+"_Range"+std::to_string(range.min())+"_"+std::to_string(range.max())).c_str(), "mass", "JSD");
 
-                        plot_ss[range.min()][var_1]->SetLineColor(range.min()/100);
+                        plot_ss[range.min()][var_1]->SetLineColor(static_cast<Color_t>(range.min()/100));
                         plot_ss[range.min()][var_1]->SetMarkerColor(1);
                         plot_ss[range.min()][var_1]->SetMarkerSize(1);
                         plot_ss[range.min()][var_1]->SetMarkerStyle(8);
@@ -399,14 +400,14 @@ public:
                 }
             }
         }
-        auto directory_correlation = root_ext::GetDirectorty(*outfile,"Correlation");
+        auto directory_correlation = root_ext::GetDirectory(*outfile,"Correlation");
         for (const auto& sample: samples_range){
             std::cout<<"----Range"<<ToString(sample.first)<<"----"<<" entries: "<<sample.second.begin()->second.size()<<std::endl;
             std::cout<<"correlation  ";
             std::cout.flush();
             correlation_matrix_range_signal[sample.first] = CorrelationSelected(sample.second, range_selected.at(sample.first));
             correlation_matrix_range_bkg[sample.first] = CorrelationSelected(samples_mass.at(SampleType::Bkg_TTbar), range_selected.at(sample.first));
-            int bin = range_selected.at(SampleId{SampleType::Sgn_Res, sample.first.mass}).size();
+            int bin = static_cast<int>(range_selected.at(SampleId{SampleType::Sgn_Res, sample.first.mass}).size());
             auto matrix = std::make_shared<TH2D>(("Bkg_"+std::to_string(sample.first.mass)).c_str(),("Bkg_"+std::to_string(sample.first.mass)).c_str(),bin,0,bin,bin,0,bin);
             int i = 1;
             for(const auto& var_1 : range_selected.at(sample.first)) {
@@ -530,7 +531,7 @@ public:
         std::cout<<"Plot matrix"<<std::endl;
         auto directory_matrix = root_ext::GetDirectory(*directory_rangebkg, "Matrix");
         for (const auto& range: ranges){
-            int bin = range_selected.at(SampleId{SampleType::Sgn_Res, range.min()}).size();
+            int bin = static_cast<int>(range_selected.at(SampleId{SampleType::Sgn_Res, range.min()}).size());
             auto matrix_jsd_sb = std::make_shared<TH2D>(("JSD_Signal_Bkg_Range"+std::to_string(range.min())+"_"+std::to_string(range.min())).c_str(),("JSD_Signal_Bkg_Range"+std::to_string(range.min())+"_"+std::to_string(range.min())).c_str(), bin, 0, bin, bin, 0, bin);
             int i = 1;
             for (const auto& var1: range_selected.at(SampleId{SampleType::Sgn_Res, range.min()})){

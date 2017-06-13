@@ -109,7 +109,7 @@ private:
         double all_events = global_map.Integral(output_bin);
         for(auto& sample : all_samples) {
             double contribution = sample.Integral(output_bin);
-            if(!contribution) continue;
+            if(contribution == 0) continue;
             //formula 2
             PhysicalValue nu ( contribution , sqrt(contribution));
             PhysicalValue weight (nu.GetValue()/all_events, (all_events - contribution)/std::pow(all_events,2)*sqrt(contribution));
