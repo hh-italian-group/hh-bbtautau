@@ -264,6 +264,7 @@ private:
         event.weight_PU = eventWeights_HH.GetPileUpWeight(event);
         event.weight_ttbar_pt = eventWeights_HH.GetTopPtWeight(event);
         event.weight_dy = eventWeights_HH.GetDY_weight(event);
+        event.weight_wjets = eventWeights_HH.GetWjets_weight(event);
         event.weight_ttbar_merge = eventWeights_HH.GetTTbar_weight(event);
         event.weight_sm = eventWeights_HH.GetBSMtoSMweight(event);
 //		event.shape_denominator_weight = denominator;
