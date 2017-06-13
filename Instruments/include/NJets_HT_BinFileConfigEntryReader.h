@@ -4,20 +4,20 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #pragma once
 
 #include "AnalysisTools/Core/include/ConfigReader.h"
-#include "DYFileDescriptor.h"
+#include "NJets_HT_BinFileDescriptor.h"
 
 namespace analysis {
 
 namespace sample_merging{
 
-class DYFileConfigEntryReader : public analysis::ConfigEntryReader {
+class NJets_HT_BinFileConfigEntryReader : public analysis::ConfigEntryReader {
 public:
-    DYFileConfigEntryReader(DYBinDescriptorCollection& _descriptors) : descriptors(&_descriptors) {}
+    NJets_HT_BinFileConfigEntryReader(NJets_HT_BinDescriptorCollection& _descriptors) : descriptors(&_descriptors) {}
 
     virtual void StartEntry(const std::string& name, const std::string& reference_name) override
     {
         ConfigEntryReader::StartEntry(name, reference_name);
-        current = reference_name.size() ? descriptors->at(reference_name) : DYBinDescriptor();
+        current = reference_name.size() ? descriptors->at(reference_name) : NJets_HT_BinFileDescriptor();
         current.name = name;
     }
 
@@ -43,8 +43,8 @@ public:
     }
 
 private:
-    DYBinDescriptor current;
-    DYBinDescriptorCollection* descriptors;
+    NJets_HT_BinFileDescriptor current;
+    NJets_HT_BinDescriptorCollection* descriptors;
 };
 
 } //namespace sample_merging

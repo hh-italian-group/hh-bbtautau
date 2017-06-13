@@ -5,10 +5,10 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/ConfigReader.h"
 #include "AnalysisTools/Core/include/RootExt.h"
 #include "h-tautau/Analysis/include/EventInfo.h"
-#include "Instruments/include/DYFileConfigEntryReader.h"
+#include "Instruments/include/NJets_HT_BinFileConfigEntryReader.h"
 #include "AnalysisTools/Core/include/NumericPrimitives.h"
 #include "Instruments/include/SampleDescriptor.h"
-#include "McCorrections/include/DY_weight.h"
+#include "McCorrections/include/NJets_HT_weight.h"
 #include <iostream>
 
 
@@ -26,10 +26,10 @@ namespace sample_merging{
 class DYWeight_t {
 public:
     using GenMap = ntuple::GenEventCountMap;
-    using VectorSampleDescriptor = std::vector<SampleDescriptor<DYBinDescriptor, ntuple::GenEventCountMap>>;
-    using VectorDYBinDescriptor = std::vector<DYBinDescriptor>;
+    using VectorSampleDescriptor = std::vector<SampleDescriptor<NJets_HT_BinFileDescriptor, ntuple::GenEventCountMap>>;
+    using VectorDYBinDescriptor = std::vector<NJets_HT_BinFileDescriptor>;
     using Event = ntuple::SummaryTuple;
-    using DY_weight = mc_corrections::DY_weight;
+    using DY_weight = mc_corrections::NJets_HT_weight;
 
     DYWeight_t(const Arguments& _args) : args(_args), dy_weight(args.cfg_name())
     {
@@ -43,15 +43,15 @@ public:
         std::cout << std::setprecision(std::numeric_limits<double>::digits10 + 1);
         analysis::ConfigReader config_reader;
 
-        DYBinDescriptorCollection file_descriptors;
-        DYFileConfigEntryReader file_entry_reader(file_descriptors);
+        NJets_HT_BinDescriptorCollection file_descriptors;
+        NJets_HT_BinFileConfigEntryReader file_entry_reader(file_descriptors);
         config_reader.AddEntryReader("FILE", file_entry_reader, true);
 
         config_reader.ReadConfig(args.file_cfg_name());
 
         double totalWeight = 0;
         for (auto file_descriptor : file_descriptors){ //loop on DYJets files
-            const DYBinDescriptor file_descriptor_element = file_descriptor.second;
+            const NJets_HT_BinFileDescriptor file_descriptor_element = file_descriptor.second;
 
             for (auto single_file_path : file_descriptor_element.file_paths){ //loop on files
 
