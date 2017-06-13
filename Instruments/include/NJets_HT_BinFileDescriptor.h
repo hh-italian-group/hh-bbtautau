@@ -21,9 +21,9 @@ struct NJets_HT_BinFileDescriptor {
     std::string name;
     std::vector<std::string> file_paths;
     FileType fileType;
-    Range<int> n_jet;
-    Range<int> n_bjet;
-    Range<int> n_ht;
+    Range<size_t> n_jet;
+    Range<size_t> n_bjet;
+    Range<size_t> n_ht;
 
     PhysicalValue nu;
     PhysicalValue weight;
@@ -62,7 +62,7 @@ struct NJets_HT_BinFileDescriptor {
                 double col_nu = analysis::Parse<double>(columns.at(8));
                 double col_nu_err = analysis::Parse<double>(columns.at(9))*col_nu;
                 descriptor.nu = PhysicalValue(col_nu,col_nu_err);
-                descriptor.inclusive_integral = analysis::Parse<double>(columns.at(10));
+                descriptor.inclusive_integral = static_cast<size_t>(analysis::Parse<double>(columns.at(10)));
                 descriptor.ref_sample = columns.at(11);
 
             }
@@ -90,9 +90,9 @@ struct NJets_HT_BinFileDescriptor {
 
         std::cout << "column_widths size:" << column_widths_2.size() << std::endl;
 
-        column_widths_2[0] = headers[0].size();
+        column_widths_2[0] = static_cast<int>(headers[0].size());
         for(unsigned n = 1; n <= 5; ++n) {
-            column_widths_2[n] = headers[n].size()+1;
+            column_widths_2[n] = static_cast<int>(headers[n].size()+1);
             std::cout << "column_widths n:" << column_widths_2[n] << std::endl;
         }
 

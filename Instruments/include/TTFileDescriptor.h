@@ -59,7 +59,7 @@ struct TTBinDescriptor {
                 double col_nu = analysis::Parse<double>(columns.at(4));
                 double col_nu_err = analysis::Parse<double>(columns.at(5))*col_nu;
                 descriptor.nu = PhysicalValue(col_nu,col_nu_err);
-                descriptor.inclusive_integral = analysis::Parse<double>(columns.at(6));
+                descriptor.inclusive_integral = static_cast<size_t>(analysis::Parse<double>(columns.at(6)));
             }
             if(columns.size() != 2 && columns.size() != 7)
                 throw exception("Bad configuration file.");
@@ -84,8 +84,8 @@ struct TTBinDescriptor {
 
         std::cout << "column_widths size:" << column_widths.size() << std::endl;
 
-        column_widths[0] = headers[0].size();
-        column_widths[1] = headers[1].size()+1;
+        column_widths[0] = static_cast<int>(headers[0].size());
+        column_widths[1] = static_cast<int>(headers[1].size()+1);
 
         for(unsigned h = 2; h < headers.size(); ++h){
           column_widths[h] = std::numeric_limits<double>::digits10 + 6;

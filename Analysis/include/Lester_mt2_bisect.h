@@ -492,7 +492,7 @@ class asymm_mt2_lester_bisect {
     std::cout << " USER_PREC " << std::endl;
 #endif
     return mAns*mAns;
-  };
+  }
  private:
   static double lestermax(const double x, const double y) {
     return (x>y)?x:y;

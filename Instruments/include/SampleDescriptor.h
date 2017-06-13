@@ -45,7 +45,7 @@ struct SampleDescriptor {
         size_t totalEvents = 0;
         for (const auto& genEventCount : gen_counts){
             const auto& genId = genEventCount.first;
-            const size_t nevents = genEventCount.second;
+            const size_t nevents = static_cast<size_t>(genEventCount.second);
             if(binDescriptor_range.Contains(genId))
                 totalEvents += nevents;
         }

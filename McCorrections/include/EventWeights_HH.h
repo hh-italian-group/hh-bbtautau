@@ -22,14 +22,13 @@ public:
     EventWeights_HH(const Channel& channel, Period period, DiscriminatorWP btag_wp) :
         EventWeights(period, btag_wp)
     {
-        dy_weight = NJets_HT_weightPtr(new class DY_weight(Full_Cfg_Name("dyjets_weights.cfg")));
+        dy_weight = NJets_HT_weightPtr(new class NJets_HT_weight(Full_Cfg_Name("dyjets_weights.cfg")));
         if(channel == Channel::ETau) ttbar_weight = TTbar_weightPtr(new class TTbar_weight(Full_Cfg_Name("ttbar_weights_eTau.cfg")));
         if(channel == Channel::MuTau) ttbar_weight = TTbar_weightPtr(new class TTbar_weight(Full_Cfg_Name("ttbar_weights_muTau.cfg")));
         if(channel == Channel::TauTau) ttbar_weight = TTbar_weightPtr(new class TTbar_weight(Full_Cfg_Name("ttbar_weights_tauTau.cfg")));
         sm_weight = HH_BMStoSM_weightPtr(new class
                                          HH_BMStoSM_weight(FullBSMtoSM_Name("weight_SM.root"),"weight_node_BSM"));
-        wjets_weight = NJets_HT_weightPtr(new class Wjets_weight(Full_Cfg_Name("wjets_weights.cfg")));
-
+        wjets_weight = NJets_HT_weightPtr(new class NJets_HT_weight(Full_Cfg_Name("wjets_weights.cfg")));
     }
 
     template<typename Event>
