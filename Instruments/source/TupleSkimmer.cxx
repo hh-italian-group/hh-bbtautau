@@ -15,7 +15,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "hh-bbtautau/McCorrections/include/EventWeights_HH.h"
 
 struct Arguments {
-    REQ_ARG(std::string, treeName);
+    REQ_ARG(std::string, treeNames);
     REQ_ARG(std::string, originalFileName);
     REQ_ARG(std::string, outputFileName);
 	REQ_ARG(std::string, sample_type);
