@@ -18,23 +18,12 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 namespace analysis {
 
-enum class DataCategoryType { Signal, Background, Data, DYJets, DYJets_incl, DYJets_excl, ZL, ZJ, ZL_MC, ZJ_MC, ZTT,
-                              ZTT_MC, ZTT_L, Embedded, TT_Embedded, Limits, Composit, QCD, QCD_alternative, WJets,
-                              WJets_MC, DiBoson_MC, DiBoson, TTbar};
+enum class DataCategoryType { Signal, Signal_SM, Background, DataDrivenBkg, Data};
 
 ENUM_NAMES(DataCategoryType) = {
-    { DataCategoryType::Signal, "SIGNAL" }, { DataCategoryType::Background, "BACKGROUND" },
-    { DataCategoryType::Data, "DATA" }, { DataCategoryType::DYJets, "DY_JETS" },
-    { DataCategoryType::DYJets_incl, "DY_JETS_incl" },{ DataCategoryType::DYJets_excl, "DY_JETS_excl" },
-    { DataCategoryType::ZL, "ZL" }, { DataCategoryType::ZJ, "ZJ" },
-    { DataCategoryType::ZL_MC, "ZL_MC" }, { DataCategoryType::ZJ_MC, "ZJ_MC" }, { DataCategoryType::ZTT, "ZTT" },
-    { DataCategoryType::ZTT_MC, "ZTT_MC" }, { DataCategoryType::ZTT_L, "ZTT_L" },
-    { DataCategoryType::Embedded, "EMBEDDED" }, { DataCategoryType::TT_Embedded, "TT_EMBEDDED" },
-    { DataCategoryType::Limits, "LIMITS" }, { DataCategoryType::Composit, "COMPOSIT" },
-    { DataCategoryType::QCD, "QCD" }, { DataCategoryType::QCD_alternative, "QCD_alternative" },
-    { DataCategoryType::WJets, "W_JETS" }, { DataCategoryType::WJets_MC, "W_JETS_MC" },
-    { DataCategoryType::DiBoson, "DiBoson" }, { DataCategoryType::DiBoson_MC, "DiBoson_MC" },
-    { DataCategoryType::TTbar, "TTbar"}
+    { DataCategoryType::Signal, "Signal" }, { DataCategoryType::Signal_SM, "Signal_SM" },
+    { DataCategoryType::Background, "Background" }, { DataCategoryType::DataDrivenBkg, "DataDrivenBkg" },
+    { DataCategoryType::Data, "Data" },
 };
 
 struct DataCategory {
