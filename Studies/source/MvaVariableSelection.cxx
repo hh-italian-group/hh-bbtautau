@@ -43,8 +43,8 @@ namespace mva_study{
 using clock = std::chrono::system_clock;
 
 namespace {
-Range<int> low_mass(250, 280),  medium_mass1(300, 350), medium_mass2(400, 550), high_mass(600,900);
-std::vector<Range<int>> ranges{low_mass, medium_mass1, medium_mass2, high_mass};
+Range<int> low_mass(250, 280), medium_mass1(300, 340),  high_mass(350,900);
+std::vector<Range<int>> ranges{low_mass, medium_mass1,  high_mass};
 }
 
 class VariableDistribution {
@@ -55,7 +55,7 @@ public:
     SampleIdVarData samples_mass;
     SampleIdNameElement bandwidth, mutual_matrix, correlation_matrix, JSDivergenceSB;
 
-    VariableDistribution(const Arguments& _args): args(_args), samples(SampleEntry::ReadConfig(args.cfg_file())),
+    VariableDistribution(const Arguments& _args): args(_args), /*samples(SampleEntry::ReadConfig(args.cfg_file())),*/
               outfile(root_ext::CreateRootFile(args.output_file())), vars(args.number_sets(), args.seed()),
               reporter(std::make_shared<TimeReporter>())
     {
@@ -72,7 +72,7 @@ public:
             }
         }
         for(auto& var : corr_matrix_future) {
-            corr_matrix[var.first] = var.second.get() *  100;
+            corr_matrix[var.first] = var.second.get() * 100;
         }
         return corr_matrix;
     }
@@ -81,7 +81,7 @@ public:
     SetNamesVar FindBestRangeVariables(const Range<int>& range, const std::map<SampleId, double>& max_distance,
                                       std::map<SampleId, VectorName_ND> JSDivergence_vector) const{
 
-        static constexpr double threashold_mi = 0.7;
+        static constexpr double threashold_mi = 0.8;
         SetNamesVar selected, not_corrected;
         std::ofstream best_entries_file("Best_entries_Range"+std::to_string(range.min())+"_"+std::to_string(range.max())+"_"+std::to_string(args.set())+"_"+std::to_string(args.number_sets())+args.tree_name()+".csv", std::ofstream::out);
         best_entries_file << "," << "," << "JSD_sb" << "," << "MI_sgn" << "," << "Mi_bkg" << std::endl;
@@ -172,7 +172,6 @@ public:
             k_row++;
         }
         root_ext::WriteObject(*matrix_intersection, outfile.get());
-        TimeReport();
     }
 
     SampleIdSetNamesVar VariablesSelection(){
@@ -197,8 +196,8 @@ public:
                 list_variables << name << std::endl;
             }
             list_variables << std::endl;
+            TimeReport();
         }
-        TimeReport();
         CreateMatrixIntersection(range_selected);
         return range_selected;
     }
@@ -262,37 +261,32 @@ public:
         std::cout << "n.variabili: " << samples_mass.at(SampleType::Bkg_TTbar).size() << std::endl;
         std::cout << "n.masse segnale: " << samples_mass.size() - 1 << " + " << 1 << " fondo."<<std::endl;
 
-        std::cout << "Bandwidth and Mutual Information" << std::endl;
-        auto directory_mutinf = root_ext::GetDirectorty(*outfile, "MutualInformation");
+        std::map<Name_ND, std::shared_ptr<TGraph>> plot_jsd;
+        int i = 0;
+        auto directory_mutinf = root_ext::GetDirectory(*outfile, "MutualInformation");
         for (const auto& sample: samples_mass){
             std::cout<<"----"<<ToString(sample.first)<<"----"<<" entries: "<<sample.second.at("pt_l1").size()<<std::endl;
-            std::cout<<"bandwidth  ";
-            std::cout.flush();
+            std::cout<<"bandwidth  "<<std::flush;
             bandwidth[sample.first] = OptimalBandwidth(sample.second);
             std::cout<<"mutual  ";
             std::cout.flush();
             mutual_matrix[sample.first] = Mutual(sample.second, bandwidth.at(sample.first));
-            std::cout<<std::endl;
-        }
-        TimeReport();
-
-        std::cout<<"Jensen Shannon Signal Background"<<std::endl;
-        std::map<Name_ND, std::shared_ptr<TGraph>> plot_jsd;
-        int i = 0;
-        for (const auto& sample : samples_mass){
-            if ( sample.first.IsBackground() )
+            if ( sample.first.IsBackground() ){
+                TimeReport();
                 continue;
-            std::cout << ToString(sample.first) << "    " <<std::flush;
+            }
+            std::cout<<"Jensen Shannon Signal Background ";
             JSDivergenceSB[sample.first] = JensenDivergenceSB(sample.second, samples_mass.at(SampleType::Bkg_TTbar), bandwidth.at(sample.first), bandwidth.at(SampleType::Bkg_TTbar));
             for (const auto& var : JSDivergenceSB.at(sample.first)){
                 if (!plot_jsd.count(var.first)) plot_jsd[var.first] = CreatePlot("","","","");
                 plot_jsd.at(var.first)->SetPoint(i, sample.first.mass, JSDivergenceSB.at(sample.first).at(var.first));
             }
             i++;
+            TimeReport();
         }
-        std::cout<<std::endl;
+        TimeReport();
 
-        auto directory_jensenshannon = root_ext::GetDirectorty(*outfile,"JensenShannonDivergence");
+        auto directory_jensenshannon = root_ext::GetDirectory(*outfile,"JensenShannonDivergence");
         std::cout<<"Selection variables"<<std::endl;
         SampleIdSetNamesVar range_selected = VariablesSelection();
 
@@ -300,7 +294,7 @@ public:
         std::map<std::pair<int,int>, std::map<Name_ND, double>> JSDvars_range_ss;
         std::map<int, std::map<Name_ND, std::shared_ptr<TGraph>>> plot_ss;
         std::map<std::pair<int,int>, std::shared_ptr<TH1D>> histo_distribution;
-        auto directory_ks = root_ext::GetDirectorty(*outfile,"Kolmogorov");
+        auto directory_ks = root_ext::GetDirectory(*outfile,"Kolmogorov");
         auto directory_jenshan_ss = root_ext::GetDirectory(*directory_jensenshannon, "Range_SignalSignal");
         auto directory_plotselected = root_ext::GetDirectory(*directory_jenshan_ss, "Plot_RangeSelected");
         for (const auto& range : ranges){
@@ -399,7 +393,7 @@ public:
                 }
             }
         }
-        auto directory_correlation = root_ext::GetDirectorty(*outfile,"Correlation");
+        auto directory_correlation = root_ext::GetDirectory(*outfile,"Correlation");
         for (const auto& sample: samples_range){
             std::cout<<"----Range"<<ToString(sample.first)<<"----"<<" entries: "<<sample.second.begin()->second.size()<<std::endl;
             std::cout<<"correlation  ";
@@ -414,7 +408,7 @@ public:
                 matrix->GetXaxis()->SetBinLabel(i, (var_1).c_str());
                 matrix->GetYaxis()->SetBinLabel(i, (var_1).c_str());
                 for(const auto& var_2 : range_selected.at(sample.first)) {
-                    matrix->SetBinContent(i, j, correlation_matrix_range_bkg.at(sample.first).at(Name_ND{var_1, var_2}) * 100);
+                    matrix->SetBinContent(i, j, correlation_matrix_range_bkg.at(sample.first).at(Name_ND{var_1, var_2})) ;
                     j++;
                 }
                 i++;
@@ -434,7 +428,7 @@ public:
                 std::cout<<"mutual plot  ";
                 MutualHisto(sample.first, mutual_matrix.at(sample.first), mutual_matrix.at(SampleType::Bkg_TTbar), directory_mutinf);
             }
-            std::cout<<std::endl;
+            TimeReport();
         }
         std::cout <<"Mutual histos" << std::endl;
         directory_mutinf->mkdir("Matrix");

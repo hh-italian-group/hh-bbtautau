@@ -33,7 +33,7 @@ public:
 
     SampleIdVarData sample_vars;
 
-    VariablesDistribution(const Arguments& _args): args(_args), samples(SampleEntry::ReadConfig(args.cfg_file())),
+    VariablesDistribution(const Arguments& _args): args(_args), /*samples(SampleEntry::ReadConfig(args.cfg_file())),*/
         outfile(root_ext::CreateRootFile(args.output_file())), reporter(std::make_shared<TimeReporter>())
     {
     }

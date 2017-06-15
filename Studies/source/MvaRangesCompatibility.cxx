@@ -118,7 +118,7 @@ public:
     }
 
     void KolmogorovSignalCompatibility(TDirectory* directory) const
-    {        
+    {
         for (const auto& var: samples_mass.at(SampleType::Bkg_TTbar)){
             std::map<SamplePair, double> kolmogorov;
             for(auto mass_entry_1 = samples_mass.begin(); mass_entry_1 != samples_mass.end(); ++mass_entry_1) {
