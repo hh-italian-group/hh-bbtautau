@@ -69,10 +69,7 @@ struct Arguments { // list of all program arguments
 namespace analysis {
 namespace mva_study{
 
-namespace {
-Range<int> sm(0,200), low_mass(250, 320), medium_mass(340,400), high_mass(450,900);
-std::vector<Range<int>> ranges{sm, low_mass, medium_mass, high_mass};
-}
+
 
 const SampleId mass_tot(SampleType::Sgn_Res, 2000);
 const SampleId bkg(SampleType::Bkg_TTbar, 0);

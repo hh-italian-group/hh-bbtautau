@@ -30,6 +30,7 @@ public:
     TTFileMerger(const Arguments& _args) : args(_args)
     {
         LoadInputs();
+        std::cout << "totalNumerOfevents in summeryTuple: " << totalNumerOfevents << std::endl;
         output_bins = TTBinDescriptor::LoadConfig(args.cfg_name());
     }
 
@@ -50,6 +51,7 @@ private:
     SampleDescriptor<TTBinDescriptor, GenEventTypeMap> inclusive;
     VectorSampleDescriptor all_samples;
     VectorDYBinDescriptor output_bins;
+    size_t totalNumerOfevents;
     Arguments args;
 
 
@@ -64,6 +66,7 @@ private:
     
     void LoadInputs()
     {
+        size_t totalNevents = 0;
         analysis::ConfigReader config_reader;
 
         TTBinDescriptorCollection file_descriptors;
@@ -111,9 +114,35 @@ private:
 
 
                 } //end loop on entries
+
+
+                //TOTAL WEIGHT PART
+                if (!(file_descriptor_element.fileType == FileType::inclusive)) continue;
+                std::cout << "LoadTotalNevents - File descriptor characteristics: " << file_descriptor.first << ", " <<
+                             single_file_path << ", " << file_descriptor_element.fileType
+                          << std::endl;
+
+
+                //ntuple::SummaryTuple summaryTuple("summary", inputFile.get(), true);
+                try {
+                    std::shared_ptr<ntuple::SummaryTuple> summaryTuple(new ntuple::SummaryTuple("summary", inputFile.get(), true));
+//                    if(!summaryTuple) continue;
+                    const Long64_t n_entries = summaryTuple->GetEntries();
+
+                    for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) { //loop on entries
+                        summaryTuple->GetEntry(current_entry);
+                        totalNevents += summaryTuple->data().numberOfProcessedEvents;
+                    } //end loop on entries
+
+                } catch(std::runtime_error& error) {
+                    std::cout << "Summary " << error.what() << std::endl;
+                }
+
+
             } // end loop on files
             all_samples.push_back(sample_desc);
         } //end loop n file_descriptors
+        totalNumerOfevents = totalNevents;
     }
 
 
@@ -130,11 +159,13 @@ private:
                               sqrt(sample_contribution));
         output_bin.nu = nu_incl;
         output_bin.weight = weight;
-        output_bin.inclusive_integral = inclusive.Integral();
+        //output_bin.inclusive_integral = inclusive.Integral();
+        output_bin.inclusive_integral = totalNumerOfevents;
 
         if(output_bin.nu.GetStatisticalError() == std::numeric_limits<double>::infinity())
             throw exception("ref not found");
     }
+
 
 
 

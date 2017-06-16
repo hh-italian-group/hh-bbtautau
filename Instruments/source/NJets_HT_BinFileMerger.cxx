@@ -5,7 +5,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/ConfigReader.h"
 #include "AnalysisTools/Core/include/RootExt.h"
 #include "h-tautau/Analysis/include/EventInfo.h"
-#include "Instruments/include/DYFileConfigEntryReader.h"
+#include "Instruments/include/NJets_HT_BinFileConfigEntryReader.h"
 #include "AnalysisTools/Core/include/NumericPrimitives.h"
 #include "Instruments/include/SampleDescriptor.h"
 
@@ -13,8 +13,8 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 struct Arguments {
     run::Argument<std::string> tree_name{"tree_name", "Tree on which we work"};
     run::Argument<std::string> input_path{"input_path", "Input path of the samples"};
-    run::Argument<std::string> cfg_name{"cfg_name", "cfg bin splitting"};
-    run::Argument<std::string> file_cfg_name{"file_cfg_name", "DY file cfg"};
+    run::Argument<std::string> cfg_name{"cfg_name", "cfg bin for DY or Wjets splitting"};
+    run::Argument<std::string> file_cfg_name{"file_cfg_name", "DY or Wjets file cfg"};
     run::Argument<std::string> output_file{"output_file", "Output file"};
 };
 
@@ -22,15 +22,17 @@ namespace analysis {
 
 namespace sample_merging{
 
-class DYFileMerger {
+class NJets_HT_BinFileMerger {
 public:
     using GenMap = ntuple::GenEventCountMap;
-    using VectorSampleDescriptor = std::vector<SampleDescriptor<DYBinDescriptor, ntuple::GenEventCountMap>>;
-    using VectorDYBinDescriptor = std::vector<DYBinDescriptor>;
-    DYFileMerger(const Arguments& _args) : args(_args)
+    using VectorSampleDescriptor = std::vector<SampleDescriptor<NJets_HT_BinFileDescriptor, ntuple::GenEventCountMap>>;
+    using VectorDYBinDescriptor = std::vector<NJets_HT_BinFileDescriptor>;
+    NJets_HT_BinFileMerger(const Arguments& _args) : args(_args)
     {
         LoadInputs();
-        output_bins = DYBinDescriptor::LoadConfig(args.cfg_name());
+        std::cout << "Done LoadInputs" << std::endl;
+        output_bins = NJets_HT_BinFileDescriptor::LoadConfig(args.cfg_name());
+        std::cout << "Done LoadCfg" << std::endl;
     }
 
 public:
@@ -41,13 +43,15 @@ public:
         {
             CalculateWeight(output_bin);
         }
-        DYBinDescriptor::SaveCfg(args.output_file(), output_bins);
+        std::cout << "Done CalculateWeight" << std::endl;
+        NJets_HT_BinFileDescriptor::SaveCfg(args.output_file(), output_bins);
+        std::cout << "Done SaveCfg" << std::endl;
     }
 
 
 private:
-    SampleDescriptor<DYBinDescriptor, ntuple::GenEventCountMap> global_map;
-    SampleDescriptor<DYBinDescriptor, ntuple::GenEventCountMap> inclusive;
+    SampleDescriptor<NJets_HT_BinFileDescriptor, ntuple::GenEventCountMap> global_map;
+    SampleDescriptor<NJets_HT_BinFileDescriptor, ntuple::GenEventCountMap> inclusive;
     VectorSampleDescriptor all_samples;
     VectorDYBinDescriptor output_bins;
     Arguments args;
@@ -57,16 +61,16 @@ private:
     {
         analysis::ConfigReader config_reader;
 
-        DYBinDescriptorCollection file_descriptors;
-        DYFileConfigEntryReader file_entry_reader(file_descriptors);
+        NJets_HT_BinDescriptorCollection file_descriptors;
+        NJets_HT_BinFileConfigEntryReader file_entry_reader(file_descriptors);
         config_reader.AddEntryReader("FILE", file_entry_reader, true);
 
         config_reader.ReadConfig(args.file_cfg_name());
 
         for (auto file_descriptor : file_descriptors){ //loop on DYJets files
-            const DYBinDescriptor file_descriptor_element = file_descriptor.second;
+            const NJets_HT_BinFileDescriptor file_descriptor_element = file_descriptor.second;
 
-            SampleDescriptor<DYBinDescriptor, ntuple::GenEventCountMap> sample_desc;
+            SampleDescriptor<NJets_HT_BinFileDescriptor, ntuple::GenEventCountMap> sample_desc;
             sample_desc.bin = file_descriptor_element;
             //global_map.bin = file_descriptor_element;
             if (file_descriptor_element.fileType == FileType::inclusive)
@@ -104,12 +108,12 @@ private:
     }
 
 
-    void CalculateWeight(DYBinDescriptor& output_bin) const
+    void CalculateWeight(NJets_HT_BinFileDescriptor& output_bin) const
     {
         double all_events = global_map.Integral(output_bin);
         for(auto& sample : all_samples) {
             double contribution = sample.Integral(output_bin);
-            if(!contribution) continue;
+            if(contribution == 0) continue;
             //formula 2
             PhysicalValue nu ( contribution , sqrt(contribution));
             PhysicalValue weight (nu.GetValue()/all_events, (all_events - contribution)/std::pow(all_events,2)*sqrt(contribution));
@@ -146,4 +150,4 @@ private:
 
 } //namespace analysis
 
-PROGRAM_MAIN(analysis::sample_merging::DYFileMerger, Arguments)
+PROGRAM_MAIN(analysis::sample_merging::NJets_HT_BinFileMerger, Arguments)

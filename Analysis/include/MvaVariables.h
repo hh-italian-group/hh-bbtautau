@@ -18,7 +18,6 @@ ENUM_OSTREAM_OPERATORS()
 
 enum class SampleType { Sgn_Res = 1, Sgn_NonRes = 0, Bkg_TTbar = -1 };
 
-
 struct SampleId {
     SampleType sampleType;
     int mass;

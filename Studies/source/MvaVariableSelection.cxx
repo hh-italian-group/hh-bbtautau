@@ -32,9 +32,9 @@ struct Arguments { // list of all program arguments
     REQ_ARG(unsigned, number_threads);
     REQ_ARG(size_t, number_variables);
     OPT_ARG(Long64_t, number_events, 1000000);
-    OPT_ARG(int, number_sets, 0);
-    OPT_ARG(int, set, 0);
-    OPT_ARG(Long64_t, seed, 10000);
+    OPT_ARG(size_t, number_sets, 0);
+    OPT_ARG(size_t, set, 0);
+    OPT_ARG(uint_fast32_t, seed, 10000);
 };
 
 namespace analysis {
@@ -43,8 +43,8 @@ namespace mva_study{
 using clock = std::chrono::system_clock;
 
 namespace {
-Range<int> low_mass(250, 280), medium_mass1(300, 340),  high_mass(350,900);
-std::vector<Range<int>> ranges{low_mass, medium_mass1,  high_mass};
+Range<int> low_mass(250, 280),  medium_mass1(300, 350), medium_mass2(400, 550), high_mass(600,900);
+std::vector<Range<int>> ranges{low_mass, medium_mass1, medium_mass2, high_mass};
 }
 
 class VariableDistribution {
@@ -55,7 +55,7 @@ public:
     SampleIdVarData samples_mass;
     SampleIdNameElement bandwidth, mutual_matrix, correlation_matrix, JSDivergenceSB;
 
-    VariableDistribution(const Arguments& _args): args(_args), /*samples(SampleEntry::ReadConfig(args.cfg_file())),*/
+    VariableDistribution(const Arguments& _args): args(_args), samples(SampleEntry::ReadConfig(args.cfg_file())),
               outfile(root_ext::CreateRootFile(args.output_file())), vars(args.number_sets(), args.seed()),
               reporter(std::make_shared<TimeReporter>())
     {
@@ -72,7 +72,7 @@ public:
             }
         }
         for(auto& var : corr_matrix_future) {
-            corr_matrix[var.first] = var.second.get() * 100;
+            corr_matrix[var.first] = var.second.get() *  100;
         }
         return corr_matrix;
     }
@@ -172,6 +172,7 @@ public:
             k_row++;
         }
         root_ext::WriteObject(*matrix_intersection, outfile.get());
+        TimeReport();
     }
 
     SampleIdSetNamesVar VariablesSelection(){
@@ -196,8 +197,8 @@ public:
                 list_variables << name << std::endl;
             }
             list_variables << std::endl;
-            TimeReport();
         }
+        TimeReport();
         CreateMatrixIntersection(range_selected);
         return range_selected;
     }
@@ -214,7 +215,8 @@ public:
                 std::vector<double> vector_signal_2 = samples_mass.at(SampleId{SampleType::Sgn_Res, range.min()}).at(var);
                 std::sort(vector_signal_2.begin(), vector_signal_2.end());
                 Double_t* v_s = vector_signal.data(), *v_s_2 = vector_signal_2.data();
-                double k = TMath::KolmogorovTest(vector_signal.size(), v_s, vector_signal_2.size(), v_s_2, "");
+                double k = TMath::KolmogorovTest(static_cast<int>(vector_signal.size()), v_s,
+                                                 static_cast<int>(vector_signal_2.size()), v_s_2, "");
                 if (plot.count(var) == 0) {
                     std::string name = var+"_Signal"+std::to_string(range.min())+"_"+std::to_string(range.max());
                     plot[var] = CreatePlot(name.c_str(), ("Ks_"+name).c_str(), "mass","KS Probability" );
@@ -310,7 +312,7 @@ public:
                         plot_ss[range.min()][var_1] = CreatePlot(("JSD_"+var_1+"_Range"+std::to_string(range.min())+"_"+std::to_string(range.max())).c_str(),
                                                            ("JSD_"+var_1+"_Range"+std::to_string(range.min())+"_"+std::to_string(range.max())).c_str(), "mass", "JSD");
 
-                        plot_ss[range.min()][var_1]->SetLineColor(range.min()/100);
+                        plot_ss[range.min()][var_1]->SetLineColor(static_cast<Color_t>(range.min()/100));
                         plot_ss[range.min()][var_1]->SetMarkerColor(1);
                         plot_ss[range.min()][var_1]->SetMarkerSize(1);
                         plot_ss[range.min()][var_1]->SetMarkerStyle(8);
@@ -400,7 +402,7 @@ public:
             std::cout.flush();
             correlation_matrix_range_signal[sample.first] = CorrelationSelected(sample.second, range_selected.at(sample.first));
             correlation_matrix_range_bkg[sample.first] = CorrelationSelected(samples_mass.at(SampleType::Bkg_TTbar), range_selected.at(sample.first));
-            int bin = range_selected.at(SampleId{SampleType::Sgn_Res, sample.first.mass}).size();
+            int bin = static_cast<int>(range_selected.at(SampleId{SampleType::Sgn_Res, sample.first.mass}).size());
             auto matrix = std::make_shared<TH2D>(("Bkg_"+std::to_string(sample.first.mass)).c_str(),("Bkg_"+std::to_string(sample.first.mass)).c_str(),bin,0,bin,bin,0,bin);
             int i = 1;
             for(const auto& var_1 : range_selected.at(sample.first)) {
@@ -408,7 +410,7 @@ public:
                 matrix->GetXaxis()->SetBinLabel(i, (var_1).c_str());
                 matrix->GetYaxis()->SetBinLabel(i, (var_1).c_str());
                 for(const auto& var_2 : range_selected.at(sample.first)) {
-                    matrix->SetBinContent(i, j, correlation_matrix_range_bkg.at(sample.first).at(Name_ND{var_1, var_2})) ;
+                    matrix->SetBinContent(i, j, correlation_matrix_range_bkg.at(sample.first).at(Name_ND{var_1, var_2}) * 100);
                     j++;
                 }
                 i++;
@@ -524,7 +526,7 @@ public:
         std::cout<<"Plot matrix"<<std::endl;
         auto directory_matrix = root_ext::GetDirectory(*directory_rangebkg, "Matrix");
         for (const auto& range: ranges){
-            int bin = range_selected.at(SampleId{SampleType::Sgn_Res, range.min()}).size();
+            int bin = static_cast<int>(range_selected.at(SampleId{SampleType::Sgn_Res, range.min()}).size());
             auto matrix_jsd_sb = std::make_shared<TH2D>(("JSD_Signal_Bkg_Range"+std::to_string(range.min())+"_"+std::to_string(range.min())).c_str(),("JSD_Signal_Bkg_Range"+std::to_string(range.min())+"_"+std::to_string(range.min())).c_str(), bin, 0, bin, bin, 0, bin);
             int i = 1;
             for (const auto& var1: range_selected.at(SampleId{SampleType::Sgn_Res, range.min()})){

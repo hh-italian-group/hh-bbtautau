@@ -27,9 +27,9 @@ struct Arguments { // list of all program arguments
     REQ_ARG(unsigned, number_threads);
     REQ_ARG(size_t, number_variables);
     OPT_ARG(Long64_t, number_events, 1000000);
-    OPT_ARG(int, number_sets, 0);
-    OPT_ARG(int, set, 0);
-    OPT_ARG(Long64_t, seed, 10000);
+    OPT_ARG(size_t, number_sets, 0);
+    OPT_ARG(size_t, set, 0);
+    OPT_ARG(uint_fast32_t, seed, 10000);
 };
 
 namespace analysis {
@@ -133,7 +133,8 @@ public:
                     std::vector<double> vector_signal_2 = samples_mass.at(mass_entry_2->first).at(var.first);
                     std::sort(vector_signal_2.begin(), vector_signal_2.end());
                     Double_t* v_s = vector_signal.data(), *v_s_2 = vector_signal_2.data();
-                    kolmogorov[mass_pair]  = TMath::KolmogorovTest(vector_signal.size(), v_s, vector_signal_2.size(), v_s_2, "");
+                    kolmogorov[mass_pair]  = TMath::KolmogorovTest(static_cast<int>(vector_signal.size()), v_s,
+                                                                   static_cast<int>(vector_signal_2.size()), v_s_2, "");
                 }
             }
             CreateMatrixHistosCompatibility(samples_mass, kolmogorov, var.first+"_Signal_compatibility_KS", directory);
@@ -225,7 +226,7 @@ public:
     void CreateMatrixIntersection(const SampleIdSetNamesVar& mass_selected) const
     {
         std::cout << std::endl << "Intersection" << std::endl;
-        int bin = mass_selected.size();
+        int bin = static_cast<int>(mass_selected.size());
         auto matrix_intersection = std::make_shared<TH2D>("Intersection", "Intersection of variables", bin, 0, bin, bin, 0, bin);
         matrix_intersection->SetXTitle("mass");
         matrix_intersection->SetYTitle("mass");
