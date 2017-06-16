@@ -31,7 +31,7 @@ public:
     virtual void ReadParameter(const std::string& /*param_name*/, const std::string& /*param_value*/,
                                std::istringstream& /*ss*/) override
     {
-        ParseEntry("sample_descriptors", current.sample_descriptors);
+        ParseEntry("sample_descriptor", current.sample_descriptors);
     }
 
 private:
