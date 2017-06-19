@@ -25,6 +25,7 @@ public:
         CheckReadParamCounts("int_lumi", 1, Condition::equal_to);
         CheckReadParamCounts("final_variable", 0, Condition::greater_equal);
         CheckReadParamCounts("apply_mass_cut", 1, Condition::equal_to);
+        CheckReadParamCounts("energyScale", 1, Condition::equal_to);
 
         (*descriptors)[current.name] = current;
     }
@@ -35,6 +36,7 @@ public:
         ParseEntry("int_lumi", current.int_lumi);
         ParseEntry("final_variable", current.final_variables);
         ParseEntry("apply_mass_cut", current.apply_mass_cut);
+        ParseEntry("energyScale", current.energyScale);
     }
 
 private:

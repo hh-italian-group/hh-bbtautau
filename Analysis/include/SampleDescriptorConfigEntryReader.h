@@ -35,7 +35,7 @@ public:
                                std::istringstream& /*ss*/) override
     {
         ParseEntry("file_path", current.file_paths);
-        ParseEntry("cross_section", current.cross_section);
+        ParseEntry<double,NumericalExpression>("cross_section", current.cross_section, [](double xs){return xs > 0;});
         ParseEntry("weight_file", current.weight_file);
         ParseEntry("listSignalPoint", current.listSignalPoints);
     }

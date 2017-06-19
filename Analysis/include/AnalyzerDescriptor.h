@@ -14,6 +14,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Analysis/include/SummaryTuple.h"
 #include "AnalysisTools/Core/include/ConfigReader.h"
 #include "AnalysisCategories.h"
+#include "h-tautau/Analysis/include/AnalysisTypes.h"
 
 namespace analysis {
 
@@ -27,6 +28,7 @@ private:
     double int_lumi;
     std::vector<std::string> final_variables;
     bool apply_mass_cut;
+    analysis::EventEnergyScale energyScale;
 
 };
 
