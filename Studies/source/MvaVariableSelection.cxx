@@ -55,10 +55,21 @@ public:
     SampleIdVarData samples_mass;
     SampleIdNameElement bandwidth, mutual_matrix, correlation_matrix, JSDivergenceSB;
 
-    VariableDistribution(const Arguments& _args): args(_args), samples(SampleEntry::ReadConfig(args.cfg_file())),
+    VariableDistribution(const Arguments& _args): args(_args),
               outfile(root_ext::CreateRootFile(args.output_file())), vars(args.number_sets(), args.seed()),
               reporter(std::make_shared<TimeReporter>())
     {
+        MvaSetupCollection setups;
+        SampleEntryListCollection samples_list;
+
+        ConfigReader configReader;
+        MvaConfigReader setupReader(setups);
+        configReader.AddEntryReader("SETUP", setupReader, true);
+        SampleConfigReader sampleReader(samples_list);
+        configReader.AddEntryReader("FILES", sampleReader, false);
+        configReader.ReadConfig(args.cfg_file());
+
+        samples = samples_list.at("inputs").files;
     }
 
     NameElement CorrelationSelected(const VarData& sample_vars, const SetNamesVar& selected){

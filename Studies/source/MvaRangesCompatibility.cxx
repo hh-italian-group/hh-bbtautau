@@ -46,10 +46,21 @@ public:
     SampleIdVarData samples_mass;
     SampleIdNameElement bandwidth, mutual_matrix, correlation_matrix, JSDivergenceSB;
 
-    MvaClassification(const Arguments& _args): args(_args), samples(SampleEntry::ReadConfig(args.cfg_file())),
+    MvaClassification(const Arguments& _args): args(_args),
         outfile(root_ext::CreateRootFile(args.output_file())), vars(args.number_sets(), args.seed()),
         reporter(std::make_shared<TimeReporter>())
     {
+        MvaSetupCollection setups;
+        SampleEntryListCollection samples_list;
+
+        ConfigReader configReader;
+        MvaConfigReader setupReader(setups);
+        configReader.AddEntryReader("SETUP", setupReader, true);
+        SampleConfigReader sampleReader(samples_list);
+        configReader.AddEntryReader("FILES", sampleReader, false);
+        configReader.ReadConfig(args.cfg_file());
+
+        samples = samples_list.at("inputs").files;
     }
 
     void DistributionJSD_SB(const SampleId& mass_entry, TDirectory* directory) const
