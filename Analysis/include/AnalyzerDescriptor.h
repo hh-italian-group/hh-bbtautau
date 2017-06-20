@@ -23,7 +23,6 @@ public:
     AnalyzerDescriptor()
         : apply_mass_cut(false) {}
 
-private:
     std::string name;
     double int_lumi;
     std::vector<std::string> final_variables;

@@ -21,7 +21,6 @@ public:
     SampleDescriptorBase()
         : color(kBlack), draw(false), create_hist(false) {}
 
-private:
     std::string name;
     std::string title;
     root_ext::Color color;

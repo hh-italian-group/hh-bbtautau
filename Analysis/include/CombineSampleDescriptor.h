@@ -20,14 +20,16 @@ namespace analysis {
 class CombineSampleDescriptor : public analysis::SampleDescriptor
 {
 public:
+    using SampleDescriptorPtr = std::shared_ptr<SampleDescriptor>;
+
     CombineSampleDescriptor() {}
 
-private:
     std::string name;
-    std::vector<*SampleDescriptor> sample_descriptors;
+    std::vector<SampleDescriptorPtr> sample_descriptors;
 
 };
 
 using CombineSampleDescriptorCollection = std::unordered_map<std::string, CombineSampleDescriptor>;
+
 
 } // namespace analysis

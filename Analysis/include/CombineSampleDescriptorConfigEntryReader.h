@@ -12,7 +12,11 @@ namespace analysis {
 
 class CombineSampleDescriptorConfigEntryReader : public analysis::SampleDescriptorConfigEntryReader {
 public:
-    CombineSampleDescriptorConfigEntryReader(CombineSampleDescriptorCollection& _descriptors) : descriptors(&_descriptors) {}
+    CombineSampleDescriptorConfigEntryReader(CombineSampleDescriptorCollection& _descriptors,
+                                             SampleDescriptorCollection& _sampleDescriptors,
+                                             SampleDescriptorBaseCollection& _baseDescriptors) :
+        analysis::SampleDescriptorConfigEntryReader(_sampleDescriptors, _baseDescriptors),
+        descriptors(&_descriptors) {}
 
     virtual void StartEntry(const std::string& name, const std::string& reference_name) override
     {
