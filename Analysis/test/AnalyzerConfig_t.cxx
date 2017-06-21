@@ -30,7 +30,7 @@ public:
 
         AnalyzerDescriptorCollection ana_descriptors;
         AnalyzerConfigEntryReader ana_entry_reader(ana_descriptors);
-        config_reader.AddEntryReader("ANA_DESCRIPTOR", ana_entry_reader, true);
+        config_reader.AddEntryReader("ANA_DESCRIPTOR", ana_entry_reader, false);
 
         SampleDescriptorCollection sample_descriptors;
         SampleDescriptorBaseCollection sampleBase_descriptors;

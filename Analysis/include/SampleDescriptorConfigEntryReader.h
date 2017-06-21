@@ -5,16 +5,16 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include "AnalysisTools/Core/include/ConfigReader.h"
 #include "SampleDescriptor.h"
-#include "SampleDescriptorBaseConfigEntryReader.h"
+#include "SampleDescriptorBase.h"
 
 namespace analysis {
 
 
-class SampleDescriptorConfigEntryReader : public analysis::SampleDescriptorBaseConfigEntryReader {
+class SampleDescriptorConfigEntryReader {
 public:
     SampleDescriptorConfigEntryReader(SampleDescriptorCollection& _descriptors,
                                       SampleDescriptorBaseCollection& _baseDescriptors) :
-        analysis::SampleDescriptorBaseConfigEntryReader(_baseDescriptors) ,
+        descriptorsBase(&_baseDescriptors) ,
         descriptors(&_descriptors) {}
 
     virtual void StartEntry(const std::string& name, const std::string& reference_name) override
@@ -22,6 +22,9 @@ public:
         ConfigEntryReader::StartEntry(name, reference_name);
         current = reference_name.size() ? descriptors->at(reference_name) : SampleDescriptor();
         current.name = name;
+
+        currentBase = reference_name.size() ? descriptorsBase->at(reference_name) : SampleDescriptorBase();
+        currentBase.name = name;
     }
 
     virtual void EndEntry() override
@@ -36,6 +39,16 @@ public:
         CheckReadParamCounts("datacard_name_ex", 0, Condition::greater_equal);
 
         (*descriptors)[current.name] = current;
+
+        CheckReadParamCounts("title", 1, Condition::equal_to);
+        CheckReadParamCounts("color", 1, Condition::equal_to);
+        CheckReadParamCounts("draw", 1, Condition::equal_to);
+        CheckReadParamCounts("channel", 1, Condition::equal_to);
+        CheckReadParamCounts("categoryType", 1, Condition::equal_to);
+        CheckReadParamCounts("create_hist", 1, Condition::equal_to);
+        CheckReadParamCounts("datacard_name", 1, Condition::equal_to);
+
+        (*descriptorsBase)[currentBase.name] = currentBase;
     }
 
     virtual void ReadParameter(const std::string& /*param_name*/, const std::string& /*param_value*/,
@@ -49,11 +62,21 @@ public:
         ParseEntry("draw_ex", current.draw_ex);
         ParseEntry("norm_sf", current.norm_sf);
         ParseEntry("datacard_name_ex", current.datacard_name_ex);
+
+        ParseEntry("title", currentBase.title);
+        ParseEntry("color", currentBase.color);
+        ParseEntry("draw", currentBase.draw);
+        ParseEntry("channel", currentBase.channel);
+        ParseEntry("categoryType", currentBase.categoryType);
+        ParseEntry("create_hist", currentBase.create_hist);
+        ParseEntry("datacard_name", currentBase.datacard_name);
     }
 
 private:
     SampleDescriptor current;
     SampleDescriptorCollection* descriptors;
+    SampleDescriptorBase currentBase;
+    SampleDescriptorBaseCollection* descriptorsBase;
 };
 
 } // namespace analysis
