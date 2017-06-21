@@ -33,8 +33,7 @@ public:
         config_reader.AddEntryReader("ANA_DESCRIPTOR", ana_entry_reader, false);
 
         SampleDescriptorCollection sample_descriptors;
-        SampleDescriptorBaseCollection sampleBase_descriptors;
-        SampleDescriptorConfigEntryReader sample_entry_reader(sample_descriptors, sampleBase_descriptors);
+        SampleDescriptorConfigEntryReader sample_entry_reader(sample_descriptors);
         config_reader.AddEntryReader("SAMPLE", sample_entry_reader, true);
 
 //        CombineSampleDescriptorCollection combine_descriptors;

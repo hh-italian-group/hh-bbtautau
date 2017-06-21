@@ -25,7 +25,7 @@ public:
     CombineSampleDescriptor() {}
 
     std::string name;
-    std::vector<SampleDescriptorPtr> sample_descriptors;
+    std::vector<std::string> sample_descriptors;
 
 };
 

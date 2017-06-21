@@ -8,15 +8,16 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 namespace analysis {
 
-
+template<typename Descriptor>
 class SampleDescriptorBaseConfigEntryReader : public analysis::ConfigEntryReader {
 public:
-    SampleDescriptorBaseConfigEntryReader(SampleDescriptorBaseCollection& _descriptors) : descriptors(&_descriptors) {}
+    using DescriptorCollection = std::unordered_map<std::string, Descriptor>;
+    SampleDescriptorBaseConfigEntryReader(DescriptorCollection& _descriptors) : descriptors(&_descriptors) {}
 
     virtual void StartEntry(const std::string& name, const std::string& reference_name) override
     {
         ConfigEntryReader::StartEntry(name, reference_name);
-        current = reference_name.size() ? descriptors->at(reference_name) : SampleDescriptorBase();
+        current = reference_name.size() ? descriptors->at(reference_name) : Descriptor();
         current.name = name;
     }
 
@@ -45,9 +46,9 @@ public:
         ParseEntry("datacard_name", current.datacard_name);
     }
 
-private:
-    SampleDescriptorBase current;
-    SampleDescriptorBaseCollection* descriptors;
+protected:
+    Descriptor current;
+    DescriptorCollection* descriptors;
 };
 
 } // namespace analysis

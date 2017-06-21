@@ -32,6 +32,4 @@ public:
 
 };
 
-using SampleDescriptorBaseCollection = std::unordered_map<std::string, SampleDescriptorBase>;
-
 } // namespace analysis

@@ -24,13 +24,12 @@ public:
 
     std::string GetFileName(size_t signal_point) const
     {
-        std::string file_name;
+        std::string file_name = file_path_pattern;
         for (auto signal_point_iter : listSignalPoints){
             std::string point_prefix = signal_point_iter.first;
             std::vector<std::string> signal_points = signal_point_iter.second;
             std::string point_value = signal_points.at(signal_point);
-            file_name = boost::algorithm::replace_all_copy(file_path_pattern, point_prefix, point_value);
-//            file_name = file_path_pattern;
+            boost::algorithm::replace_all(file_name, point_prefix, point_value);
         }
         return file_name;
     }
