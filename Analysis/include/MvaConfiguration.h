@@ -9,6 +9,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "hh-bbtautau/Analysis/include/MvaVariables.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
 #include "AnalysisTools/Core/include/NumericPrimitives.h"
+#include <iterator>
 
 namespace  analysis {
 namespace mva_study{
@@ -141,7 +142,7 @@ struct MvaOption<std::string> : MvaOptionBase {
 
     virtual std::string GetConfigString(size_t n) const override
     {
-        return GetPoint(n);
+        return ToString(n, "=");
     }
 
     virtual size_t GetNumberOfRangeEntries() const override
@@ -150,11 +151,23 @@ struct MvaOption<std::string> : MvaOptionBase {
     }
 
 protected:
+
     const Value GetPoint(size_t n) const
+    {
+        if(n >= GetNumberOfRangeEntries())
+            throw exception("Option value index is out of range.");
+        return  values.at(n);
+    }
+
+    const std::string ToString(size_t n, const std::string& sep) const
     {
         if(n >= values.size())
             throw exception("Option value index is out of range.");
-        return values.at(n);
+
+        std::ostringstream ss;
+        ss << std::boolalpha << Name() << sep << GetPoint(n);
+        return ss.str();
+
     }
 
 private:
@@ -204,7 +217,7 @@ struct MvaOptionCollection {
         return ss.str();
     }
 
-    std::vector<size_t> GetPositionLimits() const
+    std::vector<size_t> GetPositionLimits()
     {
         std::vector<size_t> pos(options.size());
         for(size_t n = 0; n < pos.size(); ++n) {
@@ -253,7 +266,7 @@ inline std::istream& operator>>(std::istream& is, SampleEntry& entry)
 {
     std::string str;
     std::getline(is, str);
-    const auto columns = SplitValueList(str, true);
+    const auto columns = SplitValueList(str, false);
     if(columns.size() < 3 || columns.size() > 4)
         throw exception("Invalid sample entry");
     entry.filename = columns.at(0);
@@ -314,7 +327,7 @@ struct MvaSetup {
         std::set<std::string> significant_params_set(significant_params.begin(), significant_params.end());
 
         for(const auto& param : params) {
-            if(run_on_grid || param_list.count(param.first) || param_range.count(param.first)) continue;
+            if(run_on_grid && (param_list.count(param.first) || param_range.count(param.first))) continue;
             bool b_value;
             int i_value;
             double d_value;
@@ -388,7 +401,7 @@ private:
 
 public:
     using MvaVariables::MvaVariables;
-    virtual void SetValue(const std::string& name, double value) override
+    virtual void SetValue(const std::string& name, double value, char /*type = 'F'*/) override
     {
         variables[name] = value;
     }
@@ -415,7 +428,7 @@ inline const std::set<std::string>& GetMvaBranches()
 {
     static const std::set<std::string> EnabledBranches_read = {
         "eventEnergyScale", "q_1", "q_2", "jets_p4", "extraelec_veto", "extramuon_veto ", "SVfit_p4",
-        "pfMET_p4", "p4_1", "p4_2"
+        "pfMET_p4", "p4_1", "p4_2", "channelId"
     };
     return EnabledBranches_read;
 }
@@ -451,7 +464,7 @@ public:
     {
         if(n >= size())
             throw exception("Number of name dimensions = %1%, which is less than %2%") % size() % n;
-        return *std::next(begin(), n);
+        return *std::next(begin(), static_cast<std::iterator_traits<const_iterator>::difference_type>(n));
     }
 
     template<typename Set>

@@ -23,6 +23,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
 #include "AnalysisTools/Core/include/RootExt.h"
+#include "hh-bbtautau/Analysis/include/MvaConfigurationReader.h"
 
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, input_path);
