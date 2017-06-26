@@ -17,7 +17,10 @@ public:
     {
         CheckReadParamCounts("energy_scales", 1, Condition::equal_to);
         CheckReadParamCounts("channels", 1, Condition::equal_to);
-        CheckReadParamCounts("tau_ids", 1, Condition::equal_to);
+        CheckReadParamCounts("tau_ids", 1, Condition::less_equal);
+        CheckReadParamCounts("period", 1, Condition::equal_to);
+        CheckReadParamCounts("btag_wp", 1, Condition::equal_to);
+        CheckReadParamCounts("common_weights", 1, Condition::less_equal);
 
         ConfigEntryReaderT<Setup>::EndEntry();
     }
@@ -28,6 +31,9 @@ public:
         ParseEnumList("energy_scales", current.energy_scales);
         ParseEnumList("channels", current.channels);
         ParseEntryList("tau_ids", current.tau_ids);
+        ParseEntry("period", current.period);
+        ParseEntry("btag_wp", current.btag_wp);
+        ParseEntryList("common_weights", current.common_weights);
     }
 };
 
@@ -37,21 +43,32 @@ public:
 
     virtual void EndEntry() override
     {
-        CheckReadParamCounts("energy_scales", 1, Condition::equal_to);
-        CheckReadParamCounts("channels", 1, Condition::equal_to);
-        CheckReadParamCounts("tau_ids", 1, Condition::equal_to);
+        CheckReadParamCounts("merged_output", 1, Condition::less_equal);
+        CheckReadParamCounts("apply_common_weights", 1, Condition::less_equal);
+        CheckReadParamCounts("weights", 1, Condition::less_equal);
+        CheckReadParamCounts("ignore_trigger_info", 1, Condition::less_equal);
+
+        const size_t n_files = GetReadParamCounts("file");
+        const size_t n_files_ex = GetReadParamCounts("file_ex");
+        const size_t n_files_xs = GetReadParamCounts("file_xs");
+
+        if(n_files_xs && n_files + n_files_ex)
+            throw exception("Cross-section should be specified for all files within a job or for non of them.");
+
+        if(current.ProduceMergedOutput() && n_files_ex)
+            throw exception("Entries merged_output and file_ex can't be both specified within single job.");
 
         ConfigEntryReaderT<SkimJob>::EndEntry();
     }
 
-    virtual void ReadParameter(const std::string& /*param_name*/, const std::string& /*param_value*/,
+    virtual void ReadParameter(const std::string& param_name, const std::string& param_value,
                                std::istringstream& /*ss*/) override
     {
-        ParseEnumList("dy_weight", current.dy_weight);
-        ParseEnumList("sm_weight", current.sm_weight);
-        ParseEntryList("tt_weight", current.tt_weight);
-        ParseEntryList("wjets_weight", current.wjets_weight);
-        ParseEntryList("merged_output", current.merged_output);
+        ParseEntry("merged_output", current.merged_output);
+        ParseFileDescriptor(param_name, param_value);
+        ParseEntry("apply_common_weights", current.apply_common_weights);
+        ParseEntryList("weights", current.weights);
+        ParseEntry("ignore_trigger_info", current.ignore_trigger_info);
     }
 
 private:

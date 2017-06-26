@@ -5,22 +5,25 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include "AnalysisTools/Core/include/RootExt.h"
 #include "h-tautau/Analysis/include/EventTuple.h"
-
+#include "h-tautau/McCorrections/include/WeightProvider.h"
 
 namespace analysis {
 namespace mc_corrections {
 
-class HH_BMStoSM_weight {
+class HH_BMStoSM_weight : public IWeightProvider {
 public:
-    using Event = ntuple::Event;
     using Hist = TH2;
     using HistPtr = std::shared_ptr<Hist>;
 
     HH_BMStoSM_weight(const std::string& sm_weight_file_name, const std::string& hist_name) :
         sm_weight(LoadSMweight(sm_weight_file_name, hist_name)) { }
 
+    virtual double Get(const ntuple::Event& event) const override { return GetT(event); }
+    virtual double Get(const ntuple::ExpressEvent& event) const override { return GetT(event); }
+
+private:
     template<typename Event>
-    double Get(const Event& event)
+    double GetT(const Event& event) const
     {
         double m_hh = event.lhe_hh_m;
         double cos_Theta = event.lhe_hh_cosTheta;

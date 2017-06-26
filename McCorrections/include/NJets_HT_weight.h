@@ -4,18 +4,19 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #pragma once
 
 #include "hh-bbtautau/Instruments/include/NJets_HT_BinFileDescriptor.h"
-
+#include "h-tautau/McCorrections/include/WeightProvider.h"
 
 namespace analysis {
 namespace mc_corrections {
 
-class NJets_HT_weight {
+class NJets_HT_weight : public IWeightProvider {
 public:
     using Event = ntuple::Event;
     using Range_weight_map = std::map<size_t, double>;
     using DoubleRange_map = std::map<size_t, Range_weight_map>;
 
-    NJets_HT_weight(const std::string& weight_file_name)
+    NJets_HT_weight(const std::string& _name, const std::string& weight_file_name) :
+        name(_name)
     {
         std::vector<analysis::sample_merging::NJets_HT_BinFileDescriptor> descriptors =
                 analysis::sample_merging::NJets_HT_BinFileDescriptor::LoadConfig(weight_file_name);
@@ -37,11 +38,15 @@ public:
         }
     }
 
-    template<typename Event>
-    double Get(const Event& event) const
+    virtual double Get(const Event& event) const override
     {
         static constexpr size_t ht_bin_size = 10;
-        return GetWeight(event.lhe_n_partons,event.lhe_n_b_partons, static_cast<size_t>(event.lhe_HT / ht_bin_size));
+        return GetWeight(event.lhe_n_partons, event.lhe_n_b_partons, static_cast<size_t>(event.lhe_HT / ht_bin_size));
+    }
+
+    virtual double Get(const ntuple::ExpressEvent& /*event*/) const override
+    {
+        throw exception("ExpressEvent is not supported in NJets_HT_weight::Get.");
     }
 
     double GetWeight(size_t n_partons, size_t n_b_partons, size_t ht_bin) const
@@ -57,10 +62,12 @@ public:
                     return nht_iter->second;
             }
         }
-        throw exception("weight not found.");
+        throw exception("%1% weight not found for n_partons = %2%, n_b_partons = %3%, ht_bin = %4%.")
+                % name % n_partons % n_b_partons % ht_bin;
     }
 
 private:
+    std::string name;
     std::map<size_t, DoubleRange_map> weight_map;
 };
 
