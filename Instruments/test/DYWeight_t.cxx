@@ -31,7 +31,7 @@ public:
     using Event = ntuple::SummaryTuple;
     using DY_weight = mc_corrections::NJets_HT_weight;
 
-    DYWeight_t(const Arguments& _args) : args(_args), dy_weight(args.cfg_name())
+    DYWeight_t(const Arguments& _args) : args(_args), dy_weight("DY", args.cfg_name())
     {
         std::cout << "Ciao" << std::endl;
     }
