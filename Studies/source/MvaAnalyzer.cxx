@@ -33,50 +33,89 @@ namespace {
 class MVAAnalyzer{
 public:
 
-    MVAAnalyzer(const Arguments& _args): args(_args), outfile(root_ext::CreateRootFile(args.output_file()))
+    MVAAnalyzer(const Arguments& _args): args(_args), in_file(root_ext::OpenRootFile(args.input_file())),
+        out_file(root_ext::CreateRootFile(args.output_file()))
 
     {
     }
 
+    void Add(std::map<std::string, std::set<double>>& right_methods, const std::string& name, const double& val){
+        if (!right_methods[name].count(val)){
+            right_methods[name].insert(val);
+        }
+    }
+
+
     void Run()
     {
 
-        TFile* myfile = new TFile((args.input_file()).c_str());
-        TTree* myTree = (TTree*)myfile->Get("mva_result");
+        auto myTree = (TTree*)(in_file->Get("mva_result"));
         double myShrinkage, myBaggedSampleFraction, myMaxDepth, myMinNodeSize, myROCIntegral;
-        UInt_t myTrees;
+        UInt_t myNTrees;
         std::vector<double> *myKSvalue, *myKSmass, *myPosition, *myImportance;
         std::vector<std::string> *myVarName;
+        std::map<std::string, std::shared_ptr<TH1D>> histo_properties;
 
         gROOT->ProcessLine("#include <vector>");
-        myTree->SetBranchAddress("NTrees", &myTrees);
+        myTree->SetBranchAddress("NTrees", &myNTrees);
+        histo_properties["NTrees"] = std::make_shared<TH1D>("NTrees", "NTrees",100,0,1000);
         myTree->SetBranchAddress("shrinkage", &myShrinkage);
+        histo_properties["shrinkage"] = std::make_shared<TH1D>("shrinkage", "shrinkage",11,0,1.1);
         myTree->SetBranchAddress("BaggedSampleFraction", &myBaggedSampleFraction);
+        histo_properties["BaggedSampleFraction"] = std::make_shared<TH1D>("BaggedSampleFraction", "BaggedSampleFraction",3,0.5,1.25);
         myTree->SetBranchAddress("MaxDepth", &myMaxDepth);
+        histo_properties["MaxDepth"] = std::make_shared<TH1D>("MaxDepth", "MaxDepth",3,2,5);
         myTree->SetBranchAddress("MinNodeSize", &myMinNodeSize);
+        histo_properties["MinNodeSize"] = std::make_shared<TH1D>("MinNodeSize", "MinNodeSize",11,0,0.1);
         myTree->SetBranchAddress("ROCIntegral", &myROCIntegral);
+        histo_properties["ROCIntegral"] = std::make_shared<TH1D>("ROCIntegral", "ROCIntegral",100,0,1.1);
         myTree->SetBranchAddress("KS_value", &myKSvalue);
+        histo_properties["KS_value"] = std::make_shared<TH1D>("KS_value", "KS_value",100,0,1.1);
         myTree->SetBranchAddress("KS_mass", &myKSmass);
+        histo_properties["KS_mass"] = std::make_shared<TH1D>("KS_mass", "KS_mass",210,0,2100);
         myTree->SetBranchAddress("position", &myPosition);
         myTree->SetBranchAddress("importance", &myImportance);
         myTree->SetBranchAddress("var_name", &myVarName);
-        std::cout<<"ciao"<<std::endl;
+        std::cout<<histo_properties.size()<<std::endl;
+
         Long64_t nentries = myTree->GetEntries();
+        std::map<std::string, std::set<double>> right_methods;
 
-
-        for (Long64_t i=0;i<nentries;i++) {
+        for (Long64_t i = 0 ; i < nentries ; i++) {
              myTree->GetEntry(i);
-             std::cout<<myKSmass->size()<<std::endl;
-             std::cout<<myKSvalue->size()<<std::endl;
-             std::cout<<myPosition->size()<<std::endl;
-             std::cout<<myImportance->size()<<std::endl;
-             for (size_t j=0; j<myImportance->size(); j++){
-                 std::cout<<(*myVarName)[j]<<"  "<<(*myPosition)[j]<<"  "<<(*myImportance)[j]<<std::endl;
+             if (myROCIntegral > 0.9){
+                 bool load = false;
+                 double count = 0 ;
+                 for (size_t j=0; j< myKSmass->size(); j++){
+                     if ((*myKSmass)[j] != 2000 && (*myKSvalue)[j]>0.05){
+                         count ++;
+                         if (!load){
+                             histo_properties.at("ROCIntegral")->Fill(myROCIntegral);
+                             Add(right_methods, "shrinkage", myShrinkage);
+                             histo_properties.at("shrinkage")->Fill(myShrinkage);
+                             Add(right_methods, "NTrees", myNTrees);
+                             histo_properties.at("NTrees")->Fill(myNTrees);
+                             Add(right_methods, "BaggedSampleFraction", myBaggedSampleFraction);
+                             histo_properties.at("BaggedSampleFraction")->Fill(myBaggedSampleFraction);
+                             Add(right_methods, "MaxDepth", myMaxDepth);
+                             histo_properties.at("MaxDepth")->Fill(myMaxDepth);
+                             Add(right_methods, "MinNodeSize", myMinNodeSize);
+                             histo_properties.at("MinNodeSize")->Fill(myMinNodeSize);
+                             load = true;
+                         }
+                         histo_properties.at("KS_mass")->Fill((*myKSmass)[j]);
+                         histo_properties.at("KS_value")->Fill((*myKSvalue)[j]);
+                     }
+                 }
+                 std::cout<<count<<std::endl;
              }
-             std::cout<<myVarName->size()<<std::endl<<std::endl;
-
           }
 
+        for (const auto& met : right_methods)
+            std::cout << met.first << " " << met.second.size() <<std::endl;
+
+        for (const auto& histo : histo_properties)
+            root_ext::WriteObject(*histo.second, out_file.get());
 
 
 
@@ -87,7 +126,9 @@ public:
 private:
     Arguments args;
     TFile myfile;
-    std::shared_ptr<TFile> outfile;
+    std::shared_ptr<TFile> in_file;
+    std::shared_ptr<TFile> out_file;
+    std::shared_ptr<TTree> tree;
 };
 
 }

@@ -37,6 +37,8 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
     VAR(double, MaxDepth) \
     VAR(double, MinNodeSize) \
     VAR(double, ROCIntegral) \
+    VAR(double, cut) \
+    VAR(double, significance) \
     VAR(std::vector<double>, KS_value) \
     VAR(std::vector<double>, KS_mass) \
     VAR(std::vector<double>, position) \
@@ -58,6 +60,7 @@ struct Arguments { // list of all program arguments
     REQ_ARG(std::string, output_file);
     REQ_ARG(std::string, cfg_file);
     REQ_ARG(Long64_t, number_events);
+    REQ_ARG(std::string, range);
     OPT_ARG(size_t, number_sets, 2);
     OPT_ARG(uint_fast32_t, seed, std::numeric_limits<uint_fast32_t>::max());
 };
@@ -145,7 +148,7 @@ public:
     }
 };
 
-void TrainAllMethods(std::shared_ptr<TMVA::Factory> factory)
+void TrainAllMethods(const std::shared_ptr<TMVA::Factory>& factory)
 {
    std::map< TString, TMVA::Factory::MVector*> fMethodsMap = factory->fMethodsMap;
    std::map<TString,TMVA::Factory::MVector*>::iterator itrMap;
@@ -186,12 +189,19 @@ public:
         ConfigReader configReader;
         MvaConfigReader setupReader(setups);
         configReader.AddEntryReader("SETUP", setupReader, true);
+        onfigReader.AddEntryReader("SETUP", setupReader, true);
+        onfigReader.AddEntryReader("SETUP", setupReader, true);
         SampleConfigReader sampleReader(samples_list);
         configReader.AddEntryReader("FILES", sampleReader, false);
         configReader.ReadConfig(args.cfg_file());
 
         samples = samples_list.at("inputs").files;
-        mva_setup = setups.at("LowMassRange");
+        if (args.range() == "low")
+            mva_setup = setups.at("LowMassRange");
+        if (args.range() == "medium")
+            mva_setup = setups.at("MediumMassRange");
+        if (args.range() == "high")
+            mva_setup = setups.at("HighMassRange");
 
         enabled_vars.insert(mva_setup.variables.begin(), mva_setup.variables.end());
         if(mva_setup.use_mass_var) {
@@ -202,7 +212,8 @@ public:
         vars = std::make_shared<MvaVariablesTMVA>(args.number_sets(), seed, enabled_vars);
     }
 
-    std::map<std::string, std::vector<std::pair<std::string, double>>> RankingImportanceVariables(Grid_ND grid, MvaOptionCollection options){
+    std::map<std::string, std::vector<std::pair<std::string, double>>> RankingImportanceVariables(const Grid_ND& grid, const MvaOptionCollection& options) const
+    {
         std::map<std::string, std::vector<std::pair<std::string, double>>> importance;
 
         for(const auto& point : grid) {
@@ -237,7 +248,8 @@ public:
         return importance;
     }
 
-    std::map<std::string, std::map<std::string, double>> RankingPoisitionVariables(std::map<std::string, std::vector<std::pair<std::string, double>>> importance){
+    std::map<std::string, std::map<std::string, double>> RankingPoisitionVariables(const std::map<std::string, std::vector<std::pair<std::string, double>>>& importance) const
+    {
         std::map<std::string, std::map<std::string, double>> position;
 
         for(auto method: importance){
@@ -255,7 +267,7 @@ public:
             for (const auto& pair: method.second){
                if (!histo_rank.count(pair.first)){
                    histo_rank[pair.first] = std::make_shared<TH1D>((pair.first+"_position").c_str(),(pair.first+"_position").c_str(), method.second.size(), 0, method.second.size());
-                    histo_rank[pair.first]->SetXTitle("position");
+                   histo_rank[pair.first]->SetXTitle("position");
                }
                 histo_rank[pair.first]->Fill(pair.second);
             }
@@ -267,7 +279,7 @@ public:
         return position;
     }
 
-    std::map<std::string, std::map<SampleId,double>> Kolmogorov(std::map<std::string, std::map<SampleId, std::map<size_t, std::vector<double>>>> evaluation)
+    std::map<std::string, std::map<SampleId,double>> Kolmogorov(const std::map<std::string, std::map<SampleId, std::map<size_t, std::vector<double>>>>& evaluation) const
     {
         std::map<std::string, std::map<SampleId,double>> kolmogorov;
         for(const auto& method : evaluation){
@@ -286,6 +298,34 @@ public:
             }
         }
         return kolmogorov;
+    }
+
+    std::map<std::string, std::pair<double, double>> Significativity(const std::map<std::string, std::map<SampleId, std::shared_ptr<TH1D>>>& outputBDT)
+    {
+        std::map<std::string, std::pair<double, double>> sign;
+        std::map<std::string, std::shared_ptr<TH1D>> histo_sign;
+        auto directory = root_ext::GetDirectory(*outfile.get(), "Significance");
+        for(const auto& method : outputBDT){
+            std::vector<std::pair<double,double>> cuts;
+            histo_sign[method.first] = std::make_shared<TH1D>((method.first+"_significance").c_str(), (method.first+"_significance").c_str(), 200, -1,1);
+            histo_sign[method.first]->SetXTitle("output BDT");
+            histo_sign[method.first]->SetXTitle("S/(sqrt(B))");
+            for(int i = 0; i<=200; i++){
+                auto first = method.second.at(mass_tot)->GetBinCenter(i);
+                auto second_sgn = method.second.at(mass_tot)->GetBinContent(i);
+                auto second_bkg = method.second.at(bkg)->GetBinContent(i);
+                auto significance = second_sgn/pow(second_bkg, 0.5);
+                cuts.emplace_back(first, significance);
+                histo_sign.at(method.first)->Fill(significance);
+            }
+            std::sort(cuts.begin(), cuts.end(), [](auto el1, auto el2){
+                return el1.second > el2.second;
+            });
+            sign[method.first] = cuts.front();
+        }
+        for (const auto& h : histo_sign)
+            root_ext::WriteObject(*h.second, directory);
+        return sign;
     }
 
     void Run()
@@ -356,6 +396,7 @@ public:
         vars->UploadEvents();
         vars->loader->PrepareTrainingAndTestTree( "","", "SplitMode=Random" );
         MvaOptionCollection options = mva_setup.CreateOptionCollection(true);
+
         const Grid_ND grid(options.GetPositionLimits());
         std::cout<<"grid"<<std::endl;
         std::map<std::string, std::string> methods;
@@ -363,14 +404,15 @@ public:
             methods[options.GetName(point)+"_"+std::to_string(args.seed())] = options.GetConfigString(point);
             std::cout << options.GetName(point)+"_"+std::to_string(args.seed()) << "    " << options.GetConfigString(point) << std::endl;
         }
+        std::cout << methods.size() << " metodi" << std::endl;
 
         for(const auto& m : methods)
             factory->BookMethod(vars->loader.get(), TMVA::Types::kBDT, m.first, m.second);
 
         TrainAllMethods(factory);
 //        factory->TrainAllMethods();
-//        factory->TestAllMethods();
-//        factory->EvaluateAllMethods();
+        factory->TestAllMethods();
+        factory->EvaluateAllMethods();
 
         for(const auto& m : methods){
             TString weightfile = ("mydataloader/weights/myFactory_"+m.first+".weights.xml");
@@ -382,18 +424,31 @@ public:
         auto position = RankingPoisitionVariables(importance);
         std::cout<<"position"<<std::endl;
 
-
+        SampleId bkg(SampleType::Bkg_TTbar, 0);
         std::map<std::string, std::map<SampleId, std::map<size_t, std::vector<double>>>> evaluation;
+        std::map<std::string, std::map<SampleId, std::shared_ptr<TH1D>>> outputBDT;
         for(const auto& m : methods){
+            outputBDT[m.first][mass_tot] = std::make_shared<TH1D>(("Signal_output_"+m.first).c_str(),("Signal_output_"+m.first).c_str(), 200, -1, 1);
+            outputBDT[m.first][bkg] = std::make_shared<TH1D>(("Bkg_output_"+m.first).c_str(),("Bkg_output_"+m.first).c_str(), 200, -1, 1);
             for(const auto& type_entry : vars->data){
                 auto sample_entry = type_entry.second;
                 for(const auto& entry : sample_entry){
                     evaluation[m.first][entry.first][type_entry.first] = vars->EvaluateForAllEvents(m.first, type_entry.first, entry.first);
+                    if (entry.first.IsSignal()){
+                        evaluation[m.first][mass_tot][type_entry.first].insert(evaluation[m.first][mass_tot][type_entry.first].end(), evaluation[m.first][entry.first][type_entry.first].begin(), evaluation[m.first][entry.first][type_entry.first].end());
+                        for (const auto& value : evaluation.at(m.first).at(entry.first).at(type_entry.first))
+                            outputBDT.at(m.first).at(mass_tot)->Fill(value);
+                    }
+                    if (entry.first.IsBackground()){
+                        for (const auto& value : evaluation.at(m.first).at(entry.first).at(type_entry.first))
+                            outputBDT.at(m.first).at(bkg)->Fill(value);
+                    }
                 }
             }
         }
 
         std::map<std::string, std::map<SampleId,double>> kolmogorov = Kolmogorov(evaluation);
+        std::map<std::string, std::pair<double, double>> sign = Significativity(outputBDT);
 
         ntuple::MvaTuple mva_tuple(outfile.get(), false);
         auto n_trees_option = options.at("NTrees");
@@ -416,6 +471,10 @@ public:
             mva_tuple().MaxDepth = MaxDepth_option->GetNumericValue(pos);
             pos = point.at(options.GetIndex("MinNodeSize"));
             mva_tuple().MinNodeSize = MinNodeSize_option->GetNumericValue(pos);
+            std::cout<<"method.first"<<std::endl;
+            mva_tuple().cut = sign[name].first;
+            std::cout<<"method.first"<<std::endl;
+            mva_tuple().significance = sign[name].second;
             mva_tuple().ROCIntegral = static_cast<double>(factory->GetROCIntegral(vars->loader.get(), name));
 
             std::vector<double> ks;
@@ -459,5 +518,5 @@ private:
 }
 
 PROGRAM_MAIN(analysis::mva_study::MVATraining, Arguments) // definition of the main program function
-//./run.sh MvaTraining --input_path ~/Desktop/tuples --output_file myfile.root --cfg_file hh-bbtautau/Studies/config/mva_config.cfg --tree_name muTau --number_events 10000000
+//./run.sh MvaTraining --input_path ~/Desktop/tuples --output_file prova --cfg_file hh-bbtautau/Studies/config/mva_config.cfg  --number_events 20000  --range low --seed 123
 
