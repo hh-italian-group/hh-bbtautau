@@ -28,7 +28,7 @@ public:
 
         AnalyzerSetupCollection ana_setup;
         AnalyzerConfigEntryReader ana_entry_reader(ana_setup);
-        config_reader.AddEntryReader("ANA_DESCRIPTOR", ana_entry_reader, false);
+        config_reader.AddEntryReader("ANA_DESC", ana_entry_reader, false);
 
         SampleDescriptorCollection sample_descriptors;
         SampleDescriptorConfigEntryReader sample_entry_reader(sample_descriptors);
@@ -62,8 +62,8 @@ public:
                          sample_descriptor_element.channels.size() << ", " <<
                          sample_descriptor_element.color << ", " <<
                          sample_descriptor_element.file_path_pattern << ", " <<
-                         sample_descriptor_element.cross_section << ", " << std::endl;
-//                         sample_descriptor_element.GetFileName(3) << ", " << std::endl;
+                         sample_descriptor_element.cross_section << ", " << /*std::endl;*/
+                         sample_descriptor_element.GetFileName(3) << ", " << std::endl;
 
         } //end loop sample_descriptors
 

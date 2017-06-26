@@ -9,39 +9,42 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 namespace analysis {
 
 template<typename Descriptor>
-class SampleDescriptorBaseConfigEntryReader : public analysis::ConfigEntryReader {
+class SampleDescriptorBaseConfigEntryReader : public analysis::ConfigEntryReaderT<Descriptor> {
 public:
     using DescriptorCollection = std::unordered_map<std::string, Descriptor>;
-    SampleDescriptorBaseConfigEntryReader(DescriptorCollection& _descriptors) : descriptors(&_descriptors) {}
+    SampleDescriptorBaseConfigEntryReader(DescriptorCollection& _descriptors) : ConfigEntryReaderT<Descriptor>(_descriptors) {}
 
     virtual void StartEntry(const std::string& name, const std::string& reference_name) override
     {
-        ConfigEntryReader::StartEntry(name, reference_name);
-        current = reference_name.size() ? descriptors->at(reference_name) : Descriptor();
-        current.name = name;
+        ConfigEntryReaderT<Descriptor>::StartEntry(name, reference_name);
+//        current = reference_name.size() ? descriptors->at(reference_name) : Descriptor();
+//        current.name = name;
     }
 
     virtual void EndEntry() override
     {
-        CheckReadParamCounts("title", 1, Condition::equal_to);
+        ConfigEntryReaderT<Descriptor>::CheckReadParamCounts("title", 0, Condition::greater_equal);
         CheckReadParamCounts("color", 0, Condition::greater_equal);
         CheckReadParamCounts("draw", 0, Condition::greater_equal);
         CheckReadParamCounts("channels", 0, Condition::greater_equal);
         CheckReadParamCounts("categoryType", 0, Condition::greater_equal);
         CheckReadParamCounts("datacard_name", 0, Condition::greater_equal);
 
-        (*descriptors)[current.name] = current;
+        ConfigEntryReaderT<Descriptor>::EndEntry();
+//        (*descriptors)[current.name] = current;
     }
 
-    virtual void ReadParameter(const std::string& /*param_name*/, const std::string& /*param_value*/,
-                               std::istringstream& /*ss*/) override
+    virtual void ReadParameter(const std::string& param_name, const std::string& param_value,
+                               std::istringstream& ss) override
     {
         ParseEntry("title", current.title);
         ParseEntry("color", current.color);
         ParseEntry("draw", current.draw);
-        ParseEntry("channels", current.channels);
+        ParseEntryList("channels", current.channels);
         ParseEntry("categoryType", current.categoryType);
         ParseEntry("datacard_name", current.datacard_name);
+
+        ConfigEntryReaderT<Descriptor>::ReadParameter(param_name, param_value, ss);
     }
 
 protected:
@@ -64,6 +67,8 @@ public:
         CheckReadParamCounts("draw_ex", 0, Condition::greater_equal);
         CheckReadParamCounts("norm_sf", 0, Condition::greater_equal);
         CheckReadParamCounts("datacard_name_ex", 0, Condition::greater_equal);
+
+        std::map<std::string, std::vector<std::string>> signal_points_map = SampleDescriptor::GetMapOfVectorOfString();
 
         Base::EndEntry();
     }
@@ -106,7 +111,7 @@ public:
         ParseEntry("sample_descriptor", current.sample_descriptors,
                    [&](const std::string& name){return sampleDescriptorCollection->count(name);});
 
-        Base::ReadParameter(param_name,param_value,ss); //metti oggetti
+        Base::ReadParameter(param_name,param_value,ss);
     }
 
 private:

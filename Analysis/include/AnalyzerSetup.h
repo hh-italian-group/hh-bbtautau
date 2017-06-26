@@ -27,7 +27,7 @@ public:
     double int_lumi;
     std::vector<std::string> final_variables;
     bool apply_mass_cut;
-    std::vector<EventEnergyScale> energy_scales;
+    std::set<EventEnergyScale> energy_scales;
 
 };
 

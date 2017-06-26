@@ -26,15 +26,13 @@ public:
     std::string title;
     root_ext::Color color;
     bool draw;
-    std::vector<Channel> channels;
+    std::set<Channel> channels;
     DataCategoryType categoryType;
     std::string datacard_name;
 
     bool CreateDatacard()
     {
-        if (!datacard_name.size())
-            return false;
-        return true;
+        return datacard_name.size();
     }
 
 };
@@ -43,14 +41,27 @@ public:
 class SampleDescriptor : public analysis::SampleDescriptorBase
 {
 public:
-    SampleDescriptor() {}
+    SampleDescriptor() : cross_section(0) {}
+
+    std::map<std::string, std::vector<std::string>> GetMapOfVectorOfString() const
+    {
+        std::map<std::string, std::vector<std::string>> signal_points_map;
+        for (auto signal_point_iter : signal_points){
+            std::string point_prefix = signal_point_iter.first;
+            std::string signal_points_list_str = signal_point_iter.second;
+            std::vector<std::string> signal_points_list = SplitValueList(signal_points_list_str);
+            signal_points_map[point_prefix] = signal_points_list;
+        }
+        return signal_points_map;
+    }
 
     std::string GetFileName(size_t signal_point) const
     {
         std::string file_name = file_path_pattern;
         for (auto signal_point_iter : signal_points){
             std::string point_prefix = signal_point_iter.first;
-            std::vector<std::string> signal_points_list = signal_point_iter.second;
+            std::string signal_points_list_str = signal_point_iter.second;
+            std::vector<std::string> signal_points_list = SplitValueList(signal_points_list_str);
             std::string point_value = signal_points_list.at(signal_point);
             boost::algorithm::replace_all(file_name, point_prefix, point_value);
         }
@@ -61,8 +72,8 @@ public:
     std::vector<std::string> file_paths;
     std::string file_path_pattern;
     double cross_section;
-    std::map<std::string, std::vector<std::string>> signal_points; //mass for resonant, radion or graviton, nodes for non-resonant
-    std::map<std::string, std::string> draw_ex;
+    std::map<std::string, std::string> signal_points; //mass for resonant, radion or graviton, nodes for non-resonant
+    std::map<std::string, std::string> draw_ex; //should be std::map<std::string, Color> not working
     std::vector<double> norm_sf;
     std::vector<std::string> datacard_name_ex;
 };

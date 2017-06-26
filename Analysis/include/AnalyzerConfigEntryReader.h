@@ -36,7 +36,7 @@ public:
         ParseEntry("int_lumi", current.int_lumi);
         ParseEntry("final_variable", current.final_variables);
         ParseEntry("apply_mass_cut", current.apply_mass_cut);
-        ParseEntry("energy_scales", current.energy_scales);
+        ParseEnumList("energy_scales", current.energy_scales);
     }
 
 private:
