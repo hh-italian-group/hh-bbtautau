@@ -13,18 +13,19 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/ProgressReporter.h"
 #include "h-tautau/McCorrections/include/EventWeights.h"
 #include "hh-bbtautau/McCorrections/include/EventWeights_HH.h"
+#include "hh-bbtautau/Instruments/include/SkimmerConfigEntryReader.h"
+#include "AnalysisTools/Core/include/ConfigReader.h"
+#include "h-tautau/Analysis/include/EventLoader.h"
 
 struct Arguments {
-    REQ_ARG(std::string, treeName);
-    REQ_ARG(std::string, originalFileName);
-    REQ_ARG(std::string, outputFileName);
-	REQ_ARG(std::string, sample_type);
-	OPT_ARG(std::string, additionalInputFile, "");
-	OPT_ARG(std::string, additional2InputFile, "");
+    REQ_ARG(std::string, cfg);
+    REQ_ARG(std::string, inputPath);
+    REQ_ARG(std::string, outputPath);
+    REQ_ARG(std::string, jobs);
 };
 
 namespace analysis {
-
+namespace tuple_skimmer {
 class TupleSkimmer {
 public:
     using Event = ntuple::Event;
@@ -34,269 +35,326 @@ public:
 	
 	using ExpressTuple = ntuple::ExpressTuple;
 	using ExpressEvent = ntuple::ExpressEvent;
-	using ExpressPtr   = std::shared_ptr<ExpressEvent>;
+    using SummaryTuple = ntuple::SummaryTuple;
+    using ProdSummary = ntuple::ProdSummary;
 
-    TupleSkimmer(const Arguments& _args) : args(_args), processQueue(100000), writeQueue(100000),
-        eventWeights_HH(Parse<Channel>(args.treeName()),Period::Run2016, DiscriminatorWP::Medium)
-    { }
+    static constexpr size_t max_queue_size = 100000;
+
+    TupleSkimmer(const Arguments& _args) :
+        args(_args), processQueue(max_queue_size), writeQueue(max_queue_size)
+    {
+        std::cout << "TupleSkimmer started.\nReading config... " << std::flush;
+        ROOT::EnableThreadSafety();
+
+        ConfigReader configReader;
+        SetupCollection setups;
+        SetupEntryReader setupReader(setups);
+        configReader.AddEntryReader("SETUP", setupReader, false);
+        SkimJobCollection all_jobs;
+        SkimJobEntryReader jobReader(all_jobs);
+        configReader.AddEntryReader("JOB", jobReader, true);
+        configReader.ReadConfig(args.cfg());
+
+        if(setups.size() != 1)
+            throw exception("Tuple skimmer setup not found.");
+        setup = setups.begin()->second;
+        setup.UpdateTauIdHashes();
+
+        std::cout << "done.\nLoading weights... " << std::flush;
+        eventWeights_HH = std::make_shared<mc_corrections::EventWeights_HH>(setup.period, setup.btag_wp);
+        std::cout << "done." << std::endl;
+
+        if(args.jobs() == "all") {
+            for(const auto& job_entry : all_jobs)
+                jobs.push_back(job_entry.second);
+        } else {
+            const auto selected_jobs = SplitValueList(args.jobs(), false, ",", true);
+            if(!selected_jobs.size())
+                throw exception("No jobs selected.");
+            for(const auto& job_name : selected_jobs) {
+                if(!all_jobs.count(job_name))
+                    throw exception("Job '%1%' not found.") % job_name;
+                jobs.push_back(all_jobs.at(job_name));
+            }
+        }
+    }
 
     void Run()
     {
-#if ROOT_VERSION_CODE >= ROOT_VERSION(6,6,0)
-        ROOT::EnableThreadSafety();
-#endif
-
-		outputFile = root_ext::CreateRootFile(args.outputFileName());
-		originalFile = root_ext::OpenRootFile(args.originalFileName());
-		inputFiles.push_back(originalFile);
-		if (args.additionalInputFile() != "")
-		{
-			additionalFile = root_ext::OpenRootFile(args.additionalInputFile());
-			inputFiles.push_back(additionalFile);
-			std::cout << "  --> there is one additional file <-- " <<std::endl;
-		}
-		
-		if (args.additional2InputFile() != "")
-		{
-			additional2File = root_ext::OpenRootFile(args.additional2InputFile());
-			inputFiles.push_back(additional2File);
-			std::cout << "  --> there is another additional file <-- " <<std::endl;
-		}
-        //BDT variables: "dphi_mumet", "dphi_metsv", "dR_taumu", "mT1", "mT2", "dphi_bbmet", "dphi_bbsv", "dR_bb", "m_bb",
-        DisabledBranches_read = {"n_jets", "weight_btag", "weight_ttbar_pt",  "weight_PU", "weight_dy", "weight_ttbar_merge",
-                                 "weight_sm", "shape_denominator_weight", "trigger_accepts", "trigger_matches"};
-
-        DisabledBranches_write = { "lhe_particle_pdg", "lhe_particle_p4", "pfMET_cov", "genJets_partoFlavour",
-                                   "genJets_hadronFlavour", "genJets_p4", "genParticles_p4", "genParticles_pdg",
-                                   "trigger_accepts", "trigger_matches", "tauId_keys_1", "tauId_values_1",
-                                   "tauId_keys_2", "tauId_values_2"};
-		
-		denominator = GetShapeDenominatorWeight(args.originalFileName());
-
-        std::thread process_thread(std::bind(&TupleSkimmer::ProcessThread, this));
-        std::thread writer_thread(std::bind(&TupleSkimmer::WriteThread, this, args.treeName(), args.outputFileName()));
-
-        //ReadThread(args.treeName(), args.originalFileName());
-		ReadThread2(args.treeName());
-
-        std::cout << "Waiting for process and write threads to finish..." << std::endl;
-        process_thread.join();
-        writer_thread.join();
-		
-		SaveSummaryTree();
+        for(const auto& job : jobs) {
+            try {
+                std::cout << boost::format("Skimming job %1%...") % job.name << std::endl;
+                ProcessJob(job);
+                std::cout << "Job " << job.name << " has been skimmed." << std::endl;
+            } catch(std::exception& e) {
+                std::cerr << "\nEROOR: " << e.what() << "\nJob " <<job.name << " is failed." << std::endl;
+            }
+        }
     }
 
 private:
-    std::pair<double,double> GetShapeDenominatorWeight(const std::string& /*originalFileName*/)
-	{
-		std::cout << "Calculating denominator for shape changing weights..." << std::endl;
-        std::pair<double,double> tot_weight; //first without ttbar_pt, second with ttbar_pt
-		std::shared_ptr<ExpressTuple> AllEventTuple(new ExpressTuple("all_events", originalFile.get(), true));
-		
-		const Long64_t all_entries = AllEventTuple->GetEntries();
-		for(Long64_t current_entry = 0; current_entry < all_entries; ++current_entry)
-		{
-			AllEventTuple->GetEntry(current_entry);
-			ExpressPtr event(new ExpressEvent(AllEventTuple->data()));
-            double pu = eventWeights_HH.GetPileUpWeight(*event);
-            double mc = event->genEventWeight;
-			
-            double weight_ttbar_pt = 1.;
-            if(args.sample_type() == "ttbar")
-            {
-                weight_ttbar_pt = eventWeights_HH.GetTopPtWeight(*event);
-            }
-
-            double weight_sm = 1.;
-            if(args.sample_type() == "sm")
-            {
-                weight_sm = eventWeights_HH.GetBSMtoSMweight(*event);
-            }
-
-            tot_weight.first = tot_weight.first + (pu*mc*weight_sm);
-            tot_weight.second = tot_weight.second + (pu*weight_ttbar_pt*mc*weight_sm);
-		}
-		return tot_weight;
-	}
-
-    void ReadThread(const std::string& treeName, const std::string& /*originalFileName*/)
+    void ProcessJob(const SkimJob& job)
     {
-		if(args.sample_type() == "data")
-		{
-			DisabledBranches_read.erase("trigger_accepts");
-			DisabledBranches_read.erase("trigger_matches");
-		}
-		std::shared_ptr<EventTuple> originalTuple(new EventTuple(treeName, originalFile.get(), true, DisabledBranches_read));
+        std::shared_ptr<std::thread> process_thread, writer_thread;
+        std::shared_ptr<ProdSummary> summary;
 
-		tools::ProgressReporter reporter(10, std::cout, "Starting skimming...");
-		const Long64_t n_entries = originalTuple->GetEntries();
-        reporter.SetTotalNumberOfEvents(static_cast<size_t>(n_entries));
-		for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry)
-		{
-			originalTuple->GetEntry(current_entry);
-            reporter.Report(static_cast<size_t>(current_entry));
-			EventPtr event(new Event(originalTuple->data()));
-			processQueue.Push(event);
-		}
-		processQueue.SetAllDone();
-        reporter.Report(static_cast<size_t>(n_entries), true);
+        try {
+            weighting_mode = job.apply_common_weights ? job.weights | setup.common_weights : job.weights;
+            for(auto desc_iter = job.files.begin(); desc_iter != job.files.end(); ++desc_iter) {
+                if(desc_iter == job.files.begin() || !job.ProduceMergedOutput()) {
+                    const std::string out_name = job.ProduceMergedOutput() ? job.merged_output : desc_iter->output;
+                    outputFile = root_ext::CreateRootFile(args.outputPath() + "/" + out_name);
+
+                    processQueue.SetAllDone(false);
+                    writeQueue.SetAllDone(false);
+                    process_thread = std::make_shared<std::thread>(std::bind(&TupleSkimmer::ProcessThread, this));
+                    writer_thread = std::make_shared<std::thread>(std::bind(&TupleSkimmer::WriteThread, this));
+                    summary = std::shared_ptr<ProdSummary>();
+                }
+                std::cout << "\tProcessing";
+                std::vector<std::shared_ptr<TFile>> inputFiles;
+                for(const auto& input : desc_iter->inputs) {
+                    std::cout << " " << input;
+                    inputFiles.push_back(root_ext::OpenRootFile(args.inputPath() + "/" + input));
+                }
+                std::cout << "\n\t\textracting summary" << std::endl;
+                const ProdSummary desc_summary = GetCombinedSummary(*desc_iter, inputFiles, job.ignore_trigger_info);
+                if(summary)
+                    ntuple::MergeProdSummaries(*summary, desc_summary);
+                else
+                    summary = std::make_shared<ProdSummary>(desc_summary);
+
+                for(Channel channel : setup.channels) {
+                    const std::string treeName = ToString(channel);
+                    for(size_t n = 0; n < desc_iter->inputs.size(); ++n) {
+                        auto file = inputFiles.at(n);
+                        std::cout << "\t\t" << desc_iter->inputs.at(n) << ":" << treeName << std::endl;
+                        std::shared_ptr<EventTuple> tuple;
+                        try {
+                            tuple = ntuple::CreateEventTuple(treeName, file.get(), true, ntuple::TreeState::Full,
+                                                             job.ignore_trigger_info);
+                        } catch(std::exception&) {
+                            std::cerr << "WARNING: tree " << treeName << " not found in file '"
+                                      << desc_iter->inputs.at(n) << "'." << std::endl;
+                        }
+                        if(!tuple) continue;
+                        for(const Event& event : *tuple) {
+                            auto event_ptr = std::make_shared<Event>(event);
+                            event_ptr->weight_xs = desc_iter->GetCrossSectionWeight();
+                            processQueue.Push(event_ptr);
+                        }
+                    }
+                }
+
+                if(std::next(desc_iter) == job.files.end() || !job.ProduceMergedOutput()) {
+                    processQueue.SetAllDone(true);
+                    process_thread->join();
+                    writer_thread->join();
+
+                    if(!summary)
+                        throw exception("Summary not produced for job %1%") % job.name;
+                    auto summaryTuple = ntuple::CreateSummaryTuple("summary", outputFile.get(), false,
+                                                                   ntuple::TreeState::Skimmed);
+                    (*summaryTuple)() = *summary;
+                    summaryTuple->Fill();
+                    summaryTuple->Write();
+                }
+            }
+        } catch(std::exception&) {
+            processQueue.SetAllDone(true);
+            process_thread->join();
+            writer_thread->join();
+            throw;
+        }
     }
-
-	void ReadThread2(const std::string& treeName)
-	{
-		if(args.sample_type() == "data")
-		{
-			DisabledBranches_read.erase("trigger_accepts");
-			DisabledBranches_read.erase("trigger_matches");
-		}
-
-		tools::ProgressReporter reporter(10, std::cout, "Starting skimming...");
-
-		double tot_entries = 0.;
-		std::vector<std::shared_ptr<EventTuple>> inputTuples;
-		for (size_t n = 0; n<inputFiles.size(); ++n)
-		{
-			std::shared_ptr<EventTuple> tempTuple(new EventTuple(treeName, inputFiles.at(n).get(), true, DisabledBranches_read));
-			inputTuples.push_back(tempTuple);
-			std::cout << "   Temp entries: " << tempTuple->GetEntries() << std::endl;
-			tot_entries += tempTuple->GetEntries();
-		}
-
-		std::cout << "   Total entries: " << tot_entries << std::endl;
-        reporter.SetTotalNumberOfEvents(static_cast<size_t>(tot_entries));
-		
-		for (size_t n = 0; n<inputTuples.size(); ++n)
-		{
-			std::cout << " Analyzing Tuple: " << inputTuples.at(n) << std::endl;
-			
-			const Long64_t n_entries = inputTuples.at(n)->GetEntries();
-			//reporter.SetTotalNumberOfEvents(n_entries);
-			for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry)
-			{
-			 	inputTuples.at(n)->GetEntry(current_entry);
-                reporter.Report(static_cast<size_t>(current_entry));
-				EventPtr event(new Event(inputTuples.at(n)->data()));
-				processQueue.Push(event);
-			}
-		}
-		
-		processQueue.SetAllDone();
-        reporter.Report(static_cast<size_t>(tot_entries), true);
-	}
-
-	void SaveSummaryTree()
-	{
-		std::cout << "Copying the summary tree..." << std::endl;
-		auto original_tree = root_ext::ReadObject<TTree>(*originalFile, "summary");
-
-		outputFile->cd();
-		TTree* copied_tree = original_tree->CloneTree();
-		outputFile->Write();
-		delete original_tree;
-		delete copied_tree;
-	}
 
     void ProcessThread()
     {
-        EventPtr event;
-        while(processQueue.Pop(event)) {
-            if(ProcessEvent(*event))
-                writeQueue.Push(event);
+        try {
+            EventPtr event, prev_full_event;
+            while(processQueue.Pop(event)) {
+                ntuple::StorageMode storage_mode;
+                if(ProcessEvent(*event, prev_full_event, storage_mode))
+                    writeQueue.Push(event);
+                if(storage_mode.IsFull())
+                    prev_full_event = event;
+            }
+            writeQueue.SetAllDone();
+        } catch(std::exception& e) {
+            std::cerr << "ERROR (ProcessThread): " << e.what() << std::endl;
+            std::abort();
         }
-        writeQueue.SetAllDone();
     }
 
-    void WriteThread(const std::string& treeName, const std::string& /*outputFileName*/)
+    void WriteThread()
     {
-		if(args.sample_type() == "data")
-		{
-			DisabledBranches_write.erase("trigger_accepts");
-			DisabledBranches_write.erase("trigger_matches");
-		}
-		std::shared_ptr<EventTuple> outputTuple(new EventTuple(treeName, outputFile.get(), false, DisabledBranches_write));
+        try {
+            std::map<Channel, std::shared_ptr<EventTuple>> outputTuples;
 
-        EventPtr event;
-        while(writeQueue.Pop(event)) {
-            (*outputTuple)() = *event;
-            outputTuple->Fill();
+            EventPtr event;
+            while(writeQueue.Pop(event)) {
+                const Channel channel = static_cast<Channel>(event->channelId);
+                if(!outputTuples.count(channel)) {
+                    const std::string treeName = ToString(channel);
+                    outputTuples[channel] = ntuple::CreateEventTuple(treeName, outputFile.get(), false,
+                                                                     ntuple::TreeState::Skimmed);
+                }
+                (*outputTuples[channel])() = *event;
+                outputTuples[channel]->Fill();
+            }
+
+            for(auto& tuple : outputTuples)
+                tuple.second->Write();
+        } catch(std::exception& e) {
+            std::cerr << "ERROR (ProcessThread): " << e.what() << std::endl;
+            std::abort();
         }
-
-        outputTuple->Write();
     }
 
-    bool ProcessEvent(Event& event)
+    ProdSummary GetSummaryWithWeights(const std::shared_ptr<TFile>& file, double xs_weight,
+                                      bool ignore_trigger_summary) const
     {
-	
-        LorentzVectorE_Float first_jet = event.jets_p4.at(0);
-        LorentzVectorE_Float second_jet = event.jets_p4.at(1);
-        if (event.jets_p4.size() < 2 || event.extraelec_veto == false || event.extramuon_veto == false ||
-                 std::abs(first_jet.eta()) >= cuts::btag_2016::eta ||
-                 std::abs(second_jet.eta()) >= cuts::btag_2016::eta) return false;
+        using mc_corrections::WeightType;
+        using mc_corrections::WeightingMode;
 
-        //const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
-        //if(es != EventEnergyScale::Central) return false;
-
-        //old WP for isolation: "byTightIsolationMVArun2v1DBoldDMwLT", "byVTightIsolationMVArun2v1DBoldDMwLT"
-        static const std::set<std::string> tauID_Names = {
-            "againstMuonTight3", "againstElectronVLooseMVA6", "againstElectronTightMVA6", "againstMuonLoose3",
-            "byMediumIsolationMVArun2v1DBoldDMwLT"
+        static const WeightingMode shape_weights = { WeightType::PileUp, WeightType::BSM_to_SM };
+        static const WeightingMode shape_weights_withTopPt = {
+            WeightType::PileUp, WeightType::BSM_to_SM, WeightType::TopPt
         };
-		
-//        decltype(event.tauIDs_1) tauIDs_1, tauIDs_2;
-//        for(const auto& name : tauID_Names) {
-//            if(event.tauIDs_1.count(name))
-//                tauIDs_1[name] = event.tauIDs_1.at(name);
-//            if(event.tauIDs_2.count(name))
-//                tauIDs_2[name] = event.tauIDs_2.at(name);
 
-//        }
-//        event.tauIDs_1 = tauIDs_1;
-//        event.tauIDs_2 = tauIDs_2;
+        auto summary_tuple = ntuple::CreateSummaryTuple("summary", file.get(), true, ntuple::TreeState::Full,
+                                                        ignore_trigger_summary);
+        auto summary = ntuple::MergeSummaryTuple(*summary_tuple);
+        summary.totalShapeWeight = 0;
+        summary.totalShapeWeight_withTopPt = 0;
 
+        const auto mode = shape_weights & weighting_mode;
+        const auto mode_withTopPt = shape_weights_withTopPt & weighting_mode;
+        const bool calc_withTopPt = mode_withTopPt.count(WeightType::TopPt);
+        if(mode.size() || mode_withTopPt.size()) {
+            ExpressTuple all_events("all_events", file.get(), true);
+            for(const auto& event : all_events) {
+                summary.totalShapeWeight += eventWeights_HH->GetTotalWeight(event, mode) * xs_weight;
+                if(calc_withTopPt)
+                    summary.totalShapeWeight_withTopPt +=
+                            eventWeights_HH->GetTotalWeight(event, mode_withTopPt) * xs_weight;
+            }
+        }
+        return summary;
+    }
+
+    ProdSummary GetCombinedSummary(const FileDescriptor& desc, const std::vector<std::shared_ptr<TFile>>& input_files,
+                                   bool ignore_trigger_summary)
+    {
+        if(!input_files.size())
+            throw exception("Input files list is empty.");
+        auto file_iter = input_files.begin();
+        auto summary = GetSummaryWithWeights(*file_iter++, desc.GetCrossSectionWeight(), ignore_trigger_summary);
+        if(!desc.first_input_is_ref) {
+            for(; file_iter != input_files.end(); ++file_iter) {
+                auto other_summary = GetSummaryWithWeights(*file_iter, desc.GetCrossSectionWeight(),
+                                                           ignore_trigger_summary);
+                ntuple::MergeProdSummaries(summary, other_summary);
+            }
+        }
+        return summary;
+    }
+
+    void SkimTauIds(std::vector<uint32_t>& tauId_keys, std::vector<float>& tauId_values) const
+    {
+        std::vector<uint32_t> skimmed_keys;
+        std::vector<float> skimmed_values;
+        if(tauId_keys.size() != tauId_values.size())
+            throw exception("Inconsistent tauId information.");
+        for(size_t n = 0; n < tauId_keys.size(); ++n) {
+            if(setup.tau_id_hashes.count(tauId_keys.at(n))) {
+                skimmed_keys.push_back(tauId_keys.at(n));
+                skimmed_values.push_back(tauId_values.at(n));
+            }
+        }
+
+        tauId_keys = std::move(skimmed_keys);
+        tauId_values = std::move(skimmed_values);
+    }
+
+    bool ProcessEvent(Event& event, const std::shared_ptr<Event>& prev_event, ntuple::StorageMode& storage_mode)
+    {
+        using EventPart = ntuple::StorageMode::EventPart;
+        using WeightType = mc_corrections::WeightType;
+
+        Event full_event = event;
+        storage_mode = ntuple::EventLoader::Load(full_event, prev_event.get());
+        const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
+        if (!setup.energy_scales.count(es) || full_event.jets_p4.size() < 2 || full_event.extraelec_veto
+                || full_event.extramuon_veto
+                || std::abs(full_event.jets_p4.at(0).eta()) >= cuts::btag_2016::eta
+                || std::abs(full_event.jets_p4.at(1).eta()) >= cuts::btag_2016::eta) return false;
+
+        if(storage_mode.IsPresent(EventPart::FirstTauIds))
+            SkimTauIds(event.tauId_keys_1, event.tauId_values_1);
+        if(storage_mode.IsPresent(EventPart::SecondTauIds))
+            SkimTauIds(event.tauId_keys_2, event.tauId_values_2);
 	
-		// Event Variables
-        event.n_jets = static_cast<unsigned>(event.jets_p4.size());
-        event.ht_other_jets = static_cast<float>(analysis::Calculate_HT(event.jets_p4.begin()+2,event.jets_p4.end()));
+        event.n_jets = static_cast<unsigned>(full_event.jets_p4.size());
+        event.ht_other_jets = static_cast<float>(
+                    Calculate_HT(full_event.jets_p4.begin() + 2, full_event.jets_p4.end()));
 
-		// Event Weights Variables
-        event.weight_btag = eventWeights_HH.GetBtagWeight(event);
-        event.weight_lepton = eventWeights_HH.GetLeptonTotalWeight(event);
-        event.weight_PU = eventWeights_HH.GetPileUpWeight(event);
-        event.weight_ttbar_pt = eventWeights_HH.GetTopPtWeight(event);
-        event.weight_dy = eventWeights_HH.GetDY_weight(event);
-        event.weight_wjets = eventWeights_HH.GetWjets_weight(event);
-        event.weight_ttbar_merge = eventWeights_HH.GetTTbar_weight(event);
-        event.weight_sm = eventWeights_HH.GetBSMtoSMweight(event);
-//		event.shape_denominator_weight = denominator;
-	
-		// Jets Variables Resizing
-		event.jets_csv.resize(2);
-		event.jets_rawf.resize(2);
-		event.jets_mva.resize(2);
-		event.jets_p4.resize(2);
-		event.jets_partonFlavour.resize(2);
-		event.jets_hadronFlavour.resize(2);
+
+        event.weight_pu = weighting_mode.count(WeightType::PileUp)
+                        ? eventWeights_HH->GetWeight(full_event, WeightType::PileUp) : 1;
+        if(weighting_mode.count(WeightType::LeptonTrigIdIso)) {
+            auto lepton_wp = eventWeights_HH->GetProviderT<mc_corrections::LeptonWeights>(WeightType::LeptonTrigIdIso);
+            event.weight_lepton_trig = lepton_wp->GetTriggerWeight(full_event);
+            event.weight_lepton_id_iso = lepton_wp->GetIdIsoWeight(full_event);
+        } else {
+            event.weight_lepton_trig = 1;
+            event.weight_lepton_id_iso = 1;
+        }
+        if(weighting_mode.count(WeightType::BTag)) {
+            auto btag_wp = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(WeightType::BTag);
+            event.weight_btag = btag_wp->Get(full_event);
+            event.weight_btag_up = btag_wp->GetEx(full_event, UncertaintyScale::Up);
+            event.weight_btag_down = btag_wp->GetEx(full_event, UncertaintyScale::Down);
+        } else {
+            event.weight_btag = 1;
+            event.weight_btag_up = 1;
+            event.weight_btag_down = 1;
+        }
+        event.weight_dy = weighting_mode.count(WeightType::DY)
+                ? eventWeights_HH->GetWeight(full_event, WeightType::DY) : 1;
+        event.weight_ttbar = weighting_mode.count(WeightType::TTbar)
+                ? eventWeights_HH->GetWeight(full_event, WeightType::TTbar) : 1;
+        event.weight_wjets = weighting_mode.count(WeightType::Wjets)
+                ? eventWeights_HH->GetWeight(full_event, WeightType::Wjets) : 1;
+        event.weight_bsm_to_sm = weighting_mode.count(WeightType::BSM_to_SM)
+                ? eventWeights_HH->GetWeight(full_event, WeightType::BSM_to_SM) : 1;
+        event.weight_top_pt = weighting_mode.count(WeightType::TopPt)
+                ? eventWeights_HH->GetWeight(full_event, WeightType::TopPt) : 1;
+        event.weight_total = eventWeights_HH->GetTotalWeight(full_event, weighting_mode) * event.weight_xs;
+
+        if(storage_mode.IsPresent(EventPart::Jets)) {
+            event.jets_csv.resize(2);
+            event.jets_rawf.resize(2);
+            event.jets_mva.resize(2);
+            event.jets_p4.resize(2);
+            event.jets_partonFlavour.resize(2);
+            event.jets_hadronFlavour.resize(2);
+        }
 		
         return true;
     }
 
 private:
     Arguments args;
+    Setup setup;
+    std::vector<SkimJob> jobs;
     EventQueue processQueue, writeQueue;
-	
-	std::shared_ptr<TFile> originalFile;
+    std::shared_ptr<mc_corrections::EventWeights_HH> eventWeights_HH;
 	std::shared_ptr<TFile> outputFile;
-	std::shared_ptr<TFile> additionalFile;
-	std::shared_ptr<TFile> additional2File;
-	std::vector<std::shared_ptr<TFile>> inputFiles;
-	
-    mc_corrections::EventWeights_HH eventWeights_HH;
-    std::pair<double,double> denominator;
-	
-	std::set<std::string> DisabledBranches_read;
-	std::set<std::string> DisabledBranches_write;
+    mc_corrections::WeightingMode weighting_mode;
 };
 
+} // namespace tuple_skimmer
 } // namespace analysis
 
-PROGRAM_MAIN(analysis::TupleSkimmer, Arguments)
+PROGRAM_MAIN(analysis::tuple_skimmer::TupleSkimmer, Arguments)
