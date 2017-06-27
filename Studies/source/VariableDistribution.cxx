@@ -96,7 +96,7 @@ public:
 
                 if (static_cast<EventEnergyScale>(event.eventEnergyScale) != EventEnergyScale::Central || (event.q_1+event.q_2) != 0 || event.jets_p4.size() < 2
                     || event.extraelec_veto == true || event.extramuon_veto == true || event.jets_p4[0].eta() > cuts::btag_2016::eta
-                    || event.jets_p4[1].eta() > cuts::btag_2016::eta)
+                    || event.jets_p4[1].eta() > cuts::btag_2016::eta )
                     continue;
 
                 LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];

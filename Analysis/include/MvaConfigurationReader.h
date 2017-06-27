@@ -21,15 +21,15 @@ public:
 
     virtual void EndEntry() override
     {
-        CheckReadParamCounts("channels", 1, Condition::equal_to);
-        CheckReadParamCounts("mass_range", 1, Condition::equal_to);
+        CheckReadParamCounts("channels", 0, Condition::greater_equal);
+        CheckReadParamCounts("mass_range", 0, Condition::greater_equal);
         CheckReadParamCounts("param_list", 0, Condition::greater_equal);
         CheckReadParamCounts("param", 0, Condition::greater_equal);
         CheckReadParamCounts("param_range", 0, Condition::greater_equal);
         CheckReadParamCounts("disabled_params", 0, Condition::greater_equal);
-        CheckReadParamCounts("significant_params", 1, Condition::less_equal);
-        CheckReadParamCounts("variables", 1, Condition::equal_to);
-        CheckReadParamCounts("use_mass_var", 1, Condition::less_equal);
+        CheckReadParamCounts("significant_params", 0, Condition::greater_equal);
+        CheckReadParamCounts("variables", 0, Condition::greater_equal);
+        CheckReadParamCounts("use_mass_var", 0, Condition::greater_equal);
 
         (*descriptors)[current.name] = current;
     }

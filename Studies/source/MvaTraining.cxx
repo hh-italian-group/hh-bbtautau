@@ -5,7 +5,6 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Analysis/include/EventTuple.h"
 #include "AnalysisTools/Core/include/exception.h"
 #include "AnalysisTools/Core/include/AnalyzerData.h"
-#include "hh-bbtautau/Analysis/include/Lester_mt2_bisect.h"
 #include "hh-bbtautau/Analysis/include/MvaConfiguration.h"
 #include "hh-bbtautau/Analysis/include/MvaVariables.h"
 #include "h-tautau/Cuts/include/Btag_2016.h"
@@ -27,33 +26,9 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include <fstream>
 #include <random>
 #include "hh-bbtautau/Analysis/include/MvaConfigurationReader.h"
+#include "hh-bbtautau/Analysis/include/MvaTuple.h"
+#include "hh-bbtautau/Analysis/include/MvaVariablesStudy.h"
 
-#include "AnalysisTools/Core/include/SmartTree.h"
-
-#define MVA_DATA() \
-    VAR(UInt_t, NTrees) \
-    VAR(double, shrinkage) \
-    VAR(double, BaggedSampleFraction) \
-    VAR(double, MaxDepth) \
-    VAR(double, MinNodeSize) \
-    VAR(double, ROCIntegral) \
-    VAR(double, cut) \
-    VAR(double, significance) \
-    VAR(std::vector<double>, KS_value) \
-    VAR(std::vector<double>, KS_mass) \
-    VAR(std::vector<double>, position) \
-    VAR(std::vector<double>, importance) \
-    VAR(std::vector<std::string>, var_name) \
-    /**/
-
-#define VAR(type, name) DECLARE_BRANCH_VARIABLE(type, name)
-DECLARE_TREE(ntuple, MvaResults, MvaTuple, MVA_DATA, "mva_result")
-#undef VAR
-
-#define VAR(type, name) ADD_DATA_TREE_BRANCH(name)
-INITIALIZE_TREE(ntuple, MvaTuple, MVA_DATA)
-#undef VAR
-#undef MVA_DATA
 
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, input_path);
@@ -68,21 +43,23 @@ struct Arguments { // list of all program arguments
 namespace analysis {
 namespace mva_study{
 
-const SampleId mass_tot(SampleType::Sgn_Res, 2000);
-const SampleId bkg(SampleType::Bkg_TTbar, 0);
 class MvaVariablesTMVA : public MvaVariables {
 public:
     using DataVector = std::vector<double>;
     using DataVectorF = std::vector<float>;
     using MassData = std::map<SampleId, std::deque<DataVector>>;
+    static constexpr size_t max_n_vars = 1000;
     DataVector variable;
     DataVectorF variable_float;
     std::map<size_t, MassData> data;
+    std::map<std::string, size_t> names;
     std::shared_ptr<TMVA::DataLoader> loader;
     std::shared_ptr<TMVA::Reader> reader;
     MvaVariablesTMVA(size_t _number_set = 2, uint_fast32_t _seed = std::numeric_limits<uint_fast32_t>::max(),
                             const VarNameSet& _enabled_vars = {}) :
-        MvaVariables(_number_set, _seed, _enabled_vars), loader(new TMVA::DataLoader("mydataloader")), reader(new TMVA::Reader) {}
+        MvaVariables(_number_set, _seed, _enabled_vars), variable_float(max_n_vars),
+        loader(new TMVA::DataLoader("mydataloader")), reader(new TMVA::Reader)
+    {}
 
     virtual void SetValue(const std::string& name, double value, char type = 'F') override
     {
@@ -90,11 +67,9 @@ public:
             variable.push_back(0);
             names[name] = variable.size()-1;
             loader->AddVariable(name, type);
-            variable_float.resize(variable.size());
-            reader->AddVariable(name, &variable_float.at(names.at(name)));
+            reader->AddVariable(name, &variable_float.at(variable.size()-1));
         }
         variable.at(names.at(name)) = value;
-
     }
 
 
@@ -123,7 +98,6 @@ public:
                 }
             }
         }
-
     }
 
     double Evaluate(const std::string& method_name, const std::vector<double>& event)
@@ -175,13 +149,12 @@ void TrainAllMethods(const std::shared_ptr<TMVA::Factory>& factory)
 
 class MVATraining {
 public:
-    using Event = ntuple::Event;
-    using EventTuple = ntuple::EventTuple;
+    using Event = ::ntuple::Event;
+    using EventTuple = ::ntuple::EventTuple;
 
     MVATraining(const Arguments& _args): args(_args),
         outfile(root_ext::CreateRootFile(args.output_file()+"_"+std::to_string(args.seed())+".root")),
-        factory(new TMVA::Factory ("myFactory", outfile.get(),"!V:!Silent:Color:DrawProgressBar:Transformations=I,D:AnalysisType=Classification")),
-        gen(args.seed()), test_vs_training(100000, std::numeric_limits<uint_fast32_t>::max())
+        factory(new TMVA::Factory ("myFactory", outfile.get(),"!V:!Silent:Color:DrawProgressBar:Transformations=I,D:AnalysisType=Classification"))
     {
         MvaSetupCollection setups;
         SampleEntryListCollection samples_list;
@@ -189,26 +162,25 @@ public:
         ConfigReader configReader;
         MvaConfigReader setupReader(setups);
         configReader.AddEntryReader("SETUP", setupReader, true);
-        onfigReader.AddEntryReader("SETUP", setupReader, true);
-        onfigReader.AddEntryReader("SETUP", setupReader, true);
         SampleConfigReader sampleReader(samples_list);
         configReader.AddEntryReader("FILES", sampleReader, false);
         configReader.ReadConfig(args.cfg_file());
 
         samples = samples_list.at("inputs").files;
-        if (args.range() == "low")
-            mva_setup = setups.at("LowMassRange");
-        if (args.range() == "medium")
-            mva_setup = setups.at("MediumMassRange");
-        if (args.range() == "high")
-            mva_setup = setups.at("HighMassRange");
+        if(!setups.count(args.range()))
+            throw exception("...");
+        mva_setup = setups.at(args.range());
+
 
         enabled_vars.insert(mva_setup.variables.begin(), mva_setup.variables.end());
         if(mva_setup.use_mass_var) {
             enabled_vars.insert("mass");
             enabled_vars.insert("channel");
         }
-        uint_fast32_t seed = test_vs_training(gen);
+        std::mt19937_64 seed_gen(args.seed());
+        std::uniform_int_distribution<uint_fast32_t> seed_distr(100000, std::numeric_limits<uint_fast32_t>::max());
+        uint_fast32_t seed = seed_distr(seed_gen);
+        gen.seed(seed_distr(seed_gen));
         vars = std::make_shared<MvaVariablesTMVA>(args.number_sets(), seed, enabled_vars);
     }
 
@@ -222,7 +194,7 @@ public:
             if(!method)
                 throw exception("method '%1%' not found.") % name;
             if (mva_setup.use_mass_var){
-//                importance[name].emplace_back("channel", method->GetVariableImportance(0));
+                importance[name].emplace_back("channel", method->GetVariableImportance(0));
                 importance[name].emplace_back("mass", method->GetVariableImportance(1));
             }
             for (size_t i = 0; i<mva_setup.variables.size(); i++){
@@ -340,6 +312,14 @@ public:
             if (samples[i].id.mass == range.max()) end = i;
         }
 
+        std::uniform_int_distribution<size_t> it(begin, end);
+        int mass_background = 0;
+        mass_background = vec_mass[static_cast<size_t>(it(gen))];
+        std::cout<<mass_background<<std::endl;
+        SampleId sample_bkg;
+        sample_bkg.sampleType = SampleType::Bkg_TTbar;
+        sample_bkg.mass = mass_background;
+
         for(size_t j = 0; j<mva_setup.channels.size(); j++){
 
             std::cout << ToString(mva_setup.channels[j]) << std::endl;
@@ -355,23 +335,13 @@ public:
                 EventTuple tuple(ToString(mva_setup.channels[j]), input_file.get(), true, {} , GetMvaBranches());
 
                 Long64_t tot_entries = 0, current_entry = 0;
-                int mass_background = 0;
-                SampleId sample_bkg;
-
-                if (entry.id.IsBackground()) {
-                    std::uniform_int_distribution<size_t> it(begin, end);
-                    mass_background = vec_mass[static_cast<size_t>(it(gen))];
-                    std::cout<<mass_background<<std::endl;
-                    sample_bkg.sampleType = SampleType::Bkg_TTbar;
-                    sample_bkg.mass = mass_background;
-                }
 
                 while(tot_entries < args.number_events() && current_entry < tuple.GetEntries()) {
                     tuple.GetEntry(current_entry);
                     const Event& event = tuple.data();
                     if (event.eventEnergyScale != 0 || (event.q_1+event.q_2) != 0 || event.jets_p4.size() < 2
                         || event.extraelec_veto == true || event.extramuon_veto == true || event.jets_p4[0].eta() > cuts::btag_2016::eta
-                        || event.jets_p4[1].eta() > cuts::btag_2016::eta){
+                        || event.jets_p4[1].eta() > cuts::btag_2016::eta ){
                         current_entry++;
                         continue;
                     }
@@ -424,7 +394,6 @@ public:
         auto position = RankingPoisitionVariables(importance);
         std::cout<<"position"<<std::endl;
 
-        SampleId bkg(SampleType::Bkg_TTbar, 0);
         std::map<std::string, std::map<SampleId, std::map<size_t, std::vector<double>>>> evaluation;
         std::map<std::string, std::map<SampleId, std::shared_ptr<TH1D>>> outputBDT;
         for(const auto& m : methods){
@@ -435,6 +404,7 @@ public:
                 for(const auto& entry : sample_entry){
                     evaluation[m.first][entry.first][type_entry.first] = vars->EvaluateForAllEvents(m.first, type_entry.first, entry.first);
                     if (entry.first.IsSignal()){
+                        std::cout<<ToString(entry.first)<<std::endl;
                         evaluation[m.first][mass_tot][type_entry.first].insert(evaluation[m.first][mass_tot][type_entry.first].end(), evaluation[m.first][entry.first][type_entry.first].begin(), evaluation[m.first][entry.first][type_entry.first].end());
                         for (const auto& value : evaluation.at(m.first).at(entry.first).at(type_entry.first))
                             outputBDT.at(m.first).at(mass_tot)->Fill(value);
@@ -447,7 +417,9 @@ public:
             }
         }
 
+        std::cout<<"kolmogorov"<<std::endl;
         std::map<std::string, std::map<SampleId,double>> kolmogorov = Kolmogorov(evaluation);
+        std::cout<<"Significativity"<<std::endl;
         std::map<std::string, std::pair<double, double>> sign = Significativity(outputBDT);
 
         ntuple::MvaTuple mva_tuple(outfile.get(), false);
@@ -472,9 +444,9 @@ public:
             pos = point.at(options.GetIndex("MinNodeSize"));
             mva_tuple().MinNodeSize = MinNodeSize_option->GetNumericValue(pos);
             std::cout<<"method.first"<<std::endl;
-            mva_tuple().cut = sign[name].first;
+//            mva_tuple().cut = sign[name].first;
             std::cout<<"method.first"<<std::endl;
-            mva_tuple().significance = sign[name].second;
+//            mva_tuple().significance = sign[name].second;
             mva_tuple().ROCIntegral = static_cast<double>(factory->GetROCIntegral(vars->loader.get(), name));
 
             std::vector<double> ks;
@@ -508,7 +480,7 @@ private:
     MvaSetup mva_setup;
     std::shared_ptr<TFile> outfile;
     std::shared_ptr<TMVA::Factory> factory;
-    std::mt19937 gen;
+    std::mt19937_64 gen;
     MvaVariables::VarNameSet enabled_vars;
     std::shared_ptr<MvaVariablesTMVA> vars;
     std::uniform_int_distribution<uint_fast32_t> test_vs_training;
@@ -518,5 +490,3 @@ private:
 }
 
 PROGRAM_MAIN(analysis::mva_study::MVATraining, Arguments) // definition of the main program function
-//./run.sh MvaTraining --input_path ~/Desktop/tuples --output_file prova --cfg_file hh-bbtautau/Studies/config/mva_config.cfg  --number_events 20000  --range low --seed 123
-

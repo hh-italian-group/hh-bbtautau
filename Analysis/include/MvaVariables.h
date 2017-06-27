@@ -37,6 +37,9 @@ struct SampleId {
 
 };
 
+const SampleId mass_tot(SampleType::Sgn_Res, 2000);
+const SampleId bkg(SampleType::Bkg_TTbar, 0);
+
 //static const SampleId Bkg{SampleType::Bkg_TTbar, -1};
 
 ENUM_NAMES(SampleType) = {
@@ -60,14 +63,12 @@ inline std::istream& operator>>(std::istream& is, SampleId& id)
     std::string type;
     is >> type;
     id.mass = 0;
-        if(!TryParse(type, id.sampleType)) {
-            if(!type.size() || type.at(0) != 'M')
-                throw exception("Bad sample id");
-            id.sampleType = SampleType::Sgn_Res;
-            id.mass = Parse<int>(type.substr(1));
-        }
-//    if (id.IsSignal())  id.mass = Parse<int>(type.substr(1));
-//    if (id.IsBackground())  id.mass = -1;
+    if(!TryParse(type, id.sampleType)) {
+        if(!type.size() || type.at(0) != 'M')
+            throw exception("Bad sample id");
+        id.sampleType = SampleType::Sgn_Res;
+        id.mass = Parse<int>(type.substr(1));
+    }
     return is;
 }
 
@@ -76,7 +77,6 @@ inline std::istream& operator>>(std::istream& is, SampleId& id)
 class MvaVariables {
 public:
     using VarNameSet = std::unordered_set<std::string>;
-    std::map<std::string, size_t> names;
     MvaVariables(size_t _number_set = 1, uint_fast32_t seed = std::numeric_limits<uint_fast32_t>::max(),
                  const VarNameSet& _enabled_vars = {}) :
         gen(seed), which_set(0, _number_set-1), enabled_vars(_enabled_vars)
@@ -186,7 +186,7 @@ public:
 //        VAR("MX", four_bodies::Calculate_MX(event.p4_1, event.p4_2, event.jets_p4[0], event.jets_p4[1], event.pfMET_p4));
 
         VAR("mass", mass.mass);
-        VAR("channel", event.channelId);
+        VAR_INT("channel", event.channelId, 'I');
         AddEventVariables(which_set(gen), mass, sample_weight); // event.weight * sample_weight
     }
 

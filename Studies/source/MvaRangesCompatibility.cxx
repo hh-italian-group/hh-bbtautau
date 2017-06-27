@@ -393,5 +393,3 @@ private:
 }
 
 PROGRAM_MAIN(analysis::mva_study::MvaClassification, Arguments) // definition of the main program function
-
-//./run.sh MvaRangesCompatibility --input_path ~/Desktop/tuples --output_file MassVariables__muTau_2.root --cfg_file hh-bbtautau/Studies/config/mva_config.cfg --tree_name muTau  --number_threads 4 --number_variables 20 --number_events 10000 --number_sets 3 --set 2
