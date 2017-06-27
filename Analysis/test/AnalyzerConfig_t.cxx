@@ -62,8 +62,13 @@ public:
                          sample_descriptor_element.channels.size() << ", " <<
                          sample_descriptor_element.color << ", " <<
                          sample_descriptor_element.file_path_pattern << ", " <<
-                         sample_descriptor_element.cross_section << ", " << /*std::endl;*/
-                         sample_descriptor_element.GetFileName(3) << ", " << std::endl;
+                         sample_descriptor_element.cross_section << ", " <<
+                         sample_descriptor_element.signal_points_raw.size() << ", " <<
+                         sample_descriptor_element.GetNSignalPoints() << ", " << std::endl;
+
+            if(!sample_descriptor_element.signal_points_raw.size()) continue;
+            else
+                std::cout<< "FileName: " << sample_descriptor_element.GetFileName(sample_descriptor_element.GetNSignalPoints() - 1) << std::endl; //
 
         } //end loop sample_descriptors
 

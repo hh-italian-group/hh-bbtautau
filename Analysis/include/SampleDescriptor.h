@@ -43,27 +43,16 @@ class SampleDescriptor : public analysis::SampleDescriptorBase
 public:
     SampleDescriptor() : cross_section(0) {}
 
-    std::map<std::string, std::vector<std::string>> GetMapOfVectorOfString() const
-    {
-        std::map<std::string, std::vector<std::string>> signal_points_map;
-        for (auto signal_point_iter : signal_points){
-            std::string point_prefix = signal_point_iter.first;
-            std::string signal_points_list_str = signal_point_iter.second;
-            std::vector<std::string> signal_points_list = SplitValueList(signal_points_list_str);
-            signal_points_map[point_prefix] = signal_points_list;
-        }
-        return signal_points_map;
-    }
-
     std::string GetFileName(size_t signal_point) const
     {
+        if(signal_point >= GetNSignalPoints())
+            throw analysis::exception("Signal point chosen is bigger than the size of signal points.");
         std::string file_name = file_path_pattern;
-        for (auto signal_point_iter : signal_points){
-            std::string point_prefix = signal_point_iter.first;
-            std::string signal_points_list_str = signal_point_iter.second;
-            std::vector<std::string> signal_points_list = SplitValueList(signal_points_list_str);
-            std::string point_value = signal_points_list.at(signal_point);
-            boost::algorithm::replace_all(file_name, point_prefix, point_value);
+        for (const auto& signal_point_iter : signal_points){
+            const auto& point_prefix = signal_point_iter.first;
+            const auto& signal_points_list = signal_point_iter.second;
+            const std::string& point_value = signal_points_list.at(signal_point);
+            boost::algorithm::replace_all(file_name, "{" + point_prefix + "}", point_value);
         }
         return file_name;
     }
@@ -72,10 +61,33 @@ public:
     std::vector<std::string> file_paths;
     std::string file_path_pattern;
     double cross_section;
-    std::map<std::string, std::string> signal_points; //mass for resonant, radion or graviton, nodes for non-resonant
-    std::map<std::string, std::string> draw_ex; //should be std::map<std::string, Color> not working
+    std::map<std::string, std::string> signal_points_raw; //mass for resonant, radion or graviton, nodes for non-resonant
+    std::map<std::string, std::vector<std::string>> signal_points;
+    std::map<std::string, root_ext::Color> draw_ex;
     std::vector<double> norm_sf;
     std::vector<std::string> datacard_name_ex;
+
+    void UpdateSignalPoints()
+    {
+        signal_points.clear();
+        size_t n_points = 0;
+        for (const auto& signal_point_iter : signal_points_raw){
+            const std::string& point_prefix = signal_point_iter.first;
+            const std::string& signal_points_list_str = signal_point_iter.second;
+            std::vector<std::string> signal_points_list = SplitValueList(signal_points_list_str);
+            if(!signal_points_list.size())
+                throw analysis::exception("Empty.");
+            if(n_points && signal_points_list.size() != n_points)
+                throw analysis::exception("signal_points_list has different size from n_points.");
+            n_points = signal_points_list.size();
+
+            signal_points[point_prefix] = signal_points_list;
+        }
+
+    }
+
+    size_t GetNSignalPoints() const { return signal_points.size() ? signal_points.begin()->second.size() : 0; }
+
 };
 
 using SampleDescriptorCollection = std::unordered_map<std::string, SampleDescriptor>;

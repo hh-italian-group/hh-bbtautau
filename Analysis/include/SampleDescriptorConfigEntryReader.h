@@ -9,21 +9,14 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 namespace analysis {
 
 template<typename Descriptor>
-class SampleDescriptorBaseConfigEntryReader : public analysis::ConfigEntryReaderT<Descriptor> {
+class SampleDescriptorBaseConfigEntryReader : public ConfigEntryReaderT<Descriptor>, public virtual ConfigEntryReader  {
 public:
-    using DescriptorCollection = std::unordered_map<std::string, Descriptor>;
-    SampleDescriptorBaseConfigEntryReader(DescriptorCollection& _descriptors) : ConfigEntryReaderT<Descriptor>(_descriptors) {}
-
-    virtual void StartEntry(const std::string& name, const std::string& reference_name) override
-    {
-        ConfigEntryReaderT<Descriptor>::StartEntry(name, reference_name);
-//        current = reference_name.size() ? descriptors->at(reference_name) : Descriptor();
-//        current.name = name;
-    }
+    using Condition = ConfigEntryReader::Condition;
+    using ConfigEntryReaderT<Descriptor>::ConfigEntryReaderT;
 
     virtual void EndEntry() override
     {
-        ConfigEntryReaderT<Descriptor>::CheckReadParamCounts("title", 0, Condition::greater_equal);
+        CheckReadParamCounts("title", 0, Condition::greater_equal);
         CheckReadParamCounts("color", 0, Condition::greater_equal);
         CheckReadParamCounts("draw", 0, Condition::greater_equal);
         CheckReadParamCounts("channels", 0, Condition::greater_equal);
@@ -31,26 +24,21 @@ public:
         CheckReadParamCounts("datacard_name", 0, Condition::greater_equal);
 
         ConfigEntryReaderT<Descriptor>::EndEntry();
-//        (*descriptors)[current.name] = current;
     }
 
-    virtual void ReadParameter(const std::string& param_name, const std::string& param_value,
-                               std::istringstream& ss) override
+    virtual void ReadParameter(const std::string& /*param_name*/, const std::string& /*param_value*/,
+                               std::istringstream& /*ss*/) override
     {
-        ParseEntry("title", current.title);
-        ParseEntry("color", current.color);
-        ParseEntry("draw", current.draw);
-        ParseEntryList("channels", current.channels);
-        ParseEntry("categoryType", current.categoryType);
-        ParseEntry("datacard_name", current.datacard_name);
-
-        ConfigEntryReaderT<Descriptor>::ReadParameter(param_name, param_value, ss);
+        ParseEntry("title", this->current.title);
+        ParseEntry("color", this->current.color);
+        ParseEntry("draw", this->current.draw);
+        ParseEntryList("channels", this->current.channels);
+        ParseEntry("categoryType", this->current.categoryType);
+        ParseEntry("datacard_name", this->current.datacard_name);
     }
-
-protected:
-    Descriptor current;
-    DescriptorCollection* descriptors;
 };
+
+
 
 class SampleDescriptorConfigEntryReader : public SampleDescriptorBaseConfigEntryReader<SampleDescriptor> {
 public:
@@ -63,14 +51,17 @@ public:
         CheckReadParamCounts("file_path", 0, Condition::greater_equal);
         CheckReadParamCounts("file_path_pattern", 1, Condition::less_equal);
         CheckReadParamCounts("cross_section", 0, Condition::greater_equal);
+        CheckReadParamCounts("signal_points_raw", 0, Condition::greater_equal);
         CheckReadParamCounts("signal_points", 0, Condition::greater_equal);
         CheckReadParamCounts("draw_ex", 0, Condition::greater_equal);
         CheckReadParamCounts("norm_sf", 0, Condition::greater_equal);
         CheckReadParamCounts("datacard_name_ex", 0, Condition::greater_equal);
 
-        std::map<std::string, std::vector<std::string>> signal_points_map = SampleDescriptor::GetMapOfVectorOfString();
+        current.UpdateSignalPoints();
 
         Base::EndEntry();
+
+
     }
 
     virtual void ReadParameter(const std::string& param_name, const std::string& param_value,
@@ -79,6 +70,7 @@ public:
         ParseEntry("file_path", current.file_paths);
         ParseEntry("file_path_pattern", current.file_path_pattern);
         ParseEntry<double,NumericalExpression>("cross_section", current.cross_section, [](double xs){return xs > 0;});
+        ParseEntry("signal_points_raw", current.signal_points_raw);
         ParseEntry("signal_points", current.signal_points);
         ParseEntry("draw_ex", current.draw_ex);
         ParseEntry("norm_sf", current.norm_sf);
@@ -92,6 +84,7 @@ public:
 class CombineSampleDescriptorConfigEntryReader : public SampleDescriptorBaseConfigEntryReader<CombineSampleDescriptor> {
 public:
     using Base = SampleDescriptorBaseConfigEntryReader<CombineSampleDescriptor>;
+    using Base::SampleDescriptorBaseConfigEntryReader;
 
     CombineSampleDescriptorConfigEntryReader(CombineSampleDescriptorCollection& _descriptors,
                                              const SampleDescriptorCollection& _sampleDescriptors) :
