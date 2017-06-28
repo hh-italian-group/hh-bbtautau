@@ -34,10 +34,11 @@ using AnalyzerSetupCollection = std::unordered_map<std::string, AnalyzerSetup>;
 class SampleDescriptorBase {
 public:
 
-    SampleDescriptorBase(const SampleDescriptorBase& );
-    virtual ~SampleDescriptorBase();
+    SampleDescriptorBase() {} //constructor
+    SampleDescriptorBase(const SampleDescriptorBase& ) = default; //copy constructor
+    virtual ~SampleDescriptorBase(){} //destructor
 
-    SampleDescriptorBase& operator= ( const SampleDescriptorBase& ) = default;
+    SampleDescriptorBase& operator= ( const SampleDescriptorBase& ) = default; //assignment
 
     std::string name;
     std::string title;
@@ -58,9 +59,8 @@ public:
 class SampleDescriptor : public analysis::SampleDescriptorBase
 {
 public:
-    SampleDescriptor(const SampleDescriptor& );
-
-    SampleDescriptor& operator= ( const SampleDescriptor& ) = default;
+    using SampleDescriptorBase::SampleDescriptorBase; //to inherit the constructor, copy constructor and assignment of parent class
+                                                      // otherwise you should declare them as well as parent class, except the destructor
 
     std::string GetFileName(size_t signal_point) const
     {
@@ -115,9 +115,8 @@ class CombineSampleDescriptor : public analysis::SampleDescriptorBase
 {
 public:
 
-    CombineSampleDescriptor(const CombineSampleDescriptor& );
-
-    CombineSampleDescriptor& operator= ( const CombineSampleDescriptor& ) = default;
+    using SampleDescriptorBase::SampleDescriptorBase;   //to inherit the constructor, copy constructor and assignment of parent class
+                                                        // otherwise you should declare them as well as parent class, except the destructor
 
     std::string name;
     std::vector<std::string> sample_descriptors;
