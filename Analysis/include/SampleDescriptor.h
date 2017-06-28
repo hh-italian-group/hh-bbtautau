@@ -14,23 +14,40 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/ConfigReader.h"
 #include <boost/algorithm/string.hpp>
 #include "AnalysisCategories.h"
+#include "h-tautau/Analysis/include/AnalysisTypes.h"
 
 namespace analysis {
 
+class AnalyzerSetup {
+public:
+
+    std::string name;
+    double int_lumi{0};
+    std::vector<std::string> final_variables;
+    bool apply_mass_cut{false};
+    std::set<EventEnergyScale> energy_scales;
+
+};
+
+using AnalyzerSetupCollection = std::unordered_map<std::string, AnalyzerSetup>;
+
 class SampleDescriptorBase {
 public:
-    SampleDescriptorBase()
-        : color(kBlack), draw(false) {}
+
+    SampleDescriptorBase(const SampleDescriptorBase& );
+    virtual ~SampleDescriptorBase();
+
+    SampleDescriptorBase& operator= ( const SampleDescriptorBase& ) = default;
 
     std::string name;
     std::string title;
-    root_ext::Color color;
-    bool draw;
+    root_ext::Color color{kBlack};
+    bool draw{false};
     std::set<Channel> channels;
     DataCategoryType categoryType;
     std::string datacard_name;
 
-    bool CreateDatacard()
+    bool CreateDatacard() const
     {
         return datacard_name.size();
     }
@@ -41,7 +58,9 @@ public:
 class SampleDescriptor : public analysis::SampleDescriptorBase
 {
 public:
-    SampleDescriptor() : cross_section(0) {}
+    SampleDescriptor(const SampleDescriptor& );
+
+    SampleDescriptor& operator= ( const SampleDescriptor& ) = default;
 
     std::string GetFileName(size_t signal_point) const
     {
@@ -60,7 +79,7 @@ public:
     std::string name;
     std::vector<std::string> file_paths;
     std::string file_path_pattern;
-    double cross_section;
+    double cross_section{0};
     std::map<std::string, std::string> signal_points_raw; //mass for resonant, radion or graviton, nodes for non-resonant
     std::map<std::string, std::vector<std::string>> signal_points;
     std::map<std::string, root_ext::Color> draw_ex;
@@ -76,7 +95,7 @@ public:
             const std::string& signal_points_list_str = signal_point_iter.second;
             std::vector<std::string> signal_points_list = SplitValueList(signal_points_list_str);
             if(!signal_points_list.size())
-                throw analysis::exception("Empty.");
+                throw analysis::exception("Empty signal points vector.");
             if(n_points && signal_points_list.size() != n_points)
                 throw analysis::exception("signal_points_list has different size from n_points.");
             n_points = signal_points_list.size();
@@ -96,7 +115,9 @@ class CombineSampleDescriptor : public analysis::SampleDescriptorBase
 {
 public:
 
-    CombineSampleDescriptor() {}
+    CombineSampleDescriptor(const CombineSampleDescriptor& );
+
+    CombineSampleDescriptor& operator= ( const CombineSampleDescriptor& ) = default;
 
     std::string name;
     std::vector<std::string> sample_descriptors;

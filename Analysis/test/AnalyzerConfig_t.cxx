@@ -4,7 +4,6 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Run/include/program_main.h"
 #include "AnalysisTools/Core/include/ConfigReader.h"
 #include "AnalysisTools/Core/include/RootExt.h"
-#include "Analysis/include/AnalyzerConfigEntryReader.h"
 #include "Analysis/include/SampleDescriptorConfigEntryReader.h"
 #include "AnalysisTools/Core/include/NumericPrimitives.h"
 
@@ -24,7 +23,7 @@ public:
 
     void Run()
     {
-        analysis::ConfigReader config_reader;
+        ConfigReader config_reader;
 
         AnalyzerSetupCollection ana_setup;
         AnalyzerConfigEntryReader ana_entry_reader(ana_setup);
@@ -40,7 +39,7 @@ public:
 
         config_reader.ReadConfig(args.file_cfg_name());
 
-        for (auto ana_descriptor : ana_setup){ //loop ana_descriptors
+        for (const auto& ana_descriptor : ana_setup){ //loop ana_descriptors
             const AnalyzerSetup ana_descriptor_element = ana_descriptor.second;
             const std::string& name = ana_descriptor_element.name;
 
@@ -53,7 +52,7 @@ public:
 
         } //end loop ana_descriptors
 
-        for (auto sample_descriptor : sample_descriptors){ //loop sample_descriptors
+        for (const auto& sample_descriptor : sample_descriptors){ //loop sample_descriptors
             const SampleDescriptor sample_descriptor_element = sample_descriptor.second;
             const std::string& name = sample_descriptor_element.name;
 
