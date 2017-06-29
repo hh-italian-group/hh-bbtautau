@@ -3,6 +3,8 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include <thread>
 #include <functional>
+#include <random>
+#include <iostream>
 
 #include "AnalysisTools/Core/include/RootExt.h"
 #include "AnalysisTools/Run/include/program_main.h"
@@ -16,12 +18,14 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "hh-bbtautau/Instruments/include/SkimmerConfigEntryReader.h"
 #include "AnalysisTools/Core/include/ConfigReader.h"
 #include "h-tautau/Analysis/include/EventLoader.h"
+#include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
 
 struct Arguments {
     REQ_ARG(std::string, cfg);
     REQ_ARG(std::string, inputPath);
     REQ_ARG(std::string, outputPath);
     REQ_ARG(std::string, jobs);
+    REQ_ARG(std::string, setup_name);
 };
 
 namespace analysis {
@@ -41,7 +45,8 @@ public:
     static constexpr size_t max_queue_size = 100000;
 
     TupleSkimmer(const Arguments& _args) :
-        args(_args), processQueue(max_queue_size), writeQueue(max_queue_size)
+        args(_args), processQueue(max_queue_size), writeQueue(max_queue_size), gen(setup.split_seed),
+        split_distr(0,setup.n_splits-1)
     {
         std::cout << "TupleSkimmer started.\nReading config... " << std::flush;
         ROOT::EnableThreadSafety();
@@ -55,9 +60,9 @@ public:
         configReader.AddEntryReader("JOB", jobReader, true);
         configReader.ReadConfig(args.cfg());
 
-        if(setups.size() != 1)
+        if(!setups.count(args.setup_name()))
             throw exception("Tuple skimmer setup not found.");
-        setup = setups.begin()->second;
+        setup = setups.at(args.setup_name());
         setup.UpdateTauIdHashes();
 
         std::cout << "done.\nLoading weights... " << std::flush;
@@ -97,10 +102,11 @@ private:
     {
         std::shared_ptr<std::thread> process_thread, writer_thread;
         std::shared_ptr<ProdSummary> summary;
+        size_t desc_id = 0;
 
         try {
             weighting_mode = job.apply_common_weights ? job.weights | setup.common_weights : job.weights;
-            for(auto desc_iter = job.files.begin(); desc_iter != job.files.end(); ++desc_iter) {
+            for(auto desc_iter = job.files.begin(); desc_iter != job.files.end(); ++desc_iter, ++desc_id) {
                 if(desc_iter == job.files.begin() || !job.ProduceMergedOutput()) {
                     const std::string out_name = job.ProduceMergedOutput() ? job.merged_output : desc_iter->output;
                     outputFile = root_ext::CreateRootFile(args.outputPath() + "/" + out_name);
@@ -124,6 +130,11 @@ private:
                 else
                     summary = std::make_shared<ProdSummary>(desc_summary);
 
+                summary->file_desc_name.push_back(desc_iter->inputs.at(0));
+                summary->file_desc_id.push_back(desc_id);
+                summary->n_splits = setup.n_splits;
+                summary->split_seed = setup.split_seed;
+
                 for(Channel channel : setup.channels) {
                     const std::string treeName = ToString(channel);
                     for(size_t n = 0; n < desc_iter->inputs.size(); ++n) {
@@ -141,6 +152,10 @@ private:
                         for(const Event& event : *tuple) {
                             auto event_ptr = std::make_shared<Event>(event);
                             event_ptr->weight_xs = desc_iter->GetCrossSectionWeight();
+                            event_ptr->file_desc_id = desc_id;
+                            event_ptr->n_splits = setup.n_splits;
+                            event_ptr->split_seed = setup.split_seed;
+                            event_ptr->split_id = split_distr ? (*split_distr)(gen) : 0;
                             processQueue.Push(event_ptr);
                         }
                     }
@@ -260,7 +275,7 @@ private:
         return summary;
     }
 
-    void SkimTauIds(std::vector<uint32_t>& tauId_keys, std::vector<float>& tauId_values) const
+    bool SkimTauIds(std::vector<uint32_t>& tauId_keys, std::vector<float>& tauId_values) const
     {
         std::vector<uint32_t> skimmed_keys;
         std::vector<float> skimmed_values;
@@ -271,10 +286,13 @@ private:
                 skimmed_keys.push_back(tauId_keys.at(n));
                 skimmed_values.push_back(tauId_values.at(n));
             }
+            if(!setup.tau_id_cut_hashes.count(tauId_keys.at(n)))
+                return false;
         }
 
         tauId_keys = std::move(skimmed_keys);
         tauId_values = std::move(skimmed_values);
+        return true;
     }
 
     bool ProcessEvent(Event& event, const std::shared_ptr<Event>& prev_event, ntuple::StorageMode& storage_mode)
@@ -285,15 +303,17 @@ private:
         Event full_event = event;
         storage_mode = ntuple::EventLoader::Load(full_event, prev_event.get());
         const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
+        auto bb = event.jets_p4[0] + event.jets_p4[1];
         if (!setup.energy_scales.count(es) || full_event.jets_p4.size() < 2 || full_event.extraelec_veto
                 || full_event.extramuon_veto
                 || std::abs(full_event.jets_p4.at(0).eta()) >= cuts::btag_2016::eta
-                || std::abs(full_event.jets_p4.at(1).eta()) >= cuts::btag_2016::eta) return false;
+                || std::abs(full_event.jets_p4.at(1).eta()) >= cuts::btag_2016::eta
+                || (setup.apply_mass_cut && !cuts::hh_bbtautau_2016::hh_tag::IsInsideEllipse(event.SVfit_p4.mass(),bb.mass()))) return false;
 
-        if(storage_mode.IsPresent(EventPart::FirstTauIds))
-            SkimTauIds(event.tauId_keys_1, event.tauId_values_1);
-        if(storage_mode.IsPresent(EventPart::SecondTauIds))
-            SkimTauIds(event.tauId_keys_2, event.tauId_values_2);
+        if(storage_mode.IsPresent(EventPart::FirstTauIds) && !SkimTauIds(event.tauId_keys_1, event.tauId_values_1))
+            return false;
+        if(storage_mode.IsPresent(EventPart::SecondTauIds) && !SkimTauIds(event.tauId_keys_2, event.tauId_values_2))
+            return false;
 	
         event.n_jets = static_cast<unsigned>(full_event.jets_p4.size());
         event.ht_other_jets = static_cast<float>(
@@ -352,6 +372,9 @@ private:
     std::shared_ptr<mc_corrections::EventWeights_HH> eventWeights_HH;
 	std::shared_ptr<TFile> outputFile;
     mc_corrections::WeightingMode weighting_mode;
+    std::mt19937_64 gen; //Standard mersenne_twister_engine with 64 bits
+    std::shared_ptr<std::uniform_int_distribution<unsigned int>> split_distr;
+
 };
 
 } // namespace tuple_skimmer
