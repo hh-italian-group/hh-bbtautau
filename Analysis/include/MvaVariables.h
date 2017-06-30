@@ -13,9 +13,6 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 namespace analysis {
 namespace mva_study{
 
-//ENUM_ISTREAM_OPERATORS()
-ENUM_OSTREAM_OPERATORS()
-
 enum class SampleType { Sgn_Res = 1, Sgn_NonRes = 0, Bkg_TTbar = -1 };
 
 struct SampleId {
@@ -35,10 +32,17 @@ struct SampleId {
     bool IsBackground() const { return !IsSignal(); }
     bool IsSM() const { return sampleType == SampleType::Sgn_NonRes; }
 
+    static const SampleId& MassTot()
+    {
+        static const SampleId mass_tot(SampleType::Sgn_Res, 2000);
+        return mass_tot;
+    }
+    static const SampleId& Bkg()
+    {
+        static const SampleId bkg(SampleType::Bkg_TTbar, 0);
+        return bkg;
+    }
 };
-
-const SampleId mass_tot(SampleType::Sgn_Res, 2000);
-const SampleId bkg(SampleType::Bkg_TTbar, 0);
 
 //static const SampleId Bkg{SampleType::Bkg_TTbar, -1};
 
@@ -73,7 +77,7 @@ inline std::istream& operator>>(std::istream& is, SampleId& id)
 }
 
 #define VAR(name, formula) if(IsEnabled(name)) SetValue(name, formula)
-#define VAR_INT(name, formula, type) if(IsEnabled(name)) SetValue(name, formula, 'I')
+#define VAR_INT(name, formula) if(IsEnabled(name)) SetValue(name, formula, 'I')
 class MvaVariables {
 public:
     using VarNameSet = std::unordered_set<std::string>;
@@ -186,7 +190,7 @@ public:
 //        VAR("MX", four_bodies::Calculate_MX(event.p4_1, event.p4_2, event.jets_p4[0], event.jets_p4[1], event.pfMET_p4));
 
         VAR("mass", mass.mass);
-        VAR_INT("channel", event.channelId, 'I');
+        VAR_INT("channel", event.channelId);
         AddEventVariables(which_set(gen), mass, sample_weight); // event.weight * sample_weight
     }
 

@@ -8,30 +8,23 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 namespace  analysis {
 namespace mva_study{
-class MvaConfigReader : public analysis::ConfigEntryReader {
+class MvaConfigReader : public ConfigEntryReaderT<MvaSetup> {
 public:
-    MvaConfigReader(MvaSetupCollection& _descriptors) : descriptors(&_descriptors) {}
-
-    virtual void StartEntry(const std::string& name, const std::string& reference_name) override
-    {
-        ConfigEntryReader::StartEntry(name, reference_name);
-        current = reference_name.size() ? descriptors->at(reference_name) : MvaSetup();
-        current.name = name;
-    }
+    using ConfigEntryReaderT<MvaSetup>::ConfigEntryReaderT;
 
     virtual void EndEntry() override
     {
-        CheckReadParamCounts("channels", 0, Condition::greater_equal);
-        CheckReadParamCounts("mass_range", 0, Condition::greater_equal);
+        CheckReadParamCounts("channels", 1, Condition::less_equal);
+        CheckReadParamCounts("mass_range", 1, Condition::less_equal);
         CheckReadParamCounts("param_list", 0, Condition::greater_equal);
         CheckReadParamCounts("param", 0, Condition::greater_equal);
         CheckReadParamCounts("param_range", 0, Condition::greater_equal);
         CheckReadParamCounts("disabled_params", 0, Condition::greater_equal);
         CheckReadParamCounts("significant_params", 0, Condition::greater_equal);
-        CheckReadParamCounts("variables", 0, Condition::greater_equal);
-        CheckReadParamCounts("use_mass_var", 0, Condition::greater_equal);
+        CheckReadParamCounts("variables", 1, Condition::less_equal);
+        CheckReadParamCounts("use_mass_var", 1, Condition::less_equal);
 
-        (*descriptors)[current.name] = current;
+        ConfigEntryReaderT<MvaSetup>::EndEntry();
     }
 
     virtual void ReadParameter(const std::string& /*param_name*/, const std::string& /*param_value*/,
@@ -47,28 +40,17 @@ public:
         ParseEntryList("variables", current.variables, false);
         ParseEntry("use_mass_var", current.use_mass_var);
     }
-
-private:
-    MvaSetup current;
-    MvaSetupCollection* descriptors;
 };
 
-class SampleConfigReader : public analysis::ConfigEntryReader {
+class SampleConfigReader : public analysis::ConfigEntryReaderT<SampleEntryList> {
 public:
-    SampleConfigReader(SampleEntryListCollection& _descriptors) : descriptors(&_descriptors) {}
-
-    virtual void StartEntry(const std::string& name, const std::string& reference_name) override
-    {
-        ConfigEntryReader::StartEntry(name, reference_name);
-        current = reference_name.size() ? descriptors->at(reference_name) : SampleEntryList();
-        current.name = name;
-    }
+    using ConfigEntryReaderT<SampleEntryList>::ConfigEntryReaderT;
 
     virtual void EndEntry() override
     {
         CheckReadParamCounts("file", 1, Condition::greater_equal);
 
-        (*descriptors)[current.name] = current;
+        ConfigEntryReaderT<SampleEntryList>::EndEntry();
     }
 
     virtual void ReadParameter(const std::string& /*param_name*/, const std::string& /*param_value*/,
@@ -77,9 +59,6 @@ public:
         ParseEntry("file", current.files);
     }
 
-private:
-    SampleEntryList current;
-    SampleEntryListCollection* descriptors;
 };
 
 }

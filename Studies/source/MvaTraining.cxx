@@ -8,6 +8,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "hh-bbtautau/Analysis/include/MvaConfiguration.h"
 #include "hh-bbtautau/Analysis/include/MvaVariables.h"
 #include "h-tautau/Cuts/include/Btag_2016.h"
+#include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
 #include "AnalysisTools/Core/include/NumericPrimitives.h"
 #include "TMVA/Factory.h"
@@ -43,6 +44,9 @@ struct Arguments { // list of all program arguments
 namespace analysis {
 namespace mva_study{
 
+const SampleId mass_tot = SampleId::MassTot();
+const SampleId bkg = SampleId::Bkg();
+
 class MvaVariablesTMVA : public MvaVariables {
 public:
     using DataVector = std::vector<double>;
@@ -52,7 +56,8 @@ public:
     DataVector variable;
     DataVectorF variable_float;
     std::map<size_t, MassData> data;
-    std::map<std::string, size_t> names;
+    std::map<std::string, size_t> name_indices;
+    std::vector<std::string> names;
     std::shared_ptr<TMVA::DataLoader> loader;
     std::shared_ptr<TMVA::Reader> reader;
     MvaVariablesTMVA(size_t _number_set = 2, uint_fast32_t _seed = std::numeric_limits<uint_fast32_t>::max(),
@@ -63,15 +68,15 @@ public:
 
     virtual void SetValue(const std::string& name, double value, char type = 'F') override
     {
-        if (!names.count(name)){
+        if (!name_indices.count(name)){
             variable.push_back(0);
-            names[name] = variable.size()-1;
+            name_indices[name] = variable.size()-1;
+            names.push_back(name);
             loader->AddVariable(name, type);
             reader->AddVariable(name, &variable_float.at(variable.size()-1));
         }
-        variable.at(names.at(name)) = value;
+        variable.at(name_indices.at(name)) = value;
     }
-
 
     virtual void AddEventVariables(size_t istraining, const SampleId& mass, double /*weight*/) override
     {
@@ -122,30 +127,6 @@ public:
     }
 };
 
-void TrainAllMethods(const std::shared_ptr<TMVA::Factory>& factory)
-{
-   std::map< TString, TMVA::Factory::MVector*> fMethodsMap = factory->fMethodsMap;
-   std::map<TString,TMVA::Factory::MVector*>::iterator itrMap;
-   for(itrMap = fMethodsMap.begin(); itrMap != fMethodsMap.end(); itrMap++)
-   {
-      TMVA::Factory::MVector *methods=itrMap->second;
-      TMVA::Factory::MVector::iterator itrMethod;
-
-      for( itrMethod = methods->begin(); itrMethod != methods->end(); itrMethod++ ) {
-          TMVA::Event::SetIsTraining(kTRUE);
-          TMVA::MethodBase* mva = dynamic_cast<TMVA::MethodBase*>(*itrMethod);
-          if(mva==0) continue;
-          if (mva->DataInfo().GetNClasses() < 2 )
-              std::cout << TMVA::kFATAL << "You want to do classification training, but specified less than two classes." << std::endl;
-          if (mva->Data()->GetNTrainingEvents() < 10) {
-            std::cout << TMVA::kWARNING << "Method " << mva->GetMethodName() << " not trained (training tree has less entries ["
-             << mva->Data()->GetNTrainingEvents() << "] than required [10]" << std::endl;
-            continue;
-          }
-          mva->TrainMethod();
-      }
-   }
-}
 
 class MVATraining {
 public:
@@ -153,8 +134,7 @@ public:
     using EventTuple = ::ntuple::EventTuple;
 
     MVATraining(const Arguments& _args): args(_args),
-        outfile(root_ext::CreateRootFile(args.output_file()+"_"+std::to_string(args.seed())+".root")),
-        factory(new TMVA::Factory ("myFactory", outfile.get(),"!V:!Silent:Color:DrawProgressBar:Transformations=I,D:AnalysisType=Classification"))
+        outfile(root_ext::CreateRootFile(args.output_file()+"_"+std::to_string(args.seed())+".root"))
     {
         MvaSetupCollection setups;
         SampleEntryListCollection samples_list;
@@ -166,11 +146,10 @@ public:
         configReader.AddEntryReader("FILES", sampleReader, false);
         configReader.ReadConfig(args.cfg_file());
 
-        samples = samples_list.at("inputs").files;
+        samples = samples_list.at(args.range()).files;
         if(!setups.count(args.range()))
-            throw exception("...");
+            throw exception("Range '%1%' doesn't found") %args.range();
         mva_setup = setups.at(args.range());
-
 
         enabled_vars.insert(mva_setup.variables.begin(), mva_setup.variables.end());
         if(mva_setup.use_mass_var) {
@@ -184,23 +163,33 @@ public:
         vars = std::make_shared<MvaVariablesTMVA>(args.number_sets(), seed, enabled_vars);
     }
 
-    std::map<std::string, std::vector<std::pair<std::string, double>>> RankingImportanceVariables(const Grid_ND& grid, const MvaOptionCollection& options) const
+    void TrainAllMethods(const TMVA::Factory& factory)
     {
-        std::map<std::string, std::vector<std::pair<std::string, double>>> importance;
+       std::map< TString, TMVA::Factory::MVector*> fMethodsMap = factory.fMethodsMap;
+       std::map<TString,TMVA::Factory::MVector*>::iterator itrMap;
+       for(itrMap = fMethodsMap.begin(); itrMap != fMethodsMap.end(); itrMap++)
+       {
+          TMVA::Factory::MVector *methods=itrMap->second;
+          TMVA::Factory::MVector::iterator itrMethod;
 
-        for(const auto& point : grid) {
-            auto name = options.GetName(point)+"_"+std::to_string(args.seed());
-            auto method = dynamic_cast<TMVA::MethodBDT*>(factory->GetMethod(vars->loader->GetName(), name));
-            if(!method)
-                throw exception("method '%1%' not found.") % name;
-            if (mva_setup.use_mass_var){
-                importance[name].emplace_back("channel", method->GetVariableImportance(0));
-                importance[name].emplace_back("mass", method->GetVariableImportance(1));
-            }
-            for (size_t i = 0; i<mva_setup.variables.size(); i++){
-                importance[name].emplace_back(mva_setup.variables[i], method->GetVariableImportance(static_cast<UInt_t>(i)+2));
-            }
-        }
+          for( itrMethod = methods->begin(); itrMethod != methods->end(); itrMethod++ ) {
+              TMVA::Event::SetIsTraining(kTRUE);
+              TMVA::MethodBase* mva = dynamic_cast<TMVA::MethodBase*>(*itrMethod);
+              if (mva==0)
+                  throw exception("Method not found.");
+              if (mva->DataInfo().GetNClasses() < 2 )
+                  throw exception("You want to do classification training, but specified less than two classes.");
+              if (mva->Data()->GetNTrainingEvents() < 10) {
+                throw exception("Method '%1%' not trained (training tree has less entries ['%2%'] than required [10]).")
+                          % mva->GetMethodName() % mva->Data()->GetNTrainingEvents();
+              }
+              mva->TrainMethod();
+          }
+       }
+    }
+
+    void RankingImportanceVariables(const std::map<std::string, std::vector<std::pair<std::string, double>>>& importance) const
+    {
 
         std::map<std::string, std::shared_ptr<TH1D>> histo_rank;
         auto directory = root_ext::GetDirectory(*outfile.get(), "Ranking");
@@ -217,19 +206,18 @@ public:
         for (const auto& var: histo_rank)
             root_ext::WriteObject(*var.second, directory);
 
-        return importance;
     }
 
-    std::map<std::string, std::map<std::string, double>> RankingPoisitionVariables(const std::map<std::string, std::vector<std::pair<std::string, double>>>& importance) const
+    std::map<std::string, std::map<std::string, size_t>> RankingPoisitionVariables(const std::map<std::string, std::vector<std::pair<std::string, double>>>& importance) const
     {
-        std::map<std::string, std::map<std::string, double>> position;
+        std::map<std::string, std::map<std::string, size_t>> position;
 
         for(auto method: importance){
             std::sort(method.second.begin(), method.second.end(), [](auto el1, auto el2){
                 return el1.second > el2.second;
             } );
-            for (size_t i = 0; i < method.second.size(); i++){
-                position[method.first][method.second[i].first] = i;
+            for (size_t i = 1; i <= method.second.size(); i++){
+                position[method.first][method.second[i-1].first] = i;
             }
         }
 
@@ -238,7 +226,7 @@ public:
         for (const auto& method: position){
             for (const auto& pair: method.second){
                if (!histo_rank.count(pair.first)){
-                   histo_rank[pair.first] = std::make_shared<TH1D>((pair.first+"_position").c_str(),(pair.first+"_position").c_str(), method.second.size(), 0, method.second.size());
+                   histo_rank[pair.first] = std::make_shared<TH1D>((pair.first+"_position").c_str(),(pair.first+"_position").c_str(), method.second.size(), 0.5, method.second.size() + 0.5);
                    histo_rank[pair.first]->SetXTitle("position");
                }
                 histo_rank[pair.first]->Fill(pair.second);
@@ -254,41 +242,50 @@ public:
     std::map<std::string, std::map<SampleId,double>> Kolmogorov(const std::map<std::string, std::map<SampleId, std::map<size_t, std::vector<double>>>>& evaluation) const
     {
         std::map<std::string, std::map<SampleId,double>> kolmogorov;
+        std::shared_ptr<TH1D> histo_kolmogorov;
+        histo_kolmogorov = std::make_shared<TH1D>("kolmogorov", "kolmogorov", 50, 0,1);
+        histo_kolmogorov->SetXTitle("KS");
+        auto directory = root_ext::GetDirectory(*outfile.get(), "Kolmogorov");
         for(const auto& method : evaluation){
             for (const auto& sample : method.second){
-                std::map<int, double*> ks_vector;
-                std::map<int, size_t> dim;
+                std::map<size_t, std::vector<double>> ks_vector;
                 for (auto tvt : sample.second){
-                    auto type = static_cast<int>(tvt.first);
+                    auto type = tvt.first;
                     std::sort(tvt.second.begin(), tvt.second.end());
-                    std::cout<<tvt.second.front()<<"    "<<sample.first.mass<<"    "<<tvt.second.size()<<" "<<tvt.second.back()<<std::endl;
-                    dim[type] = tvt.second.size();
-                    ks_vector[type] = tvt.second.data();
+                    ks_vector[type] = std::move(tvt.second);
                 }
-                double ks = TMath::KolmogorovTest(static_cast<int>(dim.at(0)), ks_vector.at(0), static_cast<int>(dim.at(1)), ks_vector.at(1), "M");
+                double ks = TMath::KolmogorovTest(static_cast<int>(ks_vector.at(0).size()), ks_vector.at(0).data(),
+                                                  static_cast<int>(ks_vector.at(1).size()), ks_vector.at(1).data(), "");
                 kolmogorov[method.first][sample.first] = ks;
+                histo_kolmogorov->Fill(ks);
             }
         }
+
+        root_ext::WriteObject(*histo_kolmogorov, directory);
         return kolmogorov;
     }
 
-    std::map<std::string, std::pair<double, double>> Significativity(const std::map<std::string, std::map<SampleId, std::shared_ptr<TH1D>>>& outputBDT)
+    std::map<std::string, std::pair<double, double>> EstimateSignificativity(const std::map<std::string, std::map<SampleId, std::shared_ptr<TH1D>>>& outputBDT)
     {
         std::map<std::string, std::pair<double, double>> sign;
-        std::map<std::string, std::shared_ptr<TH1D>> histo_sign;
+        std::map<std::string, std::shared_ptr<TGraph>> histo_sign;
         auto directory = root_ext::GetDirectory(*outfile.get(), "Significance");
+        int nbin = 200;
         for(const auto& method : outputBDT){
             std::vector<std::pair<double,double>> cuts;
-            histo_sign[method.first] = std::make_shared<TH1D>((method.first+"_significance").c_str(), (method.first+"_significance").c_str(), 200, -1,1);
-            histo_sign[method.first]->SetXTitle("output BDT");
-            histo_sign[method.first]->SetXTitle("S/(sqrt(B))");
-            for(int i = 0; i<=200; i++){
+            histo_sign[method.first] = std::make_shared<TGraph>();
+            histo_sign[method.first]->SetTitle((method.first+"_significance").c_str());
+            histo_sign[method.first]->SetName((method.first+"_significance").c_str());
+            //            histo_sign[method.first]->SetXTitle("output BDT");
+//            histo_sign[method.first]->SetYTitle("S/(sqrt(B))");
+            std::cout<<method.first<<std::endl;
+            for(int i = 0; i<=nbin; i++){
                 auto first = method.second.at(mass_tot)->GetBinCenter(i);
-                auto second_sgn = method.second.at(mass_tot)->GetBinContent(i);
-                auto second_bkg = method.second.at(bkg)->GetBinContent(i);
+                auto second_sgn = method.second.at(mass_tot)->Integral(i,nbin);
+                auto second_bkg = method.second.at(bkg)->Integral(i,nbin);
                 auto significance = second_sgn/pow(second_bkg, 0.5);
                 cuts.emplace_back(first, significance);
-                histo_sign.at(method.first)->Fill(significance);
+                histo_sign.at(method.first)->SetPoint(i+1, first, significance);
             }
             std::sort(cuts.begin(), cuts.end(), [](auto el1, auto el2){
                 return el1.second > el2.second;
@@ -300,67 +297,58 @@ public:
         return sign;
     }
 
+    std::vector<int> CreateMassRange() const
+    {
+        std::set<int> masses;
+        for(const auto& sample : samples) {
+            if(sample.id.IsSignal())
+                masses.insert(sample.id.mass);
+        }
+
+        return std::vector<int>(masses.begin(), masses.end());
+    }
+
     void Run()
     {
         std::cout<<"Variabili iniziali: "<<enabled_vars.size()<<std::endl;
-        std::vector<int> vec_mass;
-        auto range = mva_setup.mass_range;
-        size_t begin = 0, end = 0;
-        for (size_t i=0; i<samples.size(); i++){
-            vec_mass.push_back(samples[i].id.mass);
-            if (samples[i].id.mass == range.min()) begin = i;
-            if (samples[i].id.mass == range.max()) end = i;
-        }
-
-        std::uniform_int_distribution<size_t> it(begin, end);
-        int mass_background = 0;
-        mass_background = vec_mass[static_cast<size_t>(it(gen))];
-        std::cout<<mass_background<<std::endl;
-        SampleId sample_bkg;
-        sample_bkg.sampleType = SampleType::Bkg_TTbar;
-        sample_bkg.mass = mass_background;
+        const auto range = mva_setup.mass_range;
+        const auto mass_range = CreateMassRange();
+        std::cout<< mass_range.size() <<std::endl;
+        std::uniform_int_distribution<size_t> it(0, mass_range.size() - 1);
 
         for(size_t j = 0; j<mva_setup.channels.size(); j++){
-
-            std::cout << ToString(mva_setup.channels[j]) << std::endl;
-
+            std::cout << mva_setup.channels[j] << std::endl;
             for(const SampleEntry& entry : samples)
             {
                 if ( entry.id.IsSignal() && !range.Contains(entry.id.mass) ) continue;
-
                 if ( entry.id.IsBackground() && Parse<Channel>(entry.channel) != mva_setup.channels.at(j) )
                     continue;
 
                 auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
                 EventTuple tuple(ToString(mva_setup.channels[j]), input_file.get(), true, {} , GetMvaBranches());
 
-                Long64_t tot_entries = 0, current_entry = 0;
-
-                while(tot_entries < args.number_events() && current_entry < tuple.GetEntries()) {
+                Long64_t tot_entries = 0;
+                for(Long64_t current_entry = 0; tot_entries < args.number_events() && current_entry < tuple.GetEntries(); ++current_entry) {
                     tuple.GetEntry(current_entry);
                     const Event& event = tuple.data();
-                    if (event.eventEnergyScale != 0 || (event.q_1+event.q_2) != 0 || event.jets_p4.size() < 2
-                        || event.extraelec_veto == true || event.extramuon_veto == true || event.jets_p4[0].eta() > cuts::btag_2016::eta
-                        || event.jets_p4[1].eta() > cuts::btag_2016::eta ){
-                        current_entry++;
-                        continue;
-                    }
-                    LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
-                    double ellipse_cut = pow(event.SVfit_p4.mass()-116,2)/pow(35.,2) + pow(bb.mass()-111,2)/pow(45.,2);
-                    if (ellipse_cut>1){
-                        current_entry++;
-                        continue;
-                    }
 
-                    current_entry++;
+                    if (static_cast<EventEnergyScale>(event.eventEnergyScale) != EventEnergyScale::Central || (event.q_1+event.q_2) != 0 || event.jets_p4.size() < 2
+                        || event.extraelec_veto == true || event.extramuon_veto == true || event.jets_p4[0].eta() > cuts::btag_2016::eta
+                        || event.jets_p4[1].eta() > cuts::btag_2016::eta)
+                        continue;
+                    auto bb = event.jets_p4[0] + event.jets_p4[1];
+                    if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideEllipse(event.SVfit_p4.mass(), bb.mass()))
+                        continue;
                     tot_entries++;
 
                     if (entry.id.IsBackground()) {
+                        const int mass_background = mass_range.at(it(gen));
+                        const SampleId sample_bkg(SampleType::Bkg_TTbar, mass_background);
                         vars->AddEvent(event, sample_bkg, entry.weight);
                     }
                     else vars->AddEvent(event, entry.id, entry.weight);
                 }
-                std::cout << " channel " << ToString(mva_setup.channels[j]) << "    " << entry << " number of events: " << tot_entries << std::endl;
+                std::cout << " channel " << mva_setup.channels[j] << "    " << entry.filename << " number of events: " << tot_entries << std::endl;
             }
         }
         vars->UploadEvents();
@@ -372,24 +360,26 @@ public:
         std::map<std::string, std::string> methods;
         for(const auto& point : grid){
             methods[options.GetName(point)+"_"+std::to_string(args.seed())] = options.GetConfigString(point);
-            std::cout << options.GetName(point)+"_"+std::to_string(args.seed()) << "    " << options.GetConfigString(point) << std::endl;
         }
         std::cout << methods.size() << " metodi" << std::endl;
 
-        for(const auto& m : methods)
-            factory->BookMethod(vars->loader.get(), TMVA::Types::kBDT, m.first, m.second);
-
-        TrainAllMethods(factory);
-//        factory->TrainAllMethods();
-        factory->TestAllMethods();
-        factory->EvaluateAllMethods();
+        std::map<std::string, double> ROCintegral;
+        std::map<std::string, std::vector<std::pair<std::string, double>>> importance;
 
         for(const auto& m : methods){
-            TString weightfile = ("mydataloader/weights/myFactory_"+m.first+".weights.xml");
-            vars->reader->BookMVA(m.first, weightfile);
+            auto factory = new TMVA::Factory ("myFactory", outfile.get(),"!V:!Silent:Color:DrawProgressBar:Transformations=I:AnalysisType=Classification");
+            factory->BookMethod(vars->loader.get(), TMVA::Types::kBDT, m.first, m.second);
+            TrainAllMethods(*factory);
+            factory->TestAllMethods();
+            factory->EvaluateAllMethods();
+            auto method = dynamic_cast<TMVA::MethodBDT*>(factory->GetMethod(vars->loader->GetName(), m.first));
+            for (size_t i = 0; i<vars->names.size(); i++){
+                importance[m.first].emplace_back(vars->names[i], method->GetVariableImportance(static_cast<UInt_t>(i)));
+            }
+            ROCintegral[m.first] = static_cast<double>(factory->GetROCIntegral(vars->loader.get(), m.first));
         }
 
-        auto importance = RankingImportanceVariables(grid, options);
+        RankingImportanceVariables(importance);
         std::cout<<"importance"<<std::endl;
         auto position = RankingPoisitionVariables(importance);
         std::cout<<"position"<<std::endl;
@@ -397,20 +387,25 @@ public:
         std::map<std::string, std::map<SampleId, std::map<size_t, std::vector<double>>>> evaluation;
         std::map<std::string, std::map<SampleId, std::shared_ptr<TH1D>>> outputBDT;
         for(const auto& m : methods){
+            TString weightfile = ("mydataloader/weights/myFactory_"+m.first+".weights.xml");
+            vars->reader->BookMVA(m.first, weightfile);
             outputBDT[m.first][mass_tot] = std::make_shared<TH1D>(("Signal_output_"+m.first).c_str(),("Signal_output_"+m.first).c_str(), 200, -1, 1);
             outputBDT[m.first][bkg] = std::make_shared<TH1D>(("Bkg_output_"+m.first).c_str(),("Bkg_output_"+m.first).c_str(), 200, -1, 1);
             for(const auto& type_entry : vars->data){
-                auto sample_entry = type_entry.second;
+                const auto& sample_entry = type_entry.second;
+                auto& evaluation_mass_tot = evaluation[m.first][mass_tot][type_entry.first];
+                auto& evaluation_bkg_tot = evaluation[m.first][bkg][type_entry.first];
                 for(const auto& entry : sample_entry){
-                    evaluation[m.first][entry.first][type_entry.first] = vars->EvaluateForAllEvents(m.first, type_entry.first, entry.first);
+                    auto& current_evaluation = evaluation[m.first][entry.first][type_entry.first];
+                    current_evaluation = vars->EvaluateForAllEvents(m.first, type_entry.first, entry.first);
                     if (entry.first.IsSignal()){
-                        std::cout<<ToString(entry.first)<<std::endl;
-                        evaluation[m.first][mass_tot][type_entry.first].insert(evaluation[m.first][mass_tot][type_entry.first].end(), evaluation[m.first][entry.first][type_entry.first].begin(), evaluation[m.first][entry.first][type_entry.first].end());
-                        for (const auto& value : evaluation.at(m.first).at(entry.first).at(type_entry.first))
+                        evaluation_mass_tot.insert(evaluation_mass_tot.end(), current_evaluation.begin(), current_evaluation.end());
+                        for (const auto& value : current_evaluation)
                             outputBDT.at(m.first).at(mass_tot)->Fill(value);
                     }
                     if (entry.first.IsBackground()){
-                        for (const auto& value : evaluation.at(m.first).at(entry.first).at(type_entry.first))
+                        evaluation_bkg_tot.insert(evaluation_bkg_tot.end(), current_evaluation.begin(), current_evaluation.end());
+                        for (const auto& value : current_evaluation)
                             outputBDT.at(m.first).at(bkg)->Fill(value);
                     }
                 }
@@ -420,55 +415,47 @@ public:
         std::cout<<"kolmogorov"<<std::endl;
         std::map<std::string, std::map<SampleId,double>> kolmogorov = Kolmogorov(evaluation);
         std::cout<<"Significativity"<<std::endl;
-        std::map<std::string, std::pair<double, double>> sign = Significativity(outputBDT);
+        std::map<std::string, std::pair<double, double>> sign = EstimateSignificativity(outputBDT);
 
         ntuple::MvaTuple mva_tuple(outfile.get(), false);
-        auto n_trees_option = options.at("NTrees");
-        auto shrinkage_option = options.at("shrinkage");
-        auto BaggedSampleFraction_option = options.at("BaggedSampleFraction");
-        auto MaxDepth_option = options.at("MaxDepth");
-        auto MinNodeSize_option = options.at("MinNodeSize");
+        const auto& n_trees_option = options.at("NTrees");
+//        const auto& shrinkage_option = options.at("shrinkage");
+//        const auto& BaggedSampleFraction_option = options.at("BaggedSampleFraction");
+//        const auto& MaxDepth_option = options.at("MaxDepth");
+//        const auto& MinNodeSize_option = options.at("MinNodeSize");
         std::cout<<"options"<<std::endl;
 
         for(const auto& point : grid) {
             auto name = options.GetName(point)+"_"+std::to_string(args.seed());
             size_t pos = point.at(options.GetIndex("NTrees"));
             mva_tuple().NTrees = static_cast<UInt_t>(n_trees_option->GetNumericValue(pos));
-            pos = point.at(options.GetIndex("shrinkage"));
-            mva_tuple().shrinkage = shrinkage_option->GetNumericValue(pos);
+//            pos = point.at(options.GetIndex("shrinkage"));
+//            mva_tuple().shrinkage = shrinkage_option->GetNumericValue(pos);
 
-            pos = point.at(options.GetIndex("BaggedSampleFraction"));
-            mva_tuple().BaggedSampleFraction = BaggedSampleFraction_option->GetNumericValue(pos);
-            pos = point.at(options.GetIndex("MaxDepth"));
-            mva_tuple().MaxDepth = MaxDepth_option->GetNumericValue(pos);
-            pos = point.at(options.GetIndex("MinNodeSize"));
-            mva_tuple().MinNodeSize = MinNodeSize_option->GetNumericValue(pos);
-            std::cout<<"method.first"<<std::endl;
-//            mva_tuple().cut = sign[name].first;
-            std::cout<<"method.first"<<std::endl;
-//            mva_tuple().significance = sign[name].second;
-            mva_tuple().ROCIntegral = static_cast<double>(factory->GetROCIntegral(vars->loader.get(), name));
+//            pos = point.at(options.GetIndex("BaggedSampleFraction"));
+//            mva_tuple().BaggedSampleFraction = BaggedSampleFraction_option->GetNumericValue(pos);
+//            pos = point.at(options.GetIndex("MaxDepth"));
+//            mva_tuple().MaxDepth = MaxDepth_option->GetNumericValue(pos);
+//            pos = point.at(options.GetIndex("MinNodeSize"));
+//            mva_tuple().MinNodeSize = MinNodeSize_option->GetNumericValue(pos);
+            mva_tuple().cut = sign[name].first;
+            mva_tuple().significance = sign[name].second;
+            mva_tuple().ROCIntegral = ROCintegral[name];
 
-            std::vector<double> ks;
-            std::vector<double> mass;
             for (const auto& sample : kolmogorov.at(name)){
-                ks.push_back(sample.second);
-                mass.push_back(static_cast<double>(sample.first.mass));
+                mva_tuple().KS_mass.push_back(sample.first.mass);
+                mva_tuple().KS_value.push_back(sample.second);
+                if (sample.first.IsSignal())
+                    mva_tuple().KS_type.push_back(1);
+                else if (sample.first.IsBackground())
+                    mva_tuple().KS_type.push_back(-1);
             }
-            mva_tuple().KS_mass = mass;
-            mva_tuple().KS_value = ks;
 
-            std::vector<double> posit;
-            std::vector<double> impo;
-            std::vector<std::string> variables;
             for (const auto& var: importance.at(name)){
-                impo.push_back(var.second);
-                variables.push_back(var.first);
-                posit.push_back(position.at(name).at(var.first));
+                mva_tuple().importance.push_back(var.second);
+                mva_tuple().var_name.push_back(var.first);
+                mva_tuple().position.push_back(position.at(name).at(var.first));
             }
-            mva_tuple().position = posit;
-            mva_tuple().importance = impo;
-            mva_tuple().var_name = variables;
             mva_tuple.Fill();
         }
         mva_tuple.Write();
@@ -479,7 +466,6 @@ private:
     SampleEntryCollection samples;
     MvaSetup mva_setup;
     std::shared_ptr<TFile> outfile;
-    std::shared_ptr<TMVA::Factory> factory;
     std::mt19937_64 gen;
     MvaVariables::VarNameSet enabled_vars;
     std::shared_ptr<MvaVariablesTMVA> vars;

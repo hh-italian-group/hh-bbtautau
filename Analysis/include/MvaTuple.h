@@ -16,13 +16,13 @@ namespace mva_study{
     VAR(double, MinNodeSize) \
     VAR(double, ROCIntegral) \
     VAR(std::vector<double>, KS_value) \
-    VAR(std::vector<double>, KS_mass) \
+    VAR(std::vector<int>, KS_type) \
+    VAR(std::vector<int>, KS_mass) \
     VAR(std::vector<double>, position) \
     VAR(std::vector<double>, importance) \
     VAR(std::vector<std::string>, var_name) \
-/*    VAR(double, cut) \
+    VAR(double, cut) \
     VAR(double, significance) \
-    */
 
 #define VAR(type, name) DECLARE_BRANCH_VARIABLE(type, name)
 DECLARE_TREE(ntuple, MvaResults, MvaTuple, MVA_DATA, "mva_result")
