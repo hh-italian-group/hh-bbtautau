@@ -316,6 +316,7 @@ private:
         auto bb = full_event.jets_p4.at(0) + full_event.jets_p4.at(1);
         if (setup.apply_mass_cut && !cuts::hh_bbtautau_2016::hh_tag::IsInsideEllipse(full_event.SVfit_p4.mass(),bb.mass())) return false;
 
+        if (setup.apply_charge_cut && (full_event.q_1+full_event.q_2) != 0) return false;
 
         if(storage_mode.IsPresent(EventPart::FirstTauIds) && !SkimTauIds(event.tauId_keys_1, event.tauId_values_1))
             return false;

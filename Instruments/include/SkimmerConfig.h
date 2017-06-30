@@ -25,6 +25,7 @@ struct Setup {
 
     //light setup
     bool apply_mass_cut{false};
+    bool apply_charge_cut{false};
     std::map<std::string, double> tau_id_cut;
     std::map<uint32_t, double> tau_id_cut_hashes;
 

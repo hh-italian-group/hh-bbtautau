@@ -25,6 +25,7 @@ public:
         CheckReadParamCounts("split_seed", 1, Condition::less_equal);
 
         CheckReadParamCounts("apply_mass_cut", 1, Condition::less_equal);
+        CheckReadParamCounts("apply_charge_cut", 1, Condition::less_equal);
         CheckReadParamCounts("tau_iso", 1, Condition::less_equal);
 
         ConfigEntryReaderT<Setup>::EndEntry();
@@ -43,6 +44,7 @@ public:
         ParseEntry("split_seed", current.split_seed);
 
         ParseEntry("apply_mass_cut", current.apply_mass_cut);
+        ParseEntry("apply_charge_cut", current.apply_charge_cut);
         ParseEntry("tau_id_cut", current.tau_id_cut);
     }
 };
