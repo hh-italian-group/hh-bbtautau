@@ -18,7 +18,7 @@ struct Setup {
     Period period;
     DiscriminatorWP btag_wp;
     mc_corrections::WeightingMode common_weights;
-    size_t n_splits{0};
+    unsigned n_splits{0};
     unsigned split_seed{0};
 
     std::set<uint32_t> tau_id_hashes;

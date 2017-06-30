@@ -102,7 +102,7 @@ private:
     {
         std::shared_ptr<std::thread> process_thread, writer_thread;
         std::shared_ptr<ProdSummary> summary;
-        size_t desc_id = 0;
+        unsigned desc_id = 0;
         std::mt19937_64 gen(setup.split_seed);
         std::shared_ptr<std::uniform_int_distribution<unsigned int>> split_distr;
         if (setup.n_splits > 0)
