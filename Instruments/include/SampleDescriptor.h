@@ -14,10 +14,10 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 namespace analysis {
 
 namespace sample_merging{
-#ifndef __APPLE__
-    ENUM_OSTREAM_OPERATOR()
-    ENUM_ISTREAM_OPERATORS()
-#endif
+
+using ::analysis::operator<<;
+using ::analysis::operator>>;
+
 enum class FileType { inclusive, exclusive, sm, bsm };
 ENUM_NAMES(FileType) = {
     { FileType::inclusive, "inclusive" },
