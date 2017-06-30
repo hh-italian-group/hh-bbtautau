@@ -15,17 +15,17 @@ public:
 
     virtual void EndEntry() override
     {
-        CheckReadParamCounts("energy_scales", 1, Condition::equal_to);
-        CheckReadParamCounts("channels", 1, Condition::equal_to);
+        CheckReadParamCounts("energy_scales", 1, Condition::less_equal);
+        CheckReadParamCounts("channels", 1, Condition::less_equal);
         CheckReadParamCounts("tau_ids", 1, Condition::less_equal);
-        CheckReadParamCounts("period", 1, Condition::equal_to);
-        CheckReadParamCounts("btag_wp", 1, Condition::equal_to);
+        CheckReadParamCounts("period", 1, Condition::less_equal);
+        CheckReadParamCounts("btag_wp", 1, Condition::less_equal);
         CheckReadParamCounts("common_weights", 1, Condition::less_equal);
         CheckReadParamCounts("n_splits", 1, Condition::less_equal);
         CheckReadParamCounts("split_seed", 1, Condition::less_equal);
 
-        CheckReadParamCounts("apply_mass_cut", 1, Condition::equal_to);
-        CheckReadParamCounts("tau_iso", 1, Condition::equal_to);
+        CheckReadParamCounts("apply_mass_cut", 1, Condition::less_equal);
+        CheckReadParamCounts("tau_iso", 1, Condition::less_equal);
 
         ConfigEntryReaderT<Setup>::EndEntry();
     }

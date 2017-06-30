@@ -82,9 +82,6 @@ public:
             }
         }
 
-//        split_distr =
-//                std::shared_ptr<std::uniform_int_distribution<unsigned int>>(new std::uniform_int_distribution<unsigned int>(0,setup.n_splits-1));
-        split_distr = std::make_shared<std::uniform_int_distribution<unsigned>>(0, setup.n_splits-1);
     }
 
     void Run()
@@ -106,6 +103,10 @@ private:
         std::shared_ptr<std::thread> process_thread, writer_thread;
         std::shared_ptr<ProdSummary> summary;
         size_t desc_id = 0;
+        std::mt19937_64 gen(setup.split_seed);
+        std::shared_ptr<std::uniform_int_distribution<unsigned int>> split_distr;
+        if (setup.n_splits > 0)
+            split_distr = std::make_shared<std::uniform_int_distribution<unsigned>>(0, setup.n_splits-1);
 
         try {
             weighting_mode = job.apply_common_weights ? job.weights | setup.common_weights : job.weights;
@@ -158,7 +159,6 @@ private:
                             event_ptr->file_desc_id = desc_id;
                             event_ptr->n_splits = setup.n_splits;
                             event_ptr->split_seed = setup.split_seed;
-                            std::mt19937_64 gen(setup.split_seed); //Standard mersenne_twister_engine with 64 bits
                             event_ptr->split_id = split_distr ? (*split_distr)(gen) : 0;
                             processQueue.Push(event_ptr);
                         }
@@ -307,12 +307,15 @@ private:
         Event full_event = event;
         storage_mode = ntuple::EventLoader::Load(full_event, prev_event.get());
         const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
-        auto bb = event.jets_p4[0] + event.jets_p4[1];
+
         if (!setup.energy_scales.count(es) || full_event.jets_p4.size() < 2 || full_event.extraelec_veto
                 || full_event.extramuon_veto
                 || std::abs(full_event.jets_p4.at(0).eta()) >= cuts::btag_2016::eta
-                || std::abs(full_event.jets_p4.at(1).eta()) >= cuts::btag_2016::eta
-                || (setup.apply_mass_cut && !cuts::hh_bbtautau_2016::hh_tag::IsInsideEllipse(event.SVfit_p4.mass(),bb.mass()))) return false;
+                || std::abs(full_event.jets_p4.at(1).eta()) >= cuts::btag_2016::eta) return false;
+
+        auto bb = full_event.jets_p4.at(0) + full_event.jets_p4.at(1);
+        if (setup.apply_mass_cut && !cuts::hh_bbtautau_2016::hh_tag::IsInsideEllipse(full_event.SVfit_p4.mass(),bb.mass())) return false;
+
 
         if(storage_mode.IsPresent(EventPart::FirstTauIds) && !SkimTauIds(event.tauId_keys_1, event.tauId_values_1))
             return false;
@@ -376,7 +379,7 @@ private:
     std::shared_ptr<mc_corrections::EventWeights_HH> eventWeights_HH;
 	std::shared_ptr<TFile> outputFile;
     mc_corrections::WeightingMode weighting_mode;
-    std::shared_ptr<std::uniform_int_distribution<unsigned int>> split_distr;
+
 
 };
 
