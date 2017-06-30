@@ -19,7 +19,7 @@ struct Setup {
     DiscriminatorWP btag_wp;
     mc_corrections::WeightingMode common_weights;
     size_t n_splits;
-    int split_seed;
+    unsigned split_seed;
 
     std::set<uint32_t> tau_id_hashes;
 

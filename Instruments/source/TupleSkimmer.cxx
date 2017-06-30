@@ -45,8 +45,7 @@ public:
     static constexpr size_t max_queue_size = 100000;
 
     TupleSkimmer(const Arguments& _args) :
-        args(_args), processQueue(max_queue_size), writeQueue(max_queue_size), gen(setup.split_seed),
-        split_distr(0,setup.n_splits-1)
+        args(_args), processQueue(max_queue_size), writeQueue(max_queue_size)
     {
         std::cout << "TupleSkimmer started.\nReading config... " << std::flush;
         ROOT::EnableThreadSafety();
@@ -82,6 +81,10 @@ public:
                 jobs.push_back(all_jobs.at(job_name));
             }
         }
+
+//        split_distr =
+//                std::shared_ptr<std::uniform_int_distribution<unsigned int>>(new std::uniform_int_distribution<unsigned int>(0,setup.n_splits-1));
+        split_distr = std::make_shared<std::uniform_int_distribution<unsigned>>(0, setup.n_splits-1);
     }
 
     void Run()
@@ -155,6 +158,7 @@ private:
                             event_ptr->file_desc_id = desc_id;
                             event_ptr->n_splits = setup.n_splits;
                             event_ptr->split_seed = setup.split_seed;
+                            std::mt19937_64 gen(setup.split_seed); //Standard mersenne_twister_engine with 64 bits
                             event_ptr->split_id = split_distr ? (*split_distr)(gen) : 0;
                             processQueue.Push(event_ptr);
                         }
@@ -372,7 +376,6 @@ private:
     std::shared_ptr<mc_corrections::EventWeights_HH> eventWeights_HH;
 	std::shared_ptr<TFile> outputFile;
     mc_corrections::WeightingMode weighting_mode;
-    std::mt19937_64 gen; //Standard mersenne_twister_engine with 64 bits
     std::shared_ptr<std::uniform_int_distribution<unsigned int>> split_distr;
 
 };
