@@ -195,7 +195,7 @@ public:
     }
 
 private:
-    std::mt19937 gen;
+    std::mt19937_64 gen;
     std::uniform_int_distribution<size_t> which_set;
     VarNameSet enabled_vars;
 };

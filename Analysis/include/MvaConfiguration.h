@@ -269,8 +269,6 @@ inline std::istream& operator>>(std::istream& is, SampleEntry& entry)
         throw exception("Invalid sample entry");
     entry.filename = columns.at(0);
     entry.id = Parse<SampleId>(columns.at(1));
-//    std::cout<< "'" << columns.at(1) << "'" <<std::endl;
-//    std::cout<<entry.id<<std::endl;
     entry.weight = Parse<double>(columns.at(2));
     if(columns.size() > 3)
         entry.channel = columns.at(3);

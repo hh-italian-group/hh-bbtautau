@@ -10,6 +10,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include <TCanvas.h>
 #include <future>
 #include "AnalysisTools/Run/include/MultiThread.h"
+#include "AnalysisTools/Core/include/StatEstimators.h"
 
 namespace  analysis {
 namespace mva_study{
