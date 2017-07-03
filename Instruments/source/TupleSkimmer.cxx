@@ -113,15 +113,15 @@ private:
                 if(desc_iter == job.files.begin() || !job.ProduceMergedOutput()) {
                     for (Channel channel : setup.channels){
                         gen_map[channel].seed(setup.split_seed);
-                        const std::string out_name = job.ProduceMergedOutput() ? job.merged_output : desc_iter->output;
-                        outputFile = root_ext::CreateRootFile(args.outputPath() + "/" + out_name);
-
-                        processQueue.SetAllDone(false);
-                        writeQueue.SetAllDone(false);
-                        process_thread = std::make_shared<std::thread>(std::bind(&TupleSkimmer::ProcessThread, this));
-                        writer_thread = std::make_shared<std::thread>(std::bind(&TupleSkimmer::WriteThread, this));
-                        summary = std::shared_ptr<ProdSummary>();
                     }
+                    const std::string out_name = job.ProduceMergedOutput() ? job.merged_output : desc_iter->output;
+                    outputFile = root_ext::CreateRootFile(args.outputPath() + "/" + out_name);
+
+                    processQueue.SetAllDone(false);
+                    writeQueue.SetAllDone(false);
+                    process_thread = std::make_shared<std::thread>(std::bind(&TupleSkimmer::ProcessThread, this));
+                    writer_thread = std::make_shared<std::thread>(std::bind(&TupleSkimmer::WriteThread, this));
+                    summary = std::shared_ptr<ProdSummary>();
                 }
                 std::cout << "\tProcessing";
                 std::vector<std::shared_ptr<TFile>> inputFiles;
