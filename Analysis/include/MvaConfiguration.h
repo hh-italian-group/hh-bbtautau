@@ -242,6 +242,14 @@ struct MvaOptionCollection {
 
     size_t count(const std::string& name) const { return option_names.count(name); }
 
+    double GetNumericValue(const std::vector<size_t>& point, const std::string& name) const
+    {
+        if(!this->count(name)) return -1;
+        const auto& option = this->at(name);
+        const size_t pos = point.at(this->GetIndex(name));
+        return option->GetNumericValue(pos);
+    }
+
 private:
     std::vector<std::shared_ptr<MvaOptionBase>> options;
     std::map<std::string, size_t> option_names;

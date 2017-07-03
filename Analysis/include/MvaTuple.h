@@ -23,6 +23,8 @@ namespace mva_study{
     VAR(std::vector<std::string>, var_name) \
     VAR(double, cut) \
     VAR(double, significance) \
+    /*VAR(std::string, name)*/ \
+    /**/
 
 #define VAR(type, name) DECLARE_BRANCH_VARIABLE(type, name)
 DECLARE_TREE(ntuple, MvaResults, MvaTuple, MVA_DATA, "mva_result")

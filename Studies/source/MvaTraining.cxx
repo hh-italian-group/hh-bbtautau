@@ -42,7 +42,7 @@ struct Arguments { // list of all program arguments
     REQ_ARG(std::string, range);
     OPT_ARG(size_t, number_sets, 2);
     OPT_ARG(uint_fast32_t, seed, std::numeric_limits<uint_fast32_t>::max());
-    OPT_ARG(uint_fast32_t, seed2, 123456);
+    OPT_ARG(uint_fast32_t, seed2, 1234567);
 };
 
 namespace analysis {
@@ -50,7 +50,9 @@ namespace mva_study{
 
 const SampleId mass_tot = SampleId::MassTot();
 const SampleId bkg = SampleId::Bkg();
-const int nbin = 200;
+constexpr int nbin = 220;
+constexpr double bin_min = -1.1;
+constexpr double bin_max = 1.1;
 
 class MvaVariablesTMVA : public MvaVariables {
 public:
@@ -140,7 +142,7 @@ public:
 
     MVATraining(const Arguments& _args): args(_args),
         outfile(root_ext::CreateRootFile(args.output_file()+"_"+std::to_string(args.seed())+".root")),
-        gen2(args.seed2()), seed_subsample(0,29)
+        gen2(args.seed2()), seed_split(0,29)
     {
         MvaSetupCollection setups;
         SampleEntryListCollection samples_list;
@@ -244,12 +246,12 @@ public:
     }
 
     void EvaluateMethod(std::map<std::string, std::map<SampleId, std::map<size_t, std::vector<double>>>>& evaluation,
-                        std::map<std::string, std::map<SampleId, TH1D*>>& outputBDT, const std::string& method_name)
+                        std::map<std::string, std::map<SampleId, std::shared_ptr<TH1D>>>& outputBDT, const std::string& method_name)
     {
-        TString weightfile = ("mydataloader/weights/myFactory_"+method_name+".weights.xml");
+        std::string weightfile = "mydataloader/weights/myFactory_"+method_name+".weights.xml";
         vars->reader->BookMVA(method_name, weightfile);
-        outputBDT[method_name][mass_tot] = new TH1D(("Signal_output_"+method_name).c_str(),("Signal_output_"+method_name).c_str(), nbin, -1, 1);
-        outputBDT[method_name][bkg] = new TH1D(("Bkg_output_"+method_name).c_str(),("Bkg_output_"+method_name).c_str(), nbin, -1, 1);
+        outputBDT[method_name][mass_tot] = std::make_shared<TH1D>(("Signal_output_"+method_name).c_str(),("Signal_output_"+method_name).c_str(), nbin, bin_min, bin_max);
+        outputBDT[method_name][bkg] = std::make_shared<TH1D>(("Bkg_output_"+method_name).c_str(),("Bkg_output_"+method_name).c_str(), nbin, bin_min, bin_max);
         for(const auto& type_entry : vars->data){
             const auto& sample_entry = type_entry.second;
             auto& evaluation_mass_tot = evaluation[method_name][mass_tot][type_entry.first];
@@ -273,14 +275,13 @@ public:
         auto directory_methody = root_ext::GetDirectory(*directory, (method_name).c_str());
         root_ext::WriteObject(*outputBDT[method_name][mass_tot], directory_methody);
         root_ext::WriteObject(*outputBDT[method_name][bkg], directory_methody);
-
     }
 
     std::map<std::string, std::map<SampleId,double>> Kolmogorov(const std::map<std::string, std::map<SampleId, std::map<size_t, std::vector<double>>>>& evaluation) const
     {
         std::map<std::string, std::map<SampleId,double>> kolmogorov;
         std::shared_ptr<TH1D> histo_kolmogorov;
-        histo_kolmogorov = std::make_shared<TH1D>("kolmogorov", "kolmogorov", 50, 0,1);
+        histo_kolmogorov = std::make_shared<TH1D>("kolmogorov", "kolmogorov", 50, 0, 1.01);
         histo_kolmogorov->SetXTitle("KS");
         auto directory = root_ext::GetDirectory(*outfile.get(), "Kolmogorov");
         for(const auto& method : evaluation){
@@ -301,7 +302,7 @@ public:
         return kolmogorov;
     }
 
-    std::map<std::string, std::pair<double, double>> EstimateSignificativity(const std::map<std::string, std::map<SampleId, TH1D*>>& outputBDT)
+    std::map<std::string, std::pair<double, double>> EstimateSignificativity(const std::map<std::string, std::map<SampleId, std::shared_ptr<TH1D>>>& outputBDT)
     {
         std::map<std::string, std::pair<double, double>> sign;
         auto directory = root_ext::GetDirectory(*outfile.get(), "Significance");
@@ -313,7 +314,7 @@ public:
                 auto s = method.second.at(mass_tot)->Integral(i, nbin+1);
                 auto b = method.second.at(bkg)->Integral(i, nbin+1);
                 double significance = 0;
-                if (s != 0 && b != 0) significance = s/pow(b, 0.5);
+                if (b != 0) significance = s/pow(b, 0.5);
                 cuts.emplace_back(output, significance);
                 histo_sign->SetPoint(i, output, significance);
             }
@@ -355,7 +356,7 @@ public:
                 EventTuple tuple(ToString(mva_setup.channels[j]), input_file.get(), true, {} , GetMvaBranches());
                 Long64_t tot_entries = 0;
                 for(Long64_t current_entry = 0; tot_entries < args.number_events() && current_entry < tuple.GetEntries(); ++current_entry) {
-                    uint_fast32_t seed = seed_subsample(gen2);
+                    uint_fast32_t seed = seed_split(gen2);
                     if (seed>15) continue;
                     tuple.GetEntry(current_entry);
                     const Event& event = tuple.data();
@@ -391,7 +392,7 @@ public:
         std::map<std::string, double> ROCintegral;
         std::map<std::string, std::vector<std::pair<std::string, double>>> importance;
         std::map<std::string, std::map<SampleId, std::map<size_t, std::vector<double>>>> evaluation;
-        std::map<std::string, std::map<SampleId, TH1D*>> outputBDT;
+        std::map<std::string, std::map<SampleId, std::shared_ptr<TH1D>>> outputBDT;
         for(const auto& m : methods){
             auto factory = std::make_shared<TMVA::Factory>("myFactory", outfile.get(),"!V:!Silent:Color:DrawProgressBar:Transformations=I:AnalysisType=Classification");
             factory->BookMethod(vars->loader.get(), TMVA::Types::kBDT, m.first, m.second);
@@ -401,8 +402,10 @@ public:
             for (size_t i = 0; i<vars->names.size(); i++){
                 importance[m.first].emplace_back(vars->names[i], method->GetVariableImportance(static_cast<UInt_t>(i)));
             }
-            ROCintegral[m.first] = method->GetROCIntegral(outputBDT.at(m.first).at(mass_tot), outputBDT.at(m.first).at(bkg));
+            ROCintegral[m.first] = method->GetROCIntegral(outputBDT.at(m.first).at(mass_tot).get(), outputBDT.at(m.first).at(bkg).get());
         }
+
+
 
         std::cout<<"importance"<<std::endl;
         RankingImportanceVariables(importance);
@@ -413,26 +416,16 @@ public:
         std::cout<<"Significativity"<<std::endl;
         std::map<std::string, std::pair<double, double>> sign = EstimateSignificativity(outputBDT);
 
-        std::cout<<"options"<<std::endl;
         ntuple::MvaTuple mva_tuple(outfile.get(), false);
-        const auto& n_trees_option = options.at("NTrees");
-        const auto& shrinkage_option = options.at("shrinkage");
-        const auto& BaggedSampleFraction_option = options.at("BaggedSampleFraction");
-        const auto& MaxDepth_option = options.at("MaxDepth");
-        const auto&  MinNodeSize_option = options.at("MinNodeSize");
         std::cout<<"options"<<std::endl;
         for(const auto& point : grid) {
             auto name = options.GetName(point)+"_"+std::to_string(args.seed());
-            size_t pos = point.at(options.GetIndex("NTrees"));
-            mva_tuple().NTrees = static_cast<UInt_t>(n_trees_option->GetNumericValue(pos));
-            pos = point.at(options.GetIndex("shrinkage"));
-            mva_tuple().shrinkage = shrinkage_option->GetNumericValue(pos);
-            pos = point.at(options.GetIndex("BaggedSampleFraction"));
-            mva_tuple().BaggedSampleFraction = BaggedSampleFraction_option->GetNumericValue(pos);
-            pos = point.at(options.GetIndex("MaxDepth"));
-            mva_tuple().MaxDepth = MaxDepth_option->GetNumericValue(pos);
-            pos = point.at(options.GetIndex("MinNodeSize"));
-            mva_tuple().MinNodeSize = MinNodeSize_option->GetNumericValue(pos);
+            mva_tuple().name = name;
+            mva_tuple().NTrees = static_cast<UInt_t>(options.GetNumericValue(point, "NTrees"));
+            mva_tuple().shrinkage = options.GetNumericValue(point, "shrinkage");
+            mva_tuple().BaggedSampleFraction = options.GetNumericValue(point, "BaggedSampleFraction");
+            mva_tuple().MaxDepth = options.GetNumericValue(point, "MaxDepth");
+            mva_tuple().MinNodeSize = options.GetNumericValue(point, "MinNodeSize");
             mva_tuple().cut = sign[name].first;
             mva_tuple().significance = sign[name].second;
             mva_tuple().ROCIntegral = ROCintegral[name];
@@ -463,7 +456,7 @@ private:
     MvaVariables::VarNameSet enabled_vars;
     std::shared_ptr<MvaVariablesTMVA> vars;
     std::uniform_int_distribution<uint_fast32_t> test_vs_training;
-    std::uniform_int_distribution<uint_fast32_t> seed_subsample;
+    std::uniform_int_distribution<uint_fast32_t> seed_split;
 };
 
 }
