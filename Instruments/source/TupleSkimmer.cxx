@@ -325,9 +325,8 @@ private:
 
         if (setup.apply_charge_cut && (full_event.q_1+full_event.q_2) != 0) return false;
 
-        if(!ApplyTauIdCut(full_event.tauId_keys_1, full_event.tauId_values_1)) return false;
-
-        if(!ApplyTauIdCut(full_event.tauId_keys_2, full_event.tauId_values_2)) return false;
+        if(!ApplyTauIdCut(full_event.tauId_keys_1, full_event.tauId_values_1) ||
+                !ApplyTauIdCut(full_event.tauId_keys_2, full_event.tauId_values_2)) return false;
 
         if(storage_mode.IsPresent(EventPart::FirstTauIds))
             SkimTauIds(event.tauId_keys_1, event.tauId_values_1);
