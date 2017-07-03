@@ -15,12 +15,18 @@ public:
 
     virtual void EndEntry() override
     {
-        CheckReadParamCounts("energy_scales", 1, Condition::equal_to);
-        CheckReadParamCounts("channels", 1, Condition::equal_to);
+        CheckReadParamCounts("energy_scales", 1, Condition::less_equal);
+        CheckReadParamCounts("channels", 1, Condition::less_equal);
         CheckReadParamCounts("tau_ids", 1, Condition::less_equal);
-        CheckReadParamCounts("period", 1, Condition::equal_to);
-        CheckReadParamCounts("btag_wp", 1, Condition::equal_to);
+        CheckReadParamCounts("period", 1, Condition::less_equal);
+        CheckReadParamCounts("btag_wp", 1, Condition::less_equal);
         CheckReadParamCounts("common_weights", 1, Condition::less_equal);
+        CheckReadParamCounts("n_splits", 1, Condition::less_equal);
+        CheckReadParamCounts("split_seed", 1, Condition::less_equal);
+
+        CheckReadParamCounts("apply_mass_cut", 1, Condition::less_equal);
+        CheckReadParamCounts("apply_charge_cut", 1, Condition::less_equal);
+        CheckReadParamCounts("tau_iso", 1, Condition::less_equal);
 
         ConfigEntryReaderT<Setup>::EndEntry();
     }
@@ -34,6 +40,12 @@ public:
         ParseEntry("period", current.period);
         ParseEntry("btag_wp", current.btag_wp);
         ParseEntryList("common_weights", current.common_weights);
+        ParseEntry("n_splits", current.n_splits);
+        ParseEntry("split_seed", current.split_seed);
+
+        ParseEntry("apply_mass_cut", current.apply_mass_cut);
+        ParseEntry("apply_charge_cut", current.apply_charge_cut);
+        ParseEntry("tau_id_cut", current.tau_id_cut);
     }
 };
 
