@@ -4,7 +4,6 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include <thread>
 #include <functional>
 #include <random>
-#include <iostream>
 
 #include "AnalysisTools/Core/include/RootExt.h"
 #include "AnalysisTools/Run/include/program_main.h"
@@ -157,8 +156,6 @@ private:
                             auto event_ptr = std::make_shared<Event>(event);
                             event_ptr->weight_xs = desc_iter->GetCrossSectionWeight();
                             event_ptr->file_desc_id = desc_id;
-                            event_ptr->n_splits = setup.n_splits;
-                            event_ptr->split_seed = setup.split_seed;
                             event_ptr->split_id = split_distr ? (*split_distr)(gen) : 0;
                             processQueue.Push(event_ptr);
                         }
