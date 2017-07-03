@@ -102,7 +102,7 @@ private:
         std::shared_ptr<std::thread> process_thread, writer_thread;
         std::shared_ptr<ProdSummary> summary;
         unsigned desc_id = 0;
-        std::mt19937_64 gen(setup.split_seed);
+        std::map<Channel,std::mt19937_64> gen_map;
         std::shared_ptr<std::uniform_int_distribution<unsigned int>> split_distr;
         if (setup.n_splits > 0)
             split_distr = std::make_shared<std::uniform_int_distribution<unsigned>>(0, setup.n_splits-1);
@@ -111,14 +111,17 @@ private:
             weighting_mode = job.apply_common_weights ? job.weights | setup.common_weights : job.weights;
             for(auto desc_iter = job.files.begin(); desc_iter != job.files.end(); ++desc_iter, ++desc_id) {
                 if(desc_iter == job.files.begin() || !job.ProduceMergedOutput()) {
-                    const std::string out_name = job.ProduceMergedOutput() ? job.merged_output : desc_iter->output;
-                    outputFile = root_ext::CreateRootFile(args.outputPath() + "/" + out_name);
+                    for (Channel channel : setup.channels){
+                        gen_map[channel].seed(setup.split_seed);
+                        const std::string out_name = job.ProduceMergedOutput() ? job.merged_output : desc_iter->output;
+                        outputFile = root_ext::CreateRootFile(args.outputPath() + "/" + out_name);
 
-                    processQueue.SetAllDone(false);
-                    writeQueue.SetAllDone(false);
-                    process_thread = std::make_shared<std::thread>(std::bind(&TupleSkimmer::ProcessThread, this));
-                    writer_thread = std::make_shared<std::thread>(std::bind(&TupleSkimmer::WriteThread, this));
-                    summary = std::shared_ptr<ProdSummary>();
+                        processQueue.SetAllDone(false);
+                        writeQueue.SetAllDone(false);
+                        process_thread = std::make_shared<std::thread>(std::bind(&TupleSkimmer::ProcessThread, this));
+                        writer_thread = std::make_shared<std::thread>(std::bind(&TupleSkimmer::WriteThread, this));
+                        summary = std::shared_ptr<ProdSummary>();
+                    }
                 }
                 std::cout << "\tProcessing";
                 std::vector<std::shared_ptr<TFile>> inputFiles;
@@ -156,7 +159,7 @@ private:
                             auto event_ptr = std::make_shared<Event>(event);
                             event_ptr->weight_xs = desc_iter->GetCrossSectionWeight();
                             event_ptr->file_desc_id = desc_id;
-                            event_ptr->split_id = split_distr ? (*split_distr)(gen) : 0;
+                            event_ptr->split_id = split_distr ? (*split_distr)(gen_map.at(channel)) : 0;
                             processQueue.Push(event_ptr);
                         }
                     }
