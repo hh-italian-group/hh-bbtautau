@@ -279,7 +279,7 @@ private:
         return summary;
     }
 
-    bool SkimTauIds(std::vector<uint32_t>& tauId_keys, std::vector<float>& tauId_values) const
+    void SkimTauIds(std::vector<uint32_t>& tauId_keys, std::vector<float>& tauId_values) const
     {
         std::vector<uint32_t> skimmed_keys;
         std::vector<float> skimmed_values;
@@ -290,12 +290,19 @@ private:
                 skimmed_keys.push_back(tauId_keys.at(n));
                 skimmed_values.push_back(tauId_values.at(n));
             }
-            if(!setup.tau_id_cut_hashes.count(tauId_keys.at(n)))
-                return false;
         }
 
         tauId_keys = std::move(skimmed_keys);
         tauId_values = std::move(skimmed_values);
+    }
+
+    bool ApplyTauIdCut(std::vector<uint32_t>& tauId_keys, std::vector<float>& tauId_values) const
+    {
+        for(size_t n = 0; n < tauId_keys.size(); ++n) {
+            if(setup.tau_id_cut_hashes.count(tauId_keys.at(n)) &&
+                    tauId_values.at(n) < setup.tau_id_cut_hashes.at(tauId_keys.at(n)))
+                return false;
+        }
         return true;
     }
 
@@ -318,10 +325,17 @@ private:
 
         if (setup.apply_charge_cut && (full_event.q_1+full_event.q_2) != 0) return false;
 
-        if(storage_mode.IsPresent(EventPart::FirstTauIds) && !SkimTauIds(event.tauId_keys_1, event.tauId_values_1))
-            return false;
-        if(storage_mode.IsPresent(EventPart::SecondTauIds) && !SkimTauIds(event.tauId_keys_2, event.tauId_values_2))
-            return false;
+
+        if(storage_mode.IsPresent(EventPart::FirstTauIds)){
+            SkimTauIds(event.tauId_keys_1, event.tauId_values_1);
+            if(!ApplyTauIdCut(full_event.tauId_keys_1, full_event.tauId_values_1))
+                return false;
+        }
+        if(storage_mode.IsPresent(EventPart::SecondTauIds)){
+            SkimTauIds(event.tauId_keys_2, event.tauId_values_2);
+            if(!ApplyTauIdCut(full_event.tauId_keys_2, full_event.tauId_values_2))
+                return false;
+        }
 	
         event.n_jets = static_cast<unsigned>(full_event.jets_p4.size());
         event.ht_other_jets = static_cast<float>(
