@@ -15,6 +15,8 @@ namespace mva_study{
     VAR(double, MaxDepth) \
     VAR(double, MinNodeSize) \
     VAR(double, ROCIntegral) \
+    VAR(std::vector<double>, roc_value) \
+    VAR(std::vector<int>, roc_mass) \
     VAR(std::vector<double>, KS_value) \
     VAR(std::vector<int>, KS_type) \
     VAR(std::vector<int>, KS_mass) \
@@ -23,7 +25,7 @@ namespace mva_study{
     VAR(std::vector<std::string>, var_name) \
     VAR(double, cut) \
     VAR(double, significance) \
-    /*VAR(std::string, name)*/ \
+    VAR(std::string, name) \
     /**/
 
 #define VAR(type, name) DECLARE_BRANCH_VARIABLE(type, name)

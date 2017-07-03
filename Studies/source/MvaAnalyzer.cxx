@@ -27,12 +27,18 @@ public:
     TH1D_ENTRY(BaggedSampleFraction, 3, 0.375, 1.125)
     TH1D_ENTRY(MaxDepth, 4, 1.5, 5.5)
     TH1D_ENTRY(MinNodeSize, 3, -0.01, 0.11)
-    TH1D_ENTRY(ROCIntegral, 100, 0., 1.1)
+    TH1D_ENTRY(ROCIntegral, 100, 0.5, 1.1)
     TH1D_ENTRY(KS_value, 100, 0., 1.1)
     TH1D_ENTRY(KS_mass, 210, 0, 2100)
     TH1D_ENTRY(KS_type, 4, -2, 2)
     TH1D_ENTRY(cut, 200, -1, 1)
     TH1D_ENTRY(significance, 200, 0, 1000)
+    TH2D_ENTRY(shrinkage_ROC,  4, -0.05, 1.15, 100, 0.5, 1.1)
+    TH2D_ENTRY(NTrees_ROC,  4, 150, 1350, 100, 0.5, 1.1)
+    TH2D_ENTRY(BaggedSampleFraction_ROC,  3, 0.375, 1.125, 100, 0.5, 1.1)
+    TH2D_ENTRY(MaxDepth_ROC,  4, 1.5, 5.5, 100, 0.5, 1.1)
+    TH2D_ENTRY(MinNodeSize_ROC,  3, -0.01, 0.11, 100, 0.5, 1.1)
+
 };
 
 class MVAAnalyzer{
@@ -42,94 +48,144 @@ public:
     {
     }
 
-//    void CreatePositionHisto(std::map<std::string, std::shared_ptr<TH1D>>& histo, const std::vector<double> position, std::vector<std::string> var_name){
-//        for (size_t j=0; j< var_name.size(); j++){
-//            auto name = var_name[j];
-//            if (!histo.count(name)){
-//                histo[name] =  std::make_shared<TH1D>((name+"_position").c_str(),(name+"_position").c_str(), var_name.size(), 0.5, var_name.size() + 0.5);
-//            }
-//            histo[name]->Fill(position[j]);
-//        }
-//    }
+    void CreatePositionHisto(std::map<std::string, std::shared_ptr<TH1D>>& histo, const std::map<std::string, double>& average)
+    {
+        for (const auto& name :  average){
+            if (!histo.count(name.first)){
+                histo[name.first] =  std::make_shared<TH1D>((name.first+"_position").c_str(),(name.first+"_position").c_str(), average.size()*2, 0.5, average.size() + 5.);
+            }
+            histo[name.first]->Fill(name.second);
+        }
+    }
+
+    std::map<std::string, double> AveragePosition(const std::vector<std::vector<double>>& position, const std::vector<std::vector<std::string>>& var_name)
+    {
+        std::map<std::string, double> average;
+        for(size_t i = 0; i<position.size(); ++i){
+            for (size_t j = 0; j< position[i].size(); ++j){
+                average[var_name.at(i).at(j)] = average[var_name.at(i).at(j)] + position.at(i).at(j);
+            }
+        }
+        for(auto& av : average){
+            av.second = av.second / position.size();
+        }
+        return average;
+    }
+
+    void CreateRanking(const std::map<std::string, std::shared_ptr<TH1D>>& histo)
+    {
+        std::vector<std::pair<std::string,double>> ranking;
+        for(const auto& name : histo)
+        {
+            ranking.emplace_back(name.first, name.second->GetMean());
+        }
+        std::sort(ranking.begin(), ranking.end(), [](auto el1, auto el2){
+            return el1.second < el2.second;
+        });
+
+        for(const auto& rank :  ranking){
+            std::cout<<rank.first<<"    "<<rank.second<<std::endl;
+        }
+    }
 
     void Run()
     {
 
-        std::map<std::string, std::shared_ptr<TH1D>> position6, position9, positionKS;
+        std::map<std::string, std::shared_ptr<TH1D>> positionKS;
+        std::map<std::string, std::map<std::string, std::map<double, double>>> param_seed;
+        std::map<std::string, double> roc;
+        std::map<std::string, std::vector<std::vector<double>>> position;
+        std::map<std::string, std::vector<std::vector<std::string>>> var_name;
+
         for (const auto& name : args.input_file()){
-            std::cout<<"ciao"<<std::endl;
+//            std::cout<<"ciao"<<std::endl;
             std::shared_ptr<TFile> in_file(root_ext::OpenRootFile(name));
             ntuple::MvaTuple myTree("mva_result", in_file.get(), true);
             for(const ntuple::MvaResults& results : myTree) {
-                 if (results.ROCIntegral < 0.6){
-                     anaData.ROCIntegral(name+"<0.6").Fill(results.ROCIntegral);
-                     anaData.shrinkage(name+"<0.6").Fill(results.shrinkage);
-                     anaData.NTrees(name+"<0.6").Fill(results.NTrees);
-                     anaData.BaggedSampleFraction(name+"<0.6").Fill(results.BaggedSampleFraction);
-                     anaData.MaxDepth(name+"<0.6").Fill(results.MaxDepth);
-                     anaData.MinNodeSize(name+"<0.6").Fill(results.MinNodeSize);
-                     anaData.cut(name+"<0.6").Fill(results.cut);
-                     anaData.significance(name+"<0.6").Fill(results.significance);
-//                     CreatePositionHisto(position6, results.position, results.var_name);
-                     for (size_t j=0; j< results.KS_mass.size(); j++){
-                         anaData.KS_mass(name+"<0.6").Fill(results.KS_mass[j]);
-                         anaData.KS_value(name+"<0.6").Fill(results.KS_value[j]);
-                         anaData.KS_type(name+"<0.6").Fill(results.KS_type[j]);
-                     }
-                 }
-                 if (results.ROCIntegral > 0.9){
-                     anaData.ROCIntegral(name+">0.9").Fill(results.ROCIntegral);
-                     anaData.shrinkage(name+">0.9").Fill(results.shrinkage);
-                     anaData.NTrees(name+">0.9").Fill(results.NTrees);
-                     anaData.BaggedSampleFraction(name+">0.9").Fill(results.BaggedSampleFraction);
-                     anaData.MaxDepth(name+">0.9").Fill(results.MaxDepth);
-                     anaData.MinNodeSize(name+">0.9").Fill(results.MinNodeSize);
-                     anaData.cut(name+">0.9").Fill(results.cut);
-                     anaData.significance(name+">0.9").Fill(results.significance);
-//                     CreatePositionHisto(position9, results.position, results.var_name);
-                     for (size_t j=0; j< results.KS_mass.size(); j++){
-                         anaData.KS_mass(name+">0.9").Fill(results.KS_mass[j]);
-                         anaData.KS_value(name+">0.9").Fill(results.KS_value[j]);
-                         anaData.KS_type(name+">0.9").Fill(results.KS_type[j]);
-                     }
-                 }
+                std::string method_name = "Grad_BaggedSampleFraction_"+std::to_string(results.BaggedSampleFraction)+"_MaxDepth_"+std::to_string(results.MaxDepth)+
+                        "_MinNodeSize_"+std::to_string(results.MinNodeSize)+"_NTrees_"+std::to_string(results.NTrees)+"_shrinkage"+std::to_string(results.shrinkage);
                  bool load = false;
-                     for (size_t j=0; j< results.KS_mass.size(); j++){
-                         if ((results.KS_mass[j] == 2000 && results.KS_type[j]  == 1)|| (results.KS_mass[j] == 0 && results.KS_type[j]  == -1)){
-                             if (results.KS_value[j]>0.05){
-                                 if (!load){
-                                 anaData.ROCIntegral(name+">0.8_KS").Fill(results.ROCIntegral);
-                                 anaData.shrinkage(name+">0.8_KS").Fill(results.shrinkage);
-                                 anaData.NTrees(name+">0.8_KS").Fill(results.NTrees);
-                                 anaData.BaggedSampleFraction(name+">0.8_KS").Fill(results.BaggedSampleFraction);
-                                 anaData.MaxDepth(name+">0.8_KS").Fill(results.MaxDepth);
-                                 anaData.MinNodeSize(name+">0.8_KS").Fill(results.MinNodeSize);
-                                 anaData.cut(name+">0.8_KS").Fill(results.cut);
-                                 anaData.significance(name+">0.8_KS").Fill(results.significance);
-//                                 CreatePositionHisto(positionKS, results.position, results.var_name);
-                                 load = true;
-                                 }
-                                 anaData.KS_mass(name+">0.8_KS").Fill(results.KS_mass[j]);
-                                 anaData.KS_value(name+">0.8_KS").Fill(results.KS_value[j]);
-                                 anaData.KS_type(name+">0.8_KS").Fill(results.KS_type[j]);
+//                 if (results.shrinkage > 0.41 || results.MaxDepth > 3) continue;
+                 for (size_t j=0; j< results.KS_mass.size(); j++){
+                     if ((results.KS_mass[j] == 2000 && results.KS_type[j]  == 1) || (results.KS_mass[j] == 0 && results.KS_type[j]  == -1)){
+                         if (results.KS_value[j]>0.05){
+                             if (!load){
+                                 param_seed[method_name]["shrinkage"][results.shrinkage]++;
+                                 param_seed[method_name]["NTrees"][results.NTrees]++;
+                                 param_seed[method_name]["BaggedSampleFraction"][results.BaggedSampleFraction]++;
+                                 param_seed[method_name]["MaxDepth"][results.MaxDepth]++;
+                                 param_seed[method_name]["MinNodeSize"][results.MinNodeSize]++;
+                                 roc[method_name] = results.ROCIntegral;
+                                 position[method_name].push_back(results.position);
+                                 var_name[method_name].push_back(results.var_name);
+//                             anaData.ROCIntegral(name+"_KS").Fill(results.ROCIntegral);
+//                             anaData.shrinkage(name+"_KS").Fill(results.shrinkage);
+//                             anaData.NTrees(name+"_KS").Fill(results.NTrees);
+//                             anaData.BaggedSampleFraction(name+"_KS").Fill(results.BaggedSampleFraction);
+//                             anaData.MaxDepth(name+"_KS").Fill(results.MaxDepth);
+//                             anaData.MinNodeSize(name+"_KS").Fill(results.MinNodeSize);
+//                             anaData.cut(name+"_KS").Fill(results.cut);
+//                             anaData.significance(name+"_KS").Fill(results.significance);
+//                             anaData.BaggedSampleFraction_ROC(name+"_KS").Fill(results.BaggedSampleFraction, results.ROCIntegral);
+//                             anaData.shrinkage_ROC(name+"_KS").Fill(results.shrinkage, results.ROCIntegral);
+//                             anaData.NTrees_ROC(name+"_KS").Fill(results.NTrees, results.ROCIntegral);
+//                             anaData.MaxDepth_ROC(name+"_KS").Fill(results.MaxDepth, results.ROCIntegral);
+//                             anaData.MinNodeSize_ROC(name+"_KS").Fill(results.MinNodeSize, results.ROCIntegral);
+////                                 CreatePositionHisto(positionKS, results.position, results.var_name);
+                             load = true;
                              }
+                             anaData.KS_mass(name+"_KS").Fill(results.KS_mass[j]);
+                             anaData.KS_value(name+"_KS").Fill(results.KS_value[j]);
+                             anaData.KS_type(name+"_KS").Fill(results.KS_type[j]);
                          }
                      }
+                 }
 
              }
         }
-//        auto directory6 = root_ext::GetDirectory(*outfile.get(), "<0.6");
-//        for (const auto& var: position6)
-//            root_ext::WriteObject(*var.second, directory6);
-//        auto directory9 = root_ext::GetDirectory(*outfile.get(), ">0.9");
-//        for (const auto& var: position9)
-//            root_ext::WriteObject(*var.second, directory9);
-//        auto directoryKS = root_ext::GetDirectory(*outfile.get(), ">0.8KS");
-//        for (const auto& var: positionKS)
-//            root_ext::WriteObject(*var.second, directoryKS);
 
+        for(const auto& method : param_seed){
+            bool passed = true;
+//            std::cout<<method.second.size()<<std::endl;
+            for (const auto& param : method.second){
+//                std::cout<<param.first<<"    "<<param.second.size()<<std::endl;
+                for (const auto& value : param.second){
+//                    std::cout<<value.first<<"   "<<value.second<<std::endl;
+                    if (value.second < (args.input_file().size()-1)){
+                        passed = false;
+                        continue;
+                    }
+                    if (param.first == "shrinkage"){
+                        anaData.shrinkage().Fill(value.first);
+                        anaData.shrinkage_ROC().Fill(value.first, roc[method.first]);
+                    }
+                    if (param.first == "NTrees"){
+                        anaData.NTrees().Fill(value.first);
+                        anaData.NTrees_ROC().Fill(value.first, roc[method.first]);
+                    }
+                    if (param.first == "BaggedSampleFraction"){
+                        anaData.BaggedSampleFraction().Fill(value.first);
+                        anaData.BaggedSampleFraction_ROC().Fill(value.first, roc[method.first]);
+                    }
+                    if (param.first == "MaxDepth"){
+                        anaData.MaxDepth().Fill(value.first);
+                        anaData.MaxDepth_ROC().Fill(value.first, roc[method.first]);
+                    }
+                    if (param.first == "MinNodeSize"){
+                        anaData.MinNodeSize().Fill(value.first);
+                        anaData.MinNodeSize_ROC().Fill(value.first, roc[method.first]);
+                    }
+                }
+            }
+            if(!passed) continue;
+            auto average = AveragePosition(position[method.first], var_name[method.first]);
+            CreatePositionHisto(positionKS, average);
+        }
 
-
+        auto directory = root_ext::GetDirectory(*outfile.get(), "RankingPosition");
+        for (const auto& var: positionKS)
+            root_ext::WriteObject(*var.second, directory);
+        CreateRanking(positionKS);
     }
 
 private:

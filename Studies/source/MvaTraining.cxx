@@ -141,8 +141,7 @@ public:
     using EventTuple = ::ntuple::EventTuple;
 
     MVATraining(const Arguments& _args): args(_args),
-        outfile(root_ext::CreateRootFile(args.output_file()+"_"+std::to_string(args.seed())+".root")),
-        gen2(args.seed2()), seed_split(0,29)
+        outfile(root_ext::CreateRootFile(args.output_file()+"_"+std::to_string(args.seed())+".root")), seed_split(0,29)
     {
         MvaSetupCollection setups;
         SampleEntryListCollection samples_list;
@@ -261,13 +260,21 @@ public:
                 current_evaluation = vars->EvaluateForAllEvents(method_name, type_entry.first, entry.first);
                 if (entry.first.IsSignal()){
                     evaluation_mass_tot.insert(evaluation_mass_tot.end(), current_evaluation.begin(), current_evaluation.end());
-                    for (const auto& value : current_evaluation)
+                    for (const auto& value : current_evaluation){
+                        if (!outputBDT[method_name].count(entry.first))
+                             outputBDT[method_name][entry.first] = std::make_shared<TH1D>(("Signal_"+std::to_string(entry.first.mass)+"_output_"+method_name).c_str(),("Signal"+std::to_string(entry.first.mass)+"_output_"+method_name).c_str(), nbin, bin_min, bin_max);
+                        outputBDT.at(method_name).at(entry.first)->Fill(value);
                         outputBDT.at(method_name).at(mass_tot)->Fill(value);
+                    }
                 }
                 if (entry.first.IsBackground()){
                     evaluation_bkg_tot.insert(evaluation_bkg_tot.end(), current_evaluation.begin(), current_evaluation.end());
-                    for (const auto& value : current_evaluation)
+                    for (const auto& value : current_evaluation){
+                        if (!outputBDT[method_name].count(entry.first))
+                            outputBDT[method_name][entry.first] = std::make_shared<TH1D>(("Bkg_"+std::to_string(entry.first.mass)+"_output_"+method_name).c_str(),("Bkg"+std::to_string(entry.first.mass)+"_output_"+method_name).c_str(), nbin, bin_min, bin_max);
+                        outputBDT.at(method_name).at(entry.first)->Fill(value);
                         outputBDT.at(method_name).at(bkg)->Fill(value);
+                    }
                 }
             }
         }
@@ -355,6 +362,7 @@ public:
                 auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
                 EventTuple tuple(ToString(mva_setup.channels[j]), input_file.get(), true, {} , GetMvaBranches());
                 Long64_t tot_entries = 0;
+                std::mt19937_64 gen2(args.seed2());
                 for(Long64_t current_entry = 0; tot_entries < args.number_events() && current_entry < tuple.GetEntries(); ++current_entry) {
                     uint_fast32_t seed = seed_split(gen2);
                     if (seed>15) continue;
@@ -390,6 +398,7 @@ public:
         std::cout << methods.size() << " metodi" << std::endl;
 
         std::map<std::string, double> ROCintegral;
+        std::map<std::string, std::map<int, double>> roc;
         std::map<std::string, std::vector<std::pair<std::string, double>>> importance;
         std::map<std::string, std::map<SampleId, std::map<size_t, std::vector<double>>>> evaluation;
         std::map<std::string, std::map<SampleId, std::shared_ptr<TH1D>>> outputBDT;
@@ -403,10 +412,12 @@ public:
                 importance[m.first].emplace_back(vars->names[i], method->GetVariableImportance(static_cast<UInt_t>(i)));
             }
             ROCintegral[m.first] = method->GetROCIntegral(outputBDT.at(m.first).at(mass_tot).get(), outputBDT.at(m.first).at(bkg).get());
+            for(const auto& sample : mass_range){
+                SampleId sample_sgn(SampleType::Sgn_Res, sample);
+                SampleId sample_bkg(SampleType::Bkg_TTbar, sample);
+                roc[m.first][sample] = method->GetROCIntegral(outputBDT.at(m.first).at(sample_sgn).get(), outputBDT.at(m.first).at(sample_bkg).get());
+            }
         }
-
-
-
         std::cout<<"importance"<<std::endl;
         RankingImportanceVariables(importance);
         std::cout<<"position"<<std::endl;
@@ -437,6 +448,10 @@ public:
                 else if (sample.first.IsBackground())
                     mva_tuple().KS_type.push_back(-1);
             }
+            for (const auto& value : roc[name]){
+                mva_tuple().roc_value.push_back(value.second);
+                mva_tuple().roc_mass.push_back(value.first);
+            }
             for (const auto& var: importance.at(name)){
                 mva_tuple().importance.push_back(var.second);
                 mva_tuple().var_name.push_back(var.first);
@@ -455,8 +470,7 @@ private:
     std::mt19937_64 gen, gen2;
     MvaVariables::VarNameSet enabled_vars;
     std::shared_ptr<MvaVariablesTMVA> vars;
-    std::uniform_int_distribution<uint_fast32_t> test_vs_training;
-    std::uniform_int_distribution<uint_fast32_t> seed_split;
+    std::uniform_int_distribution<uint_fast32_t> test_vs_training, seed_split;
 };
 
 }
