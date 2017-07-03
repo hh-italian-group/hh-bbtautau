@@ -13,6 +13,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
 #include "hh-bbtautau/Analysis/include/MvaMethods.h"
+#include "hh-bbtautau/Analysis/include/MvaConfigurationReader.h"
 
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, input_path);
@@ -33,9 +34,21 @@ public:
 
     SampleIdVarData sample_vars;
 
-    VariablesDistribution(const Arguments& _args): args(_args), samples(SampleEntry::ReadConfig(args.cfg_file())),
+    VariablesDistribution(const Arguments& _args): args(_args),
         outfile(root_ext::CreateRootFile(args.output_file())), reporter(std::make_shared<TimeReporter>())
     {
+        MvaSetupCollection setups;
+        SampleEntryListCollection samples_list;
+
+        ConfigReader configReader;
+        MvaConfigReader setupReader(setups);
+        configReader.AddEntryReader("SETUP", setupReader, true);
+        SampleConfigReader sampleReader(samples_list);
+        configReader.AddEntryReader("FILES", sampleReader, false);
+        configReader.ReadConfig(args.cfg_file());
+
+        samples = samples_list.at("inputs").files;
+
     }
 
     void Histo1D(const VarData& sample, TDirectory* directory)
@@ -83,7 +96,7 @@ public:
 
                 if (static_cast<EventEnergyScale>(event.eventEnergyScale) != EventEnergyScale::Central || (event.q_1+event.q_2) != 0 || event.jets_p4.size() < 2
                     || event.extraelec_veto == true || event.extramuon_veto == true || event.jets_p4[0].eta() > cuts::btag_2016::eta
-                    || event.jets_p4[1].eta() > cuts::btag_2016::eta)
+                    || event.jets_p4[1].eta() > cuts::btag_2016::eta )
                     continue;
 
                 LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];

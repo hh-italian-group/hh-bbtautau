@@ -23,6 +23,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
 #include "AnalysisTools/Core/include/RootExt.h"
+#include "hh-bbtautau/Analysis/include/MvaConfigurationReader.h"
 
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, input_path);
@@ -55,10 +56,21 @@ public:
     SampleIdVarData samples_mass;
     SampleIdNameElement bandwidth, mutual_matrix, correlation_matrix, JSDivergenceSB;
 
-    VariableDistribution(const Arguments& _args): args(_args), samples(SampleEntry::ReadConfig(args.cfg_file())),
+    VariableDistribution(const Arguments& _args): args(_args),
               outfile(root_ext::CreateRootFile(args.output_file())), vars(args.number_sets(), args.seed()),
               reporter(std::make_shared<TimeReporter>())
     {
+        MvaSetupCollection setups;
+        SampleEntryListCollection samples_list;
+
+        ConfigReader configReader;
+        MvaConfigReader setupReader(setups);
+        configReader.AddEntryReader("SETUP", setupReader, true);
+        SampleConfigReader sampleReader(samples_list);
+        configReader.AddEntryReader("FILES", sampleReader, false);
+        configReader.ReadConfig(args.cfg_file());
+
+        samples = samples_list.at("inputs").files;
     }
 
     NameElement CorrelationSelected(const VarData& sample_vars, const SetNamesVar& selected){
@@ -81,7 +93,7 @@ public:
     SetNamesVar FindBestRangeVariables(const Range<int>& range, const std::map<SampleId, double>& max_distance,
                                       std::map<SampleId, VectorName_ND> JSDivergence_vector) const{
 
-        static constexpr double threashold_mi = 0.7;
+        static constexpr double threashold_mi = 0.8;
         SetNamesVar selected, not_corrected;
         std::ofstream best_entries_file("Best_entries_Range"+std::to_string(range.min())+"_"+std::to_string(range.max())+"_"+std::to_string(args.set())+"_"+std::to_string(args.number_sets())+args.tree_name()+".csv", std::ofstream::out);
         best_entries_file << "," << "," << "JSD_sb" << "," << "MI_sgn" << "," << "Mi_bkg" << std::endl;
@@ -263,35 +275,30 @@ public:
         std::cout << "n.variabili: " << samples_mass.at(SampleType::Bkg_TTbar).size() << std::endl;
         std::cout << "n.masse segnale: " << samples_mass.size() - 1 << " + " << 1 << " fondo."<<std::endl;
 
-        std::cout << "Bandwidth and Mutual Information" << std::endl;
+        std::map<Name_ND, std::shared_ptr<TGraph>> plot_jsd;
+        int i = 0;
         auto directory_mutinf = root_ext::GetDirectory(*outfile, "MutualInformation");
         for (const auto& sample: samples_mass){
             std::cout<<"----"<<ToString(sample.first)<<"----"<<" entries: "<<sample.second.at("pt_l1").size()<<std::endl;
-            std::cout<<"bandwidth  ";
-            std::cout.flush();
+            std::cout<<"bandwidth  "<<std::flush;
             bandwidth[sample.first] = OptimalBandwidth(sample.second);
             std::cout<<"mutual  ";
             std::cout.flush();
             mutual_matrix[sample.first] = Mutual(sample.second, bandwidth.at(sample.first));
-            std::cout<<std::endl;
-        }
-        TimeReport();
-
-        std::cout<<"Jensen Shannon Signal Background"<<std::endl;
-        std::map<Name_ND, std::shared_ptr<TGraph>> plot_jsd;
-        int i = 0;
-        for (const auto& sample : samples_mass){
-            if ( sample.first.IsBackground() )
+            if ( sample.first.IsBackground() ){
+                TimeReport();
                 continue;
-            std::cout << ToString(sample.first) << "    " <<std::flush;
+            }
+            std::cout<<"Jensen Shannon Signal Background ";
             JSDivergenceSB[sample.first] = JensenDivergenceSB(sample.second, samples_mass.at(SampleType::Bkg_TTbar), bandwidth.at(sample.first), bandwidth.at(SampleType::Bkg_TTbar));
             for (const auto& var : JSDivergenceSB.at(sample.first)){
                 if (!plot_jsd.count(var.first)) plot_jsd[var.first] = CreatePlot("","","","");
                 plot_jsd.at(var.first)->SetPoint(i, sample.first.mass, JSDivergenceSB.at(sample.first).at(var.first));
             }
             i++;
+            TimeReport();
         }
-        std::cout<<std::endl;
+        TimeReport();
 
         auto directory_jensenshannon = root_ext::GetDirectory(*outfile,"JensenShannonDivergence");
         std::cout<<"Selection variables"<<std::endl;
@@ -435,7 +442,7 @@ public:
                 std::cout<<"mutual plot  ";
                 MutualHisto(sample.first, mutual_matrix.at(sample.first), mutual_matrix.at(SampleType::Bkg_TTbar), directory_mutinf);
             }
-            std::cout<<std::endl;
+            TimeReport();
         }
         std::cout <<"Mutual histos" << std::endl;
         directory_mutinf->mkdir("Matrix");
@@ -594,4 +601,3 @@ private:
 }
 
 PROGRAM_MAIN(analysis::mva_study::VariableDistribution, Arguments) // definition of the main program function
-// ./run.sh MvaVariableSelection --input_path ~/Desktop/tuples --output_file MassVariables__muTau_2.root --cfg_file hh-bbtautau/Studies/config/mva_config.cfg --tree_name muTau  --number_threads 4 --number_variables 20 --number_events 10000 --number_sets 3 --set 2

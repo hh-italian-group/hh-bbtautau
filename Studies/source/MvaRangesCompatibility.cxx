@@ -18,6 +18,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Cuts/include/Btag_2016.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
+#include "hh-bbtautau/Analysis/include/MvaConfigurationReader.h"
 
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, input_path);
@@ -46,10 +47,21 @@ public:
     SampleIdVarData samples_mass;
     SampleIdNameElement bandwidth, mutual_matrix, correlation_matrix, JSDivergenceSB;
 
-    MvaClassification(const Arguments& _args): args(_args), samples(SampleEntry::ReadConfig(args.cfg_file())),
+    MvaClassification(const Arguments& _args): args(_args),
         outfile(root_ext::CreateRootFile(args.output_file())), vars(args.number_sets(), args.seed()),
         reporter(std::make_shared<TimeReporter>())
     {
+        MvaSetupCollection setups;
+        SampleEntryListCollection samples_list;
+
+        ConfigReader configReader;
+        MvaConfigReader setupReader(setups);
+        configReader.AddEntryReader("SETUP", setupReader, true);
+        SampleConfigReader sampleReader(samples_list);
+        configReader.AddEntryReader("FILES", sampleReader, false);
+        configReader.ReadConfig(args.cfg_file());
+
+        samples = samples_list.at("inputs").files;
     }
 
     void DistributionJSD_SB(const SampleId& mass_entry, TDirectory* directory) const
@@ -118,7 +130,7 @@ public:
     }
 
     void KolmogorovSignalCompatibility(TDirectory* directory) const
-    {        
+    {
         for (const auto& var: samples_mass.at(SampleType::Bkg_TTbar)){
             std::map<SamplePair, double> kolmogorov;
             for(auto mass_entry_1 = samples_mass.begin(); mass_entry_1 != samples_mass.end(); ++mass_entry_1) {
@@ -381,5 +393,3 @@ private:
 }
 
 PROGRAM_MAIN(analysis::mva_study::MvaClassification, Arguments) // definition of the main program function
-
-//./run.sh MvaRangesCompatibility --input_path ~/Desktop/tuples --output_file MassVariables__muTau_2.root --cfg_file hh-bbtautau/Studies/config/mva_config.cfg --tree_name muTau  --number_threads 4 --number_variables 20 --number_events 10000 --number_sets 3 --set 2

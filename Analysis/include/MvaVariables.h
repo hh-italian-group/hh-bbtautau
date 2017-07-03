@@ -13,9 +13,6 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 namespace analysis {
 namespace mva_study{
 
-//ENUM_ISTREAM_OPERATORS()
-ENUM_OSTREAM_OPERATORS()
-
 enum class SampleType { Sgn_Res = 1, Sgn_NonRes = 0, Bkg_TTbar = -1 };
 
 struct SampleId {
@@ -35,6 +32,16 @@ struct SampleId {
     bool IsBackground() const { return !IsSignal(); }
     bool IsSM() const { return sampleType == SampleType::Sgn_NonRes; }
 
+    static const SampleId& MassTot()
+    {
+        static const SampleId mass_tot(SampleType::Sgn_Res, 2000);
+        return mass_tot;
+    }
+    static const SampleId& Bkg()
+    {
+        static const SampleId bkg(SampleType::Bkg_TTbar, 0);
+        return bkg;
+    }
 };
 
 //static const SampleId Bkg{SampleType::Bkg_TTbar, -1};
@@ -65,36 +72,24 @@ inline std::istream& operator>>(std::istream& is, SampleId& id)
             throw exception("Bad sample id");
         id.sampleType = SampleType::Sgn_Res;
         id.mass = Parse<int>(type.substr(1));
-    }/* else {
-        if (type.at(0) == 'S'){
-            id.sampleType = SampleType::Sgn_NonRes;
-            id.mass = 0;
-        }
-        else{
-            if (type.at(0) == 'T'){
-                id.sampleType = SampleType::Bkg_TTbar;
-                id.mass = -1;
-            }
-        }
-    }*/
+    }
     return is;
 }
 
 #define VAR(name, formula) if(IsEnabled(name)) SetValue(name, formula)
+#define VAR_INT(name, formula) if(IsEnabled(name)) SetValue(name, formula, 'I')
 class MvaVariables {
 public:
     using VarNameSet = std::unordered_set<std::string>;
-
     MvaVariables(size_t _number_set = 1, uint_fast32_t seed = std::numeric_limits<uint_fast32_t>::max(),
-                 const  VarNameSet& _enabled_vars = {}) :
+                 const VarNameSet& _enabled_vars = {}) :
         gen(seed), which_set(0, _number_set-1), enabled_vars(_enabled_vars)
     {
     }
 
     virtual ~MvaVariables() {}
-    virtual void SetValue(const std::string& name, double value) = 0;
+    virtual void SetValue(const std::string& name, double value, char type = 'F') = 0;
     virtual void AddEventVariables(size_t which_set, const SampleId& mass, double weight) = 0;
-
     bool IsEnabled(const std::string& name) const
     {
         return !enabled_vars.size() || enabled_vars.count(name);
@@ -102,9 +97,9 @@ public:
 
     void AddEvent(const ntuple::Event& event, const SampleId& mass , double sample_weight = 1.)
     {
-        auto bb= event.jets_p4[0] + event.jets_p4[1];
-        auto leptons= event.p4_1 + event.p4_2;
-        auto leptonsMET= event.p4_1 + event.p4_2 + event.pfMET_p4;
+        auto bb = event.jets_p4[0] + event.jets_p4[1];
+        auto leptons = event.p4_1 + event.p4_2;
+        auto leptonsMET = event.p4_1 + event.p4_2 + event.pfMET_p4;
 
         VAR("pt_b1", event.jets_p4[0].pt());
         VAR("pt_b2", event.jets_p4[1].pt());
@@ -191,11 +186,16 @@ public:
         VAR("costheta_l1l2METhh", four_bodies::Calculate_cosTheta_2bodies(leptonsMET, bb+event.SVfit_p4));
         VAR("costheta_l1l2METhhMET", four_bodies::Calculate_cosTheta_2bodies(leptonsMET, bb+leptonsMET));
 
+//        VAR("mass_H", ROOT::Math::VectorUtil::InvariantMass(bb,event.SVfit_p4));
+//        VAR("MX", four_bodies::Calculate_MX(event.p4_1, event.p4_2, event.jets_p4[0], event.jets_p4[1], event.pfMET_p4));
+
+        VAR("mass", mass.mass);
+        VAR_INT("channel", event.channelId);
         AddEventVariables(which_set(gen), mass, sample_weight); // event.weight * sample_weight
     }
 
 private:
-    std::mt19937 gen;
+    std::mt19937_64 gen;
     std::uniform_int_distribution<size_t> which_set;
     VarNameSet enabled_vars;
 };
