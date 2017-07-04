@@ -105,7 +105,7 @@ public:
                 std::string method_name = "Grad_BaggedSampleFraction_"+std::to_string(results.BaggedSampleFraction)+"_MaxDepth_"+std::to_string(results.MaxDepth)+
                         "_MinNodeSize_"+std::to_string(results.MinNodeSize)+"_NTrees_"+std::to_string(results.NTrees)+"_shrinkage"+std::to_string(results.shrinkage);
                  bool load = false;
-//                 if (results.shrinkage > 0.41 || results.MaxDepth > 3) continue;
+                 if (results.shrinkage > 0.41 || results.MaxDepth > 3) continue;
                  for (size_t j=0; j< results.KS_mass.size(); j++){
                      if ((results.KS_mass[j] == 2000 && results.KS_type[j]  == 1) || (results.KS_mass[j] == 0 && results.KS_type[j]  == -1)){
                          if (results.KS_value[j]>0.05){
@@ -118,20 +118,6 @@ public:
                                  roc[method_name] = results.ROCIntegral;
                                  position[method_name].push_back(results.position);
                                  var_name[method_name].push_back(results.var_name);
-//                             anaData.ROCIntegral(name+"_KS").Fill(results.ROCIntegral);
-//                             anaData.shrinkage(name+"_KS").Fill(results.shrinkage);
-//                             anaData.NTrees(name+"_KS").Fill(results.NTrees);
-//                             anaData.BaggedSampleFraction(name+"_KS").Fill(results.BaggedSampleFraction);
-//                             anaData.MaxDepth(name+"_KS").Fill(results.MaxDepth);
-//                             anaData.MinNodeSize(name+"_KS").Fill(results.MinNodeSize);
-//                             anaData.cut(name+"_KS").Fill(results.cut);
-//                             anaData.significance(name+"_KS").Fill(results.significance);
-//                             anaData.BaggedSampleFraction_ROC(name+"_KS").Fill(results.BaggedSampleFraction, results.ROCIntegral);
-//                             anaData.shrinkage_ROC(name+"_KS").Fill(results.shrinkage, results.ROCIntegral);
-//                             anaData.NTrees_ROC(name+"_KS").Fill(results.NTrees, results.ROCIntegral);
-//                             anaData.MaxDepth_ROC(name+"_KS").Fill(results.MaxDepth, results.ROCIntegral);
-//                             anaData.MinNodeSize_ROC(name+"_KS").Fill(results.MinNodeSize, results.ROCIntegral);
-////                                 CreatePositionHisto(positionKS, results.position, results.var_name);
                              load = true;
                              }
                              anaData.KS_mass(name+"_KS").Fill(results.KS_mass[j]);
@@ -146,11 +132,8 @@ public:
 
         for(const auto& method : param_seed){
             bool passed = true;
-//            std::cout<<method.second.size()<<std::endl;
             for (const auto& param : method.second){
-//                std::cout<<param.first<<"    "<<param.second.size()<<std::endl;
                 for (const auto& value : param.second){
-//                    std::cout<<value.first<<"   "<<value.second<<std::endl;
                     if (value.second < (args.input_file().size()-1)){
                         passed = false;
                         continue;

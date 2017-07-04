@@ -50,9 +50,9 @@ namespace mva_study{
 
 const SampleId mass_tot = SampleId::MassTot();
 const SampleId bkg = SampleId::Bkg();
-constexpr int nbin = 220;
-constexpr double bin_min = -1.1;
-constexpr double bin_max = 1.1;
+constexpr int nbin = 202;
+constexpr double bin_min = -1.01;
+constexpr double bin_max = 1.01;
 
 class MvaVariablesTMVA : public MvaVariables {
 public:
@@ -249,6 +249,7 @@ public:
     {
         std::string weightfile = "mydataloader/weights/myFactory_"+method_name+".weights.xml";
         vars->reader->BookMVA(method_name, weightfile);
+        std::map<std::string, std::map<SampleId, std::map<size_t,std::shared_ptr<TH1D>>>> histo;
         outputBDT[method_name][mass_tot] = std::make_shared<TH1D>(("Signal_output_"+method_name).c_str(),("Signal_output_"+method_name).c_str(), nbin, bin_min, bin_max);
         outputBDT[method_name][bkg] = std::make_shared<TH1D>(("Bkg_output_"+method_name).c_str(),("Bkg_output_"+method_name).c_str(), nbin, bin_min, bin_max);
         for(const auto& type_entry : vars->data){
@@ -265,6 +266,12 @@ public:
                              outputBDT[method_name][entry.first] = std::make_shared<TH1D>(("Signal_"+std::to_string(entry.first.mass)+"_output_"+method_name).c_str(),("Signal"+std::to_string(entry.first.mass)+"_output_"+method_name).c_str(), nbin, bin_min, bin_max);
                         outputBDT.at(method_name).at(entry.first)->Fill(value);
                         outputBDT.at(method_name).at(mass_tot)->Fill(value);
+                        if (!histo[method_name][entry.first].count(type_entry.first))
+                            histo[method_name][entry.first][type_entry.first] = std::make_shared<TH1D>(("Signal_"+std::to_string(entry.first.mass)+"_output_"+method_name+"_type"+std::to_string(type_entry.first)).c_str(),("Signal"+std::to_string(entry.first.mass)+"_output_"+method_name).c_str(), nbin, bin_min, bin_max);
+                        histo[method_name][entry.first][type_entry.first]->Fill(value);
+                        if (!histo[method_name][mass_tot].count(type_entry.first))
+                            histo[method_name][mass_tot][type_entry.first] = std::make_shared<TH1D>(("Signal_output_"+method_name+"_type"+std::to_string(type_entry.first)).c_str(),("Signal_output_"+method_name+"_"+std::to_string(type_entry.first)).c_str(), nbin, bin_min, bin_max);
+                        histo[method_name][mass_tot][type_entry.first]->Fill(value);
                     }
                 }
                 if (entry.first.IsBackground()){
@@ -274,6 +281,12 @@ public:
                             outputBDT[method_name][entry.first] = std::make_shared<TH1D>(("Bkg_"+std::to_string(entry.first.mass)+"_output_"+method_name).c_str(),("Bkg"+std::to_string(entry.first.mass)+"_output_"+method_name).c_str(), nbin, bin_min, bin_max);
                         outputBDT.at(method_name).at(entry.first)->Fill(value);
                         outputBDT.at(method_name).at(bkg)->Fill(value);
+                        if (!histo[method_name][entry.first].count(type_entry.first))
+                            histo[method_name][entry.first][type_entry.first] = std::make_shared<TH1D>(("Bkg_"+std::to_string(entry.first.mass)+"_output_"+method_name+"_type"+std::to_string(type_entry.first)).c_str(),("Bkg"+std::to_string(entry.first.mass)+"_output_"+method_name).c_str(), nbin, bin_min, bin_max);
+                        histo[method_name][entry.first][type_entry.first]->Fill(value);
+                        if (!histo[method_name][bkg].count(type_entry.first))
+                            histo[method_name][bkg][type_entry.first] = std::make_shared<TH1D>(("Bkg_output_"+method_name+"_type"+std::to_string(type_entry.first)).c_str(),("Bkg_output_"+method_name+"_"+std::to_string(type_entry.first)).c_str(), nbin, bin_min, bin_max);
+                        histo[method_name][bkg][type_entry.first]->Fill(value);
                     }
                 }
             }
@@ -282,6 +295,11 @@ public:
         auto directory_methody = root_ext::GetDirectory(*directory, (method_name).c_str());
         root_ext::WriteObject(*outputBDT[method_name][mass_tot], directory_methody);
         root_ext::WriteObject(*outputBDT[method_name][bkg], directory_methody);
+        for(const auto& h : histo[method_name]){
+            for (auto his : h.second){
+                root_ext::WriteObject(*his.second,directory_methody);
+            }
+        }
     }
 
     std::map<std::string, std::map<SampleId,double>> Kolmogorov(const std::map<std::string, std::map<SampleId, std::map<size_t, std::vector<double>>>>& evaluation) const
@@ -316,12 +334,16 @@ public:
         for(const auto& method : outputBDT){
             std::vector<std::pair<double,double>> cuts;
             auto histo_sign = CreatePlot((method.first+"_significance").c_str(),(method.first+"_significance").c_str(),"output BDT","S/(sqrt(B))");
+            auto s_tot = method.second.at(mass_tot)->Integral(0, nbin);
+            auto b_tot = method.second.at(mass_tot)->Integral(0, nbin);
+            auto relative = s_tot/pow(b_tot, 0.5);
+            std::cout<<relative<<std::endl;
             for(int i = 0; i<=nbin; ++i){
                 auto output = method.second.at(mass_tot)->GetBinCenter(i);
                 auto s = method.second.at(mass_tot)->Integral(i, nbin+1);
                 auto b = method.second.at(bkg)->Integral(i, nbin+1);
                 double significance = 0;
-                if (b != 0) significance = s/pow(b, 0.5);
+                if (b != 0) significance = (s/pow(b, 0.5))/relative;
                 cuts.emplace_back(output, significance);
                 histo_sign->SetPoint(i, output, significance);
             }
