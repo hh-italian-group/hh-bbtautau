@@ -33,11 +33,12 @@ public:
     TH1D_ENTRY(KS_type, 4, -2, 2)
     TH1D_ENTRY(cut, 200, -1, 1)
     TH1D_ENTRY(significance, 200, 0, 1000)
-    TH2D_ENTRY(shrinkage_ROC,  4, -0.05, 1.15, 100, 0.5, 1.1)
+    TH2D_ENTRY(shrinkage_ROC,  4, -0.05, 1.15, 100, 0.8, 1.)
     TH2D_ENTRY(NTrees_ROC,  4, 150, 1350, 100, 0.5, 1.1)
-    TH2D_ENTRY(BaggedSampleFraction_ROC,  3, 0.375, 1.125, 100, 0.5, 1.1)
-    TH2D_ENTRY(MaxDepth_ROC,  4, 1.5, 5.5, 100, 0.5, 1.1)
-    TH2D_ENTRY(MinNodeSize_ROC,  3, -0.01, 0.11, 100, 0.5, 1.1)
+    TH2D_ENTRY(BaggedSampleFraction_ROC,  3, 0.375, 1.125, 100, 0.8, 1.)
+    TH2D_ENTRY(MaxDepth_ROC,  4, 1.5, 5.5, 100, 0.8, 1.)
+    TH2D_ENTRY(MinNodeSize_ROC,  3, -0.01, 0.11, 100, 0.8, 1.)
+    TH2D_ENTRY(mass_relativeROC, 8, 245, 325, 20,0.9,1.1)
 
 };
 
@@ -118,11 +119,14 @@ public:
                                  roc[method_name] = results.ROCIntegral;
                                  position[method_name].push_back(results.position);
                                  var_name[method_name].push_back(results.var_name);
+                                 for (size_t i = 0; i<results.roc_mass.size(); ++i){
+                                     anaData.mass_relativeROC().Fill(results.roc_mass[i], results.roc_value[i]/results.ROCIntegral);
+                                 }
                              load = true;
                              }
-                             anaData.KS_mass(name+"_KS").Fill(results.KS_mass[j]);
-                             anaData.KS_value(name+"_KS").Fill(results.KS_value[j]);
-                             anaData.KS_type(name+"_KS").Fill(results.KS_type[j]);
+                             anaData.KS_mass().Fill(results.KS_mass[j]);
+                             anaData.KS_value().Fill(results.KS_value[j]);
+                             anaData.KS_type().Fill(results.KS_type[j]);
                          }
                      }
                  }

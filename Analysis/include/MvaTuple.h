@@ -25,6 +25,7 @@ namespace mva_study{
     VAR(std::vector<std::string>, var_name) \
     VAR(double, cut) \
     VAR(double, significance) \
+    VAR(double, err_significance) \
     VAR(std::string, name) \
     /**/
 

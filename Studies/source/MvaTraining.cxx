@@ -11,6 +11,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
 #include "AnalysisTools/Core/include/NumericPrimitives.h"
+#include "AnalysisTools/Core/include/AnalysisMath.h"
 #include "TMVA/Factory.h"
 #include "TMVA/Reader.h"
 #include "TMVA/DataLoader.h"
@@ -247,7 +248,7 @@ public:
     void EvaluateMethod(std::map<std::string, std::map<SampleId, std::map<size_t, std::vector<double>>>>& evaluation,
                         std::map<std::string, std::map<SampleId, std::shared_ptr<TH1D>>>& outputBDT, const std::string& method_name)
     {
-        std::string weightfile = "mydataloader/weights/myFactory_"+method_name+".weights.xml";
+        std::string weightfile = "mydataloader/weights/myFactory"+args.output_file()+"_"+method_name+".weights.xml";
         vars->reader->BookMVA(method_name, weightfile);
         std::map<std::string, std::map<SampleId, std::map<size_t,std::shared_ptr<TH1D>>>> histo;
         outputBDT[method_name][mass_tot] = std::make_shared<TH1D>(("Signal_output_"+method_name).c_str(),("Signal_output_"+method_name).c_str(), nbin, bin_min, bin_max);
@@ -327,28 +328,38 @@ public:
         return kolmogorov;
     }
 
-    std::map<std::string, std::pair<double, double>> EstimateSignificativity(const std::map<std::string, std::map<SampleId, std::shared_ptr<TH1D>>>& outputBDT)
+    std::map<std::string, std::pair<double, PhysicalValue>> EstimateSignificativity(const std::map<std::string, std::map<SampleId, std::shared_ptr<TH1D>>>& outputBDT)
     {
-        std::map<std::string, std::pair<double, double>> sign;
+        std::map<std::string, std::pair<double, PhysicalValue>> sign;
         auto directory = root_ext::GetDirectory(*outfile.get(), "Significance");
         for(const auto& method : outputBDT){
-            std::vector<std::pair<double,double>> cuts;
-            auto histo_sign = CreatePlot((method.first+"_significance").c_str(),(method.first+"_significance").c_str(),"output BDT","S/(sqrt(B))");
-            auto s_tot = method.second.at(mass_tot)->Integral(0, nbin);
-            auto b_tot = method.second.at(mass_tot)->Integral(0, nbin);
-            auto relative = s_tot/pow(b_tot, 0.5);
-            std::cout<<relative<<std::endl;
+            std::vector<std::pair<double,PhysicalValue>> cuts;
+            auto histo_sign = CreatePlotErrors((method.first+"_significance").c_str(),(method.first+"_significance").c_str(),"output BDT","S/(sqrt(B))");
+            double err_s_tot, err_b_tot;
+            auto s_tot = method.second.at(mass_tot)->IntegralAndError(0, nbin, err_s_tot);
+            auto b_tot = method.second.at(bkg)->IntegralAndError(0, nbin, err_b_tot);
+            PhysicalValue ph_s_tot(s_tot, err_s_tot);
+            PhysicalValue ph_b_tot(b_tot, err_b_tot);
+            PhysicalValue ph_powb_tot(pow(b_tot,0.5), err_b_tot/(2*b_tot));
+            auto relative = ph_s_tot/ph_powb_tot;
             for(int i = 0; i<=nbin; ++i){
                 auto output = method.second.at(mass_tot)->GetBinCenter(i);
-                auto s = method.second.at(mass_tot)->Integral(i, nbin+1);
-                auto b = method.second.at(bkg)->Integral(i, nbin+1);
-                double significance = 0;
-                if (b != 0) significance = (s/pow(b, 0.5))/relative;
+                double err_s, err_b;
+                auto s = method.second.at(mass_tot)->IntegralAndError(i, nbin+1, err_s);
+                auto b = method.second.at(bkg)->IntegralAndError(i, nbin+1, err_b);
+                PhysicalValue ph_s(s, err_s);
+                PhysicalValue ph_b(b, err_b);
+                PhysicalValue significance;
+                if (b != 0) {
+                    PhysicalValue ph_powb(pow(b,0.5), err_b/(2*b));
+                    significance = (ph_s/ph_powb)/relative;
+                }
                 cuts.emplace_back(output, significance);
-                histo_sign->SetPoint(i, output, significance);
+                histo_sign->SetPoint(i, output, significance.GetValue());
+                histo_sign->SetPointError(i, 0, significance.GetFullError());
             }
-            std::sort(cuts.begin(), cuts.end(), [](std::pair<double, double> el1, std::pair<double, double> el2){
-                return el1.second > el2.second;
+            std::sort(cuts.begin(), cuts.end(), [](auto el1, auto el2){
+                return el1.second.GetValue() > el2.second.GetValue();
             });
             sign[method.first] = cuts.front();
             root_ext::WriteObject(*histo_sign, directory);
@@ -425,7 +436,7 @@ public:
         std::map<std::string, std::map<SampleId, std::map<size_t, std::vector<double>>>> evaluation;
         std::map<std::string, std::map<SampleId, std::shared_ptr<TH1D>>> outputBDT;
         for(const auto& m : methods){
-            auto factory = std::make_shared<TMVA::Factory>("myFactory", outfile.get(),"!V:!Silent:Color:DrawProgressBar:Transformations=I:AnalysisType=Classification");
+            auto factory = std::make_shared<TMVA::Factory>("myFactory"+args.output_file(), outfile.get(),"!V:!Silent:Color:DrawProgressBar:Transformations=I:AnalysisType=Classification");
             factory->BookMethod(vars->loader.get(), TMVA::Types::kBDT, m.first, m.second);
             TrainAllMethods(*factory);
             EvaluateMethod(evaluation, outputBDT, m.first);
@@ -447,7 +458,7 @@ public:
         std::cout<<"kolmogorov"<<std::endl;
         std::map<std::string, std::map<SampleId,double>> kolmogorov = Kolmogorov(evaluation);
         std::cout<<"Significativity"<<std::endl;
-        std::map<std::string, std::pair<double, double>> sign = EstimateSignificativity(outputBDT);
+        std::map<std::string, std::pair<double, PhysicalValue>> sign = EstimateSignificativity(outputBDT);
 
         ntuple::MvaTuple mva_tuple(outfile.get(), false);
         std::cout<<"options"<<std::endl;
@@ -460,7 +471,8 @@ public:
             mva_tuple().MaxDepth = options.GetNumericValue(point, "MaxDepth");
             mva_tuple().MinNodeSize = options.GetNumericValue(point, "MinNodeSize");
             mva_tuple().cut = sign[name].first;
-            mva_tuple().significance = sign[name].second;
+            mva_tuple().significance = sign[name].second.GetValue();
+            mva_tuple().err_significance = sign[name].second.GetFullError();
             mva_tuple().ROCIntegral = ROCintegral[name];
             for (const auto& sample : kolmogorov.at(name)){
                 mva_tuple().KS_mass.push_back(sample.first.mass);

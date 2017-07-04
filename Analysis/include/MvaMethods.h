@@ -11,6 +11,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include <future>
 #include "AnalysisTools/Run/include/MultiThread.h"
 #include "AnalysisTools/Core/include/StatEstimators.h"
+#include "TGraphErrors.h"
 
 namespace  analysis {
 namespace mva_study{
@@ -160,6 +161,22 @@ inline std::shared_ptr<TGraph> CreatePlot(const std::string& title, const std::s
     plot->SetMarkerColor(1);
     plot->SetMarkerSize(1);
     plot->SetMarkerStyle(3);
+    plot->SetTitle((title).c_str());
+    plot->SetName((name).c_str());
+    plot->GetHistogram()->GetXaxis()->SetTitle((x_axis).c_str());
+    plot->GetHistogram()->GetYaxis()->SetTitle((y_axis).c_str());
+    return plot;
+}
+
+
+inline std::shared_ptr<TGraphErrors> CreatePlotErrors(const std::string& title, const std::string& name, const std::string& x_axis, const std::string& y_axis)
+{
+    auto plot = std::make_shared<TGraphErrors>();
+    plot->SetLineColor(kBlue);
+    plot->SetLineWidth(1);
+    plot->SetMarkerColor(1);
+    plot->SetMarkerSize(1);
+    plot->SetMarkerStyle(0);
     plot->SetTitle((title).c_str());
     plot->SetName((name).c_str());
     plot->GetHistogram()->GetXaxis()->SetTitle((x_axis).c_str());
