@@ -4,6 +4,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #pragma once
 
 #include <limits>
+#include "AnalysisTools/Core/include/Tools.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
 #include "h-tautau/McCorrections/include/WeightingMode.h"
 
