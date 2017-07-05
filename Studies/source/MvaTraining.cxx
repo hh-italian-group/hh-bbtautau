@@ -420,7 +420,7 @@ public:
         std::cout<<"options"<<std::endl;
         for(const auto& point : grid) {
             auto name = options.GetName(point)+"_"+std::to_string(args.seed());
-            mva_tuple().name = name;
+//            mva_tuple().name = name;
             mva_tuple().NTrees = static_cast<UInt_t>(options.GetNumericValue(point, "NTrees"));
             mva_tuple().shrinkage = options.GetNumericValue(point, "shrinkage");
             mva_tuple().BaggedSampleFraction = options.GetNumericValue(point, "BaggedSampleFraction");
