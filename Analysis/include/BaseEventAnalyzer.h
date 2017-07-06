@@ -36,13 +36,13 @@ struct AnalyzerArguments {
     OPT_ARG(bool, saveFullOutput, false);
 };
 
-template<typename _FirstLeg>
+template<typename _FirstLeg, typename _SecondLeg>
 class BaseEventAnalyzer {
 public:
     using FirstLeg = _FirstLeg;
-    using EventInfo = analysis::EventInfo<FirstLeg>;
-    using SecondLeg = typename EventInfo::SecondLeg;
-    using EventAnalyzerData = analysis::EventAnalyzerData<FirstLeg>;
+    using SecondLeg = _SecondLeg;
+    using EventInfo = ::analysis::EventInfo<FirstLeg, SecondLeg>;
+    using EventAnalyzerData = ::analysis::EventAnalyzerData<FirstLeg>;
     using PhysicalValueMap = std::map<EventRegion, PhysicalValue>;
 
     static constexpr Channel ChannelId() { return ChannelInfo::IdentifyChannel<FirstLeg, SecondLeg>(); }
