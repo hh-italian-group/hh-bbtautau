@@ -5,7 +5,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Analysis/include/EventTuple.h"
 #include "AnalysisTools/Core/include/exception.h"
 #include "AnalysisTools/Core/include/AnalyzerData.h"
-#include "hh-bbtautau/Analysis/include/MvaConfiguration.h"
+#include "hh-bbtautau/Studies/include/MvaConfiguration.h"
 #include "hh-bbtautau/Analysis/include/MvaVariables.h"
 #include "h-tautau/Cuts/include/Btag_2016.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
@@ -30,9 +30,9 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include <fstream>
 #include <random>
 #include "hh-bbtautau/Analysis/include/MvaConfigurationReader.h"
-#include "hh-bbtautau/Analysis/include/MvaTuple.h"
+#include "hh-bbtautau/Studies/include/MvaTuple.h"
 #include "hh-bbtautau/Analysis/include/MvaVariablesStudy.h"
-#include "hh-bbtautau/Analysis/include/MvaMethods.h"
+#include "hh-bbtautau/Studies/include/MvaMethods.h"
 
 
 struct Arguments { // list of all program arguments
@@ -362,6 +362,7 @@ public:
                 return el1.second.GetValue() > el2.second.GetValue();
             });
             sign[method.first] = cuts.front();
+            std::cout<<ToString(sign[method.first].second)<<std::endl;
             root_ext::WriteObject(*histo_sign, directory);
         }
         return sign;
@@ -438,17 +439,22 @@ public:
         for(const auto& m : methods){
             auto factory = std::make_shared<TMVA::Factory>("myFactory"+args.output_file(), outfile.get(),"!V:!Silent:Color:DrawProgressBar:Transformations=I:AnalysisType=Classification");
             factory->BookMethod(vars->loader.get(), TMVA::Types::kBDT, m.first, m.second);
+            std::cout<<"Booked"<<std::endl;
             TrainAllMethods(*factory);
+            std::cout<<"Trained"<<std::endl;
             EvaluateMethod(evaluation, outputBDT, m.first);
+            std::cout<<"Evaluated"<<std::endl;
             auto method = dynamic_cast<TMVA::MethodBDT*>(factory->GetMethod(vars->loader->GetName(), m.first));
             for (size_t i = 0; i<vars->names.size(); i++){
                 importance[m.first].emplace_back(vars->names[i], method->GetVariableImportance(static_cast<UInt_t>(i)));
             }
             ROCintegral[m.first] = method->GetROCIntegral(outputBDT.at(m.first).at(mass_tot).get(), outputBDT.at(m.first).at(bkg).get());
+            std::cout<<"ROC "<<ROCintegral[m.first]<<std::endl;
             for(const auto& sample : mass_range){
                 SampleId sample_sgn(SampleType::Sgn_Res, sample);
                 SampleId sample_bkg(SampleType::Bkg_TTbar, sample);
                 roc[m.first][sample] = method->GetROCIntegral(outputBDT.at(m.first).at(sample_sgn).get(), outputBDT.at(m.first).at(sample_bkg).get());
+                std::cout<<sample<<"    "<<roc[m.first][sample]<<std::endl;
             }
         }
         std::cout<<"importance"<<std::endl;

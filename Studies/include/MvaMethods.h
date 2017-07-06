@@ -4,7 +4,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #pragma once
 
-#include "hh-bbtautau/Analysis/include/MvaConfiguration.h"
+#include "hh-bbtautau/Studies//include/MvaConfiguration.h"
 #include "hh-bbtautau/Analysis/include/MvaVariablesStudy.h"
 #include "AnalysisTools/Core/include/RootExt.h"
 #include <TCanvas.h>

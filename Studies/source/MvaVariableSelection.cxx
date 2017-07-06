@@ -18,7 +18,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/NumericPrimitives.h"
 #include "AnalysisTools/Core/include/ProgressReporter.h"
 #include "AnalysisTools/Run/include/MultiThread.h"
-#include "hh-bbtautau/Analysis/include/MvaMethods.h"
+#include "hh-bbtautau/Studies/include/MvaMethods.h"
 #include "h-tautau/Cuts/include/Btag_2016.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
