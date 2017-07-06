@@ -122,36 +122,24 @@ private:
 
         } //end loop n file_descriptors
 
-        using HistPtr = root_ext::SmartHistogram<TH1D>& (SMCheckWeightData::*)(const std::string& name);
-
-        const std::map<std::string, HistPtr> hists = {
-            { SMCheckWeightData::m_bb_Name(), &SMCheckWeightData::m_bb },
-            { SMCheckWeightData::m_sv_Name(), &SMCheckWeightData::m_sv },
-            { SMCheckWeightData::m_kinFit_Name(), &SMCheckWeightData::m_kinFit }
-        };
-
         for (const auto& file_descriptor : file_descriptors) {
 
             const std::string& name = file_descriptor.second.name;
+            const std::string name_rebin = name + "_rebin";
 
-            for(const auto& hist : hists) {
-                const std::string name_rebin = name + "_rebin";
-                (anaData.*hist.second)(name_rebin).CopyContent((anaData.*hist.second)(name));
-                (anaData.*hist.second)(name_rebin).Rebin(10);
+            for(auto& entry_pair : anaData.GetEntries()) {
+                auto& entry = *dynamic_cast<root_ext::AnalyzerDataEntry<TH1D>*>(entry_pair.second);
+                entry(name_rebin).CopyContent(entry(name));
+                entry(name_rebin).Rebin(10);
 
                 if (file_descriptor.second.fileType == FileType::sm) continue;
-                const double ks = (anaData.*hist.second)(name).KolmogorovTest(&((anaData.*hist.second)(name_sm)));
-                std::cout << "KS " << hist.first << ": " << ks << std::endl;
+                const double ks = entry(name).KolmogorovTest(&entry(name_sm));
+                std::cout << "KS " << entry.Name() << ": " << ks << std::endl;
                 if (ks < 0.05)
                     std::cerr << "ERROR: KS not passed " << std::endl;
-
             }
-
         }
-
     }
-
-
 };
 
 } //namespace sample_merging
