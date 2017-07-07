@@ -159,6 +159,8 @@ struct EventSubCategory {
     static constexpr size_t MaxNumberOfCuts = std::numeric_limits<BitsContainer>::digits;
     using Bits = std::bitset<MaxNumberOfCuts>;
 
+    static const EventSubCategory& NoCuts() { static const EventSubCategory esc; return esc; }
+
     bool HasCut(SelectionCut cut) const { return presence[GetIndex(cut)]; }
     bool Passed(SelectionCut cut) const
     {
@@ -224,5 +226,7 @@ std::ostream& operator<<(std::ostream& os, const EventSubCategory& eventSubCateg
     os << eventSubCategory.ToString();
     return os;
 }
+
+using Dataset = std::string;
 
 } // namespace analysis
