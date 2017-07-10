@@ -17,26 +17,14 @@ struct Arguments {
     run::Argument<std::string> tree_name{"tree_name", "Tree on which we work"};
     run::Argument<std::string> input_path{"input_path", "Input path of the samples"};
     run::Argument<std::string> cfg_name{"cfg_name", "file path cfg"};
-//    run::Argument<std::string> output_file{"output_file", "Output root file"};
-    //run::Argument<std::string> output_cfg_name{"output_cfg_name", "output file cfg"};
 };
 
 namespace analysis {
-
-//class TimeAnalyzerData : public root_ext::AnalyzerData {
-//public:
-//    using AnalyzerData::AnalyzerData;
-//    TH1D_ENTRY(m_sv, 200, 0, 400)
-
-//};
-
 
 class TimeAnalyzer_t {
 public:
 
     TimeAnalyzer_t(const Arguments& _args) : args(_args)
-//      ,
-//        anaData(output) , output(root_ext::CreateRootFile(args.output_file()))
     {
         std::cout << "Starting..." << std::endl;
         LoadInputs();
@@ -47,7 +35,6 @@ public:
 
 private:
     Arguments args;
-//    TimeAnalyzerData anaData;
     std::shared_ptr<TFile> output;
 
     void LoadInputs()
@@ -71,16 +58,22 @@ private:
                 std::string filename = args.input_path()  + "/" + single_file_path;
                 auto inputFile = root_ext::OpenRootFile(filename);
                 ntuple::SummaryTuple summaryTuple(args.tree_name(), inputFile.get(), true);
-                if(!summaryTuple.size()) continue;
+
                 const Long64_t n_entries = summaryTuple.GetEntries();
+                TH1F *n_process_event   = new TH1F("n_process_event","number processed events",1000,0,50000);
+                TH1F *exeTime   = new TH1F("exeTime","exeTime",100,0,5000);
 
                 for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) { //loop on entries
                     summaryTuple.GetEntry(current_entry);
-
-                    std::cout << "Nprocessed events " << summaryTuple.data().numberOfProcessedEvents << std::endl;
+                    n_process_event->Fill(summaryTuple.data().numberOfProcessedEvents);
+                    exeTime->Fill(summaryTuple.data().exeTime);
 
                 } //end loop on entries
 
+                double integral_calc = 0.999 * exeTime->Integral();
+                std::cout << "Nprocessed events mean: " << n_process_event->GetMean() << std::endl;
+                std::cout << "exeTime 99.9% integral: " << integral_calc << ", entries: " << exeTime->GetEntries() << std::endl;
+                std::cout << "N events per job: " << n_process_event->GetMean()/exeTime->GetEntries() << std::endl;
             } // end loop on files
 
         } //end loop n file_descriptors
