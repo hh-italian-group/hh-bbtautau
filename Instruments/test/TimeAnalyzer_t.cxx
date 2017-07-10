@@ -17,25 +17,26 @@ struct Arguments {
     run::Argument<std::string> tree_name{"tree_name", "Tree on which we work"};
     run::Argument<std::string> input_path{"input_path", "Input path of the samples"};
     run::Argument<std::string> cfg_name{"cfg_name", "file path cfg"};
-    run::Argument<std::string> output_file{"output_file", "Output root file"};
+//    run::Argument<std::string> output_file{"output_file", "Output root file"};
     //run::Argument<std::string> output_cfg_name{"output_cfg_name", "output file cfg"};
 };
 
 namespace analysis {
 
-class TimeAnalyzerData : public root_ext::AnalyzerData {
-public:
-    using AnalyzerData::AnalyzerData;
-    TH1D_ENTRY(m_sv, 200, 0, 400)
+//class TimeAnalyzerData : public root_ext::AnalyzerData {
+//public:
+//    using AnalyzerData::AnalyzerData;
+//    TH1D_ENTRY(m_sv, 200, 0, 400)
 
-};
+//};
 
 
 class TimeAnalyzer_t {
 public:
 
-    TimeAnalyzer_t(const Arguments& _args) : args(_args),
-        anaData(output) , output(root_ext::CreateRootFile(args.output_file()))
+    TimeAnalyzer_t(const Arguments& _args) : args(_args)
+//      ,
+//        anaData(output) , output(root_ext::CreateRootFile(args.output_file()))
     {
         std::cout << "Starting..." << std::endl;
         LoadInputs();
@@ -46,7 +47,7 @@ public:
 
 private:
     Arguments args;
-    TimeAnalyzerData anaData;
+//    TimeAnalyzerData anaData;
     std::shared_ptr<TFile> output;
 
     void LoadInputs()
