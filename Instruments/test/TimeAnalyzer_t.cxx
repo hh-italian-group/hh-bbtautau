@@ -71,12 +71,13 @@ private:
                 std::string filename = args.input_path()  + "/" + single_file_path;
                 auto inputFile = root_ext::OpenRootFile(filename);
                 ntuple::SummaryTuple summaryTuple(args.tree_name(), inputFile.get(), true);
+                if(!summaryTuple) continue;
                 const Long64_t n_entries = summaryTuple.GetEntries();
 
                 for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) { //loop on entries
                     summaryTuple.GetEntry(current_entry);
 
-                    std::cout << "Nprocessed events" << summaryTuple.data().numberOfProcessedEvents << std::endl;
+                    std::cout << "Nprocessed events " << summaryTuple.data().numberOfProcessedEvents << std::endl;
 
                 } //end loop on entries
 
