@@ -42,7 +42,7 @@ public:
 
             const Long64_t n_entries = summaryTuple.GetEntries();
             TH1F *n_process_event   = new TH1F("n_process_event","number processed events",1000,0,50000);
-            TH1F *exeTime   = new TH1F("exeTime","exeTime",100,0,5000);
+            TH1F *exeTime   = new TH1F("exeTime","exeTime",1000,1000,50000);
 
             for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) { //loop on entries
                 summaryTuple.GetEntry(current_entry);
@@ -51,10 +51,23 @@ public:
 
             } //end loop on entries
 
-            int crab_dead_time = 39450;
-            double integral_calc = 0.999 * exeTime->Integral();
-            output.scale_factor = crab_dead_time/integral_calc;
-            output.n_evt_per_job_prod_v2 = static_cast<size_t>(n_process_event->GetMean()/exeTime->GetEntries());
+            unsigned common_exe_time = 1;
+            unsigned found_bin = 0;
+            for(unsigned n = 0; n < exeTime->GetXaxis()->GetNbins(); ++n){
+//                std::cout << "single integral:" << exeTime->Integral(0,n) << std::endl;
+                if (exeTime->Integral(0,n)/exeTime->Integral(0,exeTime->GetXaxis()->GetNbins()+1) > 0.995){
+                    common_exe_time = exeTime->GetBinCenter(n-1);
+                    found_bin = n-1;
+                    break;
+                }
+            }
+
+//            std::cout << "common_exe_time: " << common_exe_time << ", found_bin:" << found_bin <<
+//                         ", integral:" << exeTime->Integral(0,found_bin) << std::endl;
+            int crab_dead_time = 43200;
+
+            output.scale_factor = crab_dead_time/common_exe_time;
+            output.n_evt_per_job_prod_v2 = static_cast<size_t>(n_process_event->GetMean());
             output.n_evt_per_job_prod_v3 = static_cast<size_t>(output.scale_factor * output.n_evt_per_job_prod_v2);
             std::cout << "scale factor: " << output.scale_factor << std::endl;
             std::cout << "n_evt_per_job_prod_v2: " << output.n_evt_per_job_prod_v2 << std::endl;
