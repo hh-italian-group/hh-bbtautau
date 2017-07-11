@@ -251,5 +251,108 @@ inline VectorName_ND CopySelectedVariables(const VectorName_ND& JSDivergence_vec
     return copy;
 }
 
+inline std::map<SampleId,double> Kolmogorov(const std::map<SampleId, std::map<size_t, std::vector<double>>>& evaluation, TDirectory* directory)
+{
+    std::map<SampleId,double> kolmogorov;
+    std::shared_ptr<TH1D> histo_kolmogorov;
+    histo_kolmogorov = std::make_shared<TH1D>("kolmogorov", "kolmogorov", 50, 0, 1.01);
+    histo_kolmogorov->SetXTitle("KS");
+    for (const auto& sample : evaluation){
+        std::map<size_t, std::vector<double>> ks_vector;
+        for (auto tvt : sample.second){
+            auto type = tvt.first;
+            std::sort(tvt.second.begin(), tvt.second.end());
+            ks_vector[type] = std::move(tvt.second);
+        }
+        double ks = TMath::KolmogorovTest(static_cast<int>(ks_vector.at(0).size()), ks_vector.at(0).data(),
+                                          static_cast<int>(ks_vector.at(1).size()), ks_vector.at(1).data(), "");
+        std::cout<<sample.first.sampleType<<" "<<sample.first.mass<<"    "<<ks<<std::endl;
+        kolmogorov[sample.first] = ks;
+        histo_kolmogorov->Fill(ks);
+    }
+    root_ext::WriteObject(*histo_kolmogorov, directory);
+    return kolmogorov;
+}
+
+
+const SampleId mass_tot = SampleId::MassTot();
+const SampleId bkg = SampleId::Bkg();
+constexpr int nbin = 202;
+constexpr double bin_min = -1.01;
+constexpr double bin_max = 1.01;
+constexpr size_t tot = 10;
+
+std::map<int, std::pair<double, PhysicalValue>> EstimateSignificativity(const std::vector<int>& mass_range,
+                                                                        const std::map<SampleId, std::map<size_t,std::shared_ptr<TH1D>>>& outputBDT,
+                                                                        TDirectory* directory, bool total)
+{
+    std::map<int, std::pair<double, PhysicalValue>> sign;
+    auto mass_sign = CreatePlotErrors("Mass_significance","Mass_significance","mass","S/(sqrt(B))");
+
+    int index = 0;
+    for(const auto& mass : mass_range){
+        std::vector<std::pair<double,PhysicalValue>> cuts;
+        SampleId sgn_mass(SampleType::Sgn_Res, mass);
+        SampleId bkg_mass(SampleType::Bkg_TTbar, mass);
+        auto histo_sign = CreatePlotErrors((std::to_string(mass)+"_significance").c_str(),(std::to_string(mass)+"_significance").c_str(),"output BDT","S/(sqrt(B))");
+        auto int_S_tot = Integral(*outputBDT.at(sgn_mass).at(tot).get(), true);
+        auto int_B_tot = Integral(*outputBDT.at(bkg_mass).at(tot).get(), true);
+        auto relative = int_S_tot/std::sqrt(int_B_tot);
+        for(int i = 0; i<=nbin; ++i){
+            auto output = outputBDT.at(sgn_mass).at(tot)->GetBinCenter(i);
+            auto int_S = Integral(*outputBDT.at(sgn_mass).at(tot).get(), i, nbin+1);
+            auto int_B = Integral(*outputBDT.at(bkg_mass).at(tot).get(), i, nbin+1);
+            PhysicalValue significance;
+            if ( int_S.GetValue() != 0 && int_B.GetValue() != 0) {
+                significance = (int_S/std::sqrt(int_B))/relative;
+            }
+            cuts.emplace_back(output, significance);
+            histo_sign->SetPoint(i, output, significance.GetValue());
+            histo_sign->SetPointError(i, 0, significance.GetFullError());
+        }
+        std::sort(cuts.begin(), cuts.end(), [](auto el1, auto el2){
+            return el1.second.GetValue() > el2.second.GetValue();
+        });
+        sign[mass] = cuts.front();
+        mass_sign->SetPoint(index, mass, sign[mass].second.GetValue());
+        mass_sign->SetPointError(index, 0, sign[mass].second.GetStatisticalError());
+        std::cout<<index<<" "<<mass<<"  "<<ToString(sign[mass].second)<<std::endl;
+        root_ext::WriteObject(*histo_sign, directory);
+        ++index;
+    }
+    root_ext::WriteObject(*mass_sign, directory);
+
+
+    if (total){
+        std::vector<std::pair<double,PhysicalValue>> cuts;
+        auto histo_sign = CreatePlotErrors("Significance","Significance","output BDT","S/(sqrt(B))");
+        auto int_S_tot = Integral(*outputBDT.at(mass_tot).at(tot).get(), true);
+        auto int_B_tot = Integral(*outputBDT.at(bkg).at(tot).get(), true);
+        auto relative = int_S_tot/std::sqrt(int_B_tot);
+        for(int i = 0; i<=nbin; ++i){
+            auto output = outputBDT.at(mass_tot).at(tot)->GetBinCenter(i);
+            auto int_S = Integral(*outputBDT.at(mass_tot).at(tot).get(), i, nbin+1);
+            auto int_B = Integral(*outputBDT.at(bkg).at(tot).get(), i, nbin+1);
+            PhysicalValue significance;
+            if ( int_S.GetValue() != 0 && int_B.GetValue() != 0) {
+                significance = (int_S/std::sqrt(int_B))/relative;
+            }
+            cuts.emplace_back(output, significance);
+            histo_sign->SetPoint(i, output, significance.GetValue());
+            histo_sign->SetPointError(i, 0, significance.GetFullError());
+        }
+        std::sort(cuts.begin(), cuts.end(), [](auto el1, auto el2){
+            return el1.second.GetValue() > el2.second.GetValue();
+        });
+        sign[mass_tot.mass] = cuts.front();
+        mass_sign->SetPoint(index, mass_tot.mass, sign[mass_tot.mass].second.GetValue());
+        mass_sign->SetPointError(index, 0, sign[mass_tot.mass].second.GetStatisticalError());
+        std::cout<<index<<" "<<mass_tot<<"  "<<ToString(sign[mass_tot.mass].second)<<std::endl;
+        root_ext::WriteObject(*histo_sign, directory);
+    }
+    return sign;
+}
+
+
 }
 }

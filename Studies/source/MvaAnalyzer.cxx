@@ -9,6 +9,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/AnalyzerData.h"
 #include "hh-bbtautau/Studies/include/MvaTuple.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
+#include "hh-bbtautau/Studies/include/MvaMethods.h"
 
 
 struct Arguments { // list of all program arguments
@@ -21,27 +22,40 @@ namespace mva_study{
 
 namespace {
 
-class MvaData : public root_ext::AnalyzerData {
+class MvaData1D : public root_ext::AnalyzerData {
 public:
     using AnalyzerData::AnalyzerData;
-    TH1D_ENTRY(NTrees, 4, 150, 1350)
-    TH1D_ENTRY(shrinkage, 4, -0.05, 1.15)
-    TH1D_ENTRY(BaggedSampleFraction, 3, 0.375, 1.125)
-    TH1D_ENTRY(MaxDepth, 4, 1.5, 5.5)
-    TH1D_ENTRY(MinNodeSize, 3, -0.01, 0.11)
-    TH1D_ENTRY(ROCIntegral, 100, 0., 1.1)
-    TH1D_ENTRY(KS_value, 100, 0., 1.1)
-    TH1D_ENTRY(KS_mass, 210, 0, 2100)
-    TH1D_ENTRY(KS_type, 4, -2, 2)
-    TH1D_ENTRY(cut, 200, -1, 1)
-    TH1D_ENTRY(significance, 200, 0, 1000)
-    TH2D_ENTRY(shrinkage_ROC,  4, -0.05, 1.15, 100, 0.5, 1.)
-    TH2D_ENTRY(NTrees_ROC,  4, 150, 1350, 100, 0.5, 1.1)
-    TH2D_ENTRY(BaggedSampleFraction_ROC,  3, 0.375, 1.125, 100, 0.5, 1.)
-    TH2D_ENTRY(MaxDepth_ROC,  4, 1.5, 5.5, 100, 0.5, 1.)
-    TH2D_ENTRY(MinNodeSize_ROC,  3, -0.01, 0.11, 100, 0.5, 1.)
-    TH2D_ENTRY(mass_relativeROC, 8, 445, 905, 20,0.8,1.4)
-
+    explicit MvaData1D(std::shared_ptr<TFile> _outputFile, const std::string& directoryName = "") :
+        AnalyzerData(_outputFile, directoryName)
+    {
+        histo.Emplace("shrinkage", 4, -0.05, 1.15);
+        histo.Emplace("NTrees", 4, 150, 1350);
+        histo.Emplace("BaggedSampleFraction", 3, 0.375, 1.125);
+        histo.Emplace("MaxDepth", 4, 1.5, 5.5);
+        histo.Emplace("MinNodeSize", 3, -0.01, 0.11);
+        histo.Emplace("ROCIntegral", 50, 0., 1.);
+        histo.Emplace("KS_value", 50, 0., 1.);
+        histo.Emplace("KS_mass", 210, 0, 2100);
+        histo.Emplace("KS_type", 4, -2, 2);
+        histo.Emplace("cut", 200, -1, 1);
+        histo.Emplace("significance", 100, 0, 30);
+        ROC.Emplace("shrinkage", 4, -0.05, 1.15, 50, 0.5, 1.);
+        ROC.Emplace("NTrees", 4, 150, 1350, 50, 0.5, 1.);
+        ROC.Emplace("BaggedSampleFraction", 3, 0.375, 1.125, 50, 0.5, 1.);
+        ROC.Emplace("MaxDepth", 4, 1.5, 5.5, 50, 0.5, 1);
+        ROC.Emplace("MinNodeSize", 3, -0.01, 0.11, 50, 0.5, 1.);
+        ROC.Emplace("relativeROC", 66, 245, 905, 20,0.7,1.3);
+        ROC.Emplace("significance", 100, 0, 30, 50, 0.5, 1.);
+        significance.Emplace("err", 100, 0, 1, 100, 0, 30);
+        significance.Emplace("shrinkage", 4, -0.05, 1.15, 50, 0.5, 1.);
+        significance.Emplace("NTrees", 4, 150, 1350, 50, 0.5, 1.);
+        significance.Emplace("BaggedSampleFraction", 3, 0.375, 1.125, 50, 0.5, 1.);
+        significance.Emplace("MaxDepth", 4, 1.5, 5.5, 50, 0.5, 1);
+        significance.Emplace("MinNodeSize", 3, -0.01, 0.11, 50, 0.5, 1.);
+    }
+    TH1D_ENTRY(histo, 10, .5, 10.5)
+    TH2D_ENTRY(ROC, 10, .5, 10.5, 50, 0.5, 1.)
+    TH2D_ENTRY(significance, 10, .5, 10.5, 100, 0, 30)
 };
 
 class MVAAnalyzer{
@@ -61,16 +75,13 @@ public:
         }
     }
 
-    std::map<std::string, double> AveragePosition(const std::vector<std::vector<double>>& position, const std::vector<std::string>& var_name)
+    std::map<std::string, double> AveragePosition(const std::map<std::string, std::vector<VarRank>>& positions)
     {
         std::map<std::string, double> average;
-        for(size_t i = 0; i<position.size(); ++i){
-            for (size_t j = 0; j< position.at(i).size(); ++j){
-                average[var_name.at(j)] += position.at(i).at(j);
-            }
-        }
-        for(auto& av : average){
-            av.second = av.second / position.size();
+        for(const auto& var : positions) {
+            for(const auto& rank : var.second)
+                average[var.first] += rank.position;
+            average[var.first] /= var.second.size();
         }
         return average;
     }
@@ -94,22 +105,29 @@ public:
     void Run()
     {
         static constexpr double KS_cut = 0.05;
-        using FTW = std::map<int, double>;
 
         std::map<std::string, std::shared_ptr<TH1D>> histo_position;
-        std::map<std::string, std::map<std::string, std::map<int, double>>> param_seed;
-        std::map<std::string, double> roc;
-        std::map<std::string, std::vector<std::vector<double>>> position;
-        std::vector<std::string> var_name;
+        std::map<std::string, GridPoint> method_params;
+        std::map<std::string, size_t> method_seed_count;
+
+        std::map<std::string, std::vector<double>> roc;
+        std::map<std::string, std::map<int, std::vector<PhysicalValue>>> significance;
+        std::map<std::string, std::map<int, std::vector<double>>> optimal_cut;
+        std::map<std::string, std::map<std::string, std::vector<VarRank>>> position;
+        const size_t n_seeds = args.input_file().size();
+        std::cout<<n_seeds<<std::endl;
 
         for (const auto& name : args.input_file()){
             std::shared_ptr<TFile> in_file(root_ext::OpenRootFile(name));
-            ntuple::MvaTuple myTree("mva_result", in_file.get(), true);
-            for(const ntuple::MvaResults& results : myTree) {
+            MvaTuple myTree("mva_result", in_file.get(), true);
+            for(const MvaResults& results : myTree) {
                 const std::string method_name = results.name.substr(0, results.name.find_last_of('_'));
+                const auto grid_point = GetGridPoint(results);
+                std::cout<<grid_point.size()<<std::endl;
                 const auto roc_integrals = GetRocIntegralMap(results);
                 const auto KS_results = GetKSResultsMap(results);
                 const auto ranking = GetRankingMap(results);
+                const auto sign = GetOptimalSignificanceMap(results);
 
                 if(!KS_results.count(SampleId::MassTot()))
                     throw exception("Missing total mass info");
@@ -117,90 +135,57 @@ public:
                     throw exception("Missing bkg info");
                 if(KS_results.at(SampleId::MassTot()) <= KS_cut || KS_results.at(SampleId::Bkg()) <= KS_cut) continue;
 
-                if ((KS_results.at(SampleId::MassTot()) [j] == 2000 && results.KS_type[j]  == 1) || (results.KS_mass[j] == 0 && results.KS_type[j]  == -1)){
-                    if (results.KS_value[j]>0.05){
-                        if (!load){
-                            param_seed[method_name]["shrinkage"][results.shrinkage]++;
-                            param_seed[method_name]["NTrees"][results.NTrees]++;
-                            param_seed[method_name]["BaggedSampleFraction"][results.BaggedSampleFraction]++;
-                            param_seed[method_name]["MaxDepth"][results.MaxDepth]++;
-                            param_seed[method_name]["MinNodeSize"][results.MinNodeSize]++;
-                            roc[method_name] = results.ROCIntegral;
-                            position[method_name].push_back(results.position);
-                            if(!var_name.size())
-                               var_name = results.var_name;
+                method_params[method_name] = grid_point;
+                ++method_seed_count[method_name];
+                std::cout<<method_seed_count[method_name]<<std::endl;
 
-                            for (size_t i = 0; i<results.roc_mass.size(); ++i){
-                                anaData.mass_relativeROC().Fill(results.roc_mass[i], results.roc_value[i]/results.ROCIntegral);
-                            }
-                        load = true;
-                        }
+                roc[method_name].push_back(results.ROCIntegral);
+                for(const auto& s : sign)
+                {
+                    significance[method_name][s.first].emplace_back(s.second.significance);
+                    optimal_cut[method_name][s.first].push_back(s.second.cut);
+                }
+                for(const auto& integral : roc_integrals)
+                     anaData.ROC("relativeROC").Fill(integral.first, integral.second/results.ROCIntegral);
 
+                for(const auto& ks : KS_results) {
+                    anaData.histo("KS_mass").Fill(ks.first.mass);
+                    anaData.histo("KS_type").Fill(static_cast<int>(ks.first.sampleType));
+                    anaData.histo("KS_value").Fill(ks.second);
+                }
 
-//                std::string method_name = "Grad_BaggedSampleFraction_"+std::to_string(results.BaggedSampleFraction)+"_MaxDepth_"+std::to_string(results.MaxDepth)+
-//                        "_MinNodeSize_"+std::to_string(results.MinNodeSize)+"_NTrees_"+std::to_string(results.NTrees)+"_shrinkage"+std::to_string(results.shrinkage);
-                 bool load = false;
-//                 if (results.shrinkage > 0.41 || results.MaxDepth > 3) continue;
-                 for (size_t j=0; j< results.KS_mass.size(); j++){
-                     if ((results.KS_mass[j] == 2000 && results.KS_type[j]  == 1) || (results.KS_mass[j] == 0 && results.KS_type[j]  == -1)){
-                         if (results.KS_value[j]>0.05){
-                             if (!load){
-                                 param_seed[method_name]["shrinkage"][results.shrinkage]++;
-                                 param_seed[method_name]["NTrees"][results.NTrees]++;
-                                 param_seed[method_name]["BaggedSampleFraction"][results.BaggedSampleFraction]++;
-                                 param_seed[method_name]["MaxDepth"][results.MaxDepth]++;
-                                 param_seed[method_name]["MinNodeSize"][results.MinNodeSize]++;
-                                 roc[method_name] = results.ROCIntegral;
-                                 position[method_name].push_back(results.position);
-                                 if(!var_name.size())
-                                    var_name = results.var_name;
-
-                                 for (size_t i = 0; i<results.roc_mass.size(); ++i){
-                                     anaData.mass_relativeROC().Fill(results.roc_mass[i], results.roc_value[i]/results.ROCIntegral);
-                                 }
-                             load = true;
-                             }
-                             anaData.KS_mass().Fill(results.KS_mass[j]);
-                             anaData.KS_value().Fill(results.KS_value[j]);
-                             anaData.KS_type().Fill(results.KS_type[j]);
-                         }
-                     }
-                 }
+                for(const auto& rank : ranking)
+                    position[method_name][rank.first].push_back(rank.second);
              }
         }
 
-        for(const auto& method : param_seed){
-            bool passed = true;
-            for (const auto& param : method.second){
-                for (const auto& value : param.second){
-                    if (value.second < (args.input_file().size()-1)){
-                        passed = false;
-                        continue;
-                    }
-                    if (param.first == "shrinkage"){
-                        anaData.shrinkage().Fill(value.first);
-                        anaData.shrinkage_ROC().Fill(value.first, roc[method.first]);
-                    }
-                    if (param.first == "NTrees"){
-                        anaData.NTrees().Fill(value.first);
-                        anaData.NTrees_ROC().Fill(value.first, roc[method.first]);
-                    }
-                    if (param.first == "BaggedSampleFraction"){
-                        anaData.BaggedSampleFraction().Fill(value.first);
-                        anaData.BaggedSampleFraction_ROC().Fill(value.first, roc[method.first]);
-                    }
-                    if (param.first == "MaxDepth"){
-                        anaData.MaxDepth().Fill(value.first);
-                        anaData.MaxDepth_ROC().Fill(value.first, roc[method.first]);
-                    }
-                    if (param.first == "MinNodeSize"){
-                        anaData.MinNodeSize().Fill(value.first);
-                        anaData.MinNodeSize_ROC().Fill(value.first, roc[method.first]);
-                    }
-                }
+
+        for(const auto& method : method_seed_count) {
+            if(method.second < n_seeds - 1) continue;
+            const std::string method_name = method.first;
+            const double roc_value = std::accumulate(roc[method_name].begin(), roc[method_name].end(), 0.) / roc[method_name].size();
+            anaData.histo("ROCIntegral").Fill(roc_value);
+            std::map<int, PhysicalValue> significance_value;
+            for (const auto& sign : significance[method_name]){
+                significance_value[sign.first] = std::accumulate(sign.second.begin(), sign.second.end(), PhysicalValue::Zero) / PhysicalValue(sign.second.size(), 0);
             }
-            if(!passed) continue;
-            auto average = AveragePosition(position[method.first], var_name);
+
+            for(const auto& param : method_params[method_name]) {
+                const double value = param.second.value;
+                anaData.ROC(param.first).Fill(value, roc_value);
+                anaData.significance(param.first).Fill(value, significance_value[mass_tot.mass].GetValue());
+                anaData.histo(param.first).Fill(value);
+            }
+            anaData.ROC("significance").Fill(significance_value[mass_tot.mass].GetValue(), roc_value);
+            anaData.significance("err").Fill(significance_value[mass_tot.mass].GetRelativeStatisticalError(), significance_value[mass_tot.mass].GetValue());
+            anaData.histo("significance").Fill(significance_value[mass_tot.mass].GetValue());
+
+            std::map<int, double> cut_value;
+            for (const auto& cut : optimal_cut[method_name]){
+                cut_value[cut.first] = std::accumulate(cut.second.begin(), cut.second.end(), 0.) / cut.second.size();
+            }
+            anaData.histo("cut").Fill(cut_value[mass_tot.mass]);
+            const auto average = AveragePosition(position[method_name]);
             CreatePositionHisto(histo_position, average);
         }
 
@@ -215,7 +200,7 @@ private:
     TFile myfile;
     std::shared_ptr<TTree> tree;
     std::shared_ptr<TFile> outfile;
-    MvaData anaData;
+    MvaData1D anaData;
 };
 
 }

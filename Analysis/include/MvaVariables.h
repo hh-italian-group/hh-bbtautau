@@ -9,6 +9,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "hh-bbtautau/Analysis/include/MT2.h"
 #include "AnalysisTools/Core/include/EnumNameMap.h"
 #include "AnalysisTools/Core/include/TextIO.h"
+#include "TMVA/Reader.h"
 
 namespace analysis {
 namespace mva_study{
@@ -76,9 +77,18 @@ inline std::istream& operator>>(std::istream& is, SampleId& id)
     return is;
 }
 
+
+class MvaVariablesBase {
+public:
+    virtual ~MvaVariablesBase() {}
+    virtual void AddEvent(const ntuple::Event& event, const SampleId& mass , double sample_weight = 1.) = 0;
+    virtual double Evaluate() { throw exception("Not supported."); }
+    virtual std::shared_ptr<TMVA::Reader> GetReader() = 0;
+};
+
 #define VAR(name, formula) if(IsEnabled(name)) SetValue(name, formula)
 #define VAR_INT(name, formula) if(IsEnabled(name)) SetValue(name, formula, 'I')
-class MvaVariables {
+class MvaVariables : public MvaVariablesBase {
 public:
     using VarNameSet = std::unordered_set<std::string>;
     MvaVariables(size_t _number_set = 1, uint_fast32_t seed = std::numeric_limits<uint_fast32_t>::max(),
@@ -95,7 +105,7 @@ public:
         return !enabled_vars.size() || enabled_vars.count(name);
     }
 
-    void AddEvent(const ntuple::Event& event, const SampleId& mass , double sample_weight = 1.)
+    virtual void AddEvent(const ntuple::Event& event, const SampleId& mass , double sample_weight = 1.) override
     {
         auto bb = event.jets_p4[0] + event.jets_p4[1];
         auto leptons = event.p4_1 + event.p4_2;
