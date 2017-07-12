@@ -42,7 +42,7 @@ public:
 
             const Long64_t n_entries = summaryTuple.GetEntries();
             TH1F *n_process_event   = new TH1F("n_process_event","number processed events",1000,0,50000);
-            TH1F *exeTime   = new TH1F("exeTime","exeTime",1000,1000,50000);
+            TH1F *exeTime   = new TH1F("exeTime","exeTime",10000,0,100000);
 
             for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) { //loop on entries
                 summaryTuple.GetEntry(current_entry);
