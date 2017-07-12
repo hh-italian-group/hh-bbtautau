@@ -5,13 +5,14 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #pragma once
 
 #include "hh-bbtautau/Studies//include/MvaConfiguration.h"
-#include "hh-bbtautau/Analysis/include/MvaVariablesStudy.h"
+#include "hh-bbtautau/Studies/include/MvaVariablesStudy.h"
 #include "AnalysisTools/Core/include/RootExt.h"
 #include <TCanvas.h>
 #include <future>
 #include "AnalysisTools/Run/include/MultiThread.h"
 #include "AnalysisTools/Core/include/StatEstimators.h"
 #include "TGraphErrors.h"
+#include "AnalysisTools/Core/include/AnalyzerData.h"
 
 namespace  analysis {
 namespace mva_study{
@@ -277,79 +278,71 @@ inline std::map<SampleId,double> Kolmogorov(const std::map<SampleId, std::map<si
 
 const SampleId mass_tot = SampleId::MassTot();
 const SampleId bkg = SampleId::Bkg();
-constexpr int nbin = 202;
-constexpr double bin_min = -1.01;
-constexpr double bin_max = 1.01;
-constexpr size_t tot = 10;
+const std::string tot = "full";
 
-std::map<int, std::pair<double, PhysicalValue>> EstimateSignificativity(const std::vector<int>& mass_range,
-                                                                        const std::map<SampleId, std::map<size_t,std::shared_ptr<TH1D>>>& outputBDT,
-                                                                        TDirectory* directory, bool total)
+
+class BDTData : public root_ext::AnalyzerData {
+public:
+    using AnalyzerData::AnalyzerData;
+    using Entry = root_ext::AnalyzerDataEntry<TH1D>;
+    using Hist = Entry::Hist;
+
+    TH1D_ENTRY(bdt_out, 202, -1.01, 1.01)
+};
+
+
+inline std::vector<std::pair<double,PhysicalValue>> Calculate_CutSignificance(const SampleId& sgn_mass, const SampleId& bkg_mass,
+                                                                       const std::string& title, BDTData::Entry& outputBDT,
+                                                                       TDirectory* directory){
+     std::vector<std::pair<double,PhysicalValue>> cuts;
+     auto int_S_tot = Integral(outputBDT(sgn_mass, tot), true);
+     auto int_B_tot = Integral(outputBDT(bkg_mass, tot), true);
+     auto relative = int_S_tot/std::sqrt(int_B_tot);
+     auto histo_sign = CreatePlotErrors(title, title,"output BDT","S/(sqrt(B))");
+     int nbin = outputBDT(sgn_mass, tot).GetNbinsX();
+     for(int i = 0; i<=nbin; ++i){
+         auto output = outputBDT(sgn_mass, tot).GetBinCenter(i);
+         auto int_S = Integral(outputBDT(sgn_mass, tot), i, nbin+1);
+         auto int_B = Integral(outputBDT(bkg_mass,tot), i, nbin+1);
+         PhysicalValue significance;
+         if ( int_S.GetValue() != 0 || int_B.GetValue() != 0) {
+             significance = (int_S/std::sqrt(int_B))/relative;
+         }
+
+         cuts.emplace_back(output, significance);
+         histo_sign->SetPoint(i, output, significance.GetValue());
+         histo_sign->SetPointError(i, 0, significance.GetFullError());
+     }
+     std::sort(cuts.begin(), cuts.end(), [](auto el1, auto el2){
+         return el1.second.GetValue() > el2.second.GetValue();
+     });
+     root_ext::WriteObject(*histo_sign, directory);
+     return cuts;
+}
+
+inline std::map<int, std::pair<double, PhysicalValue>> EstimateSignificativity(const std::vector<int>& mass_range, BDTData::Entry& outputBDT,
+                                                                               TDirectory* directory, bool total)
+
 {
     std::map<int, std::pair<double, PhysicalValue>> sign;
     auto mass_sign = CreatePlotErrors("Mass_significance","Mass_significance","mass","S/(sqrt(B))");
 
     int index = 0;
     for(const auto& mass : mass_range){
-        std::vector<std::pair<double,PhysicalValue>> cuts;
         SampleId sgn_mass(SampleType::Sgn_Res, mass);
         SampleId bkg_mass(SampleType::Bkg_TTbar, mass);
-        auto histo_sign = CreatePlotErrors((std::to_string(mass)+"_significance").c_str(),(std::to_string(mass)+"_significance").c_str(),"output BDT","S/(sqrt(B))");
-        auto int_S_tot = Integral(*outputBDT.at(sgn_mass).at(tot).get(), true);
-        auto int_B_tot = Integral(*outputBDT.at(bkg_mass).at(tot).get(), true);
-        auto relative = int_S_tot/std::sqrt(int_B_tot);
-        for(int i = 0; i<=nbin; ++i){
-            auto output = outputBDT.at(sgn_mass).at(tot)->GetBinCenter(i);
-            auto int_S = Integral(*outputBDT.at(sgn_mass).at(tot).get(), i, nbin+1);
-            auto int_B = Integral(*outputBDT.at(bkg_mass).at(tot).get(), i, nbin+1);
-            PhysicalValue significance;
-            if ( int_S.GetValue() != 0 && int_B.GetValue() != 0) {
-                significance = (int_S/std::sqrt(int_B))/relative;
-            }
-            cuts.emplace_back(output, significance);
-            histo_sign->SetPoint(i, output, significance.GetValue());
-            histo_sign->SetPointError(i, 0, significance.GetFullError());
-        }
-        std::sort(cuts.begin(), cuts.end(), [](auto el1, auto el2){
-            return el1.second.GetValue() > el2.second.GetValue();
-        });
+        auto cuts = Calculate_CutSignificance(sgn_mass, bkg_mass, std::to_string(mass)+"_significance", outputBDT, directory);
         sign[mass] = cuts.front();
         mass_sign->SetPoint(index, mass, sign[mass].second.GetValue());
         mass_sign->SetPointError(index, 0, sign[mass].second.GetStatisticalError());
         std::cout<<index<<" "<<mass<<"  "<<ToString(sign[mass].second)<<std::endl;
-        root_ext::WriteObject(*histo_sign, directory);
         ++index;
     }
-    root_ext::WriteObject(*mass_sign, directory);
-
-
     if (total){
-        std::vector<std::pair<double,PhysicalValue>> cuts;
-        auto histo_sign = CreatePlotErrors("Significance","Significance","output BDT","S/(sqrt(B))");
-        auto int_S_tot = Integral(*outputBDT.at(mass_tot).at(tot).get(), true);
-        auto int_B_tot = Integral(*outputBDT.at(bkg).at(tot).get(), true);
-        auto relative = int_S_tot/std::sqrt(int_B_tot);
-        for(int i = 0; i<=nbin; ++i){
-            auto output = outputBDT.at(mass_tot).at(tot)->GetBinCenter(i);
-            auto int_S = Integral(*outputBDT.at(mass_tot).at(tot).get(), i, nbin+1);
-            auto int_B = Integral(*outputBDT.at(bkg).at(tot).get(), i, nbin+1);
-            PhysicalValue significance;
-            if ( int_S.GetValue() != 0 && int_B.GetValue() != 0) {
-                significance = (int_S/std::sqrt(int_B))/relative;
-            }
-            cuts.emplace_back(output, significance);
-            histo_sign->SetPoint(i, output, significance.GetValue());
-            histo_sign->SetPointError(i, 0, significance.GetFullError());
-        }
-        std::sort(cuts.begin(), cuts.end(), [](auto el1, auto el2){
-            return el1.second.GetValue() > el2.second.GetValue();
-        });
+        auto cuts = Calculate_CutSignificance(mass_tot, bkg, "Significance", outputBDT, directory);
         sign[mass_tot.mass] = cuts.front();
-        mass_sign->SetPoint(index, mass_tot.mass, sign[mass_tot.mass].second.GetValue());
-        mass_sign->SetPointError(index, 0, sign[mass_tot.mass].second.GetStatisticalError());
-        std::cout<<index<<" "<<mass_tot<<"  "<<ToString(sign[mass_tot.mass].second)<<std::endl;
-        root_ext::WriteObject(*histo_sign, directory);
     }
+    root_ext::WriteObject(*mass_sign, directory);
     return sign;
 }
 

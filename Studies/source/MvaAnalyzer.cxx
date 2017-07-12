@@ -22,10 +22,9 @@ namespace mva_study{
 
 namespace {
 
-class MvaData1D : public root_ext::AnalyzerData {
+class MvaData : public root_ext::AnalyzerData {
 public:
-    using AnalyzerData::AnalyzerData;
-    explicit MvaData1D(std::shared_ptr<TFile> _outputFile, const std::string& directoryName = "") :
+    explicit MvaData(std::shared_ptr<TFile> _outputFile, const std::string& directoryName = "") :
         AnalyzerData(_outputFile, directoryName)
     {
         histo.Emplace("shrinkage", 4, -0.05, 1.15);
@@ -200,7 +199,7 @@ private:
     TFile myfile;
     std::shared_ptr<TTree> tree;
     std::shared_ptr<TFile> outfile;
-    MvaData1D anaData;
+    MvaData anaData;
 };
 
 }

@@ -14,6 +14,9 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 namespace analysis {
 namespace mva_study{
 
+using ::analysis::operator<<;
+using ::analysis::operator>>;
+
 enum class SampleType { Sgn_Res = 1, Sgn_NonRes = 0, Bkg_TTbar = -1 };
 
 struct SampleId {
@@ -28,6 +31,11 @@ struct SampleId {
         if (sampleType != x.sampleType) return static_cast<int>(sampleType) < static_cast<int>(x.sampleType);
         return mass < x.mass;
     }
+    bool operator ==(const SampleId& x) const
+    {
+        return x.mass==mass && x.sampleType == sampleType;
+    }
+    bool operator !=(const SampleId& x) const {return !(x==*this);}
 
     bool IsSignal() const { return sampleType == SampleType::Sgn_Res || sampleType == SampleType::Sgn_NonRes; }
     bool IsBackground() const { return !IsSignal(); }
@@ -35,7 +43,7 @@ struct SampleId {
 
     static const SampleId& MassTot()
     {
-        static const SampleId mass_tot(SampleType::Sgn_Res, 2000);
+        static const SampleId mass_tot(SampleType::Sgn_Res, std::numeric_limits<int>::max());
         return mass_tot;
     }
     static const SampleId& Bkg()
@@ -58,8 +66,12 @@ inline std::ostream& operator<<(std::ostream& os, const SampleId& id)
 {
     if(id.sampleType == SampleType::Sgn_NonRes || id.sampleType == SampleType::Bkg_TTbar)
         os << id.sampleType;
-    else
-        os << "M" << id.mass;
+    else {
+        if(id == SampleId::MassTot())
+            os << "Mtot";
+        else
+            os << "M" << id.mass;
+    }
     return os;
 }
 

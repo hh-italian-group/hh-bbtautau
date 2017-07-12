@@ -32,7 +32,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "hh-bbtautau/Analysis/include/MvaConfigurationReader.h"
 #include "hh-bbtautau/Analysis/include/MvaReader.h"
 #include "hh-bbtautau/Studies/include/MvaTuple.h"
-#include "hh-bbtautau/Analysis/include/MvaVariablesStudy.h"
+#include "hh-bbtautau/Studies/include/MvaVariablesStudy.h"
 #include "hh-bbtautau/Studies/include/MvaMethods.h"
 
 struct Arguments { // list of all program arguments
@@ -49,7 +49,7 @@ struct Arguments { // list of all program arguments
     REQ_ARG(uint_fast32_t, seed2);
     REQ_ARG(bool, isLegacy);
     REQ_ARG(bool, isLow);
-    OPT_ARG(std::vector<std::string>, variables, {});
+    REQ_ARG(std::string, range);
 };
 
 namespace analysis {
@@ -75,57 +75,34 @@ public:
         SampleConfigReader sampleReader(samples_list);
         configReader.AddEntryReader("FILES", sampleReader, false);
         configReader.ReadConfig(args.cfg_file());
-        if (args.isLegacy()) mva_setup = setups.at("LowF");
-        else mva_setup = setups.at("Low");
+        mva_setup = setups.at(args.range());
 
         if(!samples_list.count("Samples"))
             throw exception("Samples don't found");
         samples = samples_list.at("Samples").files;
         std::cout<<"SAMPLES: "<<samples.size()<<std::endl;
 
-        for (const auto& v : args.variables())
-            enabled_vars.insert(v);
-        std::cout<<"VARS: "<<enabled_vars.size()<<std::endl;
 
-        reader = std::make_shared<MvaReader>();
+        enabled_vars.insert(mva_setup.variables.begin(), mva_setup.variables.end());
+        if(mva_setup.use_mass_var) {
+            enabled_vars.insert("mass");
+            enabled_vars.insert("channel");
+        }
+        std::cout<<"VARS: "<<enabled_vars.size()<<std::endl;
 
     }
 
-    std::map<SampleId, std::map<size_t,std::shared_ptr<TH1D>>> CreateOutputHistos(std::map<SampleId, std::map<size_t, std::vector<double>>> data)
+    void CreateOutputHistos(std::map<SampleId, std::map<size_t, std::vector<double>>> data, BDTData::Entry& outputBDT)
     {
-        std::map<SampleId, std::map<size_t,std::shared_ptr<TH1D>>> histo;
         for(const auto& sample : data){
-            const auto& type = sample.second;
-            for(const auto& entry : type){
-                if (sample.first.IsSignal()){
-                    for (const auto& value : entry.second){
-                        if (!histo.count(sample.first))
-                             histo[sample.first][tot] = std::make_shared<TH1D>(("Signal_"+std::to_string(sample.first.mass)+"_output").c_str(),("Signal"+std::to_string(sample.first.mass)+"_output").c_str(), nbin, bin_min, bin_max);
-                        histo.at(sample.first).at(tot)->Fill(value);
-                        if (!histo[sample.first].count(entry.first))
-                            histo[sample.first][entry.first] = std::make_shared<TH1D>(("Signal_"+std::to_string(sample.first.mass)+"_output_type"+std::to_string(entry.first)).c_str(),("Signal_"+std::to_string(sample.first.mass)+"_output_type"+std::to_string(entry.first)).c_str(), nbin, bin_min, bin_max);
-                        histo[sample.first][entry.first]->Fill(value);
-                    }
-                }
-                if (sample.first.IsBackground()){
-                    for (const auto& value : entry.second){
-                        if (!histo.count(sample.first))
-                            histo[sample.first][tot] = std::make_shared<TH1D>(("Bkg_"+std::to_string(sample.first.mass)+"_output").c_str(),("Bkg"+std::to_string(sample.first.mass)+"_output").c_str(), nbin, bin_min, bin_max);
-                        histo.at(sample.first).at(tot)->Fill(value);
-                        if (!histo[sample.first].count(entry.first))
-                            histo[sample.first][entry.first] = std::make_shared<TH1D>(("Bkg_"+std::to_string(sample.first.mass)+"_output_type"+std::to_string(entry.first)).c_str(),("Bkg_"+std::to_string(sample.first.mass)+"_output_type"+std::to_string(entry.first)).c_str(), nbin, bin_min, bin_max);
-                        histo[sample.first][entry.first]->Fill(value);
-                    }
+            for(const auto& entry : sample.second){
+                std::vector<BDTData::Hist*> outs = { &outputBDT(sample.first, tot), &outputBDT(sample.first, entry.first) };
+                for (const auto& value : entry.second){
+                    for(auto out : outs)
+                        out->Fill(value);
                 }
             }
         }
-        auto directory = root_ext::GetDirectory(*outfile.get(), "Evaluation");
-        for(const auto& h : histo){
-            for (auto his : h.second){
-                root_ext::WriteObject(*his.second,directory);
-            }
-        }
-        return histo;
     }
 
     std::vector<int> CreateMassRange(const int& min, const int& max) const
@@ -145,7 +122,7 @@ public:
         const auto mass_range = CreateMassRange(args.min(), args.max());
         std::cout<<"SAMPLES nel RANGE:"<<mass_range.size() <<std::endl;
         ::analysis::Range<int> range(args.min(), args.max());
-        auto vars = reader->AddRange(range, args.method_name(), args.file_xml(), enabled_vars, args.isLegacy(), args.isLow());
+        auto vars = reader.AddRange(range, args.method_name(), args.file_xml(), enabled_vars, args.isLegacy(), args.isLow());
         std::mt19937_64 seed_gen(args.seed());
 
         for(size_t j = 0; j<mva_setup.channels.size(); j++){
@@ -180,27 +157,28 @@ public:
                         for (const auto mass : mass_range){
                             const SampleId sample_bkg(SampleType::Bkg_TTbar, mass);
                             vars->AddEvent(event, sample_bkg, entry.weight);
-                            data[sample_bkg][test_split].push_back(reader->Evaluate(event, mass, args.method_name()));
+                            data[sample_bkg][test_split].push_back(reader.Evaluate(event, mass, args.method_name()));
                         }
                     }
                     else{
                         vars->AddEvent(event, entry.id, entry.weight);
-                        data[entry.id][test_split].push_back(reader->Evaluate(event, entry.id.mass, args.method_name()));
+                        data[entry.id][test_split].push_back(reader.Evaluate(event, entry.id.mass, args.method_name()));
                     }
                 }
                 std::cout << " channel " << mva_setup.channels[j] << "    " << entry.filename << " number of events: " << tot_entries << std::endl;
             }
         }
 
-        std::map<SampleId, std::map<size_t,std::shared_ptr<TH1D>>> outputBDT = CreateOutputHistos(data);
-        auto histo_roc = std::make_shared<TH2D>("ROC","ROC", static_cast<int>((args.max()-args.min())/9),args.min()-5, args.max()+5, 100, 0,1);
+        BDTData outputBDT(outfile, "Evaluation");
+        CreateOutputHistos(data, outputBDT.bdt_out);
+        auto histo_roc = std::make_shared<TH2D>("ROC","ROC", 66, 245, 905, 100, 0,1);
         std::map<int, double> roc;
-        auto reader = vars->GetReader();
-        auto method = dynamic_cast<TMVA::MethodBase*>(reader->FindMVA(args.method_name()));
+        auto reader_method = vars->GetReader();
+        auto method = dynamic_cast<TMVA::MethodBase*>(reader_method->FindMVA(args.method_name()));
         for (const auto& mass : mass_range){
             SampleId sample_sgn(SampleType::Sgn_Res, mass);
             SampleId sample_bkg(SampleType::Bkg_TTbar, mass);
-            roc[mass] = method->GetROCIntegral(outputBDT.at(sample_sgn).at(tot).get(), outputBDT.at(sample_bkg).at(tot).get());
+            roc[mass] = method->GetROCIntegral(&outputBDT.bdt_out(sample_sgn,tot), &outputBDT.bdt_out(sample_bkg,tot));
             histo_roc->Fill(mass, roc[mass]);
             std::cout<<mass<<"  ROC: "<<roc[mass]<<std::endl;
         }
@@ -212,16 +190,13 @@ public:
 
         auto directory_sb = root_ext::GetDirectory(*outfile.get(), "Significance");
         std::cout<<"Significativity"<<std::endl;
-        std::map<int, std::pair<double, PhysicalValue>> sign = EstimateSignificativity(mass_range, outputBDT, directory_sb, false);
+        std::map<int, std::pair<double, PhysicalValue>> sign = EstimateSignificativity(mass_range, outputBDT.bdt_out, directory_sb, false);
 
         MvaTuple mva_tuple(outfile.get(), false);
         for (const auto& sample : kolmogorov){
             mva_tuple().KS_mass.push_back(sample.first.mass);
             mva_tuple().KS_value.push_back(sample.second);
-            if (sample.first.IsSignal())
-                mva_tuple().KS_type.push_back(1);
-            else if (sample.first.IsBackground())
-                mva_tuple().KS_type.push_back(-1);
+            mva_tuple().KS_type.push_back(static_cast<int>(sample.first.sampleType));
         }
 
         for (const auto& value : roc){
@@ -245,7 +220,7 @@ private:
     std::shared_ptr<TFile> outfile;
     std::mt19937_64 gen, gen2;
     MvaVariables::VarNameSet enabled_vars;
-    std::shared_ptr<MvaReader> reader;
+    MvaReader reader;
     std::uniform_int_distribution<uint_fast32_t>  seed_split, test_vs_training;
 };
 
@@ -255,6 +230,5 @@ private:
 PROGRAM_MAIN(analysis::mva_study::MVAEvaluation, Arguments) // definition of the main program function
 
 
-// ./run.sh MvaEvaluation ~/Desktop/tuples prova hh-bbtautau/Studies/config/mva_config.cfg ~/Desktop/xml/n/TMVAClassification_500t_PU_mass_newvars_HIGH_oldvars.weights.xml BDT::500t_PU_mass_newvars_HIGH_oldvars 2000 400 900 2 12345678 1234567 true false dphi_l1MET dphi_htautauMET dphi_hbbMET dphi_hbbhtautau dR_l1l2 dR_b1b2 MT_l1 MT_l2
-// ./run.sh MvaEvaluation ~/Desktop/tuples prova_low hh-bbtautau/Studies/config/mva_config.cfg ~/Desktop/xml/n/TMVAClassification_500t_PU_mass_newvars_LOW.weights.xml BDT::500t_PU_mass_newvars_LOW 20000 250 350 2 12345678 1234567 true true dphi_l1MET dphi_htautauMET dphi_hbbMET dphi_hbbhtautau dR_l1l2Pt_htautau dR_b1b2Pt_hb MT_l1 MT_l2
-// ./run.sh MvaEvaluation ~/Desktop/tuples prova_low hh-bbtautau/Studies/config/mva_config.cfg ~/workspace/hh-analysis/mydataloader/weight/myFactoryLowMassprova_Grad_shrinkage_0.1_12345678.weights.xml BDT::Grad_shrinkage_0.1_12345678 20000 250 320 2 12345678 1234567 false false HT_otherjets MT2 MT_htautau MT_l1 MT_tot abs_dphi_l1MET abs_dphi_htautauMET dR_b1b2_boosted dR_l1l2Pt_htautau dR_l1l2_boosted dphi_b1b2 dphi_hbbhtautau dphi_l2MET mass_l1l2MET mass_top1 mass_top2 p_zeta p_zetavisible pt_hbb pt_htautau pt_l1 pt_l1l2MET pt_l2
+
+
