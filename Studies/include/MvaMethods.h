@@ -4,13 +4,15 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #pragma once
 
-#include "hh-bbtautau/Analysis/include/MvaConfiguration.h"
-#include "hh-bbtautau/Analysis/include/MvaVariablesStudy.h"
+#include "hh-bbtautau/Studies//include/MvaConfiguration.h"
+#include "hh-bbtautau/Studies/include/MvaVariablesStudy.h"
 #include "AnalysisTools/Core/include/RootExt.h"
 #include <TCanvas.h>
 #include <future>
 #include "AnalysisTools/Run/include/MultiThread.h"
 #include "AnalysisTools/Core/include/StatEstimators.h"
+#include "TGraphErrors.h"
+#include "AnalysisTools/Core/include/AnalyzerData.h"
 
 namespace  analysis {
 namespace mva_study{
@@ -167,6 +169,22 @@ inline std::shared_ptr<TGraph> CreatePlot(const std::string& title, const std::s
     return plot;
 }
 
+
+inline std::shared_ptr<TGraphErrors> CreatePlotErrors(const std::string& title, const std::string& name, const std::string& x_axis, const std::string& y_axis)
+{
+    auto plot = std::make_shared<TGraphErrors>();
+    plot->SetLineColor(kBlue);
+    plot->SetLineWidth(1);
+    plot->SetMarkerColor(1);
+    plot->SetMarkerSize(1);
+    plot->SetMarkerStyle(0);
+    plot->SetTitle((title).c_str());
+    plot->SetName((name).c_str());
+    plot->GetHistogram()->GetXaxis()->SetTitle((x_axis).c_str());
+    plot->GetHistogram()->GetYaxis()->SetTitle((y_axis).c_str());
+    return plot;
+}
+
 inline NameElement JensenDivergenceSB(const VarData& sample_signal, const VarData& sample_bkg,
                                const NameElement& bandwidth_signal, const NameElement& bandwidth_bkg)
 {
@@ -233,6 +251,101 @@ inline VectorName_ND CopySelectedVariables(const VectorName_ND& JSDivergence_vec
     }
     return copy;
 }
+
+inline std::map<SampleId,double> Kolmogorov(const std::map<SampleId, std::map<size_t, std::vector<double>>>& evaluation, TDirectory* directory)
+{
+    std::map<SampleId,double> kolmogorov;
+    std::shared_ptr<TH1D> histo_kolmogorov;
+    histo_kolmogorov = std::make_shared<TH1D>("kolmogorov", "kolmogorov", 50, 0, 1.01);
+    histo_kolmogorov->SetXTitle("KS");
+    for (const auto& sample : evaluation){
+        std::map<size_t, std::vector<double>> ks_vector;
+        for (auto tvt : sample.second){
+            auto type = tvt.first;
+            std::sort(tvt.second.begin(), tvt.second.end());
+            ks_vector[type] = std::move(tvt.second);
+        }
+        double ks = TMath::KolmogorovTest(static_cast<int>(ks_vector.at(0).size()), ks_vector.at(0).data(),
+                                          static_cast<int>(ks_vector.at(1).size()), ks_vector.at(1).data(), "");
+        std::cout<<sample.first.sampleType<<" "<<sample.first.mass<<"    "<<ks<<std::endl;
+        kolmogorov[sample.first] = ks;
+        histo_kolmogorov->Fill(ks);
+    }
+    root_ext::WriteObject(*histo_kolmogorov, directory);
+    return kolmogorov;
+}
+
+
+const SampleId mass_tot = SampleId::MassTot();
+const SampleId bkg = SampleId::Bkg();
+const std::string tot = "full";
+
+
+class BDTData : public root_ext::AnalyzerData {
+public:
+    using AnalyzerData::AnalyzerData;
+    using Entry = root_ext::AnalyzerDataEntry<TH1D>;
+    using Hist = Entry::Hist;
+
+    TH1D_ENTRY(bdt_out, 202, -1.01, 1.01)
+};
+
+
+inline std::vector<std::pair<double,PhysicalValue>> Calculate_CutSignificance(const SampleId& sgn_mass, const SampleId& bkg_mass,
+                                                                       const std::string& title, BDTData::Entry& outputBDT,
+                                                                       TDirectory* directory){
+     std::vector<std::pair<double,PhysicalValue>> cuts;
+     auto int_S_tot = Integral(outputBDT(sgn_mass, tot), true);
+     auto int_B_tot = Integral(outputBDT(bkg_mass, tot), true);
+     auto relative = int_S_tot/std::sqrt(int_B_tot);
+     auto histo_sign = CreatePlotErrors(title, title,"output BDT","S/(sqrt(B))");
+     int nbin = outputBDT(sgn_mass, tot).GetNbinsX();
+     for(int i = 0; i<=nbin; ++i){
+         auto output = outputBDT(sgn_mass, tot).GetBinCenter(i);
+         auto int_S = Integral(outputBDT(sgn_mass, tot), i, nbin+1);
+         auto int_B = Integral(outputBDT(bkg_mass,tot), i, nbin+1);
+         PhysicalValue significance;
+         if ( int_S.GetValue() != 0 || int_B.GetValue() != 0) {
+             significance = (int_S/std::sqrt(int_B))/relative;
+         }
+
+         cuts.emplace_back(output, significance);
+         histo_sign->SetPoint(i, output, significance.GetValue());
+         histo_sign->SetPointError(i, 0, significance.GetFullError());
+     }
+     std::sort(cuts.begin(), cuts.end(), [](auto el1, auto el2){
+         return el1.second.GetValue() > el2.second.GetValue();
+     });
+     root_ext::WriteObject(*histo_sign, directory);
+     return cuts;
+}
+
+inline std::map<int, std::pair<double, PhysicalValue>> EstimateSignificativity(const std::vector<int>& mass_range, BDTData::Entry& outputBDT,
+                                                                               TDirectory* directory, bool total)
+
+{
+    std::map<int, std::pair<double, PhysicalValue>> sign;
+    auto mass_sign = CreatePlotErrors("Mass_significance","Mass_significance","mass","S/(sqrt(B))");
+
+    int index = 0;
+    for(const auto& mass : mass_range){
+        SampleId sgn_mass(SampleType::Sgn_Res, mass);
+        SampleId bkg_mass(SampleType::Bkg_TTbar, mass);
+        auto cuts = Calculate_CutSignificance(sgn_mass, bkg_mass, std::to_string(mass)+"_significance", outputBDT, directory);
+        sign[mass] = cuts.front();
+        mass_sign->SetPoint(index, mass, sign[mass].second.GetValue());
+        mass_sign->SetPointError(index, 0, sign[mass].second.GetStatisticalError());
+        std::cout<<index<<" "<<mass<<"  "<<ToString(sign[mass].second)<<std::endl;
+        ++index;
+    }
+    if (total){
+        auto cuts = Calculate_CutSignificance(mass_tot, bkg, "Significance", outputBDT, directory);
+        sign[mass_tot.mass] = cuts.front();
+    }
+    root_ext::WriteObject(*mass_sign, directory);
+    return sign;
+}
+
 
 }
 }

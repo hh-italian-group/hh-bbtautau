@@ -250,6 +250,8 @@ struct MvaOptionCollection {
         return option->GetNumericValue(pos);
     }
 
+    std::map<std::string, size_t> GetOptionNames() const {return option_names;}
+
 private:
     std::vector<std::shared_ptr<MvaOptionBase>> options;
     std::map<std::string, size_t> option_names;
