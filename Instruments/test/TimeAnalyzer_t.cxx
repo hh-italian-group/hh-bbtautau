@@ -51,7 +51,7 @@ public:
 
             } //end loop on entries
 
-            unsigned common_exe_time = 1;
+            double common_exe_time = 1.0;
             unsigned found_bin = 0;
             for(unsigned n = 0; n < exeTime->GetXaxis()->GetNbins(); ++n){
 //                std::cout << "single integral:" << exeTime->Integral(0,n) << std::endl;
@@ -62,8 +62,8 @@ public:
                 }
             }
 
-//            std::cout << "common_exe_time: " << common_exe_time << ", found_bin:" << found_bin <<
-//                         ", integral:" << exeTime->Integral(0,found_bin) << std::endl;
+            std::cout << "common_exe_time: " << common_exe_time << ", found_bin:" << found_bin <<
+                         ", integral:" << exeTime->Integral(0,found_bin) << std::endl;
             int crab_dead_time = 43200;
 
             output.scale_factor = crab_dead_time/common_exe_time;
