@@ -19,7 +19,6 @@ class TimeAnalyzer_t {
 public:
     TimeAnalyzer_t(const Arguments& _args) : args(_args)
     {
-//        std::cout << "inputFile: " << args.input() << std::endl;
     }
 
     void Run()
@@ -35,7 +34,7 @@ public:
             n_process_event->Fill(summary.numberOfProcessedEvents);
             exeTime->Fill(summary.exeTime);
             if(summary.numberOfProcessedEvents == 0) continue;
-            double time_event = summary.exeTime/summary.numberOfProcessedEvents;
+            double time_event = double(summary.exeTime)/summary.numberOfProcessedEvents;
             time_per_event->Fill(time_event);
         }
 
@@ -54,7 +53,7 @@ public:
         double scale_factor = crab_dead_time/common_exe_time;
         size_t n_evt_per_job_prod_v2 = static_cast<size_t>(std::ceil(n_process_event->GetMean()));
         size_t n_evt_per_job_prod_v3 = static_cast<size_t>(std::ceil(scale_factor * n_evt_per_job_prod_v2));
-        double time_event_calc = static_cast<double>(std::ceil(time_per_event->GetMean()));
+        double time_event_calc = time_per_event->GetMean();
 
         std::cout << args.input() << sep << scale_factor << sep << n_evt_per_job_prod_v2 << sep
                   << n_evt_per_job_prod_v3 << sep
