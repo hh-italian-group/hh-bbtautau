@@ -19,12 +19,12 @@ class TimeAnalyzer_t {
 public:
     TimeAnalyzer_t(const Arguments& _args) : args(_args)
     {
+        std::cout << "inputFile: " << args.input() << std::endl;
     }
 
     void Run()
     {
-        auto inputFile = root_ext::OpenRootFile(args.input());
-        std::cout << "inputFile: " << args.input() << std::endl;
+        auto inputFile = root_ext::OpenRootFile(args.input());      
         auto summaryTuple = ntuple::CreateSummaryTuple("summary", inputFile.get(), true, ntuple::TreeState::Full, true);
 
         auto n_process_event = std::make_shared<TH1F>("n_process_event","number processed events",50000,-0.5,50000-0.5);
