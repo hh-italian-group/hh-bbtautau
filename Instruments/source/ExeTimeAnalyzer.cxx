@@ -15,9 +15,9 @@ struct Arguments {
 
 namespace analysis {
 
-class TimeAnalyzer_t {
+class ExeTimeAnalyzer {
 public:
-    TimeAnalyzer_t(const Arguments& _args) : args(_args)
+    ExeTimeAnalyzer(const Arguments& _args) : args(_args)
     {
     }
 
@@ -66,4 +66,4 @@ private:
 
 } //namespace analysis
 
-PROGRAM_MAIN(analysis::TimeAnalyzer_t, Arguments)
+PROGRAM_MAIN(analysis::ExeTimeAnalyzer, Arguments)
