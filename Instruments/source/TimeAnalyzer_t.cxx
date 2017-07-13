@@ -31,10 +31,11 @@ public:
         auto exeTime = std::make_shared<TH1F>("exeTime","exeTime",10000,-0.5,100000-0.5);
         auto time_per_event = std::make_shared<TH1F>("time_per_event","time_per_event",10000,-0.5,100000-0.5);
 
-        for(const auto& summary : *summaryTuple) {
-            double time_event = summary.exeTime/summary.numberOfProcessedEvents;
+        for(const auto& summary : *summaryTuple) {            
             n_process_event->Fill(summary.numberOfProcessedEvents);
             exeTime->Fill(summary.exeTime);
+            if(summary.numberOfProcessedEvents == 0) continue;
+            double time_event = summary.exeTime/summary.numberOfProcessedEvents;
             time_per_event->Fill(time_event);
         }
 
