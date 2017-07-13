@@ -19,7 +19,7 @@ class TimeAnalyzer_t {
 public:
     TimeAnalyzer_t(const Arguments& _args) : args(_args)
     {
-        std::cout << "inputFile: " << args.input() << std::endl;
+//        std::cout << "inputFile: " << args.input() << std::endl;
     }
 
     void Run()
