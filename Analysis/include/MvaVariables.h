@@ -9,9 +9,13 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "hh-bbtautau/Analysis/include/MT2.h"
 #include "AnalysisTools/Core/include/EnumNameMap.h"
 #include "AnalysisTools/Core/include/TextIO.h"
+#include "TMVA/Reader.h"
 
 namespace analysis {
 namespace mva_study{
+
+using ::analysis::operator<<;
+using ::analysis::operator>>;
 
 enum class SampleType { Sgn_Res = 1, Sgn_NonRes = 0, Bkg_TTbar = -1 };
 
@@ -27,6 +31,11 @@ struct SampleId {
         if (sampleType != x.sampleType) return static_cast<int>(sampleType) < static_cast<int>(x.sampleType);
         return mass < x.mass;
     }
+    bool operator ==(const SampleId& x) const
+    {
+        return x.mass==mass && x.sampleType == sampleType;
+    }
+    bool operator !=(const SampleId& x) const {return !(x==*this);}
 
     bool IsSignal() const { return sampleType == SampleType::Sgn_Res || sampleType == SampleType::Sgn_NonRes; }
     bool IsBackground() const { return !IsSignal(); }
@@ -34,7 +43,7 @@ struct SampleId {
 
     static const SampleId& MassTot()
     {
-        static const SampleId mass_tot(SampleType::Sgn_Res, 2000);
+        static const SampleId mass_tot(SampleType::Sgn_Res, std::numeric_limits<int>::max());
         return mass_tot;
     }
     static const SampleId& Bkg()
@@ -57,8 +66,12 @@ inline std::ostream& operator<<(std::ostream& os, const SampleId& id)
 {
     if(id.sampleType == SampleType::Sgn_NonRes || id.sampleType == SampleType::Bkg_TTbar)
         os << id.sampleType;
-    else
-        os << "M" << id.mass;
+    else {
+        if(id == SampleId::MassTot())
+            os << "Mtot";
+        else
+            os << "M" << id.mass;
+    }
     return os;
 }
 
@@ -76,9 +89,18 @@ inline std::istream& operator>>(std::istream& is, SampleId& id)
     return is;
 }
 
+
+class MvaVariablesBase {
+public:
+    virtual ~MvaVariablesBase() {}
+    virtual void AddEvent(const ntuple::Event& event, const SampleId& mass , double sample_weight = 1.) = 0;
+    virtual double Evaluate() { throw exception("Not supported."); }
+    virtual std::shared_ptr<TMVA::Reader> GetReader() = 0;
+};
+
 #define VAR(name, formula) if(IsEnabled(name)) SetValue(name, formula)
 #define VAR_INT(name, formula) if(IsEnabled(name)) SetValue(name, formula, 'I')
-class MvaVariables {
+class MvaVariables : public MvaVariablesBase {
 public:
     using VarNameSet = std::unordered_set<std::string>;
     MvaVariables(size_t _number_set = 1, uint_fast32_t seed = std::numeric_limits<uint_fast32_t>::max(),
@@ -95,7 +117,7 @@ public:
         return !enabled_vars.size() || enabled_vars.count(name);
     }
 
-    void AddEvent(const ntuple::Event& event, const SampleId& mass , double sample_weight = 1.)
+    virtual void AddEvent(const ntuple::Event& event, const SampleId& mass , double sample_weight = 1.) override
     {
         auto bb = event.jets_p4[0] + event.jets_p4[1];
         auto leptons = event.p4_1 + event.p4_2;

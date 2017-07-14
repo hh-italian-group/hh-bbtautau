@@ -43,6 +43,8 @@ public:
             throw exception("Sample part is out of range.");
         return all_variables.at(set);
     }
+
+    virtual std::shared_ptr<TMVA::Reader> GetReader() override {throw exception ("GetReader not supported.");}
 };
 
 inline const std::set<std::string>& GetMvaBranches()
