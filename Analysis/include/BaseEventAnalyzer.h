@@ -42,7 +42,7 @@ public:
     using FirstLeg = _FirstLeg;
     using SecondLeg = _SecondLeg;
     using EventInfo = ::analysis::EventInfo<FirstLeg, SecondLeg>;
-    using EventAnalyzerData = ::analysis::EventAnalyzerData<FirstLeg>;
+    using EventAnalyzerData = ::analysis::EventAnalyzerData<FirstLeg, SecondLeg>;
     using PhysicalValueMap = std::map<EventRegion, PhysicalValue>;
 
     static constexpr Channel ChannelId() { return ChannelInfo::IdentifyChannel<FirstLeg, SecondLeg>(); }
@@ -50,9 +50,9 @@ public:
     virtual const EventCategorySet& EventCategoriesToProcess() const
     {
         static const EventCategorySet categories = {
-            EventCategory::TwoJets_Inclusive, EventCategory::TwoJets_ZeroBtag,
-            EventCategory::TwoJets_OneBtag, EventCategory::TwoJets_OneLooseBtag,
-            EventCategory::TwoJets_TwoBtag, EventCategory::TwoJets_TwoLooseBtag
+            EventCategory::TwoJets_Inclusive(), EventCategory::TwoJets_ZeroBtag(),
+            EventCategory::TwoJets_OneBtag(), EventCategory::TwoJets_OneLooseBtag(),
+            EventCategory::TwoJets_TwoBtag(), EventCategory::TwoJets_TwoLooseBtag()
         };
         return categories;
     }
@@ -60,8 +60,9 @@ public:
     virtual const EventSubCategorySet& EventSubCategoriesToProcess() const
     {
         static const EventSubCategorySet sub_categories = {
-            EventSubCategory::NoCuts, EventSubCategory::MassWindow, EventSubCategory::KinematicFitConverged,
-            EventSubCategory::KinematicFitConvergedWithMassWindow
+            EventSubCategory().SetCutResult(SelectionCut::InsideMassWindow, true)
+                              .SetCutResult(SelectionCut::MVA, true)
+                              .SetCutResult(SelectionCut::KinematicFitConverged, true)
         };
         return sub_categories;
     }
@@ -69,65 +70,68 @@ public:
     virtual const EventRegionSet& EventRegionsToProcess() const
     {
         static const EventRegionSet regions = {
-            EventRegion::OS_Isolated, EventRegion::SS_Isolated, EventRegion::SS_AntiIsolated
+            EventRegion::OS_Isolated(), EventRegion::OS_AntiIsolated(),
+            EventRegion::SS_Isolated(), EventRegion::SS_AntiIsolated()
         };
         return regions;
     }
 
     virtual const EventEnergyScaleSet& EventEnergyScaleToProcess() const
     {
-        (void)AllEventEnergyScales;
         static const EventEnergyScaleSet scales = {
-            EventEnergyScale::Central/*, EventEnergyScale::TauUp, EventEnergyScale::TauDown*/
+            EventEnergyScale::Central, EventEnergyScale::TauUp, EventEnergyScale::TauDown,
+            EventEnergyScale::JetUp, EventEnergyScale::JetDown
         };
         return scales;
     }
 
-    //EventCategoryVector DetermineEventCategories(const std::vector<float>& csv_Bjets,
-    //                                             const EventInfoBase::BjetPair& selected_bjets, Int_t nBjets_retagged,
-    //                                             double CSVL, double CSVM, bool doRetag = false)
-    //{
-    //    EventCategoryVector categories;
-    //    categories.push_back(EventCategory::Inclusive);
+    EventCategorySet DetermineEventCategories(const  std::vector<float>& csv_Bjets,
+                                              const EventInfoBase::JetPair& selected_bjets,
+                                              double CSVL, double CSVM)
+    {
+        EventCategorySet categories;
+        categories.insert(EventCategory::Inclusive());
 
-    //    static const std::map< size_t, EventCategory> mediumCategories_map {
-    //        {  0 , EventCategory::TwoJets_ZeroBtag }, { 1 , EventCategory::TwoJets_OneBtag },
-    //        {  2 , EventCategory::TwoJets_TwoBtag }
-    //    };
+        std::map<DiscriminatorWP, size_t> n_bjets;
 
-    //    static const std::map< size_t, EventCategory> looseCategories_map {
-    //        { 0 , EventCategory::TwoJets_ZeroLooseBtag }, { 1, EventCategory::TwoJets_OneLooseBtag },
-    //        { 2 , EventCategory::TwoJets_TwoLooseBtag }
-    //    };
+        static const std::map< size_t, EventCategory> mediumCategories_map {
+            {  0 , EventCategory::TwoJets_ZeroBtag }, { 1 , EventCategory::TwoJets_OneBtag },
+            {  2 , EventCategory::TwoJets_TwoBtag }
+        };
 
-    //    if (selected_bjets.first < csv_Bjets.size() && selected_bjets.second < csv_Bjets.size()){
-    //        categories.push_back(EventCategory::TwoJets_Inclusive);
+        static const std::map< size_t, EventCategory> looseCategories_map {
+            { 0 , EventCategory::TwoJets_ZeroLooseBtag }, { 1, EventCategory::TwoJets_OneLooseBtag },
+            { 2 , EventCategory::TwoJets_TwoLooseBtag }
+        };
 
-    //        size_t n_mediumBtag = 0;
-    //        if(doRetag) {
-    //            n_mediumBtag = std::min<size_t>(nBjets_retagged, 2);
-    //        } else {
-    //            if(csv_Bjets.at(selected_bjets.first) > CSVM) ++n_mediumBtag;
-    //            if(csv_Bjets.at(selected_bjets.second) > CSVM) ++n_mediumBtag;
-    //        }
+        if (selected_bjets.first < csv_Bjets.size() && selected_bjets.second < csv_Bjets.size()){
+            categories.push_back(EventCategory::TwoJets_Inclusive);
 
-    //        if(mediumCategories_map.count(n_mediumBtag))
-    //            categories.push_back(mediumCategories_map.at(n_mediumBtag));
-    //        if(n_mediumBtag > 0)
-    //            categories.push_back(EventCategory::TwoJets_AtLeastOneBtag);
+            size_t n_mediumBtag = 0;
+            if(doRetag) {
+                n_mediumBtag = std::min<size_t>(nBjets_retagged, 2);
+            } else {
+                if(csv_Bjets.at(selected_bjets.first) > CSVM) ++n_mediumBtag;
+                if(csv_Bjets.at(selected_bjets.second) > CSVM) ++n_mediumBtag;
+            }
 
-    //        size_t n_looseBtag = 0;
-    //        if(csv_Bjets.at(selected_bjets.first) > CSVL) ++n_looseBtag;
-    //        if(csv_Bjets.at(selected_bjets.second) > CSVL) ++n_looseBtag;
+            if(mediumCategories_map.count(n_mediumBtag))
+                categories.push_back(mediumCategories_map.at(n_mediumBtag));
+            if(n_mediumBtag > 0)
+                categories.push_back(EventCategory::TwoJets_AtLeastOneBtag);
 
-    //        if(looseCategories_map.count(n_looseBtag))
-    //            categories.push_back(looseCategories_map.at(n_looseBtag));
-    //        if(n_looseBtag > 0)
-    //            categories.push_back(EventCategory::TwoJets_AtLeastOneLooseBtag);
-    //    }
+            size_t n_looseBtag = 0;
+            if(csv_Bjets.at(selected_bjets.first) > CSVL) ++n_looseBtag;
+            if(csv_Bjets.at(selected_bjets.second) > CSVL) ++n_looseBtag;
 
-    //    return categories;
-    //}
+            if(looseCategories_map.count(n_looseBtag))
+                categories.push_back(looseCategories_map.at(n_looseBtag));
+            if(n_looseBtag > 0)
+                categories.push_back(EventCategory::TwoJets_AtLeastOneLooseBtag);
+        }
+
+        return categories;
+    }
 
 
     BaseEventAnalyzer(const AnalyzerArguments& _args)
@@ -139,8 +143,6 @@ public:
 
     void Run()
     {
-        static const std::set<std::string> disabled_branches = { "lhe_particle_pdg", "lhe_particle_p4" };
-
         std::cout << "Processing data categories... " << std::endl;
         for(const DataCategory* dataCategory : dataCategoryCollection.GetAllCategories()) {
             if(!dataCategory->sources_sf.size()) continue;

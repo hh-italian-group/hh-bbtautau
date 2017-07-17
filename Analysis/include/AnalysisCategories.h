@@ -169,12 +169,13 @@ struct EventSubCategory {
         return results[GetIndex(cut)];
     }
     bool Failed(SelectionCut cut) const { return !Passed(cut); }
-    void SetCutResult(SelectionCut cut, bool result)
+    EventSubCategory& SetCutResult(SelectionCut cut, bool result)
     {
         if(HasCut(cut))
             throw exception("Cut '%1%' is aready defined.") % cut;
         results[GetIndex(cut)] = result;
         presence[GetIndex(cut)] = true;
+        return *this;
     }
 
     BitsContainer GetPresenceBits() const { return presence.to_ulong(); }
@@ -227,6 +228,9 @@ std::ostream& operator<<(std::ostream& os, const EventSubCategory& eventSubCateg
     return os;
 }
 
+using EventRegionSet = std::set<EventRegion>;
+using EventCategorySet = std::set<EventCategory>;
+using EventSubCategorySet = std::set<EventSubCategory>;
 using Dataset = std::string;
 
 } // namespace analysis
