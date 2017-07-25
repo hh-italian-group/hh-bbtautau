@@ -27,7 +27,7 @@ public:
     explicit MvaData(std::shared_ptr<TFile> _outputFile, const std::string& directoryName = "") :
         AnalyzerData(_outputFile, directoryName)
     {
-        histo.Emplace("shrinkage", 4, -0.05, 1.15);
+        histo.Emplace("shrinkage", 8, 0.04, 0.36);
         histo.Emplace("NTrees", 4, 150, 1350);
         histo.Emplace("BaggedSampleFraction", 3, 0.375, 1.125);
         histo.Emplace("MaxDepth", 4, 1.5, 5.5);
@@ -38,19 +38,24 @@ public:
         histo.Emplace("KS_type", 4, -2, 2);
         histo.Emplace("cut", 200, -1, 1);
         histo.Emplace("significance", 100, 0, 30);
-        ROC.Emplace("shrinkage", 4, -0.05, 1.15, 50, 0.5, 1.);
+        histo.Emplace("nCuts", 17, 0, 680);
+
+        ROC.Emplace("shrinkage", 8, 0.04, 0.36, 50, 0.5, 1.);
         ROC.Emplace("NTrees", 4, 150, 1350, 50, 0.5, 1.);
         ROC.Emplace("BaggedSampleFraction", 3, 0.375, 1.125, 50, 0.5, 1.);
         ROC.Emplace("MaxDepth", 4, 1.5, 5.5, 50, 0.5, 1);
         ROC.Emplace("MinNodeSize", 3, -0.01, 0.11, 50, 0.5, 1.);
         ROC.Emplace("relativeROC", 66, 245, 905, 20,0.7,1.3);
         ROC.Emplace("significance", 100, 0, 30, 50, 0.5, 1.);
+        ROC.Emplace("nCuts", 17, 0, 680, 50, 0.5, 1.);
+
         significance.Emplace("err", 100, 0, 1, 100, 0, 30);
-        significance.Emplace("shrinkage", 4, -0.05, 1.15, 50, 0.5, 1.);
-        significance.Emplace("NTrees", 4, 150, 1350, 50, 0.5, 1.);
-        significance.Emplace("BaggedSampleFraction", 3, 0.375, 1.125, 50, 0.5, 1.);
-        significance.Emplace("MaxDepth", 4, 1.5, 5.5, 50, 0.5, 1);
-        significance.Emplace("MinNodeSize", 3, -0.01, 0.11, 50, 0.5, 1.);
+        significance.Emplace("shrinkage", 8, 0.04, 0.36, 100, 0, 30);
+        significance.Emplace("NTrees", 4, 150, 1350, 100, 0, 30);
+        significance.Emplace("BaggedSampleFraction", 3, 0.375, 1.125, 100, 0, 30);
+        significance.Emplace("MaxDepth", 4, 1.5, 5.5, 100, 0, 30);
+        significance.Emplace("MinNodeSize", 3, -0.01, 0.11, 100, 0, 30);
+        significance.Emplace("nCuts", 17, 0, 680, 100, 0, 30);
     }
     TH1D_ENTRY(histo, 10, .5, 10.5)
     TH2D_ENTRY(ROC, 10, .5, 10.5, 50, 0.5, 1.)
@@ -152,7 +157,6 @@ public:
                     anaData.histo("KS_type").Fill(static_cast<int>(ks.first.sampleType));
                     anaData.histo("KS_value").Fill(ks.second);
                 }
-
                 for(const auto& rank : ranking)
                     position[method_name][rank.first].push_back(rank.second);
              }

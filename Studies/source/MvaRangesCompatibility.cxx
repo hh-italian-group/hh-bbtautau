@@ -14,7 +14,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/ProgressReporter.h"
 #include "AnalysisTools/Run/include/MultiThread.h"
 #include "AnalysisTools/Core/include/NumericPrimitives.h"
-#include "hh-bbtautau/Analysis/include/MvaMethods.h"
+#include "hh-bbtautau/Studies/include/MvaMethods.h"
 #include "h-tautau/Cuts/include/Btag_2016.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
@@ -48,7 +48,7 @@ public:
     SampleIdNameElement bandwidth, mutual_matrix, correlation_matrix, JSDivergenceSB;
 
     MvaClassification(const Arguments& _args): args(_args),
-        outfile(root_ext::CreateRootFile(args.output_file())), vars(args.number_sets(), args.seed()),
+        outfile(root_ext::CreateRootFile(args.output_file())), vars(args.number_sets(), args.seed(),{}, {"channel", "mass"}),
         reporter(std::make_shared<TimeReporter>())
     {
         MvaSetupCollection setups;
@@ -61,7 +61,7 @@ public:
         configReader.AddEntryReader("FILES", sampleReader, false);
         configReader.ReadConfig(args.cfg_file());
 
-        samples = samples_list.at("inputs").files;
+        samples = samples_list.at("Samples").files;
     }
 
     void DistributionJSD_SB(const SampleId& mass_entry, TDirectory* directory) const
@@ -205,7 +205,6 @@ public:
         return selected;
     }
 
-
     void InformationTable(const SampleId& mass_entry, const SetNamesVar& selected, const std::map<std::string, std::string>& eliminated) const
     {
         auto mass = ToString(mass_entry);
@@ -286,18 +285,10 @@ public:
         {
             if ( entry.channel != "" && args.tree_name() != entry.channel ) continue;
             auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
-            EventTuple tuple(args.tree_name(), input_file.get(), true, {} , GetMvaBranches());
+            auto tuple = ntuple::CreateEventTuple(args.tree_name(), input_file.get(), true, ntuple::TreeState::Skimmed);
             Long64_t tot_entries = 0;
-            for(Long64_t current_entry = 0; tot_entries < args.number_events() && current_entry < tuple.GetEntries(); ++current_entry) {
-                tuple.GetEntry(current_entry);
-                const Event& event = tuple.data();
-                if (static_cast<EventEnergyScale>(event.eventEnergyScale) != EventEnergyScale::Central || (event.q_1+event.q_2) != 0 || event.jets_p4.size() < 2
-                    || event.extraelec_veto == true || event.extramuon_veto == true || event.jets_p4[0].eta() > cuts::btag_2016::eta
-                    || event.jets_p4[1].eta() > cuts::btag_2016::eta)
-                    continue;
-                auto bb = event.jets_p4[0] + event.jets_p4[1];
-                if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideEllipse(event.SVfit_p4.mass(), bb.mass()))
-                    continue;
+             for(const Event& event : *tuple) {
+                if(tot_entries >= args.number_events()) break;
                 tot_entries++;
                 vars.AddEvent(event, entry.id, entry.weight);
             }
@@ -319,7 +310,6 @@ public:
         auto directory_jensenshannon =root_ext::GetDirectory(*outfile, "JensenShannonDivergence");
         auto directory_jenshan_sgnlbkg = root_ext::GetDirectory(*directory_jensenshannon, "Signal_Background");
         auto directory_jenshan_distrib = root_ext::GetDirectory(*directory_jenshan_sgnlbkg,"Distribution");
-
         for (const auto& sample: samples_mass){
             std::cout<<"----"<<ToString(sample.first)<<"----"<<" entries: "<<sample.second.at("pt_l1").size()<<std::endl;
             std::cout<<"correlation  " << std::flush;

@@ -42,6 +42,7 @@ struct Arguments { // list of all program arguments
     REQ_ARG(Long64_t, number_events);
     REQ_ARG(std::string, range);
     REQ_ARG(Long64_t, number_variables);
+    REQ_ARG(int, which_test);
     OPT_ARG(size_t, number_sets, 2);
     OPT_ARG(uint_fast32_t, seed, std::numeric_limits<uint_fast32_t>::max());
     OPT_ARG(uint_fast32_t, seed2, 1234567);
@@ -54,10 +55,12 @@ class MvaVariablesTMVA : public MvaVariables {
 public:
     using DataVector = std::vector<double>;
     using DataVectorF = std::vector<float>;
+    using MassData_pair = std::map<SampleId, std::deque<std::pair<DataVector, double>>>;
     using MassData = std::map<SampleId, std::deque<DataVector>>;
     static constexpr size_t max_n_vars = 1000;
     DataVector variable;
     DataVectorF variable_float;
+    std::map<size_t, MassData_pair> data_pair;
     std::map<size_t, MassData> data;
     std::map<std::string, size_t> name_indices;
     std::vector<std::string> names;
@@ -81,18 +84,25 @@ public:
         variable.at(name_indices.at(name)) = value;
     }
 
-    virtual void AddEventVariables(size_t istraining, const SampleId& mass, double /*weight*/) override
+    virtual void AddEventVariables(size_t istraining, const SampleId& mass, double weight) override
     {
+        data_pair[istraining][mass].emplace_back(variable, weight);
         data[istraining][mass].push_back(variable);
     }
 
     void UploadEvents()
     {
         std::map<SampleId, double> weights;
-        for(const auto& entry : data[0]) {
+        for(const auto& entry : data_pair[0]) {
             const SampleId m = entry.first;
-            if(m.IsBackground()) weights[m] = 1;
-            else weights[m] = 1. / (data[0].at(m).size() + data[1][m].size() );
+            double tot_weight = 0;
+            for (const auto& val : data_pair){
+                for (const auto& x : val.second.at(m)){
+                    tot_weight+= x.second;
+                }
+            }
+            weights[m] = 1. / (tot_weight);
+            std::cout<<m<<" "<<weights[m]<<std::endl;
         }
 
         for(const auto& data_entry : data) {
@@ -102,7 +112,7 @@ public:
                 const SampleId m = m_entry.first;
                 const std::string samplename = m.IsSignal() ? "Signal" : "Background";
                 for(const auto& vars : m_entry.second) {
-                    loader->AddEvent(samplename, treetype, vars, weights.at(m));
+                    loader->AddEvent(samplename, treetype, vars , weights.at(m));
                 }
             }
         }
@@ -139,7 +149,7 @@ public:
     using EventTuple = ::ntuple::EventTuple;
 
     MVATraining(const Arguments& _args): args(_args),
-        outfile(root_ext::CreateRootFile(args.output_file()+"_"+std::to_string(args.seed())+".root")), seed_split(0,29)
+        outfile(root_ext::CreateRootFile(args.output_file()+"_"+std::to_string(args.seed())+".root")), gen2(args.seed2()),  seed_split(0,29)
     {
         MvaSetupCollection setups;
         SampleEntryListCollection samples_list;
@@ -263,7 +273,6 @@ public:
                     for(auto out : outs)
                         out->Fill(value);
                 }
-                std::cout<<"histo"<<std::endl;
             }
         }
     }
@@ -285,6 +294,7 @@ public:
         auto mass_range = CreateMassRange();
         std::cout<< mass_range.size() <<std::endl;
         std::uniform_int_distribution<size_t> it(0, mass_range.size() - 1);
+        std::uniform_int_distribution<int> split(0, 3);
         std::cout<<bkg<<std::endl;
 
         for(size_t j = 0; j<mva_setup.channels.size(); j++){
@@ -295,28 +305,20 @@ public:
                 if ( entry.id.IsBackground() && Parse<Channel>(entry.channel) != mva_setup.channels.at(j) )
                     continue;
                 auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
-                EventTuple tuple(ToString(mva_setup.channels[j]), input_file.get(), true, {} , GetMvaBranches());
+                auto tuple = ntuple::CreateEventTuple(ToString(mva_setup.channels[j]), input_file.get(), true, ntuple::TreeState::Skimmed);
                 Long64_t tot_entries = 0;
-                std::mt19937_64 gen2(args.seed2());
-                for(Long64_t current_entry = 0; tot_entries < args.number_events() && current_entry < tuple.GetEntries(); ++current_entry) {
-                    uint_fast32_t seed = seed_split(gen2);
-                    if (seed>15) continue;
-                    tuple.GetEntry(current_entry);
-                    const Event& event = tuple.data();
-                    if (static_cast<EventEnergyScale>(event.eventEnergyScale) != EventEnergyScale::Central || (event.q_1+event.q_2) != 0 || event.jets_p4.size() < 2
-                        || event.extraelec_veto == true || event.extramuon_veto == true || event.jets_p4[0].eta() > cuts::btag_2016::eta
-                        || event.jets_p4[1].eta() > cuts::btag_2016::eta)
-                        continue;
-                    auto bb = event.jets_p4[0] + event.jets_p4[1];
-                    if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideEllipse(event.SVfit_p4.mass(), bb.mass()))
-                        continue;
+                for(const Event& event : *tuple) {
+                    if(tot_entries >= args.number_events()) break;
+                    if (event.split_id >= 15) continue;
                     tot_entries++;
+                    int set = split(gen2);
+                    int which_set = set == args.which_test() ? 1 : 0;
                     if (entry.id.IsBackground()) {
                         const int mass_background = mass_range.at(it(gen));
                         const SampleId sample_bkg(SampleType::Bkg_TTbar, mass_background);
-                        vars->AddEvent(event, sample_bkg, entry.weight);
+                        vars->AddEvent(event, sample_bkg, entry.weight, which_set);
                     }
-                    else vars->AddEvent(event, entry.id, entry.weight);
+                    else vars->AddEvent(event, entry.id, entry.weight, which_set);
                 }
                 std::cout << " channel " << mva_setup.channels[j] << "    " << entry.filename << " number of events: " << tot_entries << std::endl;
             }
@@ -368,12 +370,13 @@ public:
         std::map<std::string, std::map<int, std::pair<double, PhysicalValue>>> sign;
         auto directory_ks = root_ext::GetDirectory(*outfile.get(), "Kolmogorov");
         auto directory_sb = root_ext::GetDirectory(*outfile.get(), "Significance");
+        auto difference = std::make_shared<BDTData>(outfile.get());
         for (const auto& m: methods){
             auto directory_ks_method = root_ext::GetDirectory(*directory_ks, m.first);
             auto directory_sb_method = root_ext::GetDirectory(*directory_sb, m.first);
             std::cout<<"----"<<m.first<<"----"<<std::endl;
             std::cout<<"Kolmogorov"<<std::endl;
-            kolmogorov[m.first] = Kolmogorov(evaluation[m.first], directory_ks_method);
+            kolmogorov[m.first] = Kolmogorov(evaluation[m.first], outputBDT.at(m.first)->bdt_out, difference->difference,directory_ks_method);
             std::cout<<"Significance"<<std::endl;
             sign[m.first]  = EstimateSignificativity(mass_range, outputBDT.at(m.first)->bdt_out, directory_sb_method, true);
         }

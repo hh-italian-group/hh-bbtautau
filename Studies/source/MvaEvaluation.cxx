@@ -133,23 +133,13 @@ public:
                 if ( entry.id.IsBackground() && Parse<Channel>(entry.channel) != mva_setup.channels.at(j) )
                     continue;
                 auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
-                EventTuple tuple(ToString(mva_setup.channels[j]), input_file.get(), true, {} , GetMvaBranches());
-                Long64_t tot_entries = 0;
-                std::mt19937_64 gen2(args.seed2());
-                for(Long64_t current_entry = 0; tot_entries < args.number_events() && current_entry < tuple.GetEntries(); ++current_entry) {
-                    uint_fast32_t seed1 = seed_split(gen2);
-                    if (seed1>15) continue;
-                    tuple.GetEntry(current_entry);
-                    const Event& event = tuple.data();
-                    if (static_cast<EventEnergyScale>(event.eventEnergyScale) != EventEnergyScale::Central || (event.q_1+event.q_2) != 0 || event.jets_p4.size() < 2
-                        || event.extraelec_veto == true || event.extramuon_veto == true || event.jets_p4[0].eta() > cuts::btag_2016::eta
-                        || event.jets_p4[1].eta() > cuts::btag_2016::eta)
-                        continue;
-                    auto bb = event.jets_p4[0] + event.jets_p4[1];
-                    if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideEllipse(event.SVfit_p4.mass(), bb.mass()))
-                        continue;
-                    tot_entries++;
 
+                auto tuple = ntuple::CreateEventTuple(ToString(mva_setup.channels[j]), input_file.get(), true, ntuple::TreeState::Skimmed);
+                Long64_t tot_entries = 0;
+                for(const Event& event : *tuple) {
+                    if(tot_entries >= args.number_events()) break;
+                    if (event.split_id >= 15) continue;
+                    tot_entries++;
                     std::uniform_int_distribution<uint_fast32_t> seed_distr(100000, std::numeric_limits<uint_fast32_t>::max());
                     uint_fast32_t test_split = test_vs_training(seed_gen);
                     gen.seed(seed_distr(seed_gen));
@@ -171,6 +161,7 @@ public:
 
         BDTData outputBDT(outfile, "Evaluation");
         CreateOutputHistos(data, outputBDT.bdt_out);
+        BDTData difference(outfile, "Difference");
         auto histo_roc = std::make_shared<TH2D>("ROC","ROC", 66, 245, 905, 100, 0,1);
         std::map<int, double> roc;
         auto reader_method = vars->GetReader();
@@ -186,7 +177,7 @@ public:
         root_ext::WriteObject(*histo_roc, outfile.get());
         auto directory = root_ext::GetDirectory(*outfile.get(), "Kolmogorov");
         std::cout<<"kolmogorov"<<std::endl;
-        std::map<SampleId, double> kolmogorov = Kolmogorov(data, directory);
+        std::map<SampleId, double> kolmogorov = Kolmogorov(data, outputBDT.bdt_out,  difference.difference ,directory);
 
         auto directory_sb = root_ext::GetDirectory(*outfile.get(), "Significance");
         std::cout<<"Significativity"<<std::endl;

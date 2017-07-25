@@ -57,7 +57,7 @@ public:
     SampleIdNameElement bandwidth, mutual_matrix, correlation_matrix, JSDivergenceSB;
 
     VariableDistribution(const Arguments& _args): args(_args),
-              outfile(root_ext::CreateRootFile(args.output_file())), vars(args.number_sets(), args.seed()),
+        outfile(root_ext::CreateRootFile(args.output_file())), vars(args.number_sets(), args.seed(),{}, {"channel", "mass"}),
               reporter(std::make_shared<TimeReporter>())
     {
         MvaSetupCollection setups;
@@ -247,18 +247,10 @@ public:
         {
             if ( entry.channel != "" && args.tree_name() != entry.channel ) continue;
             auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
-            EventTuple tuple(args.tree_name(), input_file.get(), true, {} , GetMvaBranches());
+            auto tuple = ntuple::CreateEventTuple(args.tree_name(), input_file.get(), true, ntuple::TreeState::Skimmed);
             Long64_t tot_entries = 0;
-            for(Long64_t current_entry = 0; tot_entries < args.number_events() && current_entry < tuple.GetEntries(); ++current_entry) {
-                tuple.GetEntry(current_entry);
-                const Event& event = tuple.data();
-                if (static_cast<EventEnergyScale>(event.eventEnergyScale) != EventEnergyScale::Central || (event.q_1+event.q_2) != 0 || event.jets_p4.size() < 2
-                    || event.extraelec_veto == true || event.extramuon_veto == true || event.jets_p4[0].eta() > cuts::btag_2016::eta
-                    || event.jets_p4[1].eta() > cuts::btag_2016::eta)
-                    continue;
-                auto bb = event.jets_p4[0] + event.jets_p4[1];
-                if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideEllipse(event.SVfit_p4.mass(), bb.mass()))
-                    continue;
+             for(const Event& event : *tuple) {
+                if(tot_entries >= args.number_events()) break;
                 tot_entries++;
                 vars.AddEvent(event, entry.id, entry.weight);
             }

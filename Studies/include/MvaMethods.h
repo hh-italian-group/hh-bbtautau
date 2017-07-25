@@ -252,7 +252,19 @@ inline VectorName_ND CopySelectedVariables(const VectorName_ND& JSDivergence_vec
     return copy;
 }
 
-inline std::map<SampleId,double> Kolmogorov(const std::map<SampleId, std::map<size_t, std::vector<double>>>& evaluation, TDirectory* directory)
+class BDTData : public root_ext::AnalyzerData {
+public:
+    using AnalyzerData::AnalyzerData;
+    using Entry = root_ext::AnalyzerDataEntry<TH1D>;
+    using Hist = Entry::Hist;
+
+    TH1D_ENTRY(bdt_out, 202, -1.01, 1.01)
+    TH1D_ENTRY(difference, 200, -1., 1.)
+};
+
+inline std::map<SampleId,double> Kolmogorov(const std::map<SampleId, std::map<size_t, std::vector<double>>>& evaluation,
+                                            BDTData::Entry& outputBDT, BDTData::Entry& difference,
+                                            TDirectory* directory)
 {
     std::map<SampleId,double> kolmogorov;
     std::shared_ptr<TH1D> histo_kolmogorov;
@@ -267,29 +279,22 @@ inline std::map<SampleId,double> Kolmogorov(const std::map<SampleId, std::map<si
         }
         double ks = TMath::KolmogorovTest(static_cast<int>(ks_vector.at(0).size()), ks_vector.at(0).data(),
                                           static_cast<int>(ks_vector.at(1).size()), ks_vector.at(1).data(), "");
-        std::cout<<sample.first.sampleType<<" "<<sample.first.mass<<"    "<<ks<<std::endl;
-        kolmogorov[sample.first] = ks;
+        double kshx = outputBDT(sample.first, 0).KolmogorovTest(&outputBDT(sample.first, 1), "X");
+        double ksh = outputBDT(sample.first, 0).KolmogorovTest(&outputBDT(sample.first, 1), "");
+        difference("x").Fill(kshx-ks);
+        difference().Fill(ksh-ks);
+        kolmogorov[sample.first] = ksh;
         histo_kolmogorov->Fill(ks);
+        std::cout<<sample.first.sampleType<<" "<<sample.first.mass<<"    "<<ks<<"   "<<ksh<<std::endl;
+
     }
     root_ext::WriteObject(*histo_kolmogorov, directory);
     return kolmogorov;
 }
 
-
 const SampleId mass_tot = SampleId::MassTot();
 const SampleId bkg = SampleId::Bkg();
 const std::string tot = "full";
-
-
-class BDTData : public root_ext::AnalyzerData {
-public:
-    using AnalyzerData::AnalyzerData;
-    using Entry = root_ext::AnalyzerDataEntry<TH1D>;
-    using Hist = Entry::Hist;
-
-    TH1D_ENTRY(bdt_out, 202, -1.01, 1.01)
-};
-
 
 inline std::vector<std::pair<double,PhysicalValue>> Calculate_CutSignificance(const SampleId& sgn_mass, const SampleId& bkg_mass,
                                                                        const std::string& title, BDTData::Entry& outputBDT,

@@ -83,7 +83,7 @@ public:
         reader->BookMVA(method_name, bdt_weights);
     }
 
-    virtual void AddEvent(const ntuple::Event& event, const SampleId& /*mass*/ , double /*sample_weight = 1.*/) override
+    virtual void AddEvent(const ntuple::Event& event, const SampleId& /*mass*/ , double /*sample_weight = 1.*/, int) override
     {
         auto bb = event.jets_p4[0] + event.jets_p4[1];
         dphi_mumet = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.p4_1, event.pfMET_p4));;

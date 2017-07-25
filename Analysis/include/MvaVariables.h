@@ -65,13 +65,19 @@ ENUM_NAMES(SampleType) = {
 inline std::ostream& operator<<(std::ostream& os, const SampleId& id)
 {
     if(id.sampleType == SampleType::Sgn_NonRes || id.sampleType == SampleType::Bkg_TTbar)
-        os << id.sampleType;
+        os << id.sampleType << id.mass;
     else {
         if(id == SampleId::MassTot())
             os << "Mtot";
         else
             os << "M" << id.mass;
     }
+    return os;
+}
+
+inline std::ostream& operator<<(std::ostream& os, const std::pair<SampleId, SampleId>& id_pair)
+{
+    os << id_pair.first << ":" << id_pair.second;
     return os;
 }
 
@@ -93,7 +99,7 @@ inline std::istream& operator>>(std::istream& is, SampleId& id)
 class MvaVariablesBase {
 public:
     virtual ~MvaVariablesBase() {}
-    virtual void AddEvent(const ntuple::Event& event, const SampleId& mass , double sample_weight = 1.) = 0;
+    virtual void AddEvent(const ntuple::Event& event, const SampleId& mass , double sample_weight = 1., int which_test = -1) = 0;
     virtual double Evaluate() { throw exception("Not supported."); }
     virtual std::shared_ptr<TMVA::Reader> GetReader() = 0;
 };
@@ -104,8 +110,8 @@ class MvaVariables : public MvaVariablesBase {
 public:
     using VarNameSet = std::unordered_set<std::string>;
     MvaVariables(size_t _number_set = 1, uint_fast32_t seed = std::numeric_limits<uint_fast32_t>::max(),
-                 const VarNameSet& _enabled_vars = {}) :
-        gen(seed), which_set(0, _number_set-1), enabled_vars(_enabled_vars)
+                 const VarNameSet& _enabled_vars = {}, const VarNameSet& _disabled_vars = {}) :
+        gen(seed), which_set(0, _number_set-1), enabled_vars(_enabled_vars), disabled_vars(_disabled_vars)
     {
     }
 
@@ -114,10 +120,10 @@ public:
     virtual void AddEventVariables(size_t which_set, const SampleId& mass, double weight) = 0;
     bool IsEnabled(const std::string& name) const
     {
-        return !enabled_vars.size() || enabled_vars.count(name);
+        return (!enabled_vars.size() && !disabled_vars.count(name)) || enabled_vars.count(name);
     }
 
-    virtual void AddEvent(const ntuple::Event& event, const SampleId& mass , double sample_weight = 1.) override
+    virtual void AddEvent(const ntuple::Event& event, const SampleId& mass , double sample_weight = 1., int which_test = -1) override
     {
         auto bb = event.jets_p4[0] + event.jets_p4[1];
         auto leptons = event.p4_1 + event.p4_2;
@@ -132,7 +138,7 @@ public:
         VAR("pt_l1l2MET", leptonsMET.pt());
         VAR("pt_htautau", event.SVfit_p4.pt());
         VAR("pt_MET", event.pfMET_p4.pt());
-        VAR("HT_otherjets", Calculate_HT(event.jets_p4.begin()+2, event.jets_p4.end()));
+        VAR("HT_otherjets", event.ht_other_jets);
         VAR("p_zeta", Calculate_Pzeta(event.p4_1, event.p4_2, event.pfMET_p4));
         VAR("p_zetavisible", Calculate_visiblePzeta(event.p4_1,event.p4_2));
         VAR("abs_dphi_l1l2", std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.p4_1, event.p4_2)));
@@ -213,13 +219,14 @@ public:
 
         VAR("mass", mass.mass);
         VAR_INT("channel", event.channelId);
-        AddEventVariables(which_set(gen), mass, sample_weight); // event.weight * sample_weight
+        size_t test = which_test ==-1 ? which_set(gen) : static_cast<size_t>(which_test);
+        AddEventVariables(test, mass, sample_weight*event.weight_total);
     }
 
 private:
     std::mt19937_64 gen;
     std::uniform_int_distribution<size_t> which_set;
-    VarNameSet enabled_vars;
+    VarNameSet enabled_vars, disabled_vars;
 };
 #undef VAR
 }
