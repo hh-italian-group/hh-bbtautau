@@ -76,7 +76,8 @@ if [ $MODE = "prod" ] ; then
     git cms-init
 
     # MET filters
-    git cms-merge-topic -u cms-met:CMSSW_8_0_X-METFilterUpdate
+    #git cms-merge-topic -u cms-met:CMSSW_8_0_X-METFilterUpdate #outdated
+    git cms-merge-topic -u cms-met:fromCMSSW_8_0_20_postICHEPfilter
 
     # MET corrections
     git cms-merge-topic cms-met:METRecipe_8020
