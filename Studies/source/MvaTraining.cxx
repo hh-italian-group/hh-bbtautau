@@ -29,6 +29,9 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "TMath.h"
 #include <fstream>
 #include <random>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/iostreams/copy.hpp>
+#include <boost/iostreams/filtering_streambuf.hpp>
 #include "hh-bbtautau/Analysis/include/MvaConfigurationReader.h"
 #include "hh-bbtautau/Studies/include/MvaTuple.h"
 #include "hh-bbtautau/Studies/include/MvaVariablesStudy.h"
@@ -46,6 +49,7 @@ struct Arguments { // list of all program arguments
     OPT_ARG(size_t, number_sets, 2);
     OPT_ARG(uint_fast32_t, seed, std::numeric_limits<uint_fast32_t>::max());
     OPT_ARG(uint_fast32_t, seed2, 1234567);
+    OPT_ARG(std::string, save, "");
 };
 
 namespace analysis {
@@ -56,12 +60,10 @@ public:
     using DataVector = std::vector<double>;
     using DataVectorF = std::vector<float>;
     using MassData_pair = std::map<SampleId, std::deque<std::pair<DataVector, double>>>;
-    using MassData = std::map<SampleId, std::deque<DataVector>>;
     static constexpr size_t max_n_vars = 1000;
     DataVector variable;
     DataVectorF variable_float;
     std::map<size_t, MassData_pair> data_pair;
-    std::map<size_t, MassData> data;
     std::map<std::string, size_t> name_indices;
     std::vector<std::string> names;
     std::shared_ptr<TMVA::DataLoader> loader;
@@ -87,7 +89,6 @@ public:
     virtual void AddEventVariables(size_t istraining, const SampleId& mass, double weight) override
     {
         data_pair[istraining][mass].emplace_back(variable, weight);
-        data[istraining][mass].push_back(variable);
     }
 
     void UploadEvents()
@@ -105,18 +106,48 @@ public:
             std::cout<<m<<" "<<weights[m]<<std::endl;
         }
 
-        for(const auto& data_entry : data) {
+        for(const auto& data_entry : data_pair) {
             const bool istraining = data_entry.first;
             const TMVA::Types::ETreeType treetype = istraining ? TMVA::Types::kTraining : TMVA::Types::kTesting;
             for(const auto& m_entry : data_entry.second) {
                 const SampleId m = m_entry.first;
                 const std::string samplename = m.IsSignal() ? "Signal" : "Background";
                 for(const auto& vars : m_entry.second) {
-                    loader->AddEvent(samplename, treetype, vars , weights.at(m));
+                    loader->AddEvent(samplename, treetype, vars.first , weights.at(m));
                 }
             }
         }
     }
+
+    void SaveEvents(const std::string& file_name)
+    {
+        static const std::string sep = ",";
+        std::stringstream ss;
+        std::ofstream save(file_name, std::ofstream::out);
+        ss << "index" << sep << "IsSignal" << sep;
+        for (const auto& var: names){
+            ss << var << sep ;
+        }
+        ss << "Weight" << std::endl;
+        size_t n = 0;
+        for(const auto& data_entry : data_pair) {
+            for(const auto& m_entry : data_entry.second) {
+                const SampleId m = m_entry.first;
+                for(const auto& vars : m_entry.second) {
+                    ss << n << sep <<  m.IsSignal() << sep;
+                    for (const auto& var : vars.first)
+                        ss << var << sep;
+                    ss << vars.second <<std::endl;
+                    ++n;
+                }
+            }
+        }
+        boost::iostreams::filtering_streambuf< boost::iostreams::input> in;
+        in.push( boost::iostreams::gzip_compressor());
+        in.push( ss );
+        boost::iostreams::copy(in, save);
+    }
+
 
     double Evaluation(const std::string& method_name, const std::vector<double>& event)
     {
@@ -127,15 +158,15 @@ public:
         return reader->EvaluateMVA(method_name);
     }
 
-    std::vector<double> EvaluateForAllEvents(const std::string& method_name, size_t istraining, const SampleId& sample)
+    std::vector<std::pair<double,double>> EvaluateForAllEvents(const std::string& method_name, size_t istraining, const SampleId& sample)
     {
-        if(!data.count(istraining) || !data.at(istraining).count(sample))
+        if(!data_pair.count(istraining) || !data_pair.at(istraining).count(sample))
             throw exception("Sample not found.");
-        const auto& events = data.at(istraining).at(sample);
-        std::vector<double> result;
+        const auto& events = data_pair.at(istraining).at(sample);
+        std::vector<std::pair<double,double>> result;
         result.reserve(events.size());
         for(const auto& event : events)
-            result.push_back(Evaluation(method_name, event));
+            result.emplace_back(Evaluation(method_name, event.first), event.second);
         return result;
     }
 
@@ -149,7 +180,7 @@ public:
     using EventTuple = ::ntuple::EventTuple;
 
     MVATraining(const Arguments& _args): args(_args),
-        outfile(root_ext::CreateRootFile(args.output_file()+"_"+std::to_string(args.seed())+".root")), gen2(args.seed2()),  seed_split(0,29)
+        outfile(root_ext::CreateRootFile(args.output_file()+"_"+std::to_string(args.which_test())+".root")), gen2(args.seed2()),  seed_split(0,29)
     {
         MvaSetupCollection setups;
         SampleEntryListCollection samples_list;
@@ -256,22 +287,23 @@ public:
     {
         std::string weightfile = "mydataloader/weights/myFactory"+args.output_file()+"_"+method_name+".weights.xml";
         vars->reader->BookMVA(method_name, weightfile);
-        for(const auto& type_entry : vars->data){
+        for(const auto& type_entry : vars->data_pair){
             const auto& sample_entry = type_entry.second;
             std::cout<<type_entry.first<<std::endl;
             for(const auto& entry : sample_entry){
-                auto& current_evaluation = evaluation[entry.first][type_entry.first];
-                current_evaluation = vars->EvaluateForAllEvents(method_name, type_entry.first, entry.first);
+                auto current_evaluation = vars->EvaluateForAllEvents(method_name, type_entry.first, entry.first);
+                for (const auto& val: current_evaluation)
+                    evaluation[entry.first][type_entry.first].push_back(val.first);
 
                 const SampleId tot_sample = entry.first.IsSignal() ? mass_tot : bkg;
                 auto& eval = evaluation[tot_sample][type_entry.first];
-                eval.insert(eval.end(), current_evaluation.begin(), current_evaluation.end());
+                eval.insert(eval.end(), evaluation[entry.first][type_entry.first].begin(), evaluation[entry.first][type_entry.first].end());
 
                 std::vector<BDTData::Hist*> outs = { &outputBDT(tot_sample, tot), &outputBDT(tot_sample, type_entry.first),
                                                      &outputBDT(entry.first, tot), &outputBDT(entry.first, type_entry.first) };
                 for (const auto& value : current_evaluation){
                     for(auto out : outs)
-                        out->Fill(value);
+                        out->Fill(value.first, value.second);
                 }
             }
         }
@@ -312,7 +344,7 @@ public:
                     if (event.split_id >= 15) continue;
                     tot_entries++;
                     int set = split(gen2);
-                    int which_set = set == args.which_test() ? 1 : 0;
+                    int which_set = set == args.which_test() ? 0 : 1;
                     if (entry.id.IsBackground()) {
                         const int mass_background = mass_range.at(it(gen));
                         const SampleId sample_bkg(SampleType::Bkg_TTbar, mass_background);
@@ -323,6 +355,10 @@ public:
                 std::cout << " channel " << mva_setup.channels[j] << "    " << entry.filename << " number of events: " << tot_entries << std::endl;
             }
         }
+        if (args.save().size()) {
+            vars->SaveEvents(args.save());
+            return;
+        }
         vars->UploadEvents();
         vars->loader->PrepareTrainingAndTestTree( "","", "SplitMode=Random" );
 
@@ -330,7 +366,7 @@ public:
         const Grid_ND grid(options.GetPositionLimits());
         std::map<std::string, std::string> methods;
         for(const auto& point : grid){
-            methods[options.GetName(point)+"_"+std::to_string(args.seed())] = options.GetConfigString(point);
+            methods[options.GetName(point)+"_"+std::to_string(args.which_test())] = options.GetConfigString(point);
         }
         std::cout << methods.size() << " metodi" << std::endl;
 
@@ -376,7 +412,7 @@ public:
             auto directory_sb_method = root_ext::GetDirectory(*directory_sb, m.first);
             std::cout<<"----"<<m.first<<"----"<<std::endl;
             std::cout<<"Kolmogorov"<<std::endl;
-            kolmogorov[m.first] = Kolmogorov(evaluation[m.first], outputBDT.at(m.first)->bdt_out, difference->difference,directory_ks_method);
+            kolmogorov[m.first] = Kolmogorov(evaluation[m.first], outputBDT.at(m.first)->bdt_out, difference->difference, directory_ks_method);
             std::cout<<"Significance"<<std::endl;
             sign[m.first]  = EstimateSignificativity(mass_range, outputBDT.at(m.first)->bdt_out, directory_sb_method, true);
         }
@@ -385,7 +421,7 @@ public:
         MvaTuple mva_tuple(outfile.get(), false);
         std::cout<<"options"<<std::endl;
         for(const auto& point : grid) {
-            auto name = options.GetName(point)+"_"+std::to_string(args.seed());
+            auto name = options.GetName(point)+"_"+std::to_string(args.which_test());
             mva_tuple().name = name;
 
             for (const auto val : options.GetOptionNames()){

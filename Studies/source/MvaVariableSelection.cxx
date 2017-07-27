@@ -1,5 +1,5 @@
 /*! Study of correlation matrix, mutual information and Jensen Shannon Divergence to search
- * best varia bles for each range of mass.
+  best variables for each range of mass.
 This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include <fstream>
@@ -70,7 +70,7 @@ public:
         configReader.AddEntryReader("FILES", sampleReader, false);
         configReader.ReadConfig(args.cfg_file());
 
-        samples = samples_list.at("inputs").files;
+        samples = samples_list.at("Samples").files;
     }
 
     NameElement CorrelationSelected(const VarData& sample_vars, const SetNamesVar& selected){
@@ -88,7 +88,6 @@ public:
         }
         return corr_matrix;
     }
-
 
     SetNamesVar FindBestRangeVariables(const Range<int>& range, const std::map<SampleId, double>& max_distance,
                                       std::map<SampleId, VectorName_ND> JSDivergence_vector) const{
