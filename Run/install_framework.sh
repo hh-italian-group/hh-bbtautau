@@ -4,7 +4,7 @@
 
 INSTALL_MODES=(prod ana limits)
 DEFAULT_N_JOBS=4
-DEFAULT_RELEASE_PROD="CMSSW_8_0_25"
+DEFAULT_RELEASE_PROD="CMSSW_8_0_28"
 DEFAULT_RELEASE_LIMITS="CMSSW_7_4_7"
 DEFAULT_RELEASE_ANA="CMSSW_9_0_0"
 
@@ -77,10 +77,11 @@ if [ $MODE = "prod" ] ; then
 
     # MET filters
     #git cms-merge-topic -u cms-met:CMSSW_8_0_X-METFilterUpdate #outdated
-    git cms-merge-topic -u cms-met:fromCMSSW_8_0_20_postICHEPfilter
+    #git cms-merge-topic -u cms-met:fromCMSSW_8_0_20_postICHEPfilter
 
     # MET corrections
-    git cms-merge-topic cms-met:METRecipe_8020
+    #git cms-merge-topic cms-met:METRecipe_8020
+    git cms-merge-topic cms-met:METRecipe_8020_for80Xintegration
 fi
 
 if [ $MODE = "limits" ] ; then
