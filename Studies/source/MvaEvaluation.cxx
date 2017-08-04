@@ -50,6 +50,7 @@ struct Arguments { // list of all program arguments
     REQ_ARG(bool, isLegacy);
     REQ_ARG(bool, isLow);
     REQ_ARG(std::string, range);
+    OPT_ARG(std::string, channel, "");
 };
 
 namespace analysis {
@@ -90,6 +91,12 @@ public:
         }
         std::cout<<"VARS: "<<enabled_vars.size()<<std::endl;
 
+        if (args.channel().size()){
+            channels.push_back(args.channel());
+        }
+        else
+            for (const auto& channel : mva_setup.channels)
+                channels.push_back(ToString(channel));
     }
 
     void CreateOutputHistos(std::map<SampleId, std::map<size_t, std::vector<double>>> data, BDTData::Entry& outputBDT)
@@ -125,16 +132,16 @@ public:
         auto vars = reader.AddRange(range, args.method_name(), args.file_xml(), enabled_vars, args.isLegacy(), args.isLow());
         std::mt19937_64 seed_gen(args.seed());
 
-        for(size_t j = 0; j<mva_setup.channels.size(); j++){
-            std::cout << mva_setup.channels[j] << std::endl;
+        for(size_t j = 0; j<channels.size(); j++){
+            std::cout << channels[j] << std::endl;
             for(const SampleEntry& entry : samples)
             {
                 if ( entry.id.IsSignal() && (entry.id.mass<args.min() || entry.id.mass>args.max())) continue;
-                if ( entry.id.IsBackground() && Parse<Channel>(entry.channel) != mva_setup.channels.at(j) )
+                if ( entry.id.IsBackground() && entry.channel != channels.at(j) )
                     continue;
                 auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
 
-                auto tuple = ntuple::CreateEventTuple(ToString(mva_setup.channels[j]), input_file.get(), true, ntuple::TreeState::Skimmed);
+                auto tuple = ntuple::CreateEventTuple(ToString(channels[j]), input_file.get(), true, ntuple::TreeState::Skimmed);
                 Long64_t tot_entries = 0;
                 for(const Event& event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
@@ -148,36 +155,77 @@ public:
                             const SampleId sample_bkg(SampleType::Bkg_TTbar, mass);
                             vars->AddEvent(event, sample_bkg, entry.weight);
                             data[sample_bkg][test_split].push_back(reader.Evaluate(event, mass, args.method_name()));
+                            data[bkg][test_split].push_back(reader.Evaluate(event, mass, args.method_name()));
+                            data[sample_bkg][test_train].push_back(reader.Evaluate(event, mass, args.method_name()));
+                            data[bkg][test_train].push_back(reader.Evaluate(event, mass, args.method_name()));
                         }
                     }
                     else{
                         vars->AddEvent(event, entry.id, entry.weight);
                         data[entry.id][test_split].push_back(reader.Evaluate(event, entry.id.mass, args.method_name()));
+                        data[mass_tot][test_split].push_back(reader.Evaluate(event, entry.id.mass, args.method_name()));
+                        data[entry.id][test_train].push_back(reader.Evaluate(event, entry.id.mass, args.method_name()));
+                        data[mass_tot][test_train].push_back(reader.Evaluate(event, entry.id.mass, args.method_name()));
                     }
                 }
-                std::cout << " channel " << mva_setup.channels[j] << "    " << entry.filename << " number of events: " << tot_entries << std::endl;
+                std::cout << " channel " << channels[j] << "    " << entry.filename << " number of events: " << tot_entries << std::endl;
             }
         }
 
         BDTData outputBDT(outfile, "Evaluation");
         CreateOutputHistos(data, outputBDT.bdt_out);
         BDTData difference(outfile, "Difference");
-        auto histo_roc = std::make_shared<TH2D>("ROC","ROC", 66, 245, 905, 100, 0,1);
+        auto histo_roc = std::make_shared<TGraph>();
+        histo_roc->SetTitle("ROC");
+        histo_roc->SetName("ROC");
         std::map<int, double> roc;
         auto reader_method = vars->GetReader();
         auto method = dynamic_cast<TMVA::MethodBase*>(reader_method->FindMVA(args.method_name()));
+        int i = 0;
+        auto directory_roc = root_ext::GetDirectory(*outfile.get(), "ROCCurve");
         for (const auto& mass : mass_range){
+            std::cout<<mass<<std::endl;
             SampleId sample_sgn(SampleType::Sgn_Res, mass);
             SampleId sample_bkg(SampleType::Bkg_TTbar, mass);
             roc[mass] = method->GetROCIntegral(&outputBDT.bdt_out(sample_sgn,tot), &outputBDT.bdt_out(sample_bkg,tot));
-            histo_roc->Fill(mass, roc[mass]);
+            histo_roc->SetPoint(i, mass, roc[mass]);
             std::cout<<mass<<"  ROC: "<<roc[mass]<<std::endl;
-        }
+            i++;
+            auto directory_roc_mass = root_ext::GetDirectory(*directory_roc, std::to_string(mass));
+            std::vector<float> mvaS, mvaB;
+            for (const auto& eval : data[sample_sgn][test_train])
+                mvaS.push_back(static_cast<float>(eval));
+            for (const auto& eval : data[sample_bkg][test_train])
+                mvaB.push_back(static_cast<float>(eval));
+            TMVA::ROCCurve roccurve(mvaS, mvaB);
+            auto graph = roccurve.GetROCCurve();
+            root_ext::WriteObject(*graph, directory_roc_mass);
 
+        }
         root_ext::WriteObject(*histo_roc, outfile.get());
+
+        auto roctot = method->GetROCIntegral(&outputBDT.bdt_out(mass_tot,tot), &outputBDT.bdt_out(bkg,tot));
+        std::cout<<roctot<<std::endl;
+
+        std::vector<float> mvaS, mvaB;
+        for (const auto& eval : data[mass_tot][test_train])
+            mvaS.push_back(static_cast<float>(eval));
+        for (const auto& eval : data[bkg][test_train])
+            mvaB.push_back(static_cast<float>(eval));
+
+        TMVA::ROCCurve roccurve(mvaS, mvaB);
+        auto graph = roccurve.GetROCCurve();
+        root_ext::WriteObject(*graph, directory_roc);
+
         auto directory = root_ext::GetDirectory(*outfile.get(), "Kolmogorov");
         std::cout<<"kolmogorov"<<std::endl;
         std::map<SampleId, double> kolmogorov = Kolmogorov(data, outputBDT.bdt_out,  difference.difference ,directory);
+
+        std::cout<<"ciao"<<std::endl;
+        auto directory_chi = root_ext::GetDirectory(*outfile.get(), "Chi2");
+        std::cout<<"ciao"<<std::endl;
+        std::cout<<"chi2"<<std::endl;
+        std::map<SampleId, double> chi = ChiSquare(data, outputBDT.bdt_out, directory_chi);
 
         auto directory_sb = root_ext::GetDirectory(*outfile.get(), "Significance");
         std::cout<<"Significativity"<<std::endl;
@@ -188,6 +236,12 @@ public:
             mva_tuple().KS_mass.push_back(sample.first.mass);
             mva_tuple().KS_value.push_back(sample.second);
             mva_tuple().KS_type.push_back(static_cast<int>(sample.first.sampleType));
+        }
+
+        for (const auto& sample : chi){
+            mva_tuple().chi_mass.push_back(sample.first.mass);
+            mva_tuple().chi_value.push_back(sample.second);
+            mva_tuple().chi_type.push_back(static_cast<int>(sample.first.sampleType));
         }
 
         for (const auto& value : roc){
@@ -213,6 +267,7 @@ private:
     MvaVariables::VarNameSet enabled_vars;
     MvaReader reader;
     std::uniform_int_distribution<uint_fast32_t>  seed_split, test_vs_training;
+    std::vector<std::string> channels;
 };
 
 }

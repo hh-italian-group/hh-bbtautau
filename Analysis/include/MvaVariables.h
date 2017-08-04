@@ -64,7 +64,7 @@ ENUM_NAMES(SampleType) = {
 
 inline std::ostream& operator<<(std::ostream& os, const SampleId& id)
 {
-    if(id.sampleType == SampleType::Sgn_NonRes || id.sampleType == SampleType::Bkg_TTbar)
+    if(id.sampleType == SampleType::Bkg_TTbar)
         os << id.sampleType << id.mass;
     else {
         if(id == SampleId::MassTot())

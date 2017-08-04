@@ -15,6 +15,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, output_file);
     REQ_ARG(std::vector<std::string>, input_file);
+    REQ_ARG(std::string, which_test);
 };
 
 namespace analysis {
@@ -40,14 +41,14 @@ public:
         histo.Emplace("significance", 100, 0, 30);
         histo.Emplace("nCuts", 17, 0, 680);
 
-        ROC.Emplace("shrinkage", 8, 0.04, 0.36, 50, 0.5, 1.);
+        ROC.Emplace("shrinkage", 5, 0.025, 0.275, 30, 0.7, 1.);
         ROC.Emplace("NTrees", 4, 150, 1350, 50, 0.5, 1.);
         ROC.Emplace("BaggedSampleFraction", 3, 0.375, 1.125, 50, 0.5, 1.);
         ROC.Emplace("MaxDepth", 4, 1.5, 5.5, 50, 0.5, 1);
         ROC.Emplace("MinNodeSize", 3, -0.01, 0.11, 50, 0.5, 1.);
         ROC.Emplace("relativeROC", 66, 245, 905, 20,0.7,1.3);
         ROC.Emplace("significance", 100, 0, 30, 50, 0.5, 1.);
-        ROC.Emplace("nCuts", 17, 0, 680, 50, 0.5, 1.);
+        ROC.Emplace("nCuts", 3, 0, 120, 50, 0.5, 1.);
 
         significance.Emplace("err", 100, 0, 1, 100, 0, 30);
         significance.Emplace("shrinkage", 8, 0.04, 0.36, 100, 0, 30);
@@ -109,6 +110,7 @@ public:
     void Run()
     {
         static constexpr double KS_cut = 0.05;
+        static constexpr double chi_cut = 0.05;
 
         std::map<std::string, std::shared_ptr<TH1D>> histo_position;
         std::map<std::string, GridPoint> method_params;
@@ -130,6 +132,7 @@ public:
                 std::cout<<grid_point.size()<<std::endl;
                 const auto roc_integrals = GetRocIntegralMap(results);
                 const auto KS_results = GetKSResultsMap(results);
+                const auto chi_results = GetChiResultsMap(results);
                 const auto ranking = GetRankingMap(results);
                 const auto sign = GetOptimalSignificanceMap(results);
 
@@ -137,7 +140,12 @@ public:
                     throw exception("Missing total mass info");
                 if(!KS_results.count(SampleId::Bkg()))
                     throw exception("Missing bkg info");
-                if(KS_results.at(SampleId::MassTot()) <= KS_cut || KS_results.at(SampleId::Bkg()) <= KS_cut) continue;
+
+                if (args.which_test() == "KS")
+                    if(KS_results.at(SampleId::MassTot()) <= KS_cut || KS_results.at(SampleId::Bkg()) <= KS_cut) continue;
+
+                if (args.which_test() == "chi")
+                    if(chi_results.at(SampleId::MassTot()) <= chi_cut || chi_results.at(SampleId::Bkg()) <= chi_cut) continue;
 
                 method_params[method_name] = grid_point;
                 ++method_seed_count[method_name];

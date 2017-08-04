@@ -258,12 +258,12 @@ public:
     using Entry = root_ext::AnalyzerDataEntry<TH1D>;
     using Hist = Entry::Hist;
 
-    TH1D_ENTRY(bdt_out, 202, -1.01, 1.01)
+    TH1D_ENTRY(bdt_out, 101, -1.01, 1.01)
     TH1D_ENTRY(difference, 200, -1., 1.)
 };
 
 inline std::map<SampleId,double> Kolmogorov(const std::map<SampleId, std::map<size_t, std::vector<double>>>& evaluation,
-                                            BDTData::Entry& outputBDT, BDTData::Entry& difference,
+                                            BDTData::Entry& outputBDT, BDTData::Entry& /*difference*/,
                                             TDirectory* directory)
 {
     std::map<SampleId,double> kolmogorov;
@@ -271,30 +271,47 @@ inline std::map<SampleId,double> Kolmogorov(const std::map<SampleId, std::map<si
     histo_kolmogorov = std::make_shared<TH1D>("kolmogorov", "kolmogorov", 50, 0, 1.01);
     histo_kolmogorov->SetXTitle("KS");
     for (const auto& sample : evaluation){
-        std::map<size_t, std::vector<double>> ks_vector;
-        for (auto tvt : sample.second){
-            auto type = tvt.first;
-            std::sort(tvt.second.begin(), tvt.second.end());
-            ks_vector[type] = std::move(tvt.second);
-        }
-        double ks = TMath::KolmogorovTest(static_cast<int>(ks_vector.at(0).size()), ks_vector.at(0).data(),
-                                          static_cast<int>(ks_vector.at(1).size()), ks_vector.at(1).data(), "");
+//        std::map<size_t, std::vector<double>> ks_vector;
+//        for (auto tvt : sample.second){
+//            auto type = tvt.first;
+//            std::sort(tvt.second.begin(), tvt.second.end());
+//            ks_vector[type] = std::move(tvt.second);
+//        }
+//        double ks = TMath::KolmogorovTest(static_cast<int>(ks_vector.at(0).size()), ks_vector.at(0).data(),
+//                                          static_cast<int>(ks_vector.at(1).size()), ks_vector.at(1).data(), "");
         double kshx = outputBDT(sample.first, 0).KolmogorovTest(&outputBDT(sample.first, 1), "X");
-        double ksh = outputBDT(sample.first, 0).KolmogorovTest(&outputBDT(sample.first, 1), "");
-        difference("x").Fill(kshx-ks);
-        difference().Fill(ksh-ks);
-        kolmogorov[sample.first] = ksh;
-        histo_kolmogorov->Fill(ks);
-        std::cout<<sample.first.sampleType<<" "<<sample.first.mass<<"    "<<ks<<"   "<<ksh<<std::endl;
+//        double ksh = outputBDT(sample.first, 0).KolmogorovTest(&outputBDT(sample.first, 1), "");
+//        difference("x").Fill(kshx-ks);
+//        difference().Fill(ksh-ks);
+        kolmogorov[sample.first] = kshx;
+        histo_kolmogorov->Fill(kshx);
+        std::cout<<sample.first.sampleType<<" "<<sample.first.mass<<"    "<<kshx<<std::endl;
 
     }
     root_ext::WriteObject(*histo_kolmogorov, directory);
     return kolmogorov;
 }
 
+inline std::map<SampleId,double> ChiSquare(const std::map<SampleId, std::map<size_t, std::vector<double>>>& evaluation,
+                                            BDTData::Entry& outputBDT, TDirectory* directory)
+{
+    std::map<SampleId,double> chi;
+    std::shared_ptr<TH1D> histo_chi;
+    histo_chi = std::make_shared<TH1D>("chi2", "chi2", 50, 0, 1.01);
+    histo_chi->SetXTitle("chi^2");
+    for (const auto& sample : evaluation){
+        chi[sample.first] = outputBDT(sample.first, 0).Chi2Test(&outputBDT(sample.first, 1), "WW");
+        histo_chi->Fill(chi[sample.first]);
+        std::cout<<sample.first.sampleType<<" "<<sample.first.mass<<"    "<<chi[sample.first]<<std::endl;
+    }
+    root_ext::WriteObject(*histo_chi, directory);
+    return chi;
+}
+
 const SampleId mass_tot = SampleId::MassTot();
 const SampleId bkg = SampleId::Bkg();
 const std::string tot = "full";
+const size_t test_train = 10;
 
 inline std::vector<std::pair<double,PhysicalValue>> Calculate_CutSignificance(const SampleId& sgn_mass, const SampleId& bkg_mass,
                                                                        const std::string& title, BDTData::Entry& outputBDT,
@@ -310,7 +327,7 @@ inline std::vector<std::pair<double,PhysicalValue>> Calculate_CutSignificance(co
          auto int_S = Integral(outputBDT(sgn_mass, tot), i, nbin+1);
          auto int_B = Integral(outputBDT(bkg_mass,tot), i, nbin+1);
          PhysicalValue significance;
-         if ( int_S.GetValue() != 0 || int_B.GetValue() != 0) {
+         if ( int_S.GetValue() != 0 && int_B.GetValue() != 0) {
              significance = (int_S/std::sqrt(int_B))/relative;
          }
 
@@ -331,7 +348,6 @@ inline std::map<int, std::pair<double, PhysicalValue>> EstimateSignificativity(c
 {
     std::map<int, std::pair<double, PhysicalValue>> sign;
     auto mass_sign = CreatePlotErrors("Mass_significance","Mass_significance","mass","S/(sqrt(B))");
-
     int index = 0;
     for(const auto& mass : mass_range){
         SampleId sgn_mass(SampleType::Sgn_Res, mass);
@@ -340,7 +356,6 @@ inline std::map<int, std::pair<double, PhysicalValue>> EstimateSignificativity(c
         sign[mass] = cuts.front();
         mass_sign->SetPoint(index, mass, sign[mass].second.GetValue());
         mass_sign->SetPointError(index, 0, sign[mass].second.GetStatisticalError());
-        std::cout<<index<<" "<<mass<<"  "<<ToString(sign[mass].second)<<std::endl;
         ++index;
     }
     if (total){

@@ -21,8 +21,8 @@
 ```
 ### MvaEvaluation
 ```shell
-./run.sh MvaEvaluation ~/Desktop/tuples prova_lowf hh-bbtautau/Studies/config/mva_config.cfg ~/Desktop/xml/n/TMVAClassification_500t_PU_mass_newvars_LOW.weights.xml BDT::500t_PU_mass_newvars_LOW 20000 250 350 2 12345678 1234567 true true LowF
-./run.sh MvaEvaluation ~/Desktop/tuples prova_highf hh-bbtautau/Studies/config/mva_config.cfg ~/Desktop/xml/n/TMVAClassification_500t_PU_mass_newvars_HIGH_oldvars.weights.xml BDT::500t_PU_mass_newvars_HIGH_oldvars 2000 400 900 2 12345678 1234567 true false HighF
+./run.sh MvaEvaluation ~/Desktop/tuples Eval_LowFra hh-bbtautau/Studies/config/mva_config.cfg ~/Desktop/xml/n/TMVAClassification_500t_PU_mass_newvars_LOW.weights.xml BDT::500t_PU_mass_newvars_LOW 200000 250 350 2 12345678 1234567 true true LowF
+./run.sh MvaEvaluation ~/Desktop/tuples Eval_HighFra hh-bbtautau/Studies/config/mva_config.cfg ~/Desktop/xml/n/TMVAClassification_500t_PU_mass_newvars_HIGH_oldvars.weights.xml BDT::500t_PU_mass_newvars_HIGH_oldvars 20000 400 900 2 12345678 1234567 true false HighF
 ./run.sh MvaEvaluation ~/Desktop/tuples prova_low25_500 hh-bbtautau/Studies/config/mva_config.cfg ~/workspace/hh-analysis/mydataloader/weights/myFactoryLowMassprova25_500_Grad_shrinkage_0.1_12345678.weights.xml BDT::Grad_shrinkage_0.1_12345678 20000 250 320 2 12345678 1234567 false false Low25
 ./run.sh MvaEvaluation ~/Desktop/tuples prova_low13 hh-bbtautau/Studies/config/mva_config.cfg ~/workspace/hh-analysis/mydataloader/weights/myFactoryLowMassprova13_Grad_shrinkage_0.1_12345678.weights.xml BDT::Grad_shrinkage_0.1_12345678 20000 250 320 2 12345678 1234567 false false Low13
 ./run.sh MvaEvaluation ~/Desktop/tuples prova_medium25_500 hh-bbtautau/Studies/config/mva_config.cfg ~/workspace/hh-analysis/mydataloader/weights/myFactoryMediumMassprova25_500_Grad_shrinkage_0.1_12345678.weights.xml BDT::Grad_shrinkage_0.1_12345678 20000 340 400 2 12345678 1234567 false false Medium25

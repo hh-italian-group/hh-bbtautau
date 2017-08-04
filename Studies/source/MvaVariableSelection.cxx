@@ -44,8 +44,8 @@ namespace mva_study{
 using clock = std::chrono::system_clock;
 
 namespace {
-Range<int> low_mass(250, 280),  medium_mass1(300, 350), medium_mass2(400, 550), high_mass(600,900);
-std::vector<Range<int>> ranges{low_mass, medium_mass1, medium_mass2, high_mass};
+Range<int> low_mass(250, 320), medium_mass(340, 400), high_mass(450,900);
+std::vector<Range<int>> ranges{low_mass, medium_mass, high_mass};
 }
 
 class VariableDistribution {

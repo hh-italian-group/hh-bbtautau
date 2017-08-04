@@ -22,6 +22,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "TMVA/MethodBase.h"
 #include "TMVA/MethodBDT.h"
 #include "TMVA/IMethod.h"
+#include "TMVA/ROCCurve.h"
 #include "TMVA/ClassifierFactory.h"
 #include "TMVA/MethodCategory.h"
 #include "TMVA/ResultsClassification.h"
@@ -49,6 +50,7 @@ struct Arguments { // list of all program arguments
     OPT_ARG(size_t, number_sets, 2);
     OPT_ARG(uint_fast32_t, seed, std::numeric_limits<uint_fast32_t>::max());
     OPT_ARG(uint_fast32_t, seed2, 1234567);
+    OPT_ARG(std::string, channel, "");
     OPT_ARG(std::string, save, "");
 };
 
@@ -199,12 +201,22 @@ public:
         if(!setups.count(args.range()+std::to_string(args.number_variables())))
             throw exception("Setups at '%1%' range don't found") %args.range();
         mva_setup = setups.at(args.range()+std::to_string(args.number_variables()));
-
+        std::cout<<args.range()+std::to_string(args.number_variables())<<std::endl;
         enabled_vars.insert(mva_setup.variables.begin(), mva_setup.variables.end());
+        std::cout<<enabled_vars.size()<<std::endl;
         if(mva_setup.use_mass_var) {
             enabled_vars.insert("mass");
             enabled_vars.insert("channel");
         }
+
+        if (args.channel().size()){
+            channels.push_back(args.channel());
+        }
+        else
+            for (const auto& channel : mva_setup.channels)
+                channels.push_back(ToString(channel));
+
+        std::cout<<enabled_vars.size()<<std::endl;
         std::mt19937_64 seed_gen(args.seed());
         std::uniform_int_distribution<uint_fast32_t> seed_distr(100000, std::numeric_limits<uint_fast32_t>::max());
         uint_fast32_t seed = seed_distr(seed_gen);
@@ -329,15 +341,15 @@ public:
         std::uniform_int_distribution<int> split(0, 3);
         std::cout<<bkg<<std::endl;
 
-        for(size_t j = 0; j<mva_setup.channels.size(); j++){
-            std::cout << mva_setup.channels[j] << std::endl;
+        for(size_t j = 0; j<channels.size(); j++){
+            std::cout << channels[j] << std::endl;
             for(const SampleEntry& entry : samples)
             {
                 if ( entry.id.IsSignal() && !range.Contains(entry.id.mass) ) continue;
-                if ( entry.id.IsBackground() && Parse<Channel>(entry.channel) != mva_setup.channels.at(j) )
+                if ( entry.id.IsBackground() && entry.channel != channels.at(j) )
                     continue;
                 auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
-                auto tuple = ntuple::CreateEventTuple(ToString(mva_setup.channels[j]), input_file.get(), true, ntuple::TreeState::Skimmed);
+                auto tuple = ntuple::CreateEventTuple(ToString(channels[j]), input_file.get(), true, ntuple::TreeState::Skimmed);
                 Long64_t tot_entries = 0;
                 for(const Event& event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
@@ -352,7 +364,7 @@ public:
                     }
                     else vars->AddEvent(event, entry.id, entry.weight, which_set);
                 }
-                std::cout << " channel " << mva_setup.channels[j] << "    " << entry.filename << " number of events: " << tot_entries << std::endl;
+                std::cout << " channel " << channels[j] << "    " << entry.filename << " number of events: " << tot_entries << std::endl;
             }
         }
         if (args.save().size()) {
@@ -376,6 +388,7 @@ public:
         std::map<std::string, std::map<SampleId, std::map<size_t, std::vector<double>>>> evaluation;
         std::map<std::string, std::shared_ptr<BDTData>> outputBDT;
         auto directory = root_ext::GetDirectory(*outfile.get(), "Evaluation");
+        auto directory_roc = root_ext::GetDirectory(*outfile.get(), "ROCCurve");
         for(const auto& m : methods){
             auto factory = std::make_shared<TMVA::Factory>("myFactory"+args.output_file(), outfile.get(),"!V:!Silent:Color:DrawProgressBar:Transformations=I:AnalysisType=Classification");
             factory->BookMethod(vars->loader.get(), TMVA::Types::kBDT, m.first, m.second);
@@ -389,34 +402,48 @@ public:
             for (size_t i = 0; i<vars->names.size(); i++){
                 importance[m.first].emplace_back(vars->names[i], method->GetVariableImportance(static_cast<UInt_t>(i)));
             }
-            ROCintegral[m.first] = method->GetROCIntegral(&outputBDT.at(m.first)->bdt_out(mass_tot, tot), &outputBDT.at(m.first)->bdt_out(bkg, tot));
+            ROCintegral[m.first] = method->GetROCIntegral(&outputBDT.at(m.first)->bdt_out(mass_tot, 0), &outputBDT.at(m.first)->bdt_out(bkg, 0));
             std::cout<<"ROC "<<ROCintegral[m.first]<<std::endl;
             for(const auto& sample : mass_range){
                 SampleId sample_sgn(SampleType::Sgn_Res, sample);
                 SampleId sample_bkg(SampleType::Bkg_TTbar, sample);
-                roc[m.first][sample] = method->GetROCIntegral(&outputBDT.at(m.first)->bdt_out(sample_sgn, tot), &outputBDT.at(m.first)->bdt_out(sample_bkg, tot));
+                roc[m.first][sample] = method->GetROCIntegral(&outputBDT.at(m.first)->bdt_out(sample_sgn, 0), &outputBDT.at(m.first)->bdt_out(sample_bkg, 0));
                 std::cout<<sample<<"    "<<roc[m.first][sample]<<std::endl;
             }
+            auto directory_roc_method = root_ext::GetDirectory(*directory_roc, m.first);
+            std::vector<float> mvaS, mvaB;
+            for (auto& eval : evaluation[m.first][mass_tot][0])
+                mvaS.push_back(static_cast<float>(eval));
+            for (auto& eval : evaluation[m.first][bkg][0])
+                mvaB.push_back(static_cast<float>(eval));
+
+            TMVA::ROCCurve roccurve(mvaS, mvaB);
+            auto graph = roccurve.GetROCCurve();
+            root_ext::WriteObject(*graph, directory_roc_method);
         }
         std::cout<<"importance"<<std::endl;
         RankingImportanceVariables(importance);
         std::cout<<"position"<<std::endl;
         auto position = RankingPoisitionVariables(importance);
         std::map<std::string, std::map<SampleId,double>> kolmogorov;
+        std::map<std::string, std::map<SampleId,double>> chi2;
         std::map<std::string, std::map<int, std::pair<double, PhysicalValue>>> sign;
         auto directory_ks = root_ext::GetDirectory(*outfile.get(), "Kolmogorov");
+        auto directory_chi = root_ext::GetDirectory(*outfile.get(), "Chi2");
         auto directory_sb = root_ext::GetDirectory(*outfile.get(), "Significance");
         auto difference = std::make_shared<BDTData>(outfile.get());
         for (const auto& m: methods){
             auto directory_ks_method = root_ext::GetDirectory(*directory_ks, m.first);
+            auto directory_chi_method = root_ext::GetDirectory(*directory_chi, m.first);
             auto directory_sb_method = root_ext::GetDirectory(*directory_sb, m.first);
             std::cout<<"----"<<m.first<<"----"<<std::endl;
             std::cout<<"Kolmogorov"<<std::endl;
             kolmogorov[m.first] = Kolmogorov(evaluation[m.first], outputBDT.at(m.first)->bdt_out, difference->difference, directory_ks_method);
+            std::cout<<"Chi"<<std::endl;
+            chi2[m.first] = ChiSquare(evaluation[m.first], outputBDT.at(m.first)->bdt_out,  directory_chi_method);
             std::cout<<"Significance"<<std::endl;
             sign[m.first]  = EstimateSignificativity(mass_range, outputBDT.at(m.first)->bdt_out, directory_sb_method, true);
         }
-
 
         MvaTuple mva_tuple(outfile.get(), false);
         std::cout<<"options"<<std::endl;
@@ -430,7 +457,6 @@ public:
                 mva_tuple().param_values.push_back(options.GetNumericValue(point, val.first));
             }
 
-
             for (const auto entry : sign[name]){
                 mva_tuple().optimal_cut.push_back(entry.second.first);
                 mva_tuple().significance.push_back(entry.second.second.GetValue());
@@ -442,6 +468,12 @@ public:
                 mva_tuple().KS_mass.push_back(sample.first.mass);
                 mva_tuple().KS_value.push_back(sample.second);
                 mva_tuple().KS_type.push_back(static_cast<int>(sample.first.sampleType));
+            }
+
+            for (const auto& sample : chi2.at(name)){
+                mva_tuple().chi_mass.push_back(sample.first.mass);
+                mva_tuple().chi_value.push_back(sample.second);
+                mva_tuple().chi_type.push_back(static_cast<int>(sample.first.sampleType));
             }
 
             mva_tuple().ROCIntegral = ROCintegral[name];
@@ -468,6 +500,7 @@ private:
     MvaVariables::VarNameSet enabled_vars;
     std::shared_ptr<MvaVariablesTMVA> vars;
     std::uniform_int_distribution<uint_fast32_t> test_vs_training, seed_split;
+    std::vector<std::string> channels;
 };
 
 }

@@ -22,6 +22,10 @@ namespace  analysis {
     VAR(std::vector<int>, KS_type) \
     VAR(std::vector<int>, KS_mass) \
     /**/ \
+    VAR(std::vector<double>, chi_value) \
+    VAR(std::vector<int>, chi_type) \
+    VAR(std::vector<int>, chi_mass) \
+    /**/ \
     VAR(std::vector<size_t>, position) \
     VAR(std::vector<double>, importance) \
     VAR(std::vector<std::string>, var_name) \
@@ -83,6 +87,21 @@ inline std::map<SampleId, double> GetKSResultsMap(const MvaResults& results)
     }
     return ks;
 }
+
+inline std::map<SampleId, double> GetChiResultsMap(const MvaResults& results)
+{
+    std::map<SampleId, double> chi;
+    const size_t N = results.chi_mass.size();
+    if(results.chi_type.size() != N || results.chi_value.size() != N)
+        throw exception("Incompatible Chi info in mva tuple.");
+    for(size_t n = 0; n < N; ++n) {
+        const SampleType type = static_cast<SampleType>(results.chi_type[n]);
+        const SampleId id(type, results.chi_mass[n]);
+        chi[id] = results.chi_value[n];
+    }
+    return chi;
+}
+
 
 struct VarRank {
     size_t position;
