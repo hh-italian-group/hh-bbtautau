@@ -112,7 +112,8 @@ git clone git@github.com:hh-italian-group/HHKinFit2.git HHKinFit2/HHKinFit2
 
 # LeptonEfficiencies packages
 git clone git@github.com:hh-italian-group/LeptonEff-interface.git HTT-utilities
-git clone git@github.com:CMS-HTT/LeptonEfficiencies.git HTT-utilities/LepEffInterface/data
+#git clone git@github.com:CMS-HTT/LeptonEfficiencies.git HTT-utilities/LepEffInterface/data
+git clone git@github.com:hh-italian-group/LeptonEfficiencies.git HTT-utilities/LepEffInterface/data
 
 # Recoil Corrections
 if [ $MODE = "prod" -o $MODE = "limits" ] ; then
