@@ -4,8 +4,9 @@
 
 INSTALL_MODES=(prod ana limits)
 DEFAULT_N_JOBS=4
-DEFAULT_RELEASE_PROD="CMSSW_8_0_25"
+DEFAULT_RELEASE_PROD="CMSSW_8_0_28"
 DEFAULT_RELEASE_LIMITS="CMSSW_7_4_7"
+DEFAULT_RELEASE_ANA="CMSSW_9_0_0"
 
 function join_by { local d=$1; shift; echo -n "$1"; shift; printf "%s" "${@/#/$d}"; }
 
@@ -15,8 +16,9 @@ if [ $# -lt 1 -o $# -gt 3 ] ; then
     join_by ", " "${INSTALL_MODES[@]}"
     printf ".\n\tn_jobs\t\t\tthe number of jobs to run simultaneous during the compilation. Default: $DEFAULT_N_JOBS.\n"
     printf "\tcmssw_release\t\tCMSSW release."
-    printf " Default: $DEFAULT_RELEASE_PROD\tfor tuple production and analysis,\n"
-    printf "\t\t\t\t\t\t\t$DEFAULT_RELEASE_LIMITS\tfor limits computation.\n"
+    printf " Default: $DEFAULT_RELEASE_PROD\tfor tuple production,\n"
+    printf "\t\t\t\t\t\t\t$DEFAULT_RELEASE_LIMITS\tfor limits computation,\n"
+    printf "\t\t\t\t\t\t\t$DEFAULT_RELEASE_ANA\tfor analysis.\n"
     exit 1
 fi
 
@@ -38,13 +40,15 @@ RELEASE=$3
 if [ "x$RELEASE" = "x" ] ; then
     if [ $MODE = "limits" ] ; then
         RELEASE=$DEFAULT_RELEASE_LIMITS
-    else
+    elif [ $MODE = "prod" ] ; then
         RELEASE=$DEFAULT_RELEASE_PROD
+    else
+        RELEASE=$DEFAULT_RELEASE_ANA
     fi
 fi
 if [ -e $RELEASE ] ; then
-    echo "ERROR: Working area for $RELEASE already exists."
-    exit 1
+echo "ERROR: Working area for $RELEASE already exists."
+exit 1
 fi
 
 if [ $MODE = "limits" ] ; then
@@ -72,10 +76,12 @@ if [ $MODE = "prod" ] ; then
     git cms-init
 
     # MET filters
-    git cms-merge-topic -u cms-met:CMSSW_8_0_X-METFilterUpdate
+    #git cms-merge-topic -u cms-met:CMSSW_8_0_X-METFilterUpdate #outdated
+    #git cms-merge-topic -u cms-met:fromCMSSW_8_0_20_postICHEPfilter
 
     # MET corrections
-    git cms-merge-topic cms-met:METRecipe_8020
+    #git cms-merge-topic cms-met:METRecipe_8020
+    git cms-merge-topic cms-met:METRecipe_8020_for80Xintegration
 fi
 
 if [ $MODE = "limits" ] ; then
@@ -95,7 +101,8 @@ if [ $MODE = "limits" ] ; then
 fi
 
 # SVfit packages
-git clone git@github.com:veelken/SVfit_standalone.git TauAnalysis/SVfitStandalone
+#git clone git@github.com:veelken/SVfit_standalone.git TauAnalysis/SVfitStandalone #notworking
+git clone git@github.com:hh-italian-group/SVfit_standalone.git TauAnalysis/SVfitStandalone
 cd TauAnalysis/SVfitStandalone
 git checkout HIG-16-006
 cd ../..
@@ -105,11 +112,12 @@ git clone git@github.com:hh-italian-group/HHKinFit2.git HHKinFit2/HHKinFit2
 
 # LeptonEfficiencies packages
 git clone git@github.com:hh-italian-group/LeptonEff-interface.git HTT-utilities
-git clone git@github.com:CMS-HTT/LeptonEfficiencies.git HTT-utilities/LepEffInterface/data
+#git clone git@github.com:CMS-HTT/LeptonEfficiencies.git HTT-utilities/LepEffInterface/data
+git clone git@github.com:hh-italian-group/LeptonEfficiencies.git HTT-utilities/LepEffInterface/data
 
 # Recoil Corrections
 if [ $MODE = "prod" -o $MODE = "limits" ] ; then
-   git clone https://github.com/CMS-HTT/RecoilCorrections.git  HTT-utilities/RecoilCorrections
+    git clone https://github.com/CMS-HTT/RecoilCorrections.git  HTT-utilities/RecoilCorrections
 fi
 
 # hh-italian-group packages
@@ -119,19 +127,31 @@ git clone git@github.com:hh-italian-group/hh-bbtautau.git
 
 if [ $MODE = "prod" ] ; then
     cd AnalysisTools
-    git checkout prod_v2
+    git checkout prod_v3
     cd ..
     cd h-tautau
-    git checkout prod_v2
+    git checkout prod_v3
     cd ..
     cd hh-bbtautau
-    git checkout prod_v2
+    git checkout ana_v2
     cd ..
 fi
 
 if [ $MODE = "limits" ] ; then
     cd h-tautau
     git checkout sync
+    cd ..
+fi
+
+if [ $MODE = "ana" ] ; then
+    cd AnalysisTools
+    git checkout master
+    cd ..
+    cd h-tautau
+    git checkout ana_v2
+    cd ..
+    cd hh-bbtautau
+    git checkout ana_v2
     cd ..
 fi
 
