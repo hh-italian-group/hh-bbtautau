@@ -2,14 +2,12 @@
 This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include "hh-bbtautau/Analysis/include/SemileptonicEventAnalyzer.h"
-#include "Analysis/include/BDT_reader_etau.h"
 
 namespace analysis {
 
 class bbetauAnalyzer : public SemileptonicFlatTreeAnalyzer<ElectronCandidate> {
 public:
-    //using SemileptonicFlatTreeAnalyzer<ElectronCandidate>::SemileptonicFlatTreeAnalyzer;
-	bbetauAnalyzer(const AnalyzerArguments& _args) : SemileptonicFlatTreeAnalyzer(_args), MVA_reader(_args.weight_file()) {}
+    using SemileptonicFlatTreeAnalyzer<ElectronCandidate>::SemileptonicFlatTreeAnalyzer;
 
 protected:
     virtual std::string TreeName() const override { return "eTau"; }
@@ -20,14 +18,11 @@ protected:
 
         const ElectronCandidate& electron = event.GetFirstLeg();
         const TauCandidate& tau = event.GetSecondLeg();
-		double BDT_wp =args.BDT_cut(); /*Francesco*/
-		double BDT_output = MVA_reader.BDT_score(event);
 
         if(tau->againstElectronMVA6(DiscriminatorWP::Tight) < 0.5
                 || tau->againstMuon3(DiscriminatorWP::Loose) < 0.5
                 || electron->iso() >= 0.15
-                || event->extraelec_veto || event->extramuon_veto
-				|| BDT_output < BDT_wp /*Francesco*/)
+                || event->extraelec_veto || event->extramuon_veto)
             return EventRegion::Unknown;
 
         const bool os = electron.GetCharge() * tau.GetCharge() == -1;
@@ -39,9 +34,6 @@ protected:
         if(os) return low_mt ? EventRegion::OS_AntiIsolated : EventRegion::OS_AntiIso_HighMt;
         return low_mt ? EventRegion::SS_AntiIsolated : EventRegion::SS_AntiIso_HighMt;
     }
-	
-private:
-	BDT_reader MVA_reader;
 };
 
 } // namespace analysis

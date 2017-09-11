@@ -35,8 +35,6 @@ struct AnalyzerArguments {
     REQ_ARG(std::string, outputFileName);
     REQ_ARG(std::string, signal_list);
     OPT_ARG(bool, saveFullOutput, false);
-	OPT_ARG(std::string, weight_file, "");
-	OPT_ARG(double, BDT_cut, 0.2);
 };
 
 template<typename _FirstLeg>
@@ -79,7 +77,7 @@ public:
 
     virtual const EventEnergyScaleSet& EventEnergyScaleToProcess() const
     {
-        //(void)AllEventEnergyScales;
+        (void)AllEventEnergyScales;
         static const EventEnergyScaleSet scales = {
             EventEnergyScale::Central/*, EventEnergyScale::TauUp, EventEnergyScale::TauDown*/
         };
@@ -124,7 +122,7 @@ public:
                     for (EventCategory eventCategory : EventCategoriesToProcess()) {
                         const EventAnalyzerDataMetaId_noRegion_noName anaDataMetaId(eventCategory, subCategory,
                                                                                    energyScale);
-                        if(dataCategoryCollection.GetCategories(DataCategoryType::Data).size() && false) { //Francesco
+                        if(dataCategoryCollection.GetCategories(DataCategoryType::Data).size()) {
                             DataCategoryType dataCategoryType = DataCategoryType::QCD;
                             const auto qcd_yield = CalculateQCDYield(anaDataMetaId, hist_name, dataCategoryType, s_out);
                             s_out << eventCategory << ": QCD yield = " << qcd_yield << ".\n";
@@ -145,8 +143,8 @@ public:
                                         &EventAnalyzerData::m_ttbb_kinfit);
 
         std::cout << "Printing stacked plots... " << std::endl;
-        PrintStackedPlots(EventRegion::OS_Isolated, true, true);
-        PrintStackedPlots(EventRegion::OS_Isolated, true, false);
+        PrintStackedPlots(EventRegion::OS_Isolated, false, true);
+        PrintStackedPlots(EventRegion::OS_Isolated, false, false);
         std::cout << "Saving output file..." << std::endl;
     }
 
