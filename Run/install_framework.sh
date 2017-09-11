@@ -4,7 +4,7 @@
 
 INSTALL_MODES=(prod ana limits)
 DEFAULT_N_JOBS=4
-DEFAULT_RELEASE_PROD="CMSSW_8_0_20"
+DEFAULT_RELEASE_PROD="CMSSW_8_0_25"
 DEFAULT_RELEASE_LIMITS="CMSSW_7_4_7"
 
 function join_by { local d=$1; shift; echo -n "$1"; shift; printf "%s" "${@/#/$d}"; }
