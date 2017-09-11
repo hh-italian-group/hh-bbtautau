@@ -25,6 +25,7 @@ struct Arguments {
     REQ_ARG(std::string, outputPath);
     REQ_ARG(std::string, jobs);
     REQ_ARG(std::string, setup_name);
+    OPT_ARG(unsigned, n_threads, 1);
 };
 
 namespace analysis {
@@ -48,6 +49,8 @@ public:
     {
         std::cout << "TupleSkimmer started.\nReading config... " << std::flush;
         ROOT::EnableThreadSafety();
+        if(args.n_threads() > 1)
+            ROOT::EnableImplicitMT(args.n_threads());
 
         ConfigReader configReader;
         SetupCollection setups;
@@ -80,7 +83,6 @@ public:
                 jobs.push_back(all_jobs.at(job_name));
             }
         }
-
     }
 
     void Run()
