@@ -15,10 +15,16 @@ public:
 
     virtual void EndEntry() override
     {
-        CheckReadParamCounts("int_lumi", 1, Condition::equal_to);
+        CheckReadParamCounts("int_lumi", 1, Condition::less_equal);
         CheckReadParamCounts("final_variable", 0, Condition::greater_equal);
-        CheckReadParamCounts("apply_mass_cut", 1, Condition::equal_to);
-        CheckReadParamCounts("energy_scales", 0, Condition::greater_equal);
+        CheckReadParamCounts("apply_mass_cut", 1, Condition::less_equal);
+        CheckReadParamCounts("apply_os_cut", 1, Condition::less_equal);
+        CheckReadParamCounts("apply_iso_cut", 1, Condition::less_equal);
+        CheckReadParamCounts("energy_scales", 1, Condition::less_equal);
+        CheckReadParamCounts("signals", 1, Condition::less_equal);
+        CheckReadParamCounts("backgrounds", 1, Condition::less_equal);
+        CheckReadParamCounts("data", 1, Condition::less_equal);
+        CheckReadParamCounts("data_driven_bkg", 1, Condition::less_equal);
 
         ConfigEntryReaderT<AnalyzerSetup>::EndEntry();
     }
@@ -29,7 +35,13 @@ public:
         ParseEntry("int_lumi", current.int_lumi);
         ParseEntry("final_variable", current.final_variables);
         ParseEntry("apply_mass_cut", current.apply_mass_cut);
+        ParseEntry("apply_os_cut", current.apply_os_cut);
+        ParseEntry("apply_iso_cut", current.apply_iso_cut);
         ParseEnumList("energy_scales", current.energy_scales);
+        ParseEntryList("signals", current.signals);
+        ParseEntryList("backgrounds", current.backgrounds);
+        ParseEntryList("data", current.data);
+        ParseEntryList("data_driven_bkg", current.data_driven_bkg);
     }
 };
 
@@ -74,6 +86,7 @@ public:
 
     virtual void EndEntry() override
     {
+        CheckReadParamCounts("name_suffix", 1, Condition::less_equal);
         CheckReadParamCounts("file_path", 0, Condition::greater_equal);
         CheckReadParamCounts("file_path_pattern", 1, Condition::less_equal);
         CheckReadParamCounts("cross_section", 1, Condition::less_equal);
@@ -85,13 +98,12 @@ public:
         current.UpdateSignalPoints();
 
         Base::EndEntry();
-
-
     }
 
     virtual void ReadParameter(const std::string& param_name, const std::string& param_value,
                                std::istringstream& ss) override
     {
+        ParseEntry("name_suffix", current.name_suffix);
         ParseEntry("file_path", current.file_paths);
         ParseEntry("file_path_pattern", current.file_path_pattern);
         ParseEntry<double,NumericalExpression>("cross_section", current.cross_section, [](double xs){return xs > 0;});
@@ -116,7 +128,7 @@ public:
 
     virtual void EndEntry() override
     {
-        CheckReadParamCounts("sample_descriptor", 0, Condition::greater_equal);
+        CheckReadParamCounts("sample_descriptors", 1, Condition::equal_to);
 
         Base::EndEntry();
 
@@ -125,7 +137,7 @@ public:
     virtual void ReadParameter(const std::string& param_name, const std::string& param_value,
                                std::istringstream& ss) override
     {
-        ParseEntry("sample_descriptor", current.sample_descriptors,
+        ParseEntryList("sample_descriptors", current.sample_descriptors, false, " \t",
                    [&](const std::string& name){return sampleDescriptorCollection->count(name);});
 
         Base::ReadParameter(param_name,param_value,ss);

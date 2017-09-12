@@ -8,6 +8,22 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 
 namespace analysis {
 
+//namespace detail {
+//template<size_t n, typename = typename std::enable_if< n < TupleSize >::type>
+//std::string GetEventAnalyzerDataIdSubName() const
+//{
+//    static const std::string separator = "/", wildcard = "*";
+//    const auto& value = std::get<n>(id_tuple);
+//    std::string name = value.is_initialized() ? ToString(*value) : wildcard;
+//    const std::string others_name = GetSubName<n+1>();
+//    return others_name.size() ? name + separator + others_name : name;
+//}
+
+//template<size_t n, typename = typename std::enable_if< n == TupleSize >::type>
+//std::string GetSubName() const { return ""; }
+
+//} // namespace detail
+
 struct EventAnalyzerDataId {
 public:
     template<typename T> using Optional = boost::optional<T>;
@@ -20,20 +36,20 @@ public:
     EventAnalyzerDataId(Args&&... args) { Initialize(std::forward<Args>(args)...); }
 
     template<typename T>
-    bool Has() const { return std::get<T>(id_tuple).is_initialized(); }
+    bool Has() const { return std::get<Optional<T>>(id_tuple).is_initialized(); }
     template<typename T>
-    void Set(const T& value) { std::get<T>(id_tuple) = value; }
+    void Set(const T& value) { std::get<Optional<T>>(id_tuple) = value; }
     template<typename T>
     const T& Get() const
     {
-        if(!std::get<T>(id_tuple).is_initialized())
+        if(!std::get<Optional<T>>(id_tuple).is_initialized())
             throw exception("%1% is not specified in EventAnalyzerDataId = '%2%'.") % typeid(T).name() % *this;
-        return *std::get<T>(id_tuple);
+        return *std::get<Optional<T>>(id_tuple);
     }
 
     bool operator< (const EventAnalyzerDataId& other) const { return id_tuple < other.id_tuple; }
-    std::string GetName() const { return GetSubName<0>(); }
-    bool IsComplete() const { return IsSubComplete<0>(); }
+    std::string GetName() const { return GetSubName(std::make_index_sequence<TupleSize>{}); }
+    bool IsComplete() const { return ItemsAreInitialized(std::make_index_sequence<TupleSize>{}); }
 
 private:
     void Initialize() {}
@@ -41,25 +57,39 @@ private:
     template<typename T, typename ...Args>
     void Initialize(T&& value, Args&&... other_values)
     {
-        std::get<Optional<std::remove_reference<T>>>(id_tuple) = value;
+        using ValueType = typename std::remove_const<typename std::remove_reference<T>::type>::type;
+        std::get<Optional<ValueType>>(id_tuple) = value;
         Initialize(std::forward<Args>(other_values)...);
     }
 
     template<size_t n>
-    std::string GetSubName() const
+    std::string ItemToString() const
     {
-        static const std::string separator = "/", wildcard = "*";
-        if(n >= TupleSize) return "";
+        static const std::string wildcard = "*";
         const auto& value = std::get<n>(id_tuple);
-        std::string name = value.is_initialized() ? ToString(*value) : wildcard;
-        const std::string others_name = GetSubName<n+1>();
-        return others_name.size() ? name + separator + others_name : name;
+        return value.is_initialized() ? ToString(*value) : wildcard;
     }
 
-    template<size_t n>
-    bool IsSubComplete() const
+    template<size_t ...n>
+    std::string GetSubName(std::index_sequence<n...>) const
     {
-        return n >= TupleSize || (std::get<n>(id_tuple).is_initialized() && IsSubComplete<n+1>());
+        static const std::string separator = "/";
+        const std::vector<std::string> item_names = { ItemToString<n>()... };
+        std::string sub_name;
+        for(const auto& name : item_names)
+            sub_name += name + separator;
+        if(sub_name.size())
+            sub_name.erase(sub_name.size() - 1);
+        return sub_name;
+    }
+
+    template<size_t ...n>
+    bool ItemsAreInitialized(std::index_sequence<n...>) const
+    {
+        const std::vector<bool> is_initialized = { std::get<n>(id_tuple).is_initialized()... };
+        for(bool init : is_initialized)
+            if(!init) return false;
+        return true;
     }
 
 private:
@@ -74,7 +104,7 @@ std::ostream& operator<< (std::ostream& s, const EventAnalyzerDataId& id)
 
 class BaseEventAnalyzerDataCollection {
 public:
-    virtual ~EventAnalyzerDataCollectionBase() {}
+    virtual ~BaseEventAnalyzerDataCollection() {}
     virtual BaseEventAnalyzerData& GetBase(const EventAnalyzerDataId& id) = 0;
 
 };

@@ -12,9 +12,9 @@ namespace analysis {
 class BaseEventAnalyzerData : public root_ext::AnalyzerData {
 public:    
     using BinVector = std::vector<double>;
-    static constexpr bool SaveAll = true;
+    const bool SaveAll = true;
 
-    const BinVector M_tt_Bins{ 10, 35, 60, 85, 110, 135, 160, 185, 210, 250, 300, 350, 400, 500 };
+    const BinVector M_tt_Bins = { 10, 35, 60, 85, 110, 135, 160, 185, 210, 250, 300, 350, 400, 500 };
     const BinVector M_ttbb_Bins = { 260, 300, 350, 400, 450, 500, 600, 700, 850, 1000 };
 
     TH1D_ENTRY_CUSTOM_EX(m_ttbb, M_ttbb_Bins, "M_{#tau#tau+jj} (GeV)", "dN/dm_{#tau#tau+jj} (1/GeV)", false, 1.5, true, SaveAll)

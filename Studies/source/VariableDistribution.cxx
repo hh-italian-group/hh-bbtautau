@@ -8,11 +8,11 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/AnalyzerData.h"
 #include "AnalysisTools/Core/include/StatEstimators.h"
 #include "hh-bbtautau/Analysis/include/MvaVariables.h"
-#include "hh-bbtautau/Analysis/include/MvaConfiguration.h"
+#include "hh-bbtautau/Studies/include/MvaConfiguration.h"
 #include "h-tautau/Cuts/include/Btag_2016.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
-#include "hh-bbtautau/Analysis/include/MvaMethods.h"
+#include "hh-bbtautau/Studies/include/MvaMethods.h"
 #include "hh-bbtautau/Analysis/include/MvaConfigurationReader.h"
 
 struct Arguments { // list of all program arguments

@@ -8,13 +8,10 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 namespace analysis {
 
 template<typename FirstLeg>
-class SemileptonicFlatTreeAnalyzer : public BaseEventAnalyzer<FirstLeg> {
+class SemileptonicFlatTreeAnalyzer : public BaseEventAnalyzer<FirstLeg, TauCandidate> {
 public:
-    using Base = BaseEventAnalyzer<FirstLeg>;
-    using PhysicalValueMap = typename Base::PhysicalValueMap;
-
+    using Base = BaseEventAnalyzer<FirstLeg, TauCandidate>;
     using Base::BaseEventAnalyzer;
-
 
 protected:
 

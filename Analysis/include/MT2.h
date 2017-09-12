@@ -3,7 +3,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #pragma once
 
-#include "Lester_mt2_bisect.h"
+#include "hh-bbtautau/Instruments/include/Lester_mt2_bisect.h"
 
 namespace  analysis {
 template<typename LVector1, typename LVector2, typename LVector3, typename LVector4, typename LVector5 >

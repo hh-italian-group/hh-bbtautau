@@ -192,6 +192,14 @@ struct EventSubCategory {
         return GetResultBits() < sc.GetResultBits();
     }
 
+    bool Implies(const EventSubCategory& sc) const
+    {
+        const BitsContainer pres_a = GetPresenceBits(), pres_b = sc.GetPresenceBits();
+        if((pres_a ^ pres_b) & pres_b) return false;
+        const BitsContainer res_a = GetResultBits(), res_b = sc.GetResultBits();
+        return (res_a & pres_b) == res_b;
+    }
+
     std::string ToString() const
     {
         bool is_first = true;
