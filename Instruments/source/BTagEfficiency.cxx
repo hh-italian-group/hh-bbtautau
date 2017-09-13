@@ -17,8 +17,8 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, output_file); 
     REQ_ARG(std::vector<std::string>, input_file); 
-    OPT_ARG(bool,apply_tau_id_cut, true); 
-    OPT_ARG(bool,apply_pu_id_cut,false);
+    OPT_ARG(bool, apply_tau_id_cut, true); 
+    OPT_ARG(std::string, apply_pu_id_cut,"");
 };
 
 class BTagData : public root_ext::AnalyzerData {
@@ -101,9 +101,9 @@ public:
                         const auto& jet = event.jets_p4.at(i);
 
                         //PU correction
-                        if(args.apply_pu_id_cut()){
+                        if(!args.apply_pu_id_cut().empty()){
                             double jet_mva = event.jets_mva.at(i);
-                            if(!PassJetPuId(jet.Pt(),jet_mva,DiscriminatorWP::Loose)) continue;
+                            if(!PassJetPuId(jet.Pt(),jet_mva,analysis::Parse<DiscriminatorWP>(args.apply_pu_id_cut()))) continue;
                         }
 			
                         double jet_csv = event.jets_csv.at(i);
@@ -159,20 +159,14 @@ private:
         static const std::map<DiscriminatorWP, std::vector<std::pair<double,double> > > puId_working_points = 
         { { DiscriminatorWP::Tight, { {30,0.26}, {50,0.62} } }, { DiscriminatorWP::Medium, { {30,-0.49}, {50,-0.06} } },
             { DiscriminatorWP::Loose, { {30,-0.96}, {50,-0.92} } } };
-        bool result = false; 
-        for(const auto& working_point: puId_working_points){
-             if (working_point.first != wp) continue;
-             for ( const auto& cut_values: working_point.second){
-                if (pt< cut_values.first){
-                    if (mva < cut_values.second){
-                        result =true;
-                        break;
-                    }
-                }
-             } 
-        }
-        return result;
-    }
+        
+        if(!puId_working_points.count(wp)) throw analysis::exception("Unknown working point '%1%'.") % wp;
+        const auto& working_point = puId_working_points.at(wp); 
+        for ( const auto& cut_values: working_point){
+            if (pt< cut_values.first) return mva > cut_values.second;
+        } 
+        return true; 
+   }
 };
 
 PROGRAM_MAIN(BTagEfficiency, Arguments) // definition of the main program function
