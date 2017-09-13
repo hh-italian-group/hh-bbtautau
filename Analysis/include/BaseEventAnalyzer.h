@@ -4,11 +4,11 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #pragma once
 
 #include "AnalysisTools/Run/include/program_main.h"
-#include "h-tautau/Analysis/include/EventInfo.h"
 #include "EventAnalyzerDataCollection.h"
 #include "SampleDescriptorConfigEntryReader.h"
 #include "h-tautau/Cuts/include/Btag_2016.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
+#include "StackedPlotsProducer.h"
 
 namespace analysis {
 
@@ -17,6 +17,7 @@ struct AnalyzerArguments {
     REQ_ARG(std::string, sources);
     REQ_ARG(std::string, input);
     REQ_ARG(std::string, output);
+    OPT_ARG(bool, draw, true);
     OPT_ARG(bool, saveFullOutput, false);
     OPT_ARG(unsigned, n_threads, 1);
 };
@@ -29,9 +30,11 @@ public:
     using EventInfo = ::analysis::EventInfo<FirstLeg, SecondLeg>;
     using AnaData = ::analysis::EventAnalyzerData<FirstLeg, SecondLeg>;
     using AnaDataCollection = ::analysis::EventAnalyzerDataCollection<AnaData>;
-    using PhysicalValueMap = std::map<EventRegion, PhysicalValue>;
+    using PlotsProducer = ::analysis::StackedPlotsProducer<FirstLeg, SecondLeg>;
 
     static constexpr Channel ChannelId() { return ChannelInfo::IdentifyChannel<FirstLeg, SecondLeg>(); }
+    static const std::string& ChannelName() { return __Channel_names<>::names.EnumToString(ChannelId()); }
+    static const std::string& ChannelNameLatex() { return __Channel_names_latex.EnumToString(ChannelId()); }
 
     virtual const EventCategorySet& EventCategoriesToProcess() const
     {
@@ -94,8 +97,8 @@ public:
                         ++bjet_counts[btag_wp.first];
                 }
             }
-            for(const auto& n_bjets : bjet_counts)
-                categories.emplace(2, n_bjets.second, n_bjets.first);
+            for(const auto& wp_entry : btag_working_points)
+                categories.emplace(2, bjet_counts[wp_entry.first], wp_entry.first);
         }
         return categories;
     }
@@ -145,14 +148,22 @@ public:
         ProcessSamples(ana_setup.signals, "signals");
         ProcessSamples(ana_setup.backgrounds, "backgrounds");
         ProcessSamples(ana_setup.data, "data");
+
+        if(args.draw()) {
+            std::cout << "Creating plots..." << std::endl;
+            const auto samplesToDraw = PlotsProducer::CreateOrderedSampleCollection(
+                        ana_setup.draw_sequence, sample_descriptors, combine_descriptors, ana_setup.signals,
+                        ana_setup.data);
+            PlotsProducer plotsProducer(anaDataCollection, samplesToDraw, false, true);
+            plotsProducer.PrintStackedPlots(args.output(), EventRegion::SignalRegion(), EventCategoriesToProcess(),
+                                            EventSubCategoriesToProcess());
+        }
+
         std::cout << "Saving output file..." << std::endl;
     }
 
 protected:
     virtual EventRegion DetermineEventRegion(EventInfo& event, EventCategory eventCategory) = 0;
-
-    const std::string& ChannelName() const { return __Channel_names<>::names.EnumToString(ChannelId()); }
-    const std::string& ChannelNameLatex() const { return __Channel_names_latex.EnumToString(ChannelId()); }
 
     void ProcessSamples(const std::vector<std::string>& sample_names, const std::string& sample_set_name)
     {
@@ -183,7 +194,7 @@ protected:
     void ProcessDataSource(const SampleDescriptor& sample, std::shared_ptr<ntuple::EventTuple> tuple,
                            const ntuple::ProdSummary& prod_summary, const std::string& full_name)
     {
-        auto summary = std::make_shared<SummaryInfo>(prod_summary);
+        const SummaryInfo summary(prod_summary);
         for(const auto& tupleEvent : *tuple) {
             EventInfo event(tupleEvent, ntuple::JetPair{0, 1}, summary);
             if(!EventEnergyScaleToProcess().count(event.GetEnergyScale())) continue;
@@ -198,7 +209,9 @@ protected:
                     if(!eventSubCategory.Implies(subCategory)) continue;
                     const EventAnalyzerDataId anaDataId(eventCategory, subCategory, eventRegion,
                                                      event.GetEnergyScale(), full_name);
-                    anaDataCollection.Fill(anaDataId, event, event->weight_total * sample.cross_section);
+                    const double weight = sample.categoryType == DataCategoryType::Data ? 1
+                        : event->weight_total * sample.cross_section * ana_setup.int_lumi / summary->totalShapeWeight;
+                    anaDataCollection.Fill(anaDataId, event, weight);
                 }
             }
         }

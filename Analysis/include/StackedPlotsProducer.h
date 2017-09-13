@@ -3,55 +3,118 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #pragma once
 
+#include "EventAnalyzerDataCollection.h"
+#include "SampleDescriptor.h"
+#include "AnalysisTools/Print/include/RootPrintToPdf.h"
+
 namespace analysis {
 
 template<typename _FirstLeg, typename _SecondLeg>
-class BaseEventAnalyzer {
+class StackedPlotsProducer {
 public:
     using FirstLeg = _FirstLeg;
     using SecondLeg = _SecondLeg;
     using EventInfo = ::analysis::EventInfo<FirstLeg, SecondLeg>;
-    using EventAnalyzerData = ::analysis::EventAnalyzerData<FirstLeg, SecondLeg>;
-    using PhysicalValueMap = std::map<EventRegion, PhysicalValue>;
+    using AnaData = ::analysis::EventAnalyzerData<FirstLeg, SecondLeg>;
+    using AnaDataCollection = ::analysis::EventAnalyzerDataCollection<AnaData>;
+    using Sample = ::analysis::SampleDescriptorBase;
+    using SampleCollection = std::vector<const Sample*>;
+    using Hist = TH1D;
+    using HistPtr = std::shared_ptr<root_ext::SmartHistogram<Hist>>;
 
-    void PrintStackedPlots(EventRegion eventRegion, bool isBlind, bool drawRatio)
+    static constexpr Channel ChannelId() { return ChannelInfo::IdentifyChannel<FirstLeg, SecondLeg>(); }
+    static const std::string& ChannelNameLatex() { return __Channel_names_latex.EnumToString(ChannelId()); }
+
+    static SampleCollection CreateOrderedSampleCollection(const std::vector<std::string>& draw_sequence,
+                                                          const SampleDescriptorCollection& samples,
+                                                          const CombineSampleDescriptorCollection& combined_samples,
+                                                          const std::vector<std::string>& signals,
+                                                          const std::vector<std::string>& data)
+    {
+        SampleCollection selected_samples;
+        for(const auto& name : draw_sequence) {
+            if(samples.count(name)) {
+                selected_samples.push_back(&samples.at(name));
+            } else if(combined_samples.count(name)) {
+                selected_samples.push_back(&combined_samples.at(name));
+            } else if(name == "signals") {
+                for(const auto& signal_name : signals) {
+                    if(!samples.count(signal_name))
+                        throw exception("Signal sample '%1%' not found while creating drawing sequence.") % signal_name;
+                    selected_samples.push_back(&samples.at(signal_name));
+                }
+            } else if(name == "data") {
+                for(const auto& data_name : data) {
+                    if(!samples.count(data_name))
+                        throw exception("Data sample '%1%' not found while creating drawing sequence.") % data_name;
+                    selected_samples.push_back(&samples.at(data_name));
+                }
+            } else
+                throw exception("Sample '%1%' not found while creating drawing sequence.") % name;
+        }
+        SampleCollection result;
+        for(const Sample* sample : selected_samples) {
+            if(!sample->channels.size() || sample->channels.count(ChannelId()))
+                result.push_back(sample);
+        }
+        return result;
+    }
+
+    StackedPlotsProducer(AnaDataCollection& _anaDataCollection, const SampleCollection& _samples,
+                         bool _isBlind, bool _drawRatio) :
+        anaDataCollection(&_anaDataCollection), samples(_samples), isBlind(_isBlind), drawRatio(_drawRatio)
+    {
+        for(const auto& anaData : anaDataCollection->GetAll()) {
+            for(const auto& item : anaData.second->template GetHistogramsEx<TH1D>()) {
+                histogramNames.insert(item.first);
+            }
+        }
+    }
+
+    void PrintStackedPlots(const std::string& outputFileNamePrefix, const EventRegion& eventRegion,
+                           const EventCategorySet& eventCategories, const EventSubCategorySet& eventSubCategories) const
     {
         const std::string blindCondition = isBlind ? "_blind" : "_noBlind";
         const std::string ratioCondition = drawRatio ? "_ratio" : "_noRatio";
-        std::ostringstream eventRegionName;
-        eventRegionName << args.outputFileName() << blindCondition << ratioCondition << "_" << eventRegion << ".pdf";
-        root_ext::PdfPrinter printer(eventRegionName.str());
+        std::ostringstream outputFileName;
+        outputFileName << outputFileNamePrefix << blindCondition << ratioCondition << "_" << eventRegion << ".pdf";
+        root_ext::PdfPrinter printer(outputFileName.str());
 
-        for(EventCategory eventCategory : EventCategoriesToProcess()) {
-            for (const auto& hist_name : EventAnalyzerData::template GetOriginalHistogramNames<TH1D>()) {
-                for(EventSubCategory subCategory : EventSubCategoriesToProcess()) {
-                    const EventAnalyzerDataMetaId_noRegion_noName anaDataMetaId(eventCategory, subCategory,
-                                                                               EventEnergyScale::Central);
+        for(const EventCategory& eventCategory : eventCategories) {
+            for (const auto& hist_name : histogramNames) {
+                for(const EventSubCategory& subCategory : eventSubCategories) {
+                    const EventAnalyzerDataId anaDataMetaId(eventRegion, eventCategory, subCategory,
+                                                            EventEnergyScale::Central);
                     std::ostringstream ss_title;
                     ss_title << eventCategory;
-                    if(subCategory != EventSubCategory::NoCuts)
+                    if(subCategory != EventSubCategory::NoCuts())
                         ss_title << " " << subCategory;
                     ss_title << ": " << hist_name;
 
                     StackedPlotDescriptor stackDescriptor(ss_title.str(), false, ChannelNameLatex(),
-                                                          __EventCategory_names<>::names.EnumToString(eventCategory), drawRatio,
-                                                          false);
+                                                          ToString(eventCategory), drawRatio, false);
 
-                    for(const DataCategory* category : dataCategoryCollection.GetAllCategories()) {
-                        if(!category->draw) continue;
+                    for(const Sample* sample : samples) {
+                        const auto& drawList = sample->GetDrawList();
+                        for(const auto& item : drawList) {
+                            const std::string& item_name = item.first;
+                            const root_ext::Color& color = item.second;
+                            const auto histogram = GetHistogram(anaDataMetaId, item_name, hist_name);
+                            if(!histogram) continue;
 
-                        const auto histogram = GetHistogram(anaDataMetaId, eventRegion, category->name, hist_name);
-                        if(!histogram) continue;
-
-                        if(category->IsSignal() && eventCategory == EventCategory::TwoJets_Inclusive) continue;
-                        else if(category->IsSignal())
-                            stackDescriptor.AddSignalHistogram(*histogram, category->title, category->color,
-                                                               category->draw_sf);
-                        else if(category->IsBackground())
-                            stackDescriptor.AddBackgroundHistogram(*histogram, category->title, category->color);
-                        else if(category->IsData())
-                            stackDescriptor.AddDataHistogram(*histogram, category->title, isBlind,
-                                                             GetBlindRegion(subCategory, hist_name));
+                            if((sample->categoryType == DataCategoryType::Signal
+                                    || sample->categoryType == DataCategoryType::Signal_SM)
+                                    && eventCategory == EventCategory::TwoJets_Inclusive()) continue;
+                            else if(sample->categoryType == DataCategoryType::Signal
+                                    || sample->categoryType == DataCategoryType::Signal_SM)
+                                stackDescriptor.AddSignalHistogram(*histogram, sample->title, color, sample->draw_sf);
+                            else if(sample->categoryType == DataCategoryType::Background
+                                    || sample->categoryType == DataCategoryType::DataDrivenBkg)
+                                stackDescriptor.AddBackgroundHistogram(*histogram, sample->title, color);
+                            else if(sample->categoryType == DataCategoryType::Data)
+                                stackDescriptor.AddDataHistogram(*histogram, sample->title, isBlind,
+                                                                 GetBlindRegion(subCategory, hist_name));
+                        }
                     }
 
                     printer.PrintStack(stackDescriptor);
@@ -60,22 +123,31 @@ public:
         }
     }
 
-    static const std::vector< std::pair<double, double> >& GetBlindRegion(EventSubCategory subCategory,
-                                                                          const std::string& hist_name)
+private:
+    HistPtr GetHistogram(const EventAnalyzerDataId& metaId, const std::string& sample_name,
+                         const std::string& hist_name) const
+    {
+        EventAnalyzerDataId dataId = metaId;
+        dataId.Set(sample_name);
+        const auto& anaData = anaDataCollection->Get(dataId);
+        return anaData.template TryGetHistogramEx<Hist>(hist_name);
+    }
+
+    static const std::vector< std::pair<double, double> >& GetBlindRegion(const EventSubCategory& /*subCategory*/,
+                                                                          const std::string& /*hist_name*/)
     {
         static const std::vector< std::vector< std::pair<double, double> > > blindingRegions = {
             { { std::numeric_limits<double>::max(), std::numeric_limits<double>::lowest() } },
-            { { 100, 150 } },
-            { { 200, 400 } },
-            { { 100, 150 }, { 450, 500 }, { 800, 850 }, { 1150, 1200 }, { 1500, 1550 } }
         };
 
-        static const std::map<std::string, size_t> histogramsToBlind = {
-            { EventAnalyzerData::m_sv_Name(), 1 }, { EventAnalyzerData::m_vis_Name(), 1 },
-            { EventAnalyzerData::m_bb_Name(), 1 }, { EventAnalyzerData::m_ttbb_Name(), 2 },
-            { EventAnalyzerData::m_ttbb_kinfit_Name(), 2 }
-        };
+        return blindingRegions.at(0);
+    }
 
+private:
+    AnaDataCollection* anaDataCollection;
+    SampleCollection samples;
+    std::set<std::string> histogramNames;
+    bool isBlind, drawRatio;
 };
 
 } // namespace analysis

@@ -8,22 +8,6 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 
 namespace analysis {
 
-//namespace detail {
-//template<size_t n, typename = typename std::enable_if< n < TupleSize >::type>
-//std::string GetEventAnalyzerDataIdSubName() const
-//{
-//    static const std::string separator = "/", wildcard = "*";
-//    const auto& value = std::get<n>(id_tuple);
-//    std::string name = value.is_initialized() ? ToString(*value) : wildcard;
-//    const std::string others_name = GetSubName<n+1>();
-//    return others_name.size() ? name + separator + others_name : name;
-//}
-
-//template<size_t n, typename = typename std::enable_if< n == TupleSize >::type>
-//std::string GetSubName() const { return ""; }
-
-//} // namespace detail
-
 struct EventAnalyzerDataId {
 public:
     template<typename T> using Optional = boost::optional<T>;
@@ -136,16 +120,17 @@ public:
         return *anaData;
     }
 
-    virtual BaseEventAnalyzerData& GetBase(const EventAnalyzerDataId& id) override { return Get(id); }
+    virtual BaseEventAnalyzerData& GetBase(const DataId& id) override { return Get(id); }
+    const DataMap& GetAll() const { return anaDataMap; }
 
     template<typename EventInfo>
-    void Fill(const EventAnalyzerDataId& id, EventInfo& event, double weight)
+    void Fill(const DataId& id, EventInfo& event, double weight)
     {
         Get(id).Fill(event, weight);
     }
 
 private:
-    DataPtr Make(const EventAnalyzerDataId& id) const
+    DataPtr Make(const DataId& id) const
     {
         const bool fill_all = id.Get<EventEnergyScale>() == EventEnergyScale::Central;
         if(file) {

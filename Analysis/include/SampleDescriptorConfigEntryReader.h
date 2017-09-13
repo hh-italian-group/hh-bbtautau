@@ -25,6 +25,7 @@ public:
         CheckReadParamCounts("backgrounds", 1, Condition::less_equal);
         CheckReadParamCounts("data", 1, Condition::less_equal);
         CheckReadParamCounts("data_driven_bkg", 1, Condition::less_equal);
+        CheckReadParamCounts("draw_sequence", 1, Condition::less_equal);
 
         ConfigEntryReaderT<AnalyzerSetup>::EndEntry();
     }
@@ -42,12 +43,13 @@ public:
         ParseEntryList("backgrounds", current.backgrounds);
         ParseEntryList("data", current.data);
         ParseEntryList("data_driven_bkg", current.data_driven_bkg);
+        ParseEntryList("draw_sequence", current.draw_sequence);
     }
 };
 
 
 template<typename Descriptor>
-class SampleDescriptorBaseConfigEntryReader : public ConfigEntryReaderT<Descriptor>, public virtual ConfigEntryReader  {
+class SampleDescriptorBaseConfigEntryReader : public ConfigEntryReaderT<Descriptor>, public virtual ConfigEntryReader {
 public:
     using Condition = ConfigEntryReader::Condition;
     using ConfigEntryReaderT<Descriptor>::ConfigEntryReaderT;
@@ -57,6 +59,7 @@ public:
         CheckReadParamCounts("title", 1, Condition::less_equal);
         CheckReadParamCounts("color", 1, Condition::less_equal);
         CheckReadParamCounts("draw", 1, Condition::less_equal);
+        CheckReadParamCounts("draw_sf", 1, Condition::less_equal);
         CheckReadParamCounts("channels", 1, Condition::less_equal);
         CheckReadParamCounts("categoryType", 1, Condition::less_equal);
         CheckReadParamCounts("datacard_name", 1, Condition::less_equal);
@@ -70,6 +73,7 @@ public:
         ParseEntry("title", this->current.title);
         ParseEntry("color", this->current.color);
         ParseEntry("draw", this->current.draw);
+        ParseEntry("draw_sf", this->current.draw_sf);
         ParseEntryList("channels", this->current.channels);
         ParseEntry("categoryType", this->current.categoryType);
         ParseEntry("datacard_name", this->current.datacard_name);

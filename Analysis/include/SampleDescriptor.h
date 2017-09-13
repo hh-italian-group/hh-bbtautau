@@ -27,12 +27,14 @@ public:
     bool apply_mass_cut{false}, apply_os_cut{true}, apply_iso_cut{true};
     std::set<EventEnergyScale> energy_scales;
     std::vector<std::string> signals, backgrounds, data, data_driven_bkg;
+    std::vector<std::string> draw_sequence;
 };
 
 using AnalyzerSetupCollection = std::unordered_map<std::string, AnalyzerSetup>;
 
 class SampleDescriptorBase {
 public:
+    using DrawList = std::vector<std::pair<std::string, root_ext::Color>>;
 
     SampleDescriptorBase() {} //constructor
     SampleDescriptorBase(const SampleDescriptorBase& ) = default; //copy constructor
@@ -44,12 +46,19 @@ public:
     std::string title;
     root_ext::Color color{kBlack};
     bool draw{false};
+    double draw_sf{1};
     std::set<Channel> channels;
     DataCategoryType categoryType;
     std::string datacard_name;
 
     bool CreateDatacard() const { return datacard_name.size(); }
 
+    virtual DrawList GetDrawList() const
+    {
+        DrawList result;
+        result.emplace_back(name, color);
+        return result;
+    }
 };
 
 
@@ -94,6 +103,20 @@ public:
     }
 
     size_t GetNSignalPoints() const { return signal_points.size() ? signal_points.begin()->second.size() : 0; }
+
+    virtual DrawList GetDrawList() const override
+    {
+        DrawList result;
+        if(signal_points.size()) {
+            for(const auto& entry : draw_ex) {
+                const std::string full_name = name + "_" + entry.first;
+                result.emplace_back(full_name, entry.second);
+            }
+        } else {
+            result.emplace_back(name, color);
+        }
+        return result;
+    }
 
 private:
     std::string ResolvePattern(const std::string& pattern, size_t signal_point) const
