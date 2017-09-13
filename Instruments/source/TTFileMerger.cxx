@@ -75,7 +75,7 @@ private:
 
         config_reader.ReadConfig(args.file_cfg_name());
 
-        for (auto file_descriptor : file_descriptors){ //loop on DYJets files
+        for (auto file_descriptor : file_descriptors){ //loop on TTbar files
             const TTBinDescriptor file_descriptor_element = file_descriptor.second;
 
             SampleDescriptor<TTBinDescriptor, GenEventTypeMap> sample_desc;
@@ -84,9 +84,6 @@ private:
             if (file_descriptor_element.fileType == FileType::inclusive)
                 inclusive.bin = file_descriptor_element;
 
-
-
-            //double count = 0;
             for (auto single_file_path : file_descriptor_element.file_paths){ //loop on files
 
                 std::cout << "File descriptor characteristics: " << file_descriptor.first << ", " <<
@@ -101,18 +98,18 @@ private:
 
                 ntuple::GenEventTypeCountMap genEventTypeCountMap = ntuple::ExtractGenEventTypeCountMap(summary);
 
-                sample_desc.gen_counts = genEventTypeCountMap;
-                global_map.gen_counts = genEventTypeCountMap;
-                if (file_descriptor_element.fileType == FileType::inclusive)
-                    inclusive.gen_counts = genEventTypeCountMap;
-
-                totalNevents += summary.numberOfProcessedEvents;
+                for(const auto& bin : genEventTypeCountMap){
+                    sample_desc.gen_counts[bin.first] += bin.second;
+                    global_map.gen_counts[bin.first] += bin.second;
+                    if (file_descriptor_element.fileType == FileType::inclusive)
+                        inclusive.gen_counts[bin.first] += bin.second;
+                }
 
 
             } // end loop on files
             all_samples.push_back(sample_desc);
         } //end loop n file_descriptors
-        totalNumerOfevents = totalNevents;
+
     }
 
 
@@ -129,8 +126,7 @@ private:
                               sqrt(sample_contribution));
         output_bin.nu = nu_incl;
         output_bin.weight = weight;
-        //output_bin.inclusive_integral = inclusive.Integral();
-        output_bin.inclusive_integral = totalNumerOfevents;
+        output_bin.inclusive_integral = inclusive.Integral();
 
         if(output_bin.nu.GetStatisticalError() == std::numeric_limits<double>::infinity())
             throw exception("ref not found");
