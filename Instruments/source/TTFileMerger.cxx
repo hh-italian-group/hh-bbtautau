@@ -30,7 +30,6 @@ public:
     TTFileMerger(const Arguments& _args) : args(_args)
     {
         LoadInputs();
-        std::cout << "totalNumerOfevents in summeryTuple: " << totalNumerOfevents << std::endl;
         output_bins = TTBinDescriptor::LoadConfig(args.cfg_name());
     }
 
