@@ -39,12 +39,14 @@ public:
 
     void Run()
     {
-        for(auto& output_bin : output_bins)
+        VectorDYBinDescriptor processed_bins;
+		for(auto& output_bin : output_bins)
         {
-            CalculateWeight(output_bin);
+			if (CalculateWeight(output_bin))
+				processed_bins.push_back(output_bin);
         }
         std::cout << "Done CalculateWeight" << std::endl;
-        NJets_HT_BinFileDescriptor::SaveCfg(args.output_file(), output_bins);
+        NJets_HT_BinFileDescriptor::SaveCfg(args.output_file(), processed_bins);
         std::cout << "Done SaveCfg" << std::endl;
     }
 
@@ -108,12 +110,13 @@ private:
     }
 
 
-    void CalculateWeight(NJets_HT_BinFileDescriptor& output_bin) const
+    bool CalculateWeight(NJets_HT_BinFileDescriptor& output_bin) const
     {
         double all_events = global_map.Integral(output_bin);
+		if(all_events == 0) return false;
         for(auto& sample : all_samples) {
             double contribution = sample.Integral(output_bin);
-            if(contribution == 0) continue;
+			if(contribution == 0) continue;
             //formula 2
             PhysicalValue nu ( contribution , sqrt(contribution));
             PhysicalValue weight (nu.GetValue()/all_events, (all_events - contribution)/std::pow(all_events,2)*sqrt(contribution));
@@ -127,7 +130,6 @@ private:
                 nu *= nu_incl;
                 weight *= nu_incl;
             }
-
             if(output_bin.nu.GetStatisticalError() > nu.GetStatisticalError()) {
                 output_bin.nu = nu;
                 output_bin.ref_sample = sample.bin.name;
@@ -140,6 +142,8 @@ private:
 
         if(output_bin.nu.GetStatisticalError() == std::numeric_limits<double>::infinity())
             throw exception("ref not found");
+
+		return true;
     }
 
 
