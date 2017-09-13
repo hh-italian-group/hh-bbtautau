@@ -16,9 +16,9 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, output_file); 
-    REQ_ARG(std::vector<std::string>, input_file); 
     OPT_ARG(bool, apply_tau_id_cut, true); 
     OPT_ARG(std::string, apply_pu_id_cut,"");
+    REQ_ARG(std::vector<std::string>, input_file); 
 };
 
 class BTagData : public root_ext::AnalyzerData {
@@ -64,8 +64,10 @@ public:
         std::set<std::string> flavour_names = analysis::tools::collect_map_values(flavours);
         flavour_names.insert(flavour_all);
         static const std::string num = "Num", denom = "Denom", eff = "Eff" ;
-       
 
+	bool apply_pu_id_cut = args.apply_pu_id_cut() != "no";
+	DiscriminatorWP pu_wp = DiscriminatorWP::Medium;
+	if(apply_pu_id_cut) pu_wp = analysis::Parse<DiscriminatorWP>(args.apply_pu_id_cut());
 
         for(const auto& channel : channels) {
             for (const auto& name : args.input_file()){
@@ -74,7 +76,7 @@ public:
                 try {
                     tuple = ntuple::CreateEventTuple(channel, in_file.get(), true, ntuple::TreeState::Full);
                 } catch(std::exception&) {
-                    std::cerr << "WARNING: tree "<<channel<<" not found in file '"<< std::endl;
+                    std::cerr << "WARNING: tree "<<channel<<" not found in file"<<name<< std::endl;
                     continue;
                 }
 
@@ -101,9 +103,9 @@ public:
                         const auto& jet = event.jets_p4.at(i);
 
                         //PU correction
-                        if(!args.apply_pu_id_cut().empty()){
+                        if(apply_pu_id_cut){
                             double jet_mva = event.jets_mva.at(i);
-                            if(!PassJetPuId(jet.Pt(),jet_mva,analysis::Parse<DiscriminatorWP>(args.apply_pu_id_cut()))) continue;
+                            if(!PassJetPuId(jet.Pt(),jet_mva,pu_wp)) continue;
                         }
 			
                         double jet_csv = event.jets_csv.at(i);
