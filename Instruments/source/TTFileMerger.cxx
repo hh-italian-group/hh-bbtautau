@@ -30,7 +30,6 @@ public:
     TTFileMerger(const Arguments& _args) : args(_args)
     {
         LoadInputs();
-        std::cout << "totalNumerOfevents in summeryTuple: " << totalNumerOfevents << std::endl;
         output_bins = TTBinDescriptor::LoadConfig(args.cfg_name());
     }
 
@@ -75,7 +74,7 @@ private:
 
         config_reader.ReadConfig(args.file_cfg_name());
 
-        for (auto file_descriptor : file_descriptors){ //loop on DYJets files
+        for (auto file_descriptor : file_descriptors){ //loop on TTbar files
             const TTBinDescriptor file_descriptor_element = file_descriptor.second;
 
             SampleDescriptor<TTBinDescriptor, GenEventTypeMap> sample_desc;
@@ -84,11 +83,6 @@ private:
             if (file_descriptor_element.fileType == FileType::inclusive)
                 inclusive.bin = file_descriptor_element;
 
-            const Channel channel = Parse<Channel>(args.tree_name());
-            const Channel descriptor_channel = Parse<Channel>(file_descriptor_element.channel);
-            if (descriptor_channel != channel) continue;
-
-            //double count = 0;
             for (auto single_file_path : file_descriptor_element.file_paths){ //loop on files
 
                 std::cout << "File descriptor characteristics: " << file_descriptor.first << ", " <<
@@ -96,53 +90,25 @@ private:
                           << std::endl;
                 std::string filename = args.input_path()  + "/" + single_file_path;
                 auto inputFile = root_ext::OpenRootFile(filename);
-                ntuple::EventTuple eventTuple(args.tree_name(), inputFile.get(), true, {},
-                                              GetEnabledBranches());
-                const Long64_t n_entries = eventTuple.GetEntries();
 
-                for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) { //loop on entries
-                    eventTuple.GetEntry(current_entry);
-                    const ntuple::Event& event = eventTuple.data();
-                    if (static_cast<EventEnergyScale>(event.eventEnergyScale) != analysis::EventEnergyScale::Central)
-                        continue;
-                    GenEventType genEventType = static_cast<GenEventType>(event.genEventType);
+                auto summaryTuple =
+                        ntuple::CreateSummaryTuple(args.tree_name(), inputFile.get(), true, ntuple::TreeState::Full);
+                auto summary = ntuple::MergeSummaryTuple(*summaryTuple);
 
-                        sample_desc.gen_counts[genEventType] += event.genEventWeight;
-                        global_map.gen_counts[genEventType] += event.genEventWeight;
-                        if (file_descriptor_element.fileType == FileType::inclusive)
-                            inclusive.gen_counts[genEventType] += event.genEventWeight;
+                ntuple::GenEventTypeCountMap genEventTypeCountMap = ntuple::ExtractGenEventTypeCountMap(summary);
 
-
-                } //end loop on entries
-
-
-                //TOTAL WEIGHT PART
-                if (!(file_descriptor_element.fileType == FileType::inclusive)) continue;
-                std::cout << "LoadTotalNevents - File descriptor characteristics: " << file_descriptor.first << ", " <<
-                             single_file_path << ", " << file_descriptor_element.fileType
-                          << std::endl;
-
-
-                //ntuple::SummaryTuple summaryTuple("summary", inputFile.get(), true);
-                try {
-                    std::shared_ptr<ntuple::SummaryTuple> summaryTuple(new ntuple::SummaryTuple("summary", inputFile.get(), true));
-//                    if(!summaryTuple) continue;
-                    const Long64_t n_entries = summaryTuple->GetEntries();
-
-                    for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) { //loop on entries
-                        summaryTuple->GetEntry(current_entry);
-                        totalNevents += summaryTuple->data().numberOfProcessedEvents;
-                    } //end loop on entries
-
-                } catch(std::runtime_error& error) {
-                    std::cout << "Summary " << error.what() << std::endl;
+                for(const auto& bin : genEventTypeCountMap){
+                    sample_desc.gen_counts[bin.first] += bin.second;
+                    global_map.gen_counts[bin.first] += bin.second;
+                    if (file_descriptor_element.fileType == FileType::inclusive)
+                        inclusive.gen_counts[bin.first] += bin.second;
                 }
 
 
             } // end loop on files
             all_samples.push_back(sample_desc);
         } //end loop n file_descriptors
-        totalNumerOfevents = totalNevents;
+
     }
 
 
@@ -159,8 +125,7 @@ private:
                               sqrt(sample_contribution));
         output_bin.nu = nu_incl;
         output_bin.weight = weight;
-        //output_bin.inclusive_integral = inclusive.Integral();
-        output_bin.inclusive_integral = totalNumerOfevents;
+        output_bin.inclusive_integral = inclusive.Integral();
 
         if(output_bin.nu.GetStatisticalError() == std::numeric_limits<double>::infinity())
             throw exception("ref not found");

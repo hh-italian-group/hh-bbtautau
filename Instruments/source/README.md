@@ -12,6 +12,7 @@
 ### Run merge analyzer for TTbar
 ```shell
 ./run.sh TTFileMerger --tree_name muTau --input_path /eos/user/k/kandroso/cms-it-hh-bbtautau/Tuples2016_v2 --cfg_name hh-bbtautau/Instruments/config/ttbar_splitting.cfg --file_cfg_name hh-bbtautau/Instruments/config/TTbar_file.cfg --output_file hh-bbtautau/Analysis/config/ttbar_weights_muTau.cfg
+./run.sh TTFileMerger --tree_name summary --input_path /gpfs/ddn/cms/user/androsov/store/cms-it-hh-bbtautau/Tuples2016_v3 --cfg_name hh-bbtautau/Instruments/config/ttbar_splitting.cfg --file_cfg_name hh-bbtautau/Instruments/config/TTbar_file.cfg --output_file hh-bbtautau/Analysis/config/ttbar_weights_full.cfg
 ```
 
 ### Run merge analyzer for SM samples
