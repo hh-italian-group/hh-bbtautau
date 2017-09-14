@@ -23,7 +23,7 @@ public:
         }
     }
 
-    virtual double Get(const Event& event) const override { return GetT(event); }
+    virtual double Get(const ntuple::Event& event) const override { return GetT(event); }
     virtual double Get(const ntuple::ExpressEvent& event) const override { return GetT(event); }
 
 private:
