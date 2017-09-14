@@ -41,23 +41,14 @@ public:
     virtual double Get(const Event& event) const override
     {
         static constexpr size_t ht_bin_size = 10;
-        size_t ht_bin = static_cast<size_t>(event.lhe_HT / ht_bin_size);
-        return GetT(event, ht_bin);
+        return GetWeight(event.lhe_n_partons, event.lhe_n_b_partons, static_cast<size_t>(event.lhe_HT / ht_bin_size));
     }
     virtual double Get(const ntuple::ExpressEvent& event) const override
     {
-        static constexpr size_t ht_bin_size = 10;
-        size_t ht_bin = static_cast<size_t>(event.lhe_ht10_bin / ht_bin_size);
-        return GetT(event, ht_bin);
+        return GetWeight(event.lhe_n_partons, event.lhe_n_b_partons, event.lhe_ht10_bin);
     }
 
 private:
-    template<typename Event>
-    double GetT(const Event& event, const size_t ht_bin) const
-    {
-        return GetWeight(event.lhe_n_partons, event.lhe_n_b_partons, ht_bin);
-    }
-
     double GetWeight(size_t n_partons, size_t n_b_partons, size_t ht_bin) const
     {
         auto njet_iter = weight_map.find(n_partons);
