@@ -23,17 +23,17 @@ public:
         }
     }
 
-    virtual double Get(const ntuple::Event& event) const override
+    virtual double Get(const Event& event) const override { return GetT(event); }
+    virtual double Get(const ntuple::ExpressEvent& event) const override { return GetT(event); }
+
+private:
+    template<typename Event>
+    double GetT(const Event& event) const
     {
         auto iter = genEventType_weight_map.find(event.genEventType);
         if(iter != genEventType_weight_map.end())
             return iter->second;
         throw exception("ttbar merge weight not found for genEventType = %1%.") % event.genEventType;
-    }
-
-    virtual double Get(const ntuple::ExpressEvent& /*event*/) const override
-    {
-        throw exception("ExpressEvent is not supported in TTbar_weight::Get.");
     }
 
 private:

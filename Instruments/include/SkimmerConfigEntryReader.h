@@ -58,7 +58,6 @@ public:
         CheckReadParamCounts("merged_output", 1, Condition::less_equal);
         CheckReadParamCounts("apply_common_weights", 1, Condition::less_equal);
         CheckReadParamCounts("weights", 1, Condition::less_equal);
-        CheckReadParamCounts("ignore_trigger_info", 1, Condition::less_equal);
 
         const size_t n_files = GetReadParamCounts("file");
         const size_t n_files_ex = GetReadParamCounts("file_ex");
@@ -80,7 +79,6 @@ public:
         ParseFileDescriptor(param_name, param_value);
         ParseEntry("apply_common_weights", current.apply_common_weights);
         ParseEntryList("weights", current.weights);
-        ParseEntry("ignore_trigger_info", current.ignore_trigger_info);
     }
 
 private:

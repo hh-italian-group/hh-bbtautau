@@ -38,15 +38,15 @@ public:
         }
     }
 
-    virtual double Get(const Event& event) const override
+    virtual double Get(const Event& event) const override { return GetT(event); }
+    virtual double Get(const ntuple::ExpressEvent& event) const override { return GetT(event); }
+
+private:
+    template<typename Event>
+    double GetT(const Event& event) const
     {
         static constexpr size_t ht_bin_size = 10;
         return GetWeight(event.lhe_n_partons, event.lhe_n_b_partons, static_cast<size_t>(event.lhe_HT / ht_bin_size));
-    }
-
-    virtual double Get(const ntuple::ExpressEvent& /*event*/) const override
-    {
-        throw exception("ExpressEvent is not supported in NJets_HT_weight::Get.");
     }
 
     double GetWeight(size_t n_partons, size_t n_b_partons, size_t ht_bin) const

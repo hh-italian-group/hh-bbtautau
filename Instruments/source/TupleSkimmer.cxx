@@ -132,7 +132,7 @@ private:
                     inputFiles.push_back(root_ext::OpenRootFile(args.inputPath() + "/" + input));
                 }
                 std::cout << "\n\t\textracting summary" << std::endl;
-                const ProdSummary desc_summary = GetCombinedSummary(*desc_iter, inputFiles, job.ignore_trigger_info);
+                const ProdSummary desc_summary = GetCombinedSummary(*desc_iter, inputFiles);
                 if(summary)
                     ntuple::MergeProdSummaries(*summary, desc_summary);
                 else
@@ -150,8 +150,7 @@ private:
                         std::cout << "\t\t" << desc_iter->inputs.at(n) << ":" << treeName << std::endl;
                         std::shared_ptr<EventTuple> tuple;
                         try {
-                            tuple = ntuple::CreateEventTuple(treeName, file.get(), true, ntuple::TreeState::Full,
-                                                             job.ignore_trigger_info);
+                            tuple = ntuple::CreateEventTuple(treeName, file.get(), true, ntuple::TreeState::Full);
                         } catch(std::exception&) {
                             std::cerr << "WARNING: tree " << treeName << " not found in file '"
                                       << desc_iter->inputs.at(n) << "'." << std::endl;
@@ -232,21 +231,16 @@ private:
         }
     }
 
-    ProdSummary GetSummaryWithWeights(const std::shared_ptr<TFile>& file, double xs_weight,
-                                      bool ignore_trigger_summary) const
+    ProdSummary GetSummaryWithWeights(const std::shared_ptr<TFile>& file, double xs_weight) const
     {
         using mc_corrections::WeightType;
         using mc_corrections::WeightingMode;
 
         static const WeightingMode shape_weights = { WeightType::PileUp, WeightType::BSM_to_SM, WeightType::DY,
                                                    WeightType::TTbar, WeightType::Wjets};
-        static const WeightingMode shape_weights_withTopPt = {
-            WeightType::PileUp, WeightType::BSM_to_SM, WeightType::DY,
-            WeightType::TTbar, WeightType::Wjets, WeightType::TopPt
-        };
+        static const WeightingMode shape_weights_withTopPt = shape_weights | WeightingMode({WeightType::TopPt});
 
-        auto summary_tuple = ntuple::CreateSummaryTuple("summary", file.get(), true, ntuple::TreeState::Full,
-                                                        ignore_trigger_summary);
+        auto summary_tuple = ntuple::CreateSummaryTuple("summary", file.get(), true, ntuple::TreeState::Full);
         auto summary = ntuple::MergeSummaryTuple(*summary_tuple);
         summary.totalShapeWeight = 0;
         summary.totalShapeWeight_withTopPt = 0;
@@ -266,17 +260,15 @@ private:
         return summary;
     }
 
-    ProdSummary GetCombinedSummary(const FileDescriptor& desc, const std::vector<std::shared_ptr<TFile>>& input_files,
-                                   bool ignore_trigger_summary)
+    ProdSummary GetCombinedSummary(const FileDescriptor& desc, const std::vector<std::shared_ptr<TFile>>& input_files)
     {
         if(!input_files.size())
             throw exception("Input files list is empty.");
         auto file_iter = input_files.begin();
-        auto summary = GetSummaryWithWeights(*file_iter++, desc.GetCrossSectionWeight(), ignore_trigger_summary);
+        auto summary = GetSummaryWithWeights(*file_iter++, desc.GetCrossSectionWeight());
         if(!desc.first_input_is_ref) {
             for(; file_iter != input_files.end(); ++file_iter) {
-                auto other_summary = GetSummaryWithWeights(*file_iter, desc.GetCrossSectionWeight(),
-                                                           ignore_trigger_summary);
+                auto other_summary = GetSummaryWithWeights(*file_iter, desc.GetCrossSectionWeight());
                 ntuple::MergeProdSummaries(summary, other_summary);
             }
         }
