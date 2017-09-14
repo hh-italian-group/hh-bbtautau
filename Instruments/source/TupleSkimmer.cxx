@@ -238,9 +238,11 @@ private:
         using mc_corrections::WeightType;
         using mc_corrections::WeightingMode;
 
-        static const WeightingMode shape_weights = { WeightType::PileUp, WeightType::BSM_to_SM };
+        static const WeightingMode shape_weights = { WeightType::PileUp, WeightType::BSM_to_SM, WeightType::DY,
+                                                   WeightType::TTbar, WeightType::Wjets};
         static const WeightingMode shape_weights_withTopPt = {
-            WeightType::PileUp, WeightType::BSM_to_SM, WeightType::TopPt
+            WeightType::PileUp, WeightType::BSM_to_SM, WeightType::DY,
+            WeightType::TTbar, WeightType::Wjets, WeightType::TopPt
         };
 
         auto summary_tuple = ntuple::CreateSummaryTuple("summary", file.get(), true, ntuple::TreeState::Full,
