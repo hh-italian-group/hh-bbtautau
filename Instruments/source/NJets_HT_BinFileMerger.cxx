@@ -29,10 +29,10 @@ public:
     using VectorDYBinDescriptor = std::vector<NJets_HT_BinFileDescriptor>;
     NJets_HT_BinFileMerger(const Arguments& _args) : args(_args)
     {
-        LoadInputs();
-        std::cout << "Done LoadInputs" << std::endl;
         output_bins = NJets_HT_BinFileDescriptor::LoadConfig(args.cfg_name());
         std::cout << "Done LoadCfg" << std::endl;
+        LoadInputs();
+        std::cout << "Done LoadInputs" << std::endl;
     }
 
 public:
@@ -95,6 +95,10 @@ private:
                         const ntuple::GenId genId(summaryTuple.data().lhe_n_partons.at(i),
                                                   summaryTuple.data().lhe_n_b_partons.at(i),
                                                   summaryTuple.data().lhe_ht10_bin.at(i));
+                        if (!sample_desc.bin.Contains(genId))
+                            throw exception("sample_desc bin doesn't contain genId");
+                        if(!OutputBinContains(genId))
+                            throw exception("It doesn't exist at least an output bin which contains genId");
                         size_t nevents = summaryTuple.data().lhe_n_events.at(i);
                         sample_desc.gen_counts[genId] += nevents;
                         global_map.gen_counts[genId] += nevents;
@@ -107,6 +111,16 @@ private:
             } // end loop on files
             all_samples.push_back(sample_desc);
         } //end loop n file_descriptors
+    }
+
+    bool OutputBinContains(const ntuple::GenId& genId) const
+    {
+        for(auto& output_bin : output_bins)
+        {
+            if(output_bin.Contains(genId))
+                return true;
+        }
+        return false;
     }
 
 
