@@ -46,7 +46,12 @@ private:
     double GetT(const Event& event) const
     {
         static constexpr size_t ht_bin_size = 10;
-        return GetWeight(event.lhe_n_partons, event.lhe_n_b_partons, static_cast<size_t>(event.lhe_HT / ht_bin_size));
+        size_t ht_bin = 0;
+        if (event == ntuple::Event)
+            ht_bin = static_cast<size_t>(event.lhe_HT / ht_bin_size);
+        else if (event == ntuple::ExpressEvent)
+            ht_bin = static_cast<size_t>(event.lhe_ht10_bin / ht_bin_size);
+        return GetWeight(event.lhe_n_partons, event.lhe_n_b_partons, ht_bin);
     }
 
     double GetWeight(size_t n_partons, size_t n_b_partons, size_t ht_bin) const
