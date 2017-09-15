@@ -91,7 +91,7 @@ public:
         variable.at(name_indices.at(name)) = value;
     }
 
-    virtual void AddEventVariables(size_t istraining, const SampleId& mass, double weight, double sampleweight, double /*spin*/, std::string /*channel*/) override
+    virtual void AddEventVariables(size_t istraining, const SampleId& mass, double weight, double sampleweight, int /*spin*/, std::string /*channel*/) override
     {
         data_pair[istraining][mass].data.emplace_back(variable, weight);
         data_pair[istraining][mass].sampleweight = sampleweight;

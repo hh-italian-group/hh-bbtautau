@@ -100,7 +100,7 @@ inline std::istream& operator>>(std::istream& is, SampleId& id)
 class MvaVariablesBase {
 public:
     virtual ~MvaVariablesBase() {}
-    virtual void AddEvent(const ntuple::Event& event, const SampleId& mass , double spin, std::string channel, double sample_weight = 1., int which_test = -1) = 0;
+    virtual void AddEvent(const ntuple::Event& event, const SampleId& mass , int spin, std::string channel, double sample_weight = 1., int which_test = -1) = 0;
     virtual double Evaluate() { throw exception("Not supported."); }
     virtual std::shared_ptr<TMVA::Reader> GetReader() = 0;
 };
@@ -122,13 +122,13 @@ public:
 
 
 
-    AddEventVariables(size_t which_set, const SampleId& mass, double weight, double sampleweight, double spin, std::string channel) = 0;
+    AddEventVariables(size_t which_set, const SampleId& mass, double weight, double sampleweight, int spin, std::string channel) = 0;
     bool IsEnabled(const std::string& name) const
     {
         return (!enabled_vars.size() && !disabled_vars.count(name)) || enabled_vars.count(name);
     }
 
-    virtual void AddEvent(const ntuple::Event& event, const SampleId& mass , double spin, std::string channel, double sample_weight = 1., int which_test = -1) override
+    virtual void AddEvent(const ntuple::Event& event, const SampleId& mass , int spin, std::string channel, double sample_weight = 1., int which_test = -1) override
     {
         auto bb = event.jets_p4[0] + event.jets_p4[1];
         auto leptons = event.p4_1 + event.p4_2;

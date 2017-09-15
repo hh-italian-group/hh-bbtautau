@@ -60,7 +60,7 @@ NameElement Read_csvfile(const std::string& filecsv)
         std::set<std::string> name;
         while(std::getline(lineStream,cell,','))
         {
-            bool check = checkIsDouble(cell,value);
+            bool check = TryParse(cell,value);
             if (!check) name.insert(cell);
         }
         Name_ND namend{};

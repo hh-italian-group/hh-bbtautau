@@ -261,7 +261,7 @@ struct SampleEntry{
     std::string filename;
     double weight{-1};
     SampleId id;
-    double spin;
+    int spin;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SampleEntry& entry)
@@ -279,13 +279,7 @@ inline std::istream& operator>>(std::istream& is, SampleEntry& entry)
         throw exception("Invalid sample entry");
     entry.filename = columns.at(0);
     entry.id = Parse<SampleId>(columns.at(1));
-    entry.
-
-
-
-
-
-            spin = Parse<double>(columns.at(2));
+    entry.spin = Parse<int>(columns.at(2));
     entry.weight = NumericalExpression(columns.at(3));
     return is;
 }

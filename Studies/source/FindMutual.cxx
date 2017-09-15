@@ -23,6 +23,8 @@ struct Arguments { // list of all program arguments
     REQ_ARG(std::string, cfg_file);
     REQ_ARG(std::string, optband_folder);
     REQ_ARG(unsigned, number_threads);
+    REQ_ARG(bool, range);
+    OPT_ARG(int, which_range, 0);
     OPT_ARG(Long64_t, number_events, 5000);
 };
 
@@ -62,44 +64,6 @@ public:
         samples = samples_list.at("Samples").files;
     }
 
-    void LoadData()
-    {
-        for (const auto& s: set){
-            for(const SampleEntry& entry:samples)
-            {
-                if ( entry.spin != s.second) continue;
-                auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
-                auto tuple = ntuple::CreateEventTuple(s.first, input_file.get(), true, ntuple::TreeState::Skimmed);
-                Long64_t tot_entries = 0;
-                for (Long64_t  current_entry = 0; current_entry < tuple->GetEntries(); current_entry++) {
-                    if(tot_entries >= args.number_events()) break;
-
-                    tuple->GetEntry(current_entry);
-                    const Event& event = tuple->data();
-                    if (static_cast<EventEnergyScale>(event.eventEnergyScale) != EventEnergyScale::Central || (event.q_1+event.q_2) != 0 || event.jets_p4.size() < 2
-                        || event.extraelec_veto == true || event.extramuon_veto == true || event.jets_p4[0].eta() > cuts::btag_2016::eta
-                        || event.jets_p4[1].eta() > cuts::btag_2016::eta)
-                        continue;
-
-                    LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
-
-                    if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideEllipse(event.SVfit_p4.mass(), bb.mass()))
-                        continue;
-                    if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
-                    if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
-
-                    vars.AddEvent(event, entry.id, entry.spin, s.first, entry.weight);
-                    tot_entries++;
-                }
-                std::cout << entry << " number of events: " << tot_entries << "  spin:" << entry.spin << "    " << entry.weight << "  " << std::endl;
-                std::cout << s.first << s.second <<std::endl;
-            }
-            samples_mass[s] = vars.GetSampleVariables(s.first, s.second);
-            TimeReport();
-        }
-    }
-
-
     void LoadSkimmedData()
     {
         for (const auto& s: set){
@@ -127,6 +91,7 @@ public:
     SampleIdVarData LoadRangeData(const SampleIdVarData& samples_mass){
         SampleIdVarData samples_range;
         for (const auto& range : ranges){
+            if (!range.Contains(args.which_range())) continue;
             for (const auto& sample : samples_mass){
                 if (!range.Contains(sample.first.mass)) continue;
                 for (const auto& entry : sample.second){
@@ -144,54 +109,58 @@ public:
         run::ThreadPull threads(args.number_threads());
         LoadSkimmedData();
 
-        for (const auto& s: set){
-            std::cout<<std::endl<<s.first<< "  " << s.second<<std::endl;
-            for (const auto& sample: samples_mass[s]){
-                std::cout<<"----"<<ToString(sample.first)<<"----"<<" entries: "<<sample.second.at("pt_l1").size()<<std::endl;
-                std::stringstream ss;
-                ss << std::fixed << std::setprecision(0) << s.second;
-                std::string spin = ss.str();
-                bandwidth[s][sample.first] = Read_csvfile(args.optband_folder()+"/OptimalBandwidth"+ToString(sample.first)+"_"+s.first+"_spin"+spin+".csv");
-                mutualmatrix[s][sample.first] = Mutual(sample.second, bandwidth.at(s).at(sample.first));
-                std::ofstream ListMID("MutualInformationDistance"+ToString(sample.first)+"_"+s.first+"_spin"+spin+".csv", std::ofstream::out);
-                for(const auto& value: mutualmatrix[s][sample.first]){
-                   for(const auto& var_name: value.first)
-                   {
-                       ListMID << var_name << "," ;
-                   }
-                   ListMID << value.second << std::endl;
+        if (!args.range()){
+            for (const auto& s: set){
+                std::cout<<std::endl<<s.first<< "  " << s.second<<std::endl;
+                for (const auto& sample: samples_mass[s]){
+                    std::cout<<"----"<<ToString(sample.first)<<"----"<<" entries: "<<sample.second.at("pt_l1").size()<<std::endl;
+                    std::stringstream ss;
+                    ss << std::fixed << std::setprecision(0) << s.second;
+                    std::string spin = ss.str();
+                    bandwidth[s][sample.first] = Read_csvfile(args.optband_folder()+"/OptimalBandwidth"+ToString(sample.first)+"_"+s.first+"_spin"+spin+".csv");
+                    mutualmatrix[s][sample.first] = Mutual(sample.second, bandwidth.at(s).at(sample.first));
+                    std::ofstream ListMID("MutualInformationDistance"+ToString(sample.first)+"_"+s.first+"_spin"+spin+".csv", std::ofstream::out);
+                    for(const auto& value: mutualmatrix[s][sample.first]){
+                       for(const auto& var_name: value.first)
+                       {
+                           ListMID << var_name << "," ;
+                       }
+                       ListMID << value.second << std::endl;
+                    }
+                    TimeReport();
                 }
-                TimeReport();
+            }
+        }
+        else{
+            std::cout<<"RANGES"<<std::endl;
+            for (const auto& s: set){
+                samples_range[s]=LoadRangeData(samples_mass[s]);
+            }
+            for (const auto& s: samples_range){
+                std::cout<<std::endl<<s.first.first<< "  " << s.first.second<<std::endl;
+                for (const auto& sample: s.second){
+                    std::cout<<"----Range"<<ToString(sample.first)<<"----"<<" entries: "<<sample.second.begin()->second.size()<<std::endl;
+                    if (sample.second.size()<2) continue;
+                    std::stringstream ss;
+                    ss << std::fixed << std::setprecision(0) << s.first.second;
+                    std::string spin = ss.str();
+                    bandwidth_range[s.first][sample.first] = Read_csvfile(args.optband_folder()+"/OptimalBandwidthRange"+ToString(sample.first)+"_"+s.first.first+"_spin"+spin+".csv");
+                    mutualmatrix_range[s.first][sample.first] = Mutual(sample.second,bandwidth_range.at(s.first).at(sample.first));
+
+                    std::ofstream ListMID("MutualInformationDistanceRange"+ToString(sample.first)+"_"+s.first.first+"_spin"+spin+".csv", std::ofstream::out);
+                    for(const auto& value: mutualmatrix_range[s.first][sample.first]){
+                       for(const auto& var_name: value.first)
+                       {
+                           ListMID << var_name << "," ;
+                       }
+                       ListMID << value.second << std::endl;
+                    }
+                    TimeReport();
+                }
             }
         }
 
-        std::cout<<"RANGES"<<std::endl;
-        for (const auto& s: set){
-            samples_range[s]=LoadRangeData(samples_mass[s]);
-        }
 
-        for (const auto& s: samples_range){
-            std::cout<<std::endl<<s.first.first<< "  " << s.first.second<<std::endl;
-            for (const auto& sample: s.second){
-                std::cout<<"----Range"<<ToString(sample.first)<<"----"<<" entries: "<<sample.second.begin()->second.size()<<std::endl;
-                if (sample.second.size()<2) continue;
-                std::stringstream ss;
-                ss << std::fixed << std::setprecision(0) << s.first.second;
-                std::string spin = ss.str();
-                bandwidth_range[s.first][sample.first] = Read_csvfile(args.optband_folder()+"/OptimalBandwidthRange"+ToString(sample.first)+"_"+s.first.first+"_spin"+spin+".csv");
-                mutualmatrix_range[s.first][sample.first] = Mutual(sample.second,bandwidth_range.at(s.first).at(sample.first));
-
-                std::ofstream ListMID("MutualInformationDistanceRange"+ToString(sample.first)+"_"+s.first.first+"_spin"+spin+".csv", std::ofstream::out);
-                for(const auto& value: mutualmatrix_range[s.first][sample.first]){
-                   for(const auto& var_name: value.first)
-                   {
-                       ListMID << var_name << "," ;
-                   }
-                   ListMID << value.second << std::endl;
-                }
-                TimeReport();
-            }
-        }
 
         TimeReport(true);
     }
