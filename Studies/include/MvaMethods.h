@@ -26,7 +26,7 @@ using SampleIdNameElement = std::map<SampleId, NameElement>;
 using VectorName_ND = std::deque<std::pair<Name_ND, double>>;
 using SampleIdVectorName_ND = std::map<SampleId, VectorName_ND>;
 using SamplePair = std::pair<SampleId,SampleId>;
-
+using SamplePairNameNDElement = std::map<SamplePair, std::map<Name_ND, double>>;
 
 template<typename Key, typename Value>
 std::map<Key, Value> CollectFutures(std::map<Key, std::future<Value>>& futures)
@@ -36,6 +36,39 @@ std::map<Key, Value> CollectFutures(std::map<Key, std::future<Value>>& futures)
         values[var.first] = var.second.get();
     }
     return values;
+}
+
+//Check if an element of a cell in a .csv file can be a double
+bool checkIsDouble(std::string inputString, double& result) {
+    char* end;
+    result = strtod(inputString.c_str(), &end);
+    if (end == inputString.c_str() || *end != '\0') return false;
+    return true;
+}
+
+//Read a .csv file and return or bandwidth of JSDivergence
+NameElement Read_csvfile(const std::string& filecsv)
+{
+    NameElement bandwidth;
+    std::ifstream file(filecsv);
+    std::string line;
+    while(std::getline(file,line))
+    {
+        std::stringstream lineStream(line);
+        std::string cell;
+        double value = 0;
+        std::set<std::string> name;
+        while(std::getline(lineStream,cell,','))
+        {
+            bool check = checkIsDouble(cell,value);
+            if (!check) name.insert(cell);
+        }
+        Name_ND namend{};
+        for(const auto& n: name)
+            namend.insert(n);
+        bandwidth[namend] = value;
+    }
+    return bandwidth;
 }
 
 //Calculate optimal bandwidth for each variable for a single value of mass
@@ -61,7 +94,7 @@ inline NameElement Mutual(const VarData& sample_vars, const NameElement& bandwid
     return CollectFutures(matrix_future);
 }
 
-//Estimate elements of covariance matrix for selected variables
+//Estimate elements of correlation matrix for selected variables
 inline NameElement Correlation(const VarData& sample_vars)
 {
     NameElementFuture corr_matrix_future;
@@ -133,7 +166,7 @@ inline void CreateMatrixHistosCompatibility(const SampleIdVarData& samples_mass,
                                             const std::string& name, TDirectory* directory)
 {
     int k = 1;
-    int bin = static_cast<int>(samples_mass.size()) - 1;
+    int bin = static_cast<int>(samples_mass.size());
     auto  histo_sgn_compatibility = std::make_shared<TH2D>(name.c_str(),name.c_str(), bin, 0, bin, bin, 0, bin);
     for(auto mass_entry_1 = samples_mass.begin(); mass_entry_1 != samples_mass.end(); ++mass_entry_1) {
         if ( mass_entry_1->first.IsBackground())
@@ -141,7 +174,7 @@ inline void CreateMatrixHistosCompatibility(const SampleIdVarData& samples_mass,
         histo_sgn_compatibility->GetXaxis()->SetBinLabel(k, (ToString(mass_entry_1->first)).c_str());
         histo_sgn_compatibility->GetYaxis()->SetBinLabel(k, (ToString(mass_entry_1->first)).c_str());
         int j = k;
-        for(auto mass_entry_2 = std::next(mass_entry_1); mass_entry_2 != samples_mass.end(); ++mass_entry_2) {
+        for(auto mass_entry_2 = mass_entry_1; mass_entry_2 != samples_mass.end(); ++mass_entry_2) {
             if ( mass_entry_2->first.IsBackground())
                 continue;
             SamplePair mass_pair(mass_entry_1->first, mass_entry_2->first);
@@ -199,7 +232,7 @@ inline NameElement JensenDivergenceSB(const VarData& sample_signal, const VarDat
         band_x.push_back(bandwidth_signal.at(Name_ND{entry_1->first}));
         band_y.push_back(bandwidth_bkg.at(Name_ND{entry_1->first}));
         JSDivergenceND_future[Name_ND{entry_1->first}] = run::async(stat_estimators::JensenShannonDivergence_ND<double>, x, y, band_x, band_y);
-        for(auto entry_2 = std::next(entry_1); entry_2 != sample_signal.end(); ++entry_2) {
+        for(auto entry_2 = entry_1; entry_2 != sample_signal.end(); ++entry_2) {
             x.push_back(&sample_signal.at(entry_2->first));
             y.push_back(&sample_bkg.at(entry_2->first));
             band_x.push_back(bandwidth_signal.at(Name_ND{entry_2->first}));
@@ -327,8 +360,12 @@ inline std::vector<std::pair<double,PhysicalValue>> Calculate_CutSignificance(co
          auto int_S = Integral(outputBDT(sgn_mass, tot), i, nbin+1);
          auto int_B = Integral(outputBDT(bkg_mass,tot), i, nbin+1);
          PhysicalValue significance;
+         PhysicalValue sign_inf(-1,0);
          if ( int_S.GetValue() != 0 && int_B.GetValue() != 0) {
              significance = (int_S/std::sqrt(int_B))/relative;
+         }
+         if ( int_S.GetValue() != 0 && int_B.GetValue() == 0  ){
+             significance = sign_inf;
          }
 
          cuts.emplace_back(output, significance);

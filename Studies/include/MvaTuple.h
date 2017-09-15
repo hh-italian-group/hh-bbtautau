@@ -13,10 +13,15 @@ namespace  analysis {
     VAR(std::vector<double>, param_values) \
     VAR(std::vector<size_t>, param_positions) \
     /**/ \
-    VAR(double, ROCIntegral) \
+    VAR(double, ROCIntegral_testing) \
+    VAR(double, ROCIntegral_training) \
     /**/ \
     VAR(std::vector<double>, roc_value) \
     VAR(std::vector<int>, roc_mass) \
+    VAR(std::vector<double>, roc_testing_value) \
+    VAR(std::vector<int>, roc_testing_mass) \
+    VAR(std::vector<double>, roc_training_value) \
+    VAR(std::vector<int>, roc_training_mass) \
     /**/ \
     VAR(std::vector<double>, KS_value) \
     VAR(std::vector<int>, KS_type) \
@@ -63,14 +68,25 @@ inline GridPoint GetGridPoint(const MvaResults& results)
     return params;
 }
 
-inline std::map<int, double> GetRocIntegralMap(const MvaResults& results)
+inline std::map<int, double> GetRocTrainingIntegralMap(const MvaResults& results)
 {
     std::map<int, double> rocs;
-    const size_t N = results.roc_mass.size();
-    if(results.roc_value.size() != N)
+    const size_t N = results.roc_training_mass.size();
+    if(results.roc_training_value.size() != N)
         throw exception("Incompatible roc info in mva tuple.");
     for(size_t n = 0; n < N; ++n)
-        rocs[results.roc_mass[n]] = results.roc_value[n];
+        rocs[results.roc_training_mass[n]] = results.roc_training_value[n];
+    return rocs;
+}
+
+inline std::map<int, double> GetRocTestingIntegralMap(const MvaResults& results)
+{
+    std::map<int, double> rocs;
+    const size_t N = results.roc_testing_mass.size();
+    if(results.roc_testing_value.size() != N)
+        throw exception("Incompatible roc info in mva tuple.");
+    for(size_t n = 0; n < N; ++n)
+        rocs[results.roc_testing_mass[n]] = results.roc_testing_value[n];
     return rocs;
 }
 

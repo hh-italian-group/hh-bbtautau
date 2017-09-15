@@ -261,12 +261,12 @@ struct SampleEntry{
     std::string filename;
     double weight{-1};
     SampleId id;
-    std::string channel;
+    double spin;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SampleEntry& entry)
 {
-    os << entry.filename << " " << entry.id << " " << entry.weight << " " <<  entry.channel;
+    os << entry.filename << " " << entry.id << " " << entry.weight << " " <<  entry.spin;
     return os;
 }
 
@@ -274,14 +274,19 @@ inline std::istream& operator>>(std::istream& is, SampleEntry& entry)
 {
     std::string str;
     std::getline(is, str);
-    const auto columns = SplitValueList(str, false);
+    const auto columns = SplitValueList(str, true);
     if(columns.size() < 3 || columns.size() > 4)
         throw exception("Invalid sample entry");
     entry.filename = columns.at(0);
     entry.id = Parse<SampleId>(columns.at(1));
-    entry.weight = Parse<double>(columns.at(2));
-    if(columns.size() > 3)
-        entry.channel = columns.at(3);
+    entry.
+
+
+
+
+
+            spin = Parse<double>(columns.at(2));
+    entry.weight = NumericalExpression(columns.at(3));
     return is;
 }
 

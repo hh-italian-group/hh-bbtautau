@@ -49,9 +49,8 @@ struct Arguments { // list of all program arguments
     REQ_ARG(int, which_test);
     OPT_ARG(size_t, number_sets, 2);
     OPT_ARG(uint_fast32_t, seed, std::numeric_limits<uint_fast32_t>::max());
-    OPT_ARG(uint_fast32_t, seed2, 1234567);
-    OPT_ARG(std::string, channel, "");
     OPT_ARG(std::string, save, "");
+    OPT_ARG(bool, blind, 1);
 };
 
 namespace analysis {
@@ -61,7 +60,11 @@ class MvaVariablesTMVA : public MvaVariables {
 public:
     using DataVector = std::vector<double>;
     using DataVectorF = std::vector<float>;
-    using MassData_pair = std::map<SampleId, std::deque<std::pair<DataVector, double>>>;
+    struct SampleData{
+        double sampleweight;
+        std::deque<std::pair<DataVector, double>> data;
+    };
+    using MassData_pair = std::map<SampleId, SampleData>;
     static constexpr size_t max_n_vars = 1000;
     DataVector variable;
     DataVectorF variable_float;
@@ -88,9 +91,10 @@ public:
         variable.at(name_indices.at(name)) = value;
     }
 
-    virtual void AddEventVariables(size_t istraining, const SampleId& mass, double weight) override
+    virtual void AddEventVariables(size_t istraining, const SampleId& mass, double weight, double sampleweight, double /*spin*/, std::string /*channel*/) override
     {
-        data_pair[istraining][mass].emplace_back(variable, weight);
+        data_pair[istraining][mass].data.emplace_back(variable, weight);
+        data_pair[istraining][mass].sampleweight = sampleweight;
     }
 
     void UploadEvents()
@@ -100,12 +104,11 @@ public:
             const SampleId m = entry.first;
             double tot_weight = 0;
             for (const auto& val : data_pair){
-                for (const auto& x : val.second.at(m)){
+                for (const auto& x : val.second.at(m).data){
                     tot_weight+= x.second;
                 }
             }
-            weights[m] = 1. / (tot_weight);
-            std::cout<<m<<" "<<weights[m]<<std::endl;
+            weights[m] = entry.second.sampleweight / (tot_weight);
         }
 
         for(const auto& data_entry : data_pair) {
@@ -114,8 +117,8 @@ public:
             for(const auto& m_entry : data_entry.second) {
                 const SampleId m = m_entry.first;
                 const std::string samplename = m.IsSignal() ? "Signal" : "Background";
-                for(const auto& vars : m_entry.second) {
-                    loader->AddEvent(samplename, treetype, vars.first , weights.at(m));
+                for(const auto& vars : m_entry.second.data) {
+                    loader->AddEvent(samplename, treetype, vars.first , vars.second*weights.at(m));
                 }
             }
         }
@@ -135,7 +138,7 @@ public:
         for(const auto& data_entry : data_pair) {
             for(const auto& m_entry : data_entry.second) {
                 const SampleId m = m_entry.first;
-                for(const auto& vars : m_entry.second) {
+                for(const auto& vars : m_entry.second.data) {
                     ss << n << sep <<  m.IsSignal() << sep;
                     for (const auto& var : vars.first)
                         ss << var << sep;
@@ -164,7 +167,7 @@ public:
     {
         if(!data_pair.count(istraining) || !data_pair.at(istraining).count(sample))
             throw exception("Sample not found.");
-        const auto& events = data_pair.at(istraining).at(sample);
+        const auto& events = data_pair.at(istraining).at(sample).data;
         std::vector<std::pair<double,double>> result;
         result.reserve(events.size());
         for(const auto& event : events)
@@ -180,9 +183,10 @@ class MVATraining {
 public:
     using Event = ::ntuple::Event;
     using EventTuple = ::ntuple::EventTuple;
+    using SummaryTuple = ntuple::SummaryTuple;
 
     MVATraining(const Arguments& _args): args(_args),
-        outfile(root_ext::CreateRootFile(args.output_file()+"_"+std::to_string(args.which_test())+".root")), gen2(args.seed2()),  seed_split(0,29)
+        outfile(root_ext::CreateRootFile(args.output_file()+"_"+std::to_string(args.which_test())+".root"))
     {
         MvaSetupCollection setups;
         SampleEntryListCollection samples_list;
@@ -207,20 +211,15 @@ public:
         if(mva_setup.use_mass_var) {
             enabled_vars.insert("mass");
             enabled_vars.insert("channel");
+            enabled_vars.insert("spin");
         }
-
-        if (args.channel().size()){
-            channels.push_back(args.channel());
-        }
-        else
-            for (const auto& channel : mva_setup.channels)
-                channels.push_back(ToString(channel));
 
         std::cout<<enabled_vars.size()<<std::endl;
         std::mt19937_64 seed_gen(args.seed());
         std::uniform_int_distribution<uint_fast32_t> seed_distr(100000, std::numeric_limits<uint_fast32_t>::max());
         uint_fast32_t seed = seed_distr(seed_gen);
         gen.seed(seed_distr(seed_gen));
+        gen2.seed(seed_distr(seed_gen));
         vars = std::make_shared<MvaVariablesTMVA>(args.number_sets(), seed, enabled_vars);
     }
 
@@ -341,32 +340,44 @@ public:
         std::uniform_int_distribution<int> split(0, 3);
         std::cout<<bkg<<std::endl;
 
-        for(size_t j = 0; j<channels.size(); j++){
-            std::cout << channels[j] << std::endl;
+        std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0},{"tauTau",0},{"muTau",2},{"eTau",2},{"tauTau",2},{"muTau",1},{"eTau",1},{"tauTau",1},{"muTau",-1},{"eTau",-1},{"tauTau",-1}};
+
+        for (const auto& s : set){
+            std::cout << s.first << s.second <<std::endl;
             for(const SampleEntry& entry : samples)
             {
                 if ( entry.id.IsSignal() && !range.Contains(entry.id.mass) ) continue;
-                if ( entry.id.IsBackground() && entry.channel != channels.at(j) )
-                    continue;
+                if ( entry.spin != s.second) continue;
+
                 auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
-                auto tuple = ntuple::CreateEventTuple(ToString(channels[j]), input_file.get(), true, ntuple::TreeState::Skimmed);
+                auto tuple = ntuple::CreateEventTuple(s.first, input_file.get(), true, ntuple::TreeState::Skimmed);
+                SummaryTuple sumtuple("summary",input_file.get(), true);
+
                 Long64_t tot_entries = 0;
-                for(const Event& event : *tuple) {
+                for (Long64_t  current_entry = 0; current_entry < tuple->GetEntries(); current_entry++) {
+
+                    tuple->GetEntry(current_entry);
+                    const Event& event = tuple->data();
                     if(tot_entries >= args.number_events()) break;
-                    if (event.split_id >= 15) continue;
+                    sumtuple.GetEntry(current_entry);
+                    if (args.blind())
+                        if (event.split_id >= (sumtuple.data().n_splits/2)) continue;
+                    if (!args.blind())
+                        if (event.split_id < (sumtuple.data().n_splits/2)) continue;
                     tot_entries++;
                     int set = split(gen2);
                     int which_set = set == args.which_test() ? 0 : 1;
                     if (entry.id.IsBackground()) {
                         const int mass_background = mass_range.at(it(gen));
                         const SampleId sample_bkg(SampleType::Bkg_TTbar, mass_background);
-                        vars->AddEvent(event, sample_bkg, entry.weight, which_set);
+                        vars->AddEvent(event, sample_bkg, entry.spin, s.first,entry.weight, which_set);
                     }
-                    else vars->AddEvent(event, entry.id, entry.weight, which_set);
+                    else vars->AddEvent(event, entry.id, entry.spin, s.first, entry.weight , which_set);
                 }
-                std::cout << " channel " << channels[j] << "    " << entry.filename << " number of events: " << tot_entries << std::endl;
+                std::cout << " channel " << s.first << "    " << entry.filename << " number of events: " << tot_entries << std::endl;
             }
         }
+
         if (args.save().size()) {
             vars->SaveEvents(args.save());
             return;
@@ -382,8 +393,10 @@ public:
         }
         std::cout << methods.size() << " metodi" << std::endl;
 
-        std::map<std::string, double> ROCintegral;
-        std::map<std::string, std::map<int, double>> roc;
+        std::map<std::string, double> ROCintegral_testing;
+        std::map<std::string, double> ROCintegral_training;
+        std::map<std::string, std::map<int, double>> roc_testing;
+        std::map<std::string, std::map<int, double>> roc_training;
         std::map<std::string, std::vector<std::pair<std::string, double>>> importance;
         std::map<std::string, std::map<SampleId, std::map<size_t, std::vector<double>>>> evaluation;
         std::map<std::string, std::shared_ptr<BDTData>> outputBDT;
@@ -402,13 +415,15 @@ public:
             for (size_t i = 0; i<vars->names.size(); i++){
                 importance[m.first].emplace_back(vars->names[i], method->GetVariableImportance(static_cast<UInt_t>(i)));
             }
-            ROCintegral[m.first] = method->GetROCIntegral(&outputBDT.at(m.first)->bdt_out(mass_tot, 0), &outputBDT.at(m.first)->bdt_out(bkg, 0));
-            std::cout<<"ROC "<<ROCintegral[m.first]<<std::endl;
+            ROCintegral_testing[m.first] = method->GetROCIntegral(&outputBDT.at(m.first)->bdt_out(mass_tot, 0), &outputBDT.at(m.first)->bdt_out(bkg, 0));
+            ROCintegral_training[m.first] = method->GetROCIntegral(&outputBDT.at(m.first)->bdt_out(mass_tot, 1), &outputBDT.at(m.first)->bdt_out(bkg, 1));
+            std::cout<<"ROC "<<ROCintegral_testing[m.first]<<std::endl;
             for(const auto& sample : mass_range){
                 SampleId sample_sgn(SampleType::Sgn_Res, sample);
                 SampleId sample_bkg(SampleType::Bkg_TTbar, sample);
-                roc[m.first][sample] = method->GetROCIntegral(&outputBDT.at(m.first)->bdt_out(sample_sgn, 0), &outputBDT.at(m.first)->bdt_out(sample_bkg, 0));
-                std::cout<<sample<<"    "<<roc[m.first][sample]<<std::endl;
+                roc_testing[m.first][sample] = method->GetROCIntegral(&outputBDT.at(m.first)->bdt_out(sample_sgn, 0), &outputBDT.at(m.first)->bdt_out(sample_bkg, 0));
+                roc_training[m.first][sample] = method->GetROCIntegral(&outputBDT.at(m.first)->bdt_out(sample_sgn, 1), &outputBDT.at(m.first)->bdt_out(sample_bkg, 1));
+                std::cout<<sample<<"    "<<roc_testing[m.first][sample]<<std::endl;
             }
             auto directory_roc_method = root_ext::GetDirectory(*directory_roc, m.first);
             std::vector<float> mvaS, mvaB;
@@ -476,10 +491,16 @@ public:
                 mva_tuple().chi_type.push_back(static_cast<int>(sample.first.sampleType));
             }
 
-            mva_tuple().ROCIntegral = ROCintegral[name];
-            for (const auto& value : roc[name]){
-                mva_tuple().roc_value.push_back(value.second);
-                mva_tuple().roc_mass.push_back(value.first);
+            mva_tuple().ROCIntegral_testing = ROCintegral_testing[name];
+            for (const auto& value : roc_testing[name]){
+                mva_tuple().roc_testing_value.push_back(value.second);
+                mva_tuple().roc_testing_mass.push_back(value.first);
+            }
+
+            mva_tuple().ROCIntegral_training = ROCintegral_training[name];
+            for (const auto& value : roc_training[name]){
+                mva_tuple().roc_training_value.push_back(value.second);
+                mva_tuple().roc_training_mass.push_back(value.first);
             }
 
             for (const auto& var: importance.at(name)){
@@ -499,8 +520,7 @@ private:
     std::mt19937_64 gen, gen2;
     MvaVariables::VarNameSet enabled_vars;
     std::shared_ptr<MvaVariablesTMVA> vars;
-    std::uniform_int_distribution<uint_fast32_t> test_vs_training, seed_split;
-    std::vector<std::string> channels;
+    std::uniform_int_distribution<uint_fast32_t> test_vs_training;
 };
 
 }

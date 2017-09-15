@@ -6,6 +6,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include <iostream>
 #include <random>
 #include "h-tautau/Analysis/include/EventTuple.h"
+#include "h-tautau/Analysis/include/SummaryTuple.h"
 #include "hh-bbtautau/Analysis/include/MT2.h"
 #include "AnalysisTools/Core/include/EnumNameMap.h"
 #include "AnalysisTools/Core/include/TextIO.h"
@@ -64,8 +65,8 @@ ENUM_NAMES(SampleType) = {
 
 inline std::ostream& operator<<(std::ostream& os, const SampleId& id)
 {
-    if(id.sampleType == SampleType::Bkg_TTbar)
-        os << id.sampleType << id.mass;
+    if(id.sampleType == SampleType::Sgn_NonRes || id.sampleType == SampleType::Bkg_TTbar)
+        os << id.sampleType;
     else {
         if(id == SampleId::MassTot())
             os << "Mtot";
@@ -99,7 +100,7 @@ inline std::istream& operator>>(std::istream& is, SampleId& id)
 class MvaVariablesBase {
 public:
     virtual ~MvaVariablesBase() {}
-    virtual void AddEvent(const ntuple::Event& event, const SampleId& mass , double sample_weight = 1., int which_test = -1) = 0;
+    virtual void AddEvent(const ntuple::Event& event, const SampleId& mass , double spin, std::string channel, double sample_weight = 1., int which_test = -1) = 0;
     virtual double Evaluate() { throw exception("Not supported."); }
     virtual std::shared_ptr<TMVA::Reader> GetReader() = 0;
 };
@@ -117,13 +118,17 @@ public:
 
     virtual ~MvaVariables() {}
     virtual void SetValue(const std::string& name, double value, char type = 'F') = 0;
-    virtual void AddEventVariables(size_t which_set, const SampleId& mass, double weight) = 0;
+    virtual void
+
+
+
+    AddEventVariables(size_t which_set, const SampleId& mass, double weight, double sampleweight, double spin, std::string channel) = 0;
     bool IsEnabled(const std::string& name) const
     {
         return (!enabled_vars.size() && !disabled_vars.count(name)) || enabled_vars.count(name);
     }
 
-    virtual void AddEvent(const ntuple::Event& event, const SampleId& mass , double sample_weight = 1., int which_test = -1) override
+    virtual void AddEvent(const ntuple::Event& event, const SampleId& mass , double spin, std::string channel, double sample_weight = 1., int which_test = -1) override
     {
         auto bb = event.jets_p4[0] + event.jets_p4[1];
         auto leptons = event.p4_1 + event.p4_2;
@@ -193,10 +198,10 @@ public:
         VAR("MT_l1l2", Calculate_MT(leptons, event.pfMET_p4));
         VAR("MT_tot", Calculate_TotalMT(event.p4_1,event.p4_2,event.pfMET_p4)); //Total transverse mass
         VAR("MT2", std::min(Calculate_MT2(event.p4_1,event.p4_2,event.jets_p4[0], event.jets_p4[1], event.pfMET_p4),Calculate_MT2(event.p4_1, event.jets_p4[1], event.p4_2,event.jets_p4[0], event.pfMET_p4))); //Stransverse mass
-//        VAR("mass_H", ROOT::Math::VectorUtil::InvariantMass(bb,event.SVfit_p4));
+        VAR("mass_H", ROOT::Math::VectorUtil::InvariantMass(bb,event.SVfit_p4));
         VAR("mass_top1", four_bodies::Calculate_topPairMasses(event.p4_1, event.p4_2, event.jets_p4[0], event.jets_p4[1], event.pfMET_p4).first);
         VAR("mass_top2", four_bodies::Calculate_topPairMasses(event.p4_1, event.p4_2, event.jets_p4[0], event.jets_p4[1], event.pfMET_p4).second);
-//        VAR("MX", four_bodies::Calculate_MX(event.p4_1, event.p4_2, event.jets_p4[0], event.jets_p4[1], event.pfMET_p4));
+        VAR("MX", four_bodies::Calculate_MX(event.p4_1, event.p4_2, event.jets_p4[0], event.jets_p4[1], event.pfMET_p4));
         VAR("dR_l1l2_boosted", four_bodies::Calculate_dR_boosted(event.p4_1, event.p4_2, event.SVfit_p4));
         VAR("dR_b1b2_boosted", four_bodies::Calculate_dR_boosted(event.jets_p4[0], event.jets_p4[1], bb));
         VAR("phi", four_bodies::Calculate_phi(event.p4_1,event.p4_2,event.jets_p4[0], event.jets_p4[1], event.SVfit_p4, bb));
@@ -214,13 +219,13 @@ public:
         VAR("costheta_l1l2METhh", four_bodies::Calculate_cosTheta_2bodies(leptonsMET, bb+event.SVfit_p4));
         VAR("costheta_l1l2METhhMET", four_bodies::Calculate_cosTheta_2bodies(leptonsMET, bb+leptonsMET));
 
-//        VAR("mass_H", ROOT::Math::VectorUtil::InvariantMass(bb,event.SVfit_p4));
-//        VAR("MX", four_bodies::Calculate_MX(event.p4_1, event.p4_2, event.jets_p4[0], event.jets_p4[1], event.pfMET_p4));
 
         VAR("mass", mass.mass);
         VAR_INT("channel", event.channelId);
+        VAR("spin", spin);
+
         size_t test = which_test ==-1 ? which_set(gen) : static_cast<size_t>(which_test);
-        AddEventVariables(test, mass, sample_weight*event.weight_total);
+        AddEventVariables(test, mass, event.weight_total, sample_weight, spin, channel);
     }
 
 private:

@@ -40,7 +40,7 @@ public:
         variable_float.at(name_indices.at(name)) = static_cast<float>(value);
     }
 
-    virtual void AddEventVariables(size_t /*istraining*/, const SampleId& /*mass*/, double /*weight*/) override {}
+    virtual void AddEventVariables(size_t /*istraining*/, const SampleId& /*mass*/, double /*weight*/, double /*sampleweight*/, double /*spin*/, std::string /*channel*/) override {}
 
     virtual double Evaluate() override
     {
@@ -83,7 +83,7 @@ public:
         reader->BookMVA(method_name, bdt_weights);
     }
 
-    virtual void AddEvent(const ntuple::Event& event, const SampleId& /*mass*/ , double /*sample_weight = 1.*/, int) override
+    virtual void AddEvent(const ntuple::Event& event, const SampleId& /*mass*/ , double/* spin*/, std::string /*channel*/, double /*sample_weight*/, int /*which_test*/) override
     {
         auto bb = event.jets_p4[0] + event.jets_p4[1];
         dphi_mumet = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.p4_1, event.pfMET_p4));;
@@ -127,10 +127,10 @@ public:
         return vars[mass_range.max()].method_vars[method_name] = CreateMvaVariables(method_name, bdt_weights, enabled_vars, is_legacy, is_Low);
     }
 
-    double Evaluate(const ntuple::Event& event, int mass, const std::string& method_name = "")
+    double Evaluate(const ntuple::Event& event, int mass, const std::string& method_name = "", const double spin = 0, const std::string channel = "")
     {
         auto& method_vars = FindMvaVariables(mass, method_name);
-        method_vars.AddEvent(event, SampleId(SampleType::Sgn_Res, mass));
+        method_vars.AddEvent(event, SampleId(SampleType::Sgn_Res, mass), spin, channel);
         return method_vars.Evaluate();
     }
 

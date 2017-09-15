@@ -12,13 +12,14 @@ namespace mva_study{
 using DataVector = std::vector<double>;
 using VarData = std::map<std::string, DataVector>;
 using SampleIdVarData = std::map<SampleId, VarData>;
+using ChannelSpin = std::pair<std::string,double>;
 
 
 class MvaVariablesStudy : public MvaVariables {
 private:
     std::map<std::string, double> variables;
     using SplittedSampleIdVarData = std::map<size_t, SampleIdVarData>;
-    SplittedSampleIdVarData all_variables;
+    std::map<ChannelSpin,SplittedSampleIdVarData> all_variables;
 
 public:
     using MvaVariables::MvaVariables;
@@ -27,9 +28,10 @@ public:
         variables[name] = value;
     }
 
-    virtual void AddEventVariables(size_t set, const SampleId& mass,  double /*weight*/) override
+    virtual void AddEventVariables(size_t set, const SampleId& mass,  double /*weight*/, double /*sampleweight*/, double spin, std::string channel) override
     {
-        VarData& sample_vars = all_variables[set][mass];
+        ChannelSpin chsp(channel,spin);
+        VarData& sample_vars = all_variables[chsp][set][mass];
         for(const auto& name_value : variables) {
             const std::string& name = name_value.first;
             const double value = name_value.second;
@@ -37,24 +39,17 @@ public:
         }
     }
 
-    const SampleIdVarData& GetSampleVariables(size_t set = 0) const
+    const SampleIdVarData& GetSampleVariables(std::string channel, double spin, size_t set = 0) const
     {
         if(set >= all_variables.size())
             throw exception("Sample part is out of range.");
-        return all_variables.at(set);
+        ChannelSpin chsp(channel,spin);
+        return all_variables.at(chsp).at(set);
     }
 
     virtual std::shared_ptr<TMVA::Reader> GetReader() override {throw exception ("GetReader not supported.");}
 };
 
-inline const std::set<std::string>& GetMvaBranches()
-{
-    static const std::set<std::string> EnabledBranches_read = {
-        "eventEnergyScale", "q_1", "q_2", "jets_p4", "extraelec_veto", "extramuon_veto ", "SVfit_p4",
-        "pfMET_p4", "p4_1", "p4_2", "channelId"
-    };
-    return EnabledBranches_read;
-}
 
 struct Name_ND{
 private:

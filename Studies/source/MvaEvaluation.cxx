@@ -44,13 +44,14 @@ struct Arguments { // list of all program arguments
     REQ_ARG(Long64_t, number_events);
     REQ_ARG(int, min);
     REQ_ARG(int, max);
-    REQ_ARG(uint_fast32_t, number_sets);
+    REQ_ARG(size_t, number_sets);
     REQ_ARG(uint_fast32_t, seed);
-    REQ_ARG(uint_fast32_t, seed2);
     REQ_ARG(bool, isLegacy);
     REQ_ARG(bool, isLow);
     REQ_ARG(std::string, range);
-    OPT_ARG(std::string, channel, "");
+    REQ_ARG(std::string, channel);
+    REQ_ARG(int, spin);
+    OPT_ARG(bool, blind, 1);
 };
 
 namespace analysis {
@@ -65,7 +66,7 @@ public:
 
 
     MVAEvaluation(const Arguments& _args): args(_args),
-        outfile(root_ext::CreateRootFile(args.output_file()+".root")), seed_split(0,29), test_vs_training(0, args.number_sets()-static_cast<uint_fast32_t>(1))
+        outfile(root_ext::CreateRootFile(args.output_file()+".root")), test_vs_training(0, args.number_sets()-1)
     {
         MvaSetupCollection setups;
         SampleEntryListCollection samples_list;
@@ -91,12 +92,6 @@ public:
         }
         std::cout<<"VARS: "<<enabled_vars.size()<<std::endl;
 
-        if (args.channel().size()){
-            channels.push_back(args.channel());
-        }
-        else
-            for (const auto& channel : mva_setup.channels)
-                channels.push_back(ToString(channel));
     }
 
     void CreateOutputHistos(std::map<SampleId, std::map<size_t, std::vector<double>>> data, BDTData::Entry& outputBDT)
@@ -118,6 +113,8 @@ public:
         for(const auto& sample : samples) {
             if(sample.id.IsSignal() && sample.id.mass>=min && sample.id.mass<=max)
                 masses.insert(sample.id.mass);
+            else if (sample.id.IsSM())
+                masses.insert(sample.id.mass);
         }
         return std::vector<int>(masses.begin(), masses.end());
     }
@@ -132,43 +129,59 @@ public:
         auto vars = reader.AddRange(range, args.method_name(), args.file_xml(), enabled_vars, args.isLegacy(), args.isLow());
         std::mt19937_64 seed_gen(args.seed());
 
-        for(size_t j = 0; j<channels.size(); j++){
-            std::cout << channels[j] << std::endl;
+        std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0},{"tauTau",0},{"muTau",2},{"eTau",2},{"tauTau",2},{"muTau",1},{"eTau",1},{"tauTau",1},{"muTau",-1},{"eTau",-1},{"tauTau",-1}};
+
+
+
+        for (const auto& s : set){
+            std::cout << s.first << s.second <<std::endl;
+            if (s.first != args.channel()) continue;
             for(const SampleEntry& entry : samples)
             {
                 if ( entry.id.IsSignal() && (entry.id.mass<args.min() || entry.id.mass>args.max())) continue;
-                if ( entry.id.IsBackground() && entry.channel != channels.at(j) )
-                    continue;
-                auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
+                if ( entry.spin != s.second) continue;
+                if ( !entry.id.IsBackground() && entry.spin!=args.spin()) continue;
 
-                auto tuple = ntuple::CreateEventTuple(ToString(channels[j]), input_file.get(), true, ntuple::TreeState::Skimmed);
+                auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
+                auto tuple = ntuple::CreateEventTuple(s.first, input_file.get(), true, ntuple::TreeState::Skimmed);
+                ntuple::SummaryTuple sumtuple("summary",input_file.get(), true);
+
                 Long64_t tot_entries = 0;
-                for(const Event& event : *tuple) {
+                for (Long64_t  current_entry = 0; current_entry < tuple->GetEntries(); current_entry++) {
+
+                    tuple->GetEntry(current_entry);
+                    const Event& event = tuple->data();
                     if(tot_entries >= args.number_events()) break;
-                    if (event.split_id >= 15) continue;
+                    sumtuple.GetEntry(current_entry);
+                    if (args.blind())
+                        if (event.split_id >= (sumtuple.data().n_splits/2)) continue;
+                    if (!args.blind())
+                        if (event.split_id < (sumtuple.data().n_splits/2)) continue;
                     tot_entries++;
                     std::uniform_int_distribution<uint_fast32_t> seed_distr(100000, std::numeric_limits<uint_fast32_t>::max());
-                    uint_fast32_t test_split = test_vs_training(seed_gen);
+                    size_t test_split = test_vs_training(seed_gen);
                     gen.seed(seed_distr(seed_gen));
                     if (entry.id.IsBackground()) {
                         for (const auto mass : mass_range){
                             const SampleId sample_bkg(SampleType::Bkg_TTbar, mass);
-                            vars->AddEvent(event, sample_bkg, entry.weight);
-                            data[sample_bkg][test_split].push_back(reader.Evaluate(event, mass, args.method_name()));
-                            data[bkg][test_split].push_back(reader.Evaluate(event, mass, args.method_name()));
-                            data[sample_bkg][test_train].push_back(reader.Evaluate(event, mass, args.method_name()));
-                            data[bkg][test_train].push_back(reader.Evaluate(event, mass, args.method_name()));
+                            vars->AddEvent(event, sample_bkg, entry.spin, s.first, entry.weight);
+                            double eval = reader.Evaluate(event, mass, args.method_name(), entry.spin, s.first);
+                            data[sample_bkg][test_split].push_back(eval);
+                            data[bkg][test_split].push_back(eval);
+                            data[sample_bkg][test_train].push_back(eval);
+                            data[bkg][test_train].push_back(eval);
                         }
                     }
                     else{
-                        vars->AddEvent(event, entry.id, entry.weight);
-                        data[entry.id][test_split].push_back(reader.Evaluate(event, entry.id.mass, args.method_name()));
-                        data[mass_tot][test_split].push_back(reader.Evaluate(event, entry.id.mass, args.method_name()));
-                        data[entry.id][test_train].push_back(reader.Evaluate(event, entry.id.mass, args.method_name()));
-                        data[mass_tot][test_train].push_back(reader.Evaluate(event, entry.id.mass, args.method_name()));
+                        vars->AddEvent(event, entry.id, entry.spin, s.first, entry.weight);
+                        double eval = reader.Evaluate(event, entry.id.mass, args.method_name(), entry.spin, s.first);
+                        data[entry.id][test_split].push_back(eval);
+                        data[mass_tot][test_split].push_back(eval);
+                        data[entry.id][test_train].push_back(eval);
+                        data[mass_tot][test_train].push_back(eval);
                     }
                 }
-                std::cout << " channel " << channels[j] << "    " << entry.filename << " number of events: " << tot_entries << std::endl;
+                std::cout << " channel " << s.first << "    " << entry.filename << " number of events: " << tot_entries << std::endl;
             }
         }
 
@@ -220,10 +233,7 @@ public:
         auto directory = root_ext::GetDirectory(*outfile.get(), "Kolmogorov");
         std::cout<<"kolmogorov"<<std::endl;
         std::map<SampleId, double> kolmogorov = Kolmogorov(data, outputBDT.bdt_out,  difference.difference ,directory);
-
-        std::cout<<"ciao"<<std::endl;
         auto directory_chi = root_ext::GetDirectory(*outfile.get(), "Chi2");
-        std::cout<<"ciao"<<std::endl;
         std::cout<<"chi2"<<std::endl;
         std::map<SampleId, double> chi = ChiSquare(data, outputBDT.bdt_out, directory_chi);
 
@@ -266,8 +276,7 @@ private:
     std::mt19937_64 gen, gen2;
     MvaVariables::VarNameSet enabled_vars;
     MvaReader reader;
-    std::uniform_int_distribution<uint_fast32_t>  seed_split, test_vs_training;
-    std::vector<std::string> channels;
+    std::uniform_int_distribution<size_t>  test_vs_training;
 };
 
 }
