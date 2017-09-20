@@ -26,13 +26,15 @@ public:
     explicit BTagData(std::shared_ptr<TFile> _outputFile, const std::string& directoryName = "") :
         AnalyzerData(_outputFile, directoryName)
         {
-            static const std::vector<double> x_bins = {20,30,40,60,100,150,200,300,650,1000};
+            static const std::vector<double> x_bins = {20,30,40,60,100,150,200,300,1000};
             static const std::vector<double> y_bins = {0,0.6,1.2,2.1,2.4}; 
             h2.SetMasterHist(x_bins, y_bins);
             eff.SetMasterHist(x_bins, y_bins);
+            validate.SetMasterHist(x_bins, y_bins);
         }
         ANA_DATA_ENTRY(TH2D, h2)
         ANA_DATA_ENTRY(TH2D, eff)
+        ANA_DATA_ENTRY(TH2D, validate)
 };
 
 class BTagEfficiency { 
@@ -46,8 +48,21 @@ public:
 
 
     BTagEfficiency(const Arguments& _args) : args(_args), 
-    outfile(root_ext::CreateRootFile(args.output_file())), anaData(outfile)
+    //outfile(root_ext::CreateRootFile(args.output_file())), anaData(outfile)
+    outfile(root_ext::CreateRootFile(args.output_file()))
     {
+        anaDataMap["OSIsoEff"] =  std::make_shared<BTagData>(outfile, "OS/ISO/Efficiency");
+        anaDataMap["OSNonIsoEff"] =  std::make_shared<BTagData>(outfile, "OS/NonISO/Efficiency");
+        anaDataMap["OSIsoVal"] =  std::make_shared<BTagData>(outfile, "OS/ISO/ValidationChannel");
+        anaDataMap["OSNonIsoVal"] =  std::make_shared<BTagData>(outfile, "OS/NonISO/ValidationChannel");
+        anaDataMap["OSVal"] = std::make_shared<BTagData>(outfile,"OS/ValidationIsolation");
+        anaDataMap["SSIsoEff"] =  std::make_shared<BTagData>(outfile, "SS/ISO/Efficiency");
+        anaDataMap["SSNonIsoEff"] =  std::make_shared<BTagData>(outfile, "SS/NonISO/Efficiency");
+        anaDataMap["SSIsoVal"] =  std::make_shared<BTagData>(outfile, "SS/ISO/ValidationChannel");
+        anaDataMap["SSNonIsoVal"] =  std::make_shared<BTagData>(outfile, "SS/NonISO/ValidationChannel");
+        anaDataMap["SSVal"] = std::make_shared<BTagData>(outfile,"SS/ValidationIsolation");
+        anaDataMap["ValIso"] = std::make_shared<BTagData>(outfile,"ValidationCharge/ISO");
+        anaDataMap["ValNonIso"] = std::make_shared<BTagData>(outfile,"ValidationCharge/NonISO");
     }
     void Run()
     {
@@ -63,7 +78,7 @@ public:
         static const std::string flavour_all = "all";
         std::set<std::string> flavour_names = analysis::tools::collect_map_values(flavours);
         flavour_names.insert(flavour_all);
-        static const std::string num = "Num", denom = "Denom", eff = "Eff" ;
+        static const std::string num = "Num", denom = "Denom", eff = "Eff",val = "Val" ;
 
 	bool apply_pu_id_cut = args.apply_pu_id_cut() != "no";
 	DiscriminatorWP pu_wp = DiscriminatorWP::Medium;
@@ -90,14 +105,18 @@ public:
                     auto bb = event.jets_p4.at(0) + event.jets_p4.at(1);
                     if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideEllipse(event.SVfit_p4.mass(),bb.mass())) continue;
 
-                    if ((event.q_1+event.q_2) != 0) continue;
+                    std::string tau_sign = "";
+                    if ((event.q_1+event.q_2) == 0) tau_sign = "OS";
+                    else tau_sign = "SS";
 
                     static const std::string tau_iso_disc = "byMediumIsolationMVArun2v1DBoldDMwLT";
                     static const uint32_t tau_iso_disc_hash = analysis::tools::hash(tau_iso_disc);
                     static const double tau_iso_cut = 0.5;
-                    if(args.apply_tau_id_cut() && 
-                            (!PassTauIdCut(event.tauId_keys_1, event.tauId_values_1, tau_iso_disc_hash, tau_iso_cut) ||
-                             !PassTauIdCut(event.tauId_keys_2, event.tauId_values_2, tau_iso_disc_hash, tau_iso_cut))) continue;   
+                  
+                    std::string tau_iso = "";
+                    if(!PassTauIdCut(event.tauId_keys_1, event.tauId_values_1, tau_iso_disc_hash, tau_iso_cut) ||
+                             !PassTauIdCut(event.tauId_keys_2, event.tauId_values_2, tau_iso_disc_hash, tau_iso_cut)) tau_iso = "NonIso" ;
+                    else tau_iso = "Iso";   
 
                     for (size_t i=0; i<2; i++){
                         const auto& jet = event.jets_p4.at(i);
@@ -112,30 +131,88 @@ public:
                         int jet_hadronFlavour = event.jets_hadronFlavour.at(i);
                         const std::string& jet_flavour = flavours.at(jet_hadronFlavour);
 
-                        anaData.h2(denom, flavour_all, btag_wp_all, channel).Fill(jet.Pt(), std::abs(jet.Eta()));
-                        anaData.h2(denom, flavour_all, btag_wp_all, channel_all).Fill(jet.Pt(), std::abs(jet.Eta()));
-                        anaData.h2(denom, jet_flavour, btag_wp_all, channel).Fill(jet.Pt(), std::abs(jet.Eta()));
-                        anaData.h2(denom, jet_flavour, btag_wp_all, channel_all).Fill(jet.Pt(), std::abs(jet.Eta()));
+                        anaDataMap[tau_sign+tau_iso+eff]->h2(denom, flavour_all, btag_wp_all, channel).
+                            Fill(jet.Pt(), std::abs(jet.Eta()));
+                        anaDataMap[tau_sign+tau_iso+eff]->h2(denom, flavour_all, btag_wp_all, channel_all).
+                            Fill(jet.Pt(), std::abs(jet.Eta()));
+                        anaDataMap[tau_sign+tau_iso+eff]->h2(denom, jet_flavour, btag_wp_all, channel).
+                            Fill(jet.Pt(), std::abs(jet.Eta()));
+                        anaDataMap[tau_sign+tau_iso+eff]->h2(denom, jet_flavour, btag_wp_all, channel_all).
+                            Fill(jet.Pt(), std::abs(jet.Eta()));
 
                         for(const auto& btag_wp : btag_working_points) {
-                            if(btag_wp.second > jet_csv){
-                                anaData.h2(num, flavour_all, btag_wp.first, channel).Fill(jet.Pt(), std::abs(jet.Eta()));
-                                anaData.h2(num, flavour_all, btag_wp.first, channel_all).Fill(jet.Pt(), std::abs(jet.Eta()));
-                                anaData.h2(num, jet_flavour, btag_wp.first, channel).Fill(jet.Pt(), std::abs(jet.Eta()));
-                                anaData.h2(num, jet_flavour, btag_wp.first, channel_all).Fill(jet.Pt(), std::abs(jet.Eta()));
+                            if( jet_csv >= btag_wp.second){
+                                anaDataMap[tau_sign+tau_iso+eff]->h2(num, flavour_all, btag_wp.first, channel).
+                                    Fill(jet.Pt(), std::abs(jet.Eta()));
+                                anaDataMap[tau_sign+tau_iso+eff]->h2(num, flavour_all, btag_wp.first, channel_all).
+                                    Fill(jet.Pt(), std::abs(jet.Eta()));
+                                anaDataMap[tau_sign+tau_iso+eff]->h2(num, jet_flavour, btag_wp.first, channel).
+                                    Fill(jet.Pt(), std::abs(jet.Eta()));
+                                anaDataMap[tau_sign+tau_iso+eff]->h2(num, jet_flavour, btag_wp.first, channel_all).
+                                    Fill(jet.Pt(), std::abs(jet.Eta()));
                             }
                         }
                     }//end loop on jets 
                 }//end loop on events
             }// end loop on files
         }//end loop on channel
-        for(const auto& channel : channel_names){
-            for(const auto& btag_wp : btag_working_points) {
-                for(const auto& jet_flavour : flavour_names){
-                    anaData.eff(jet_flavour,btag_wp.first,channel).CopyContent(anaData.h2(num,jet_flavour,
-                                btag_wp.first,channel));
-                    anaData.eff(jet_flavour,btag_wp.first,channel).Divide(&anaData.h2(denom,jet_flavour,
-                                btag_wp_all,channel));
+
+        std::vector<std::string> tau_signs = {"SS","OS"};
+        std::vector<std::string> tau_isos = {"NonIso","Iso"};
+
+        //Create Efficiency Histograms
+        for(const auto& tau_sign : tau_signs){
+            for (const auto& tau_iso : tau_isos){ 
+                for(const auto& channel : channel_names){
+                    for(const auto& btag_wp : btag_working_points) {
+                        for(const auto& jet_flavour : flavour_names){
+                            anaDataMap[tau_sign+tau_iso+eff]->eff(jet_flavour,btag_wp.first,channel).
+                                CopyContent(anaDataMap[tau_sign+tau_iso+eff]->h2(num,jet_flavour,btag_wp.first,channel));
+                            anaDataMap[tau_sign+tau_iso+eff]->eff(jet_flavour,btag_wp.first,channel).
+                                Divide(&anaDataMap[tau_sign+tau_iso+eff]->h2(denom,jet_flavour, btag_wp_all,channel));
+                        }
+                    }
+                }
+            }
+        }//End of loop to create Efficiency Histograms
+        
+
+        //Make Validation plots             
+        for(const auto& tau_sign1 : tau_signs){
+            for (const auto& tau_iso1 : tau_isos){
+                for(const auto& channel1 : channel_names){
+                    for(const auto& btag_wp : btag_working_points) {
+                        for(const auto& jet_flavour : flavour_names){
+
+                            //Make Validation plots between tau signs
+                            for(const auto& tau_sign2 : tau_signs){
+                                if(tau_sign1 == tau_sign2) continue;
+                                anaDataMap[val+tau_iso1]->validate(jet_flavour,btag_wp.first,channel1,tau_sign2,tau_sign1).
+                                    CopyContent(anaDataMap[tau_sign2+tau_iso1+eff]->eff(jet_flavour, btag_wp.first,channel1));
+                                anaDataMap[val+tau_iso1]->validate(jet_flavour,btag_wp.first,channel1,tau_sign2,tau_sign1).
+                                    Add(&anaDataMap[tau_sign1+tau_iso1+eff]->eff(jet_flavour, btag_wp.first,channel1),-1.0);
+                            }
+
+                   
+                            //Make Vlaidation plots between Isolations
+                            for (const auto& tau_iso2 : tau_isos){
+                                if(tau_iso1 == tau_iso2) continue;
+                                anaDataMap[tau_sign1+val]->validate(jet_flavour,btag_wp.first,channel1,tau_iso2,tau_iso1).
+                                    CopyContent(anaDataMap[tau_sign1+tau_iso2+eff]->eff(jet_flavour, btag_wp.first,channel1));
+                                anaDataMap[tau_sign1+val]->validate(jet_flavour,btag_wp.first,channel1,tau_iso2,tau_iso1).
+                                    Add(&anaDataMap[tau_sign1+tau_iso1+eff]->eff(jet_flavour, btag_wp.first,channel1),-1.0);
+                            }
+                
+                            //Make Validation plots between Channels 
+                            for (const auto& channel2 : channel_names){
+                                if (channel1 == channel2) continue;
+                                anaDataMap[tau_sign1+tau_iso1+val]->validate(jet_flavour,btag_wp.first,channel2,channel1).
+                                    CopyContent(anaDataMap[tau_sign1+tau_iso1+eff]->eff(jet_flavour, btag_wp.first,channel2));
+                                anaDataMap[tau_sign1+tau_iso1+val]->validate(jet_flavour,btag_wp.first,channel2,channel1).
+                                    Add(&anaDataMap[tau_sign1+tau_iso1+eff]->eff(jet_flavour, btag_wp.first,channel1),-1.0);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -143,7 +220,8 @@ public:
 private:
     Arguments args;
     std::shared_ptr<TFile> outfile;
-    BTagData anaData;
+    //BTagData anaData;
+    std::map<std::string,std::shared_ptr<BTagData>> anaDataMap; 
 
     static bool PassTauIdCut(const std::vector<uint32_t>& tauId_keys, const std::vector<float>& tauId_values,
             uint32_t discriminator_name_hash, float cut_value)
