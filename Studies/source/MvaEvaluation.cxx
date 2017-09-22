@@ -64,7 +64,6 @@ public:
     using DataVector = std::vector<double>;
     using MassData = std::map<SampleId, DataVector>;
 
-
     MVAEvaluation(const Arguments& _args): args(_args),
         outfile(root_ext::CreateRootFile(args.output_file()+".root")), test_vs_training(0, args.number_sets()-1)
     {
@@ -81,7 +80,7 @@ public:
 
         if(!samples_list.count("Samples"))
             throw exception("Samples don't found");
-        samples = samples_list.at("Samples").files;
+        samples = samples_list.at("Sample").files;
         std::cout<<"SAMPLES: "<<samples.size()<<std::endl;
 
 
@@ -89,16 +88,19 @@ public:
         if(mva_setup.use_mass_var) {
             enabled_vars.insert("mass");
             enabled_vars.insert("channel");
+            enabled_vars.insert("spin");
         }
         std::cout<<"VARS: "<<enabled_vars.size()<<std::endl;
 
     }
 
-    void CreateOutputHistos(std::map<SampleId, std::map<size_t, std::vector<double>>> data, BDTData::Entry& outputBDT)
+    void CreateOutputHistos(std::map<ChannelSampleIdSpin, std::map<size_t, std::vector<double>>> data, BDTData::Entry& outputBDT)
     {
         for(const auto& sample : data){
+            std::cout<<sample.first.channel<<"    "<<sample.first.sample_id.sampleType<<"    "<<sample.first.sample_id.mass<<"    "<<sample.first.spin<<std::endl;
             for(const auto& entry : sample.second){
-                std::vector<BDTData::Hist*> outs = { &outputBDT(sample.first, tot), &outputBDT(sample.first, entry.first) };
+
+                std::vector<BDTData::Hist*> outs = { &outputBDT(sample.first.channel, sample.first.sample_id, sample.first.spin, entry.first)};
                 for (const auto& value : entry.second){
                     for(auto out : outs)
                         out->Fill(value);
@@ -121,7 +123,7 @@ public:
 
     void Run()
     {
-        std::map<SampleId, std::map<size_t, std::vector<double>>> data;
+        std::map<ChannelSampleIdSpin, std::map<size_t, std::vector<double>>> data;
         std::cout<<"Variabili iniziali: "<<enabled_vars.size()<<std::endl;
         const auto mass_range = CreateMassRange(args.min(), args.max());
         std::cout<<"SAMPLES nel RANGE:"<<mass_range.size() <<std::endl;
@@ -130,8 +132,6 @@ public:
         std::mt19937_64 seed_gen(args.seed());
 
         std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0},{"tauTau",0},{"muTau",2},{"eTau",2},{"tauTau",2},{"muTau",1},{"eTau",1},{"tauTau",1},{"muTau",-1},{"eTau",-1},{"tauTau",-1}};
-
-
 
         for (const auto& s : set){
             std::cout << s.first << s.second <<std::endl;
@@ -144,41 +144,44 @@ public:
 
                 auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
                 auto tuple = ntuple::CreateEventTuple(s.first, input_file.get(), true, ntuple::TreeState::Skimmed);
-                ntuple::SummaryTuple sumtuple("summary",input_file.get(), true);
+                auto sumtuple = ntuple::CreateSummaryTuple("summary",input_file.get(), true, ntuple::TreeState::Skimmed);
+                auto mergesummary = ntuple::MergeSummaryTuple(*sumtuple.get());
 
                 Long64_t tot_entries = 0;
-                for (Long64_t  current_entry = 0; current_entry < tuple->GetEntries(); current_entry++) {
-
-                    tuple->GetEntry(current_entry);
-                    const Event& event = tuple->data();
+                for(const Event& event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
-                    sumtuple.GetEntry(current_entry);
                     if (args.blind())
-                        if (event.split_id >= (sumtuple.data().n_splits/2)) continue;
+                        if (event.split_id >= (mergesummary.n_splits/2)) continue;
                     if (!args.blind())
-                        if (event.split_id < (sumtuple.data().n_splits/2)) continue;
+                        if (event.split_id < (mergesummary.n_splits/2)) continue;
                     tot_entries++;
                     std::uniform_int_distribution<uint_fast32_t> seed_distr(100000, std::numeric_limits<uint_fast32_t>::max());
                     size_t test_split = test_vs_training(seed_gen);
                     gen.seed(seed_distr(seed_gen));
                     if (entry.id.IsBackground()) {
                         for (const auto mass : mass_range){
-                            const SampleId sample_bkg(SampleType::Bkg_TTbar, mass);
-                            vars->AddEvent(event, sample_bkg, entry.spin, s.first, entry.weight);
-                            double eval = reader.Evaluate(event, mass, args.method_name(), entry.spin, s.first);
-                            data[sample_bkg][test_split].push_back(eval);
-                            data[bkg][test_split].push_back(eval);
-                            data[sample_bkg][test_train].push_back(eval);
-                            data[bkg][test_train].push_back(eval);
+                            SampleId sample_bkg(SampleType::Bkg_TTbar, mass);
+                            ChannelSampleIdSpin id_ch_sample_spin{args.channel(), sample_bkg, args.spin()};
+                            ChannelSampleIdSpin id_ch_bkg_spin{args.channel(), bkg, args.spin()};
+
+                            vars->AddEvent(event, sample_bkg, args.spin(), s.first, entry.weight);
+                            double eval = reader.Evaluate(event, mass, args.method_name(), args.spin(), args.channel());
+                            data[id_ch_sample_spin][test_split].push_back(eval);
+                            data[id_ch_bkg_spin][test_split].push_back(eval);
+                            data[id_ch_sample_spin][test_train].push_back(eval);
+                            data[id_ch_bkg_spin][test_train].push_back(eval);
                         }
                     }
                     else{
                         vars->AddEvent(event, entry.id, entry.spin, s.first, entry.weight);
-                        double eval = reader.Evaluate(event, entry.id.mass, args.method_name(), entry.spin, s.first);
-                        data[entry.id][test_split].push_back(eval);
-                        data[mass_tot][test_split].push_back(eval);
-                        data[entry.id][test_train].push_back(eval);
-                        data[mass_tot][test_train].push_back(eval);
+                        double eval = reader.Evaluate(event, entry.id.mass, args.method_name(), args.spin(), args.channel());
+
+                        ChannelSampleIdSpin id_ch_sample_spin{args.channel(), entry.id, args.spin()};
+                        ChannelSampleIdSpin id_ch_tot_spin{args.channel(), mass_tot, args.spin()};
+                        data[id_ch_sample_spin][test_split].push_back(eval);
+                        data[id_ch_tot_spin][test_split].push_back(eval);
+                        data[id_ch_sample_spin][test_train].push_back(eval);
+                        data[id_ch_tot_spin][test_train].push_back(eval);
                     }
                 }
                 std::cout << " channel " << s.first << "    " << entry.filename << " number of events: " << tot_entries << std::endl;
@@ -187,11 +190,12 @@ public:
 
         BDTData outputBDT(outfile, "Evaluation");
         CreateOutputHistos(data, outputBDT.bdt_out);
+
         BDTData difference(outfile, "Difference");
         auto histo_roc = std::make_shared<TGraph>();
         histo_roc->SetTitle("ROC");
         histo_roc->SetName("ROC");
-        std::map<int, double> roc;
+        std::map<int, double> roc, roc_testing, roc_training;
         auto reader_method = vars->GetReader();
         auto method = dynamic_cast<TMVA::MethodBase*>(reader_method->FindMVA(args.method_name()));
         int i = 0;
@@ -200,15 +204,19 @@ public:
             std::cout<<mass<<std::endl;
             SampleId sample_sgn(SampleType::Sgn_Res, mass);
             SampleId sample_bkg(SampleType::Bkg_TTbar, mass);
-            roc[mass] = method->GetROCIntegral(&outputBDT.bdt_out(sample_sgn,tot), &outputBDT.bdt_out(sample_bkg,tot));
+            roc[mass] = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), sample_sgn, args.spin(), test_train), &outputBDT.bdt_out(args.channel(),sample_bkg,args.spin(), test_train));
+            roc_testing[mass] = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), sample_sgn, args.spin(), 0), &outputBDT.bdt_out(args.channel(),sample_bkg,args.spin(),0));
+            roc_training[mass] = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), sample_sgn, args.spin(), 1), &outputBDT.bdt_out(args.channel(),sample_bkg,args.spin(),1));
             histo_roc->SetPoint(i, mass, roc[mass]);
             std::cout<<mass<<"  ROC: "<<roc[mass]<<std::endl;
             i++;
             auto directory_roc_mass = root_ext::GetDirectory(*directory_roc, std::to_string(mass));
             std::vector<float> mvaS, mvaB;
-            for (const auto& eval : data[sample_sgn][test_train])
+            ChannelSampleIdSpin id_sgn(args.channel(), sample_sgn, args.spin());
+            ChannelSampleIdSpin id_bkg(args.channel(), sample_bkg, args.spin());
+            for (const auto& eval : data[id_sgn][test_train])
                 mvaS.push_back(static_cast<float>(eval));
-            for (const auto& eval : data[sample_bkg][test_train])
+            for (const auto& eval : data[id_bkg][test_train])
                 mvaB.push_back(static_cast<float>(eval));
             TMVA::ROCCurve roccurve(mvaS, mvaB);
             auto graph = roccurve.GetROCCurve();
@@ -217,13 +225,18 @@ public:
         }
         root_ext::WriteObject(*histo_roc, outfile.get());
 
-        auto roctot = method->GetROCIntegral(&outputBDT.bdt_out(mass_tot,tot), &outputBDT.bdt_out(bkg,tot));
+        auto roctot = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), mass_tot, args.spin(), test_train), &outputBDT.bdt_out(args.channel(),  bkg, args.spin(), test_train));
+        auto roctot_testing = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), mass_tot, args.spin(), 0), &outputBDT.bdt_out(args.channel(),  bkg, args.spin(), 0));
+        auto roctot_training = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), mass_tot, args.spin(), 1), &outputBDT.bdt_out(args.channel(),  bkg, args.spin(), 1));
+
         std::cout<<roctot<<std::endl;
 
         std::vector<float> mvaS, mvaB;
-        for (const auto& eval : data[mass_tot][test_train])
+        ChannelSampleIdSpin id_mass_tot{args.channel(), mass_tot,args.spin()};
+        ChannelSampleIdSpin id_bkg{args.channel(),bkg,args.spin()};
+        for (const auto& eval : data[id_mass_tot][test_train])
             mvaS.push_back(static_cast<float>(eval));
-        for (const auto& eval : data[bkg][test_train])
+        for (const auto& eval : data[id_bkg][test_train])
             mvaB.push_back(static_cast<float>(eval));
 
         TMVA::ROCCurve roccurve(mvaS, mvaB);
@@ -232,26 +245,30 @@ public:
 
         auto directory = root_ext::GetDirectory(*outfile.get(), "Kolmogorov");
         std::cout<<"kolmogorov"<<std::endl;
-        std::map<SampleId, double> kolmogorov = Kolmogorov(data, outputBDT.bdt_out,  difference.difference ,directory);
+        auto kolmogorov = Kolmogorov(data, outputBDT.bdt_out,  difference.difference ,directory);
         auto directory_chi = root_ext::GetDirectory(*outfile.get(), "Chi2");
         std::cout<<"chi2"<<std::endl;
-        std::map<SampleId, double> chi = ChiSquare(data, outputBDT.bdt_out, directory_chi);
+        auto chi = ChiSquare(data, outputBDT.bdt_out, directory_chi);
 
         auto directory_sb = root_ext::GetDirectory(*outfile.get(), "Significance");
         std::cout<<"Significativity"<<std::endl;
-        std::map<int, std::pair<double, PhysicalValue>> sign = EstimateSignificativity(mass_range, outputBDT.bdt_out, directory_sb, false);
+        auto sign = EstimateSignificativity(args.channel(), args.spin(), mass_range, outputBDT.bdt_out, directory_sb, false);
 
         MvaTuple mva_tuple(outfile.get(), false);
         for (const auto& sample : kolmogorov){
-            mva_tuple().KS_mass.push_back(sample.first.mass);
+            mva_tuple().KS_mass.push_back(sample.first.sample_id.mass);
             mva_tuple().KS_value.push_back(sample.second);
-            mva_tuple().KS_type.push_back(static_cast<int>(sample.first.sampleType));
+            mva_tuple().KS_type.push_back(static_cast<int>(sample.first.sample_id.sampleType));
+            mva_tuple().KS_spin.push_back(static_cast<int>(sample.first.spin));
+            mva_tuple().KS_channel.push_back(sample.first.channel);
         }
 
         for (const auto& sample : chi){
-            mva_tuple().chi_mass.push_back(sample.first.mass);
+            mva_tuple().chi_mass.push_back(sample.first.sample_id.mass);
             mva_tuple().chi_value.push_back(sample.second);
-            mva_tuple().chi_type.push_back(static_cast<int>(sample.first.sampleType));
+            mva_tuple().chi_type.push_back(static_cast<int>(sample.first.sample_id.sampleType));
+            mva_tuple().chi_spin.push_back(static_cast<int>(sample.first.spin));
+            mva_tuple().chi_channel.push_back(sample.first.channel);
         }
 
         for (const auto& value : roc){
@@ -259,10 +276,16 @@ public:
             mva_tuple().roc_mass.push_back(value.first);
         }
 
+        mva_tuple().roc_value.push_back(roctot);
+        mva_tuple().roc_mass.push_back(mass_tot.mass);
+
         for (const auto& value : sign){
             mva_tuple().significance.push_back(value.second.second.GetValue());
             mva_tuple().significance_err.push_back(value.second.second.GetStatisticalError());
-            mva_tuple().significance_mass.push_back(value.first);
+            mva_tuple().significance_mass.push_back(value.first.sample_id.mass);
+            mva_tuple().significance_type.push_back(static_cast<int>(value.first.sample_id.sampleType));
+            mva_tuple().significance_spin.push_back(value.first.spin);
+            mva_tuple().significance_channel.push_back(value.first.channel);
         }
         mva_tuple.Fill();
         mva_tuple.Write();

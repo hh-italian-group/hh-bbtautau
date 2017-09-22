@@ -52,7 +52,7 @@ public:
     std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0},{"tauTau",0},{"muTau",2},{"eTau",2},{"tauTau",2},{"muTau",1},{"eTau",1},{"tauTau",1},{"muTau",-1},{"eTau",-1},{"tauTau",-1}};
 
     MvaClassification(const Arguments& _args): args(_args),
-        outfile(root_ext::CreateRootFile(args.output_file())), vars(args.number_sets(), args.seed(),{}, {"channel", "mass"}),
+        outfile(root_ext::CreateRootFile(args.output_file())), vars(args.number_sets(), args.seed(),{}, {"channel", "mass", "spin"}),
         reporter(std::make_shared<TimeReporter>())
     {
         MvaSetupCollection setups;
@@ -75,7 +75,9 @@ public:
         histo->SetXTitle("JSD");
         std::string spin;
         if (set.second == 0) spin = "Radion";
-        else spin = "Graviton";
+        else if (set.second == 2) spin = "Graviton";
+        else if (set.second == 1) spin = "SM";
+        else spin = "Bkg";
         std::ofstream of("InformationTable_"+ToString(mass)+"_"+std::to_string(args.set())+"_"+std::to_string(args.number_sets())+set.first+"_spin"+spin+".csv", std::ofstream::out);
         of<<"Var_1"<<","<<"Var_2"<<","<<"JSD_ND"<<","<<"JSD_12-(JSD_1+JSD_2)"<<","<<"ScaledMI_Signal_12" <<","<<"ScaledMI_Bkg_12"<<","<<"selected"<<","<<","<<"eliminated by"<<std::endl;
         for(auto& entry : JSDivergenceSB.at(set).at(mass_entry)){
@@ -164,8 +166,10 @@ public:
     {
         std::string spin;
         if (set.second == 0) spin = "Radion";
-        else spin = "Graviton";
-        static constexpr double threashold_mi = 0.7;
+        else if (set.second == 2) spin = "Graviton";
+        else if (set.second == 1) spin = "SM";
+        else spin = "Bkg";
+        static constexpr double threashold_mi = 0.8;
         ChannelSpin chsp_bkg(set.first, -1);
         const NameElement& JSDivergenceND = JSDivergenceSB.at(set).at(mass);
         const NameElement& mutual_matrix_signal = mutual_matrix.at(set).at(mass);
@@ -185,6 +189,7 @@ public:
             });
             auto best_entry = JSDivergence_vector.front();
             for(const auto& name : best_entry.first) {
+                if (!mutual_matrix_bkg.count(name)) continue;
                 const auto counts = std::make_pair(selected.count(name), not_corrected.count(name));
                 const auto& prefix = prefixes.at(counts);
                 best_entries_file << prefix << name << prefix << ",";
@@ -197,6 +202,7 @@ public:
                 }
                 for(const auto& other_entry : samples_mass.at(set).at(mass)) {
                     if(other_entry.first == name) continue;
+                    if (!mutual_matrix_bkg.count(other_entry.first)) continue;
                     const Name_ND names({name, other_entry.first});
                     if(mutual_matrix_signal.at(names) < threashold_mi && mutual_matrix_bkg.at(names) < threashold_mi){
                         eliminated[other_entry.first] = "MI-"+name;
@@ -220,7 +226,9 @@ public:
     {
         std::string spin;
         if (set.second == 0) spin = "Radion";
-        else spin = "Graviton";
+        else if (set.second == 2) spin = "Graviton";
+        else if (set.second == 1) spin = "SM";
+        else spin = "Bkg";
         ChannelSpin chsp_bkg(set.first, -1);
         auto mass = ToString(mass_entry);
         std::ofstream of("InformationTable_"+ToString(mass)+"_"+std::to_string(args.set())+"_"+std::to_string(args.number_sets())+set.first+"_spin"+spin+".csv", std::ofstream::out);
@@ -229,6 +237,7 @@ public:
              if (entry.first.size() == 1){
                  auto name_1 = entry.first.at(0);
                  bool selected_1 = selected.count(name_1);
+                 if (!JSDivergenceSB.at(set).at(mass_entry).count(name_1)) continue;
                  of<<name_1<<","<<"   "<<","<<JSDivergenceSB.at(set).at(mass_entry).at(name_1)<<","<<","<<","<<","<<selected_1;
                  if(eliminated.count(name_1)) of<<","<<","<<eliminated.at(name_1);
                  of<<std::endl;
@@ -238,6 +247,7 @@ public:
                  auto name_2 = entry.first.at(1);
                  bool selected_1 = selected.count(name_1);
                  bool selected_2 = selected.count(name_2);
+                 if (!mutual_matrix.at(set).at(mass_entry).count(entry.first) || !mutual_matrix.at(chsp_bkg).at(SampleType::Bkg_TTbar).count(entry.first)) continue;
                  of<<name_1<<","<<name_2<<","<<JSDivergenceSB.at(set).at(mass_entry).at(entry.first)<<","
                   <<JSDivergenceSB.at(set).at(mass_entry).at(entry.first)-(JSDivergenceSB.at(set).at(mass_entry).at(name_1)+JSDivergenceSB.at(set).at(mass_entry).at(name_2))
                   <<","<<mutual_matrix.at(set).at(mass_entry).at(entry.first)<<","<<mutual_matrix.at(chsp_bkg).at(SampleType::Bkg_TTbar).at(entry.first)<<","<<selected_1<<","<<selected_2;
@@ -251,6 +261,12 @@ public:
 
     void CreateMatrixIntersection(const SampleIdSetNamesVar& mass_selected, const ChannelSpin& set) const
     {
+        std::string spin;
+        if (set.second == 0) spin = "Radion";
+        else if (set.second == 2) spin = "Graviton";
+        else if (set.second == 1) spin = "SM";
+        else if (set.second == -1) spin = "Bkg";
+        auto directory_set = root_ext::GetDirectory(*outfile, set.first+spin);
         std::cout << std::endl << "Intersection" << std::endl;
         int bin = static_cast<int>(mass_selected.size());
         auto matrix_intersection = std::make_shared<TH2D>("Intersection", "Intersection of variables", bin, 0, bin, bin, 0, bin);
@@ -271,10 +287,7 @@ public:
             }
             k++;
         }
-        std::string spin;
-        if (set.second == 0) spin = "Radion";
-        else spin = "Graviton";
-        auto directory_set = root_ext::GetDirectory(*outfile, set.first+spin);
+
         root_ext::WriteObject(*matrix_intersection, directory_set);;
     }
 
@@ -283,7 +296,9 @@ public:
         SampleIdSetNamesVar mass_selected;
         std::string spin;
         if (set.second == 0) spin = "Radion";
-        else spin = "Graviton";
+        else if (set.second == 2) spin = "Graviton";
+        else if (set.second == 1) spin = "SM";
+        else spin = "Bkg";
         std::ofstream ofs("SelectedVariable_"+std::to_string(args.set())+"_"+std::to_string(args.number_sets())+set.first+"_spin"+spin+".csv", std::ofstream::out);
         for (const auto& mass_entry : samples_mass.at(set)){
             if (mass_entry.first.IsBackground())
@@ -296,9 +311,9 @@ public:
                     ofs << entry_selected<<",";
             }
             ofs << std::endl;
+
             InformationTable(mass_entry.first, mass_selected.at(mass_entry.first), eliminated, set);
         }
-
         CreateMatrixIntersection(mass_selected, set);
     }
 
@@ -335,7 +350,7 @@ public:
             std::cout<<std::endl<<s.first<< "  " << s.second<<std::endl;
             LoadSkimmedData(s);
             for (const auto& sample: samples_mass[s]){
-                std::cout<<"----"<<ToString(sample.first)<<"----"<<" entries: "<<sample.second.at("pt_l1").size()<<std::endl;
+                std::cout<<"----"<<sample.first.sampleType<<"   "<<sample.first.mass<<"----"<<" entries: "<<sample.second.at("pt_l1").size()<<std::endl;
                 std::stringstream ss;
                 ss << std::fixed << std::setprecision(0) << s.second;
                 std::string spin = ss.str();
@@ -343,6 +358,7 @@ public:
                 mutual_matrix[s][sample.first] = Read_csvfile(args.mutual_folder()+"/MutualInformationDistance"+ToString(sample.first)+"_"+s.first+"_spin"+spin+".csv");
                 JSDivergenceSB[s][sample.first] = Read_csvfile(args.jsd_folder()+"/JensenShannonDivergenceSB"+ToString(sample.first)+"_"+s.first+"_spin"+spin+".csv");
             }
+
         }
 
         for (const auto& s: set){
@@ -370,7 +386,7 @@ public:
                     continue;
                 }
                 std::cout<<"mutual plot  "<< std::flush;
-                MutualHisto(sample.first, mutual_matrix.at(s).at(sample.first), mutual_matrix.at(chsp_bkg).at(SampleType::Bkg_TTbar), directory_mutinf);
+                MutualHisto(sample.first, mutual_matrix.at(s).at(sample.first), mutual_matrix.at(chsp_bkg).at(SampleId{SampleType::Bkg_TTbar,0}), directory_mutinf);
                 std::cout<<"JSD_sgn_bkg  "<< std::flush;
                 DistributionJSD_SB(sample.first, directory_jenshan_distrib, s);
                 TimeReport();
@@ -383,6 +399,7 @@ public:
             auto directory_correlation = root_ext::GetDirectory(*directory_set, "Correlation");
             CreateMatrixHistos(samples_mass.at(s), correlation_matrix.at(s), "correlation", directory_correlation, true);
 
+            std::cout <<"MI-Correlation histos" << std::endl;
             auto directory_mi_corr = root_ext::GetDirectory(*directory_set, "MI_Correlation");
             for(const auto& sample : samples_mass.at(s)){
                 std::string mass ="MI_Correlation_"+ToString(sample.first);
@@ -390,17 +407,19 @@ public:
                 histo->SetXTitle("1-MI");
                 histo->SetYTitle("Correlation");
                 for (const auto& pair: mutual_matrix.at(s).at(sample.first)){
+                    if (!correlation_matrix.at(s).at(sample.first).count(pair.first)) continue;
                     histo->Fill(pair.second, std::abs(correlation_matrix.at(s).at(sample.first).at(pair.first)));
                 }
                 root_ext::WriteObject(*histo, directory_mi_corr);
             }
             auto directory_jenshan_matrix = root_ext::GetDirectory(*directory_jenshan_sgnlbkg, "Matrix");
+            std::cout <<"JSD histos" << std::endl;
             CreateMatrixHistos(samples_mass.at(s), JSDivergenceSB.at(s), "JSD", directory_jenshan_matrix);
             std::cout<<"Plot Jensen Shannon"<<std::endl;
             auto directory_jenshan_allvars = root_ext::GetDirectory(*directory_jenshan_sgnlbkg, "All_variables");
             PlotJensenShannonSB(directory_jenshan_allvars,s);
 
-            if (s.second == 0 && s.second == 2){
+            if (s.second == 0 || s.second == 2){
                 std::cout<<"Signal Compatibility Jensen Shannon  "<<std::flush;
                 auto directory_jenshan_sgnlsgnl = root_ext::GetDirectory(*directory_jensenshannon, "Signal_Signal");
                 JensenShannonSignalCompatibility(directory_jenshan_sgnlsgnl,s);
@@ -414,9 +433,6 @@ public:
             std::cout<<"Selection variables"<<std::endl;
             VariablesSelection(s);
         }
-
-
-
 
 
         TimeReport(true);

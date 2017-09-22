@@ -5,6 +5,8 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include "AnalysisTools/Core/include/SmartTree.h"
 #include "hh-bbtautau/Analysis/include/MvaVariables.h"
+#include "hh-bbtautau/Studies/include/MvaVariablesStudy.h"
+#include "hh-bbtautau/Studies/include/MvaMethods.h"
 
 namespace  analysis {
 
@@ -13,23 +15,31 @@ namespace  analysis {
     VAR(std::vector<double>, param_values) \
     VAR(std::vector<size_t>, param_positions) \
     /**/ \
-    VAR(double, ROCIntegral_testing) \
-    VAR(double, ROCIntegral_training) \
-    /**/ \
     VAR(std::vector<double>, roc_value) \
     VAR(std::vector<int>, roc_mass) \
+    /**/ \
     VAR(std::vector<double>, roc_testing_value) \
     VAR(std::vector<int>, roc_testing_mass) \
+    VAR(std::vector<int>, roc_testing_type) \
+    VAR(std::vector<int>, roc_testing_spin) \
+    VAR(std::vector<std::string>, roc_testing_channel) \
     VAR(std::vector<double>, roc_training_value) \
     VAR(std::vector<int>, roc_training_mass) \
+    VAR(std::vector<int>, roc_training_type) \
+    VAR(std::vector<int>, roc_training_spin) \
+    VAR(std::vector<std::string>, roc_training_channel) \
     /**/ \
     VAR(std::vector<double>, KS_value) \
     VAR(std::vector<int>, KS_type) \
     VAR(std::vector<int>, KS_mass) \
+    VAR(std::vector<int>, KS_spin) \
+    VAR(std::vector<std::string>, KS_channel) \
     /**/ \
     VAR(std::vector<double>, chi_value) \
     VAR(std::vector<int>, chi_type) \
     VAR(std::vector<int>, chi_mass) \
+    VAR(std::vector<int>, chi_spin) \
+    VAR(std::vector<std::string>, chi_channel) \
     /**/ \
     VAR(std::vector<size_t>, position) \
     VAR(std::vector<double>, importance) \
@@ -39,6 +49,9 @@ namespace  analysis {
     VAR(std::vector<double>, significance) \
     VAR(std::vector<double>, significance_err) \
     VAR(std::vector<int>, significance_mass) \
+    VAR(std::vector<int>, significance_type) \
+    VAR(std::vector<int>, significance_spin) \
+    VAR(std::vector<std::string>, significance_channel) \
     VAR(std::string, name) \
     /**/
 
@@ -68,56 +81,63 @@ inline GridPoint GetGridPoint(const MvaResults& results)
     return params;
 }
 
-inline std::map<int, double> GetRocTrainingIntegralMap(const MvaResults& results)
+inline std::map<ChannelSampleIdSpin, double> GetRocIntegralMap(const std::string& name, const std::vector<double>& vec_value,
+                                                              const std::vector<std::string>& vec_channel, const std::vector<int>& vec_mass,
+                                                              const std::vector<int>& vec_type, const std::vector<int>& vec_spin)
 {
-    std::map<int, double> rocs;
-    const size_t N = results.roc_training_mass.size();
-    if(results.roc_training_value.size() != N)
-        throw exception("Incompatible roc info in mva tuple.");
-    for(size_t n = 0; n < N; ++n)
-        rocs[results.roc_training_mass[n]] = results.roc_training_value[n];
+    std::map<ChannelSampleIdSpin, double> rocs;
+    const size_t N = vec_mass.size();
+    if(vec_value.size() != N || vec_spin.size() != N || vec_channel.size()!=N || vec_type.size()!=N)
+        throw exception("Incompatible "+name+" roc info in mva tuple.");
+    for(size_t n = 0; n < N; ++n){
+        const SampleId sample_id(static_cast<SampleType>(vec_type[n]), vec_mass[n]);
+        const ChannelSampleIdSpin id{vec_channel[n], sample_id, vec_spin[n]};
+        rocs[id] = vec_value[n];
+    }
     return rocs;
 }
 
-inline std::map<int, double> GetRocTestingIntegralMap(const MvaResults& results)
+inline std::map<ChannelSampleIdSpin, double> GetRocTrainingIntegralMap(const MvaResults& results)
 {
-    std::map<int, double> rocs;
-    const size_t N = results.roc_testing_mass.size();
-    if(results.roc_testing_value.size() != N)
-        throw exception("Incompatible roc info in mva tuple.");
-    for(size_t n = 0; n < N; ++n)
-        rocs[results.roc_testing_mass[n]] = results.roc_testing_value[n];
-    return rocs;
+    std::map<ChannelSampleIdSpin, double> rocs;
+    return rocs = GetRocIntegralMap("training", results.roc_training_value, results.roc_training_channel, results.roc_training_mass,
+                                    results.roc_training_type, results.roc_training_spin);
 }
 
-inline std::map<SampleId, double> GetKSResultsMap(const MvaResults& results)
+inline std::map<ChannelSampleIdSpin, double> GetRocTestingIntegralMap(const MvaResults& results)
 {
-    std::map<SampleId, double> ks;
-    const size_t N = results.KS_mass.size();
-    if(results.KS_type.size() != N || results.KS_value.size() != N)
-        throw exception("Incompatible KS info in mva tuple.");
+    std::map<ChannelSampleIdSpin, double>  rocs;
+    return rocs = GetRocIntegralMap("testing", results.roc_testing_value, results.roc_testing_channel, results.roc_testing_mass,
+                                    results.roc_testing_type, results.roc_testing_spin);
+}
+
+inline std::map<ChannelSampleIdSpin, double> GetTestResultsMap(const std::string& name, const std::vector<int>& vec_type,  const std::vector<std::string>& vec_channel,
+                                                               const std::vector<double>& vec_value, const std::vector<int>& vec_mass,
+                                                               const std::vector<int>& vec_spin)
+{
+    std::map<ChannelSampleIdSpin, double> test;
+    const size_t N = vec_mass.size();
+    if(vec_type.size() != N || vec_value.size() != N || vec_spin.size() != N || vec_channel.size() != N)
+        throw exception("Incompatible "+name+" info in mva tuple.");
     for(size_t n = 0; n < N; ++n) {
-        const SampleType type = static_cast<SampleType>(results.KS_type[n]);
-        const SampleId id(type, results.KS_mass[n]);
-        ks[id] = results.KS_value[n];
+        const SampleId sample_id(static_cast<SampleType>(vec_type[n]), vec_mass[n]);
+        const ChannelSampleIdSpin id{vec_channel[n], sample_id, vec_spin[n]};
+        test[id] = vec_value[n];
     }
-    return ks;
+    return test;
 }
 
-inline std::map<SampleId, double> GetChiResultsMap(const MvaResults& results)
+inline std::map<ChannelSampleIdSpin, double>  GetKSResultsMap(const MvaResults& results)
 {
-    std::map<SampleId, double> chi;
-    const size_t N = results.chi_mass.size();
-    if(results.chi_type.size() != N || results.chi_value.size() != N)
-        throw exception("Incompatible Chi info in mva tuple.");
-    for(size_t n = 0; n < N; ++n) {
-        const SampleType type = static_cast<SampleType>(results.chi_type[n]);
-        const SampleId id(type, results.chi_mass[n]);
-        chi[id] = results.chi_value[n];
-    }
-    return chi;
+    std::map<ChannelSampleIdSpin, double>  ks;
+    return ks = GetTestResultsMap("KS", results.KS_type, results.KS_channel, results.KS_value, results.KS_mass, results.KS_spin);
 }
 
+inline std::map<ChannelSampleIdSpin, double>  GetChiResultsMap(const MvaResults& results)
+{
+    std::map<ChannelSampleIdSpin, double> chi;
+    return chi = GetTestResultsMap("chi", results.chi_type, results.chi_channel, results.chi_value, results.chi_mass, results.chi_spin);
+}
 
 struct VarRank {
     size_t position;
@@ -142,18 +162,21 @@ struct OptimalSignificance {
     PhysicalValue significance;
 };
 
-using OptimalSignificanceMap = std::map<int, OptimalSignificance>;
+using OptimalSignificanceMap = std::map<ChannelSampleIdSpin, OptimalSignificance>;
 
 inline OptimalSignificanceMap GetOptimalSignificanceMap(const MvaResults& results)
 {
     OptimalSignificanceMap significance;
     const size_t N = results.significance_mass.size();
-    if(results.significance.size() != N || results.significance_err.size() != N || results.optimal_cut.size() != N)
+    if(results.significance.size() != N || results.significance_err.size() != N || results.optimal_cut.size() != N
+            || results.significance_type.size() != N || results.significance_spin.size() != N || results.significance_channel.size() != N)
         throw exception("Incompatible significance info in mva tuple.");
     for(size_t n = 0; n < N; ++n)
     {
         PhysicalValue sign(results.significance[n], results.significance_err[n]);
-        significance[results.significance_mass[n]] = OptimalSignificance{results.optimal_cut[n], sign};
+        const SampleId sample_id(static_cast<SampleType>(results.significance_type[n]), results.significance_mass[n]);
+        ChannelSampleIdSpin id(results.significance_channel[n], sample_id, results.significance_spin[n]);
+        significance[id] = OptimalSignificance{results.optimal_cut[n], sign};
     }
     return significance;
 }

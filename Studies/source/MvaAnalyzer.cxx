@@ -38,22 +38,32 @@ public:
         histo.Emplace("ROCIntegral_testing", 50, 0., 1.);
         histo.Emplace("ROCIntegral_training", 50, 0., 1.);
         histo.Emplace("KS_value", 50, 0., 1.);
-        histo.Emplace("KS_mass", 210, 0, 2100);
-        histo.Emplace("KS_type", 4, -2, 2);
+        histo.Emplace("chi_value", 50, 0., 1.);
         histo.Emplace("cut", 200, -1, 1);
         histo.Emplace("significance", 100, 0, 30);
         histo.Emplace("nCuts", 17, 0, 680);
 
         ROC.Emplace("shrinkage", 5, 0.025, 0.275, 30, 0.7, 1.);
-        ROC.Emplace("NTrees", 4, 150, 1350, 30, 0.7, 1.);
+        ROC.Emplace("NTrees", 3, 250, 1150, 30, 0.7, 1.);
         ROC.Emplace("BaggedSampleFraction", 3, 0.375, 1.125, 30, 0.7, 1.);
         ROC.Emplace("MaxDepth", 4, 1.5, 5.5, 30, 0.7, 1.);
-        ROC.Emplace("MinNodeSize", 3, -0.01, 0.11, 30, 0.7, 1.);
+        ROC.Emplace("MinNodeSize", 3, 0., 0.06, 30, 0.7, 1.);
         ROC.Emplace("relativeROC_training", 66, 245, 905, 30, 0.7, 1.);
         ROC.Emplace("relativeROC_testing", 66, 245, 905, 30, 0.7, 1.);
         ROC.Emplace("significance", 100, 0, 30, 30, 0.7, 1.);
         ROC.Emplace("nCuts", 3, 0, 120, 30, 0.7, 1.);
         ROC.Emplace("mass", 3, 0, 120, 30, 0.7, 1.);
+
+        sigmaROC.Emplace("shrinkage", 5, 0.025, 0.275, 30, 0., 0.1);
+        sigmaROC.Emplace("NTrees", 4, 150, 1350, 30, 0., 0.1);
+        sigmaROC.Emplace("BaggedSampleFraction", 3, 0.375, 1.125, 30, 0., 0.1);
+        sigmaROC.Emplace("MaxDepth", 4, 1.5, 5.5, 30, 0., 0.1);
+        sigmaROC.Emplace("MinNodeSize", 3, -0.01, 0.11, 30, 0., 0.1);
+        sigmaROC.Emplace("relativeROC_training", 66, 245, 905, 30, 0., 0.1);
+        sigmaROC.Emplace("relativeROC_testing", 66, 245, 905, 30, 0., 0.1);
+        sigmaROC.Emplace("significance", 100, 0, 30, 30, 0., 0.1);
+        sigmaROC.Emplace("nCuts", 3, 0, 120, 30, 0., 0.1);
+        sigmaROC.Emplace("mass", 3, 0, 120, 30, 0., 0.1);
 
         significance.Emplace("err", 100, 0, 1, 100, 0, 30);
         significance.Emplace("shrinkage", 8, 0.04, 0.36, 100, 0, 30);
@@ -65,6 +75,7 @@ public:
     }
     TH1D_ENTRY(histo, 10, .5, 10.5)
     TH2D_ENTRY(ROC, 10, .5, 10.5, 50, 0.5, 1.)
+    TH2D_ENTRY(sigmaROC, 10, .5, 10.5, 50, 0.5, 1.)
     TH2D_ENTRY(significance, 10, .5, 10.5, 100, 0, 30)
 };
 
@@ -120,11 +131,12 @@ public:
         std::map<std::string, GridPoint> method_params;
         std::map<std::string, size_t> method_seed_count;
 
-        std::map<std::string, std::vector<double>> roc_training, roc_testing;
-        std::map<std::string, std::map<int, std::vector<PhysicalValue>>> significance;
-        std::map<std::string, std::map<int, std::vector<double>>> optimal_cut;
+        std::map<std::string, std::map<ChannelSampleIdSpin, std::vector<PhysicalValue>>> significance;
+        std::map<std::string, std::map<ChannelSampleIdSpin, std::vector<double>>> optimal_cut;
         std::map<std::string, std::map<std::string, std::vector<VarRank>>> position;
-        std::map<std::string, std::map<int, double>> roc_training_integrals,roc_testing_integrals;
+        std::map<std::string, std::map<ChannelSampleIdSpin, double>> roc_training, roc_testing;
+        std::map<std::string, std::map<ChannelSampleIdSpin, std::vector<double>>> vec_roc_training, vec_roc_testing;
+
         const size_t n_seeds = args.input_file().size();
         std::cout<<n_seeds<<std::endl;
 
@@ -133,30 +145,44 @@ public:
             MvaTuple myTree("mva_result", in_file.get(), true);
             for(const MvaResults& results : myTree) {
                 const std::string method_name = results.name.substr(0, results.name.find_last_of('_'));
-                const auto grid_point = GetGridPoint(results);
-                std::cout<<grid_point.size()<<std::endl;
+                const auto grid_point = GetGridPoint(results);               
                 const auto KS_results = GetKSResultsMap(results);
                 const auto chi_results = GetChiResultsMap(results);
                 const auto ranking = GetRankingMap(results);
                 const auto sign = GetOptimalSignificanceMap(results);
 
-                if(!KS_results.count(SampleId::MassTot()))
+                if(!KS_results.count(AllSgn))
                     throw exception("Missing total mass info");
-                if(!KS_results.count(SampleId::Bkg()))
+                if(!KS_results.count(AllBkg))
                     throw exception("Missing bkg info");
 
                 if (args.which_test() == "KS")
-                    if(KS_results.at(SampleId::MassTot()) <= cut || KS_results.at(SampleId::Bkg()) <= cut) continue;
+                    if(KS_results.at(AllSgn) <= cut || KS_results.at(AllBkg) <= cut) continue;
 
                 if (args.which_test() == "chi")
-                    if(chi_results.at(SampleId::MassTot()) <= cut || chi_results.at(SampleId::Bkg()) <= cut) continue;
-
+                    if(chi_results.at(AllSgn) <= cut && chi_results.at(AllBkg) <= cut) continue;
                 method_params[method_name] = grid_point;
                 ++method_seed_count[method_name];
                 std::cout<<method_seed_count[method_name]<<std::endl;
 
-                roc_training[method_name].push_back(results.ROCIntegral_training);
-                roc_testing[method_name].push_back(results.ROCIntegral_testing);
+                roc_training[method_name] = GetRocTrainingIntegralMap(results);
+                roc_testing[method_name] = GetRocTestingIntegralMap(results);
+
+                for (const auto& entry: roc_training[method_name])
+                    vec_roc_training[method_name][entry.first].push_back(entry.second);
+                for (const auto& entry: roc_testing[method_name])
+                    vec_roc_testing[method_name][entry.first].push_back(entry.second);
+
+                for(const auto& integral : roc_training[method_name]){
+                    if (!integral.first.IsAllChannel() || !integral.first.IsAllSpin()) continue;
+                    anaData.ROC("relativeROC_training").Fill(integral.first.sample_id.mass, integral.second/roc_training[method_name][AllSgn]);
+                }
+
+                for(const auto& integral : roc_testing[method_name]){
+                    if (!integral.first.IsAllChannel() || !integral.first.IsAllSpin()) continue;
+                    anaData.ROC("relativeROC_testing").Fill(integral.first.sample_id.mass, integral.second/roc_testing[method_name][AllSgn]);
+                }
+
 
                 for(const auto& s : sign)
                 {
@@ -164,72 +190,65 @@ public:
                     optimal_cut[method_name][s.first].push_back(s.second.cut);
                 }
 
-                roc_training_integrals[method_name] = GetRocTrainingIntegralMap(results);
-                roc_testing_integrals[method_name] = GetRocTestingIntegralMap(results);
-
-                for(const auto& integral : roc_training_integrals[method_name])
-                     anaData.ROC("relativeROC_training").Fill(integral.first, integral.second/results.ROCIntegral_training);
-
-                for(const auto& integral : roc_testing_integrals[method_name])
-                     anaData.ROC("relativeROC_testing").Fill(integral.first, integral.second/results.ROCIntegral_testing);
-
-
                 for(const auto& ks : KS_results) {
-                    anaData.histo("KS_mass").Fill(ks.first.mass);
-                    anaData.histo("KS_type").Fill(static_cast<int>(ks.first.sampleType));
                     anaData.histo("KS_value").Fill(ks.second);
                 }
+                for(const auto& chi : chi_results) {
+                    anaData.histo("chi_value").Fill(chi.second);
+                }
+
                 for(const auto& rank : ranking)
                     position[method_name][rank.first].push_back(rank.second);
              }
         }
 
-
+        std::cout<<"Quanti metodi?"<<method_seed_count.size()<<std::endl;
         int i = 0;
+
+        std::map<std::string, std::map<ChannelSampleIdSpin, double>> roc_training_value, roc_testing_value;
+        std::map<std::string, std::map<ChannelSampleIdSpin, double>> roc_training_err, roc_testing_err;
+
+
         for(const auto& method : method_seed_count) {
-            if (!args.cross_validation())
-                if(method.second < n_seeds - 1) continue;
+            if (args.cross_validation())
+                if(method.second < (n_seeds-1)) continue;
             const std::string method_name = method.first;
+            std::cout<<method_name<<std::endl;
 
-            const double roc_training_value = std::accumulate(roc_training[method_name].begin(), roc_training[method_name].end(), 0.) / roc_training[method_name].size();
-            double roc_training_err = 0;
-            for (const auto& r : roc_training[method_name]){
-                roc_training_err = std::pow(r - roc_training_value,2);
+            for (const auto& value: vec_roc_training[method_name]){
+                roc_training_value[method_name][value.first] = std::accumulate(value.second.begin(), value.second.end(), 0.) / value.second.size();
+                roc_training_err[method_name][value.first] = stat_estimators::Variance(value.second);
             }
-            roc_training_err = std::sqrt(roc_training_err/roc_training[method_name].size());
-            std::cout << roc_training_value << " +- " << roc_training_err << ", errore relativo percentuale = " << (roc_training_err/roc_training_value)*100 <<std::endl;
 
-            const double roc_testing_value = std::accumulate(roc_testing[method_name].begin(), roc_testing[method_name].end(), 0.) / roc_testing[method_name].size();
-            double roc_testing_err = 0;
-            for (const auto& r : roc_testing[method_name]){
-                roc_testing_err = std::pow(r - roc_testing_value,2);
+            for (const auto& value: vec_roc_testing[method_name]){
+                roc_testing_value[method_name][value.first] = std::accumulate(value.second.begin(), value.second.end(), 0.) / value.second.size();
+                roc_testing_err[method_name][value.first] = stat_estimators::Variance(value.second);
             }
-            roc_training_err = std::sqrt(roc_testing_err/roc_testing[method_name].size());
-            std::cout << roc_testing_value << " +- " << roc_testing_err << ", errore relativo percentuale = " << (roc_testing_err/roc_testing_value)*100 <<std::endl;
 
-
-            anaData.histo("ROCIntegral").Fill(roc_testing_value);
-            anaData.histo("ROCIntegral").Draw("E4");
-            std::map<int, PhysicalValue> significance_value;
+            double roc = roc_testing_value[method_name][AllSgn];
+            double err_roc = roc_testing_err[method_name][AllSgn];
+            anaData.histo("ROCIntegral").Fill(roc);
+            std::map<ChannelSampleIdSpin, PhysicalValue> significance_value;
             for (const auto& sign : significance[method_name]){
                 significance_value[sign.first] = std::accumulate(sign.second.begin(), sign.second.end(), PhysicalValue::Zero) / PhysicalValue(sign.second.size(), 0);
             }
 
             for(const auto& param : method_params[method_name]) {
                 const double value = param.second.value;
-                anaData.ROC(param.first).Fill(value, roc_testing_value);
-                anaData.significance(param.first).Fill(value, significance_value[mass_tot.mass].GetValue());
+                anaData.ROC(param.first).Fill(value, roc);
+                anaData.sigmaROC(param.first).Fill(value, err_roc);
+                anaData.significance(param.first).Fill(value, significance_value[AllSgn].GetValue());
                 anaData.histo(param.first).Fill(value);
             }
-            anaData.ROC("significance").Fill(significance_value[mass_tot.mass].GetValue(), roc_testing_value);
-            anaData.significance("err").Fill(significance_value[mass_tot.mass].GetRelativeStatisticalError(), significance_value[mass_tot.mass].GetValue());
-            anaData.histo("significance").Fill(significance_value[mass_tot.mass].GetValue());
+            anaData.ROC("significance").Fill(significance_value[AllSgn].GetValue(), roc);
+            anaData.significance("err").Fill(significance_value[AllSgn].GetRelativeStatisticalError(), significance_value[AllSgn].GetValue());
+            anaData.histo("significance").Fill(significance_value[AllSgn].GetValue());
 
-            std::map<int, double> cut_value;
+            std::map<ChannelSampleIdSpin, double> cut_value;
             for (const auto& cut : optimal_cut[method_name]){
                 cut_value[cut.first] = std::accumulate(cut.second.begin(), cut.second.end(), 0.) / cut.second.size();
             }
-            anaData.histo("cut").Fill(cut_value[mass_tot.mass]);
+            anaData.histo("cut").Fill(cut_value[AllSgn]);
             const auto average = AveragePosition(position[method_name]);
             CreatePositionHisto(histo_position, average);
             i++;

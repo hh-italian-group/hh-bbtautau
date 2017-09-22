@@ -32,10 +32,12 @@ struct SampleId {
         if (sampleType != x.sampleType) return static_cast<int>(sampleType) < static_cast<int>(x.sampleType);
         return mass < x.mass;
     }
+
     bool operator ==(const SampleId& x) const
     {
         return x.mass==mass && x.sampleType == sampleType;
     }
+
     bool operator !=(const SampleId& x) const {return !(x==*this);}
 
     bool IsSignal() const { return sampleType == SampleType::Sgn_Res || sampleType == SampleType::Sgn_NonRes; }
@@ -222,7 +224,7 @@ public:
 
         VAR("mass", mass.mass);
         VAR_INT("channel", event.channelId);
-        VAR("spin", spin);
+        VAR_INT("spin", spin);
 
         size_t test = which_test ==-1 ? which_set(gen) : static_cast<size_t>(which_test);
         AddEventVariables(test, mass, event.weight_total, sample_weight, spin, channel);

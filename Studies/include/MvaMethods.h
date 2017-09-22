@@ -119,6 +119,7 @@ inline void MutualHisto(const SampleId& mass, const NameElement& mutual_matrix_s
         }
         root_ext::WriteObject(*histo, directory_1d);
     }
+
     auto directory_2d = root_ext::GetDirectory(*directory, "2D");
     std::string value = "Signal_"+ ToString(mass);
     auto histo2d = std::make_shared<TH2D>((value+"_Background").c_str(),
@@ -127,7 +128,9 @@ inline void MutualHisto(const SampleId& mass, const NameElement& mutual_matrix_s
     histo2d->SetYTitle("MI Background");
     auto histo = std::make_shared<TH1D>(value.c_str(),("MutualInformation_"+value).c_str(),50,0,1);
     histo->SetXTitle("1-MI");
+
     for (const auto& entry : mutual_matrix_signal){
+        if (!mutual_matrix_bkg.count(entry.first)) continue;
         histo2d->Fill(entry.second, mutual_matrix_bkg.at(entry.first));
         histo->Fill(entry.second);
     }
@@ -147,6 +150,7 @@ inline void CreateMatrixHistos(const SampleIdVarData& samples_mass, const Sample
                                              bin, 0, bin, bin, 0, bin);
         int i = 1;
         for(auto var_1 = mass_entry.second.begin(); var_1 != mass_entry.second.end(); ++var_1){
+            if (!element.at(mass_entry.first).count(var_1->first)) continue;
             int j = i + !draw_diagonal;
             matrix->GetXaxis()->SetBinLabel(i, (var_1->first).c_str());
             matrix->GetYaxis()->SetBinLabel(i, (var_1->first).c_str());
@@ -295,70 +299,109 @@ public:
     TH1D_ENTRY(difference, 200, -1., 1.)
 };
 
-inline std::map<SampleId,double> Kolmogorov(const std::map<SampleId, std::map<size_t, std::vector<double>>>& evaluation,
+const SampleId mass_tot = SampleId::MassTot();
+const SampleId bkg = SampleId::Bkg();
+const std::string tot = "full";
+const size_t test_train = 10;
+const int spin_tot = 3;
+const std::string all_channel = "all_channel";
+
+
+struct ChannelSampleIdSpin{
+    std::string channel;
+    SampleId sample_id;
+    int spin;
+    ChannelSampleIdSpin() : channel("all_channel"), sample_id(mass_tot), spin(spin_tot) {}
+    ChannelSampleIdSpin(std::string _channel, SampleId _sample_id, int _spin) : channel(_channel), sample_id(_sample_id), spin(_spin) {}
+
+    bool operator<(const ChannelSampleIdSpin& x) const
+    {
+        if (channel != x.channel) return channel < x.channel;
+        else if (sample_id != x.sample_id) return sample_id < x.sample_id;
+        return spin < x.spin;
+    }
+
+    bool operator ==(const ChannelSampleIdSpin& x) const
+    {
+        return x.channel==channel && x.sample_id == sample_id;
+    }
+
+    bool operator !=(const ChannelSampleIdSpin& x) const {return !(x==*this);}
+
+    bool IsAllChannel() const { return channel == all_channel; }
+    bool IsAllSpin() const { return spin == spin_tot; }
+    bool IsAllSignal() const { return channel == all_channel || sample_id == mass_tot || spin == spin_tot;}
+    bool IsAllBkg() const { return channel == all_channel || sample_id ==bkg || spin == spin_tot;}
+
+    static const ChannelSampleIdSpin& ALLSignal()
+    {
+        static const ChannelSampleIdSpin all_sgn{all_channel, mass_tot, spin_tot};
+        return all_sgn;
+    }
+    static const ChannelSampleIdSpin& AllBkg()
+    {
+        static const ChannelSampleIdSpin all_bkg{all_channel, bkg, spin_tot};
+        return all_bkg;
+    }
+
+};
+
+const ChannelSampleIdSpin AllSgn{all_channel, mass_tot, spin_tot};
+const ChannelSampleIdSpin AllBkg{all_channel, bkg, spin_tot};
+
+
+inline std::map<ChannelSampleIdSpin,double> Kolmogorov(const std::map<ChannelSampleIdSpin, std::map<size_t, std::vector<double>>>& evaluation,
                                             BDTData::Entry& outputBDT, BDTData::Entry& /*difference*/,
                                             TDirectory* directory)
 {
-    std::map<SampleId,double> kolmogorov;
+    std::map<ChannelSampleIdSpin,double>  kolmogorov;
     std::shared_ptr<TH1D> histo_kolmogorov;
     histo_kolmogorov = std::make_shared<TH1D>("kolmogorov", "kolmogorov", 50, 0, 1.01);
     histo_kolmogorov->SetXTitle("KS");
-    for (const auto& sample : evaluation){
-//        std::map<size_t, std::vector<double>> ks_vector;
-//        for (auto tvt : sample.second){
-//            auto type = tvt.first;
-//            std::sort(tvt.second.begin(), tvt.second.end());
-//            ks_vector[type] = std::move(tvt.second);
-//        }
-//        double ks = TMath::KolmogorovTest(static_cast<int>(ks_vector.at(0).size()), ks_vector.at(0).data(),
-//                                          static_cast<int>(ks_vector.at(1).size()), ks_vector.at(1).data(), "");
-        double kshx = outputBDT(sample.first, 0).KolmogorovTest(&outputBDT(sample.first, 1), "X");
-//        double ksh = outputBDT(sample.first, 0).KolmogorovTest(&outputBDT(sample.first, 1), "");
-//        difference("x").Fill(kshx-ks);
-//        difference().Fill(ksh-ks);
-        kolmogorov[sample.first] = kshx;
-        histo_kolmogorov->Fill(kshx);
-        std::cout<<sample.first.sampleType<<" "<<sample.first.mass<<"    "<<kshx<<std::endl;
-
+    for (const auto& id : evaluation){
+        kolmogorov[id.first] = outputBDT(id.first.channel, id.first.sample_id, id.first.spin, 0).KolmogorovTest(&outputBDT(id.first.channel, id.first.sample_id, id.first.spin, 1), "X");
+        histo_kolmogorov->Fill(kolmogorov[id.first]);
+        std::cout<<id.first.channel<<"  "<<id.first.sample_id.sampleType<<id.first.sample_id.mass<<"  "<<id.first.spin<<"   "<<kolmogorov[id.first]<<std::endl;
     }
     root_ext::WriteObject(*histo_kolmogorov, directory);
     return kolmogorov;
 }
 
-inline std::map<SampleId,double> ChiSquare(const std::map<SampleId, std::map<size_t, std::vector<double>>>& evaluation,
+inline std::map<ChannelSampleIdSpin,double>  ChiSquare(const std::map<ChannelSampleIdSpin, std::map<size_t, std::vector<double>>>& evaluation,
                                             BDTData::Entry& outputBDT, TDirectory* directory)
 {
-    std::map<SampleId,double> chi;
+    std::map<ChannelSampleIdSpin,double>  chi;
     std::shared_ptr<TH1D> histo_chi;
     histo_chi = std::make_shared<TH1D>("chi2", "chi2", 50, 0, 1.01);
     histo_chi->SetXTitle("chi^2");
-    for (const auto& sample : evaluation){
-        chi[sample.first] = outputBDT(sample.first, 0).Chi2Test(&outputBDT(sample.first, 1), "WW");
-        histo_chi->Fill(chi[sample.first]);
-        std::cout<<sample.first.sampleType<<" "<<sample.first.mass<<"    "<<chi[sample.first]<<std::endl;
+    for (const auto& id : evaluation){
+        chi[id.first] = outputBDT(id.first.channel, id.first.sample_id, id.first.spin, 0).Chi2Test(&outputBDT(id.first.channel, id.first.sample_id, id.first.spin, 1), "WW");
+        histo_chi->Fill(chi[id.first]);
+        std::cout<<id.first.channel<<"  "<<id.first.sample_id.sampleType<<id.first.sample_id.mass<<"  "<<id.first.spin<<"   "<<chi[id.first]<<std::endl;
     }
     root_ext::WriteObject(*histo_chi, directory);
     return chi;
 }
 
-const SampleId mass_tot = SampleId::MassTot();
-const SampleId bkg = SampleId::Bkg();
-const std::string tot = "full";
-const size_t test_train = 10;
 
-inline std::vector<std::pair<double,PhysicalValue>> Calculate_CutSignificance(const SampleId& sgn_mass, const SampleId& bkg_mass,
+
+
+const ChannelSampleIdSpin allch_allsgn_allspin{all_channel, mass_tot, spin_tot};
+const ChannelSampleIdSpin allch_allbkg_allspin{all_channel, bkg, spin_tot};
+
+inline std::vector<std::pair<double,PhysicalValue>> Calculate_CutSignificance(const ChannelSampleIdSpin& id_sgn_mass, const ChannelSampleIdSpin& id_bkg_mass,
                                                                        const std::string& title, BDTData::Entry& outputBDT,
                                                                        TDirectory* directory){
      std::vector<std::pair<double,PhysicalValue>> cuts;
-     auto int_S_tot = Integral(outputBDT(sgn_mass, tot), true);
-     auto int_B_tot = Integral(outputBDT(bkg_mass, tot), true);
+     auto int_S_tot = Integral(outputBDT(id_sgn_mass.channel, id_sgn_mass.sample_id, id_sgn_mass.spin, tot), true);
+     auto int_B_tot = Integral(outputBDT(id_bkg_mass.channel, id_bkg_mass.sample_id, id_bkg_mass.spin, tot), true);
      auto relative = int_S_tot/std::sqrt(int_B_tot);
      auto histo_sign = CreatePlotErrors(title, title,"output BDT","S/(sqrt(B))");
-     int nbin = outputBDT(sgn_mass, tot).GetNbinsX();
+     int nbin = outputBDT(id_sgn_mass.channel, id_sgn_mass.sample_id, id_sgn_mass.spin, tot).GetNbinsX();
      for(int i = 0; i<=nbin; ++i){
-         auto output = outputBDT(sgn_mass, tot).GetBinCenter(i);
-         auto int_S = Integral(outputBDT(sgn_mass, tot), i, nbin+1);
-         auto int_B = Integral(outputBDT(bkg_mass,tot), i, nbin+1);
+         auto output = outputBDT(id_sgn_mass.channel, id_sgn_mass.sample_id, id_sgn_mass.spin, tot).GetBinCenter(i);
+         auto int_S = Integral(outputBDT(id_sgn_mass.channel, id_sgn_mass.sample_id, id_sgn_mass.spin,tot), i, nbin+1);
+         auto int_B = Integral(outputBDT(id_bkg_mass.channel, id_bkg_mass.sample_id, id_bkg_mass.spin, tot), i, nbin+1);
          PhysicalValue significance;
          PhysicalValue sign_inf(-1,0);
          if ( int_S.GetValue() != 0 && int_B.GetValue() != 0) {
@@ -379,27 +422,62 @@ inline std::vector<std::pair<double,PhysicalValue>> Calculate_CutSignificance(co
      return cuts;
 }
 
-inline std::map<int, std::pair<double, PhysicalValue>> EstimateSignificativity(const std::vector<int>& mass_range, BDTData::Entry& outputBDT,
-                                                                               TDirectory* directory, bool total)
+inline std::map<ChannelSampleIdSpin, std::pair<double, PhysicalValue>> EstimateSignificativity(const std::string& channel, const int& spin, const std::vector<int>& mass_range,
+                                                                                              BDTData::Entry& outputBDT, TDirectory* directory, bool total)
 
 {
-    std::map<int, std::pair<double, PhysicalValue>> sign;
-    auto mass_sign = CreatePlotErrors("Mass_significance","Mass_significance","mass","S/(sqrt(B))");
-    int index = 0;
-    for(const auto& mass : mass_range){
-        SampleId sgn_mass(SampleType::Sgn_Res, mass);
-        SampleId bkg_mass(SampleType::Bkg_TTbar, mass);
-        auto cuts = Calculate_CutSignificance(sgn_mass, bkg_mass, std::to_string(mass)+"_significance", outputBDT, directory);
-        sign[mass] = cuts.front();
-        mass_sign->SetPoint(index, mass, sign[mass].second.GetValue());
-        mass_sign->SetPointError(index, 0, sign[mass].second.GetStatisticalError());
-        ++index;
+    std::map<ChannelSampleIdSpin, std::pair<double, PhysicalValue>> sign;
+
+    if (spin == 1) {
+        SampleId sgn_SM(SampleType::Sgn_NonRes, 0);
+        SampleId bkg(SampleType::Bkg_TTbar, 0);
+        ChannelSampleIdSpin id_sgn_SM{channel, sgn_SM, spin};
+        ChannelSampleIdSpin id_bkg{channel, bkg, -1};
+        auto cuts = Calculate_CutSignificance(id_sgn_SM, id_bkg, "SM"+channel+"_"+std::to_string(spin)+"_significance", outputBDT, directory);
+        sign[id_sgn_SM] = cuts.front();
+
+        ChannelSampleIdSpin id_sgn_SM_allchannel{all_channel, sgn_SM, spin};
+        ChannelSampleIdSpin id_bkg_allchannel{all_channel, bkg, -1};
+        cuts = Calculate_CutSignificance(id_sgn_SM_allchannel, id_bkg_allchannel, "SM_allchannel_"+std::to_string(spin)+"_significance", outputBDT, directory);
+        sign[id_sgn_SM_allchannel] = cuts.front();
     }
-    if (total){
-        auto cuts = Calculate_CutSignificance(mass_tot, bkg, "Significance", outputBDT, directory);
-        sign[mass_tot.mass] = cuts.front();
+    else{
+        auto mass_sign = CreatePlotErrors("Mass_significance_"+channel+"_"+std::to_string(spin),"Mass_significance_"+channel+"_"+std::to_string(spin),"mass","S/(sqrt(B))");
+        auto mass_sign_allchannel = CreatePlotErrors("Mass_significance_allchannel_"+std::to_string(spin),"Mass_significance_allchannel_"+std::to_string(spin),"mass","S/(sqrt(B))");
+        int index = 0;
+        for(const auto& mass : mass_range){
+            SampleId sgn_mass(SampleType::Sgn_Res, mass);
+            SampleId bkg_mass(SampleType::Bkg_TTbar, mass);
+            ChannelSampleIdSpin id_sgn_mass{channel, sgn_mass, spin};
+            ChannelSampleIdSpin id_bkg_mass{channel, bkg_mass, -1};
+            auto cuts = Calculate_CutSignificance(id_sgn_mass, id_bkg_mass, std::to_string(mass)+channel+"_"+std::to_string(spin)+"_significance", outputBDT, directory);
+            sign[id_sgn_mass] = cuts.front();
+            mass_sign->SetPoint(index, mass, sign[id_sgn_mass].second.GetValue());
+            mass_sign->SetPointError(index, 0, sign[id_sgn_mass].second.GetStatisticalError());
+            ++index;
+
+            ChannelSampleIdSpin id_sgn_mass_allchannel{all_channel, sgn_mass, spin};
+            ChannelSampleIdSpin id_bkg_mass_allchannel{all_channel, bkg_mass, -1};
+            cuts = Calculate_CutSignificance(id_sgn_mass_allchannel, id_bkg_mass_allchannel, std::to_string(mass)+"_allchannel_"+std::to_string(spin)+"_significance", outputBDT, directory);
+            sign[id_sgn_mass] = cuts.front();
+            mass_sign_allchannel->SetPoint(index, mass, sign[id_sgn_mass].second.GetValue());
+            mass_sign_allchannel->SetPointError(index, 0, sign[id_sgn_mass].second.GetStatisticalError());
+            ++index;
+        }
+        if (total){
+            ChannelSampleIdSpin id_masstot{channel, mass_tot, spin};
+            ChannelSampleIdSpin id_masstot_allchannel{all_channel, mass_tot, spin};
+            ChannelSampleIdSpin id_bkg{channel,bkg, -1};
+            ChannelSampleIdSpin id_bkg_allchannel{all_channel, bkg, -1};
+
+            auto cuts = Calculate_CutSignificance(id_masstot, id_bkg, "Significance", outputBDT, directory);
+            sign[id_masstot] = cuts.front();
+            cuts = Calculate_CutSignificance(id_masstot_allchannel, id_bkg_allchannel, "Significance", outputBDT, directory);
+            sign[id_masstot_allchannel] = cuts.front();
+        }
+        root_ext::WriteObject(*mass_sign, directory);
+        root_ext::WriteObject(*mass_sign_allchannel, directory);
     }
-    root_ext::WriteObject(*mass_sign, directory);
     return sign;
 }
 

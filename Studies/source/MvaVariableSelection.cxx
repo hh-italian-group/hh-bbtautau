@@ -65,7 +65,7 @@ public:
     std::map<ChannelSpin,SampleIdVarData> samples_range;
 
     VariableDistribution(const Arguments& _args): args(_args),
-        outfile(root_ext::CreateRootFile(args.output_file())), vars(args.number_sets(), args.seed(),{}, {"channel", "mass"}),
+        outfile(root_ext::CreateRootFile(args.output_file())), vars(args.number_sets(), args.seed(),{}, {"channel", "mass", "spin", "mass_H", "MX"}),
               reporter(std::make_shared<TimeReporter>())
     {
         MvaSetupCollection setups;
@@ -130,6 +130,7 @@ public:
             });
             const auto& best_entry = distance.front();
             for(const auto& name : best_entry.first) {
+                if (name == "mass_H" || name ==  "MX") continue;
                 const auto counts = std::make_pair(selected.count(name), not_corrected.count(name));
                 const auto& prefix = prefixes.at(counts);
                 best_entries_file << prefix << name << prefix << ",";
@@ -150,6 +151,7 @@ public:
                             if(other_entry.first == name) continue;
                             const Name_ND names({name, other_entry.first});
                             ChannelSpin chsp_bkg(se.first, -1);
+                            if (!mutual_matrix.at(se).at(entry.first).count(names) || !mutual_matrix.at(chsp_bkg).at(SampleType::Bkg_TTbar).count(names)) continue;
                             if(mutual_matrix.at(se).at(entry.first).at(names) < threashold_mi && mutual_matrix.at(chsp_bkg).at(SampleType::Bkg_TTbar).at(names) < threashold_mi){
                                 not_corrected.insert(other_entry.first);
                             }
@@ -306,7 +308,6 @@ public:
 
             std::cout << std::endl << s.first << "  " << spin << std::endl;
 
-
             int i = 0;
 
             std::cout<<"Jensen Shannon Signal Background "<<std::endl;;
@@ -333,8 +334,8 @@ public:
             std::string spin;
             if (s.second == 0) spin = "Radion";
             else if (s.second == 2) spin = "Graviton";
-            else continue;
-
+            else if (s.second == 1) spin = "SM";
+            else spin = "Bkg";
             std::cout << std::endl << s.first << "  " << spin << std::endl;
 
             auto directory_set = root_ext::GetDirectory(*outfile, s.first+spin);
@@ -357,7 +358,6 @@ public:
                     JSDvars_range_ss[mass_pair] = Read_csvfile(args.jsd_folder()+"/JensenShannonDivergenceSSM"+ToString(range.min())+"_"+ToString(sample_mass.first)+"_"+s.first+"_spin"+spin+".csv");
                     histo_distribution[mass_pair] = std::make_shared<TH1D>(("JSDrange_"+std::to_string(range.min())+"_"+std::to_string(sample_mass.first.mass)).c_str(), ("JSDrange_"+std::to_string(range.min())+"_"+std::to_string(sample_mass.first.mass)).c_str(), 50,0,1);
                     histo_distribution[mass_pair]->SetXTitle("JSD");
-
                     for (const auto& value: JSDvars_range_ss[mass_pair]){
                         Name_ND var_pair{};
                         std::string name;
@@ -374,6 +374,7 @@ public:
 
             auto directory_distributionselected = root_ext::GetDirectory(*directory_jenshan_ss, "Distribution_RangeSelected");
             int k = 0;
+
             for(auto& mass_pair : JSDvars_range_ss) {
                 if (mass_pair.first.first == mass_pair.first.second) k = 0;
                 for(auto& name : mass_pair.second) {
@@ -383,7 +384,6 @@ public:
                 k++;
             }
             for (const auto& range : ranges){
-                std::cout<<range.min()<<std::endl;
                 auto directory_plotrange = root_ext::GetDirectory(*directory_plotselected, ("Range"+std::to_string(range.min())+"_"+std::to_string(range.max())).c_str());
                 for (const auto& name : plot_ss.at(s).at(range.min())){
                     root_ext::WriteObject(*name.second, directory_plotrange);
@@ -417,7 +417,6 @@ public:
                     }
                 }
             }
-            std::cout << "samples range done" <<std::endl;
 
             for (const auto& sample: samples_range.at(s)){
                 std::stringstream ss;
@@ -426,7 +425,6 @@ public:
                 bandwidth_range[s][sample.first] = Read_csvfile(args.optband_folder()+"/OptimalBandwidthRange"+ToString(sample.first)+"_"+s.first+"_spin"+spin+".csv");
                 mutual_matrix_range[s][sample.first] = Read_csvfile(args.mutual_folder()+"/MutualInformationDistanceRange"+ToString(sample.first)+"_"+s.first+"_spin"+spin+".csv");
                 JSDvars_range_sb[s][sample.first] = Read_csvfile(args.jsd_folder()+"/JensenShannonDivergenceSBRange"+ToString(sample.first)+"_"+s.first+"_spin"+spin+".csv");
-                std::cout<< JSDvars_range_sb[s][sample.first].size() <<std::endl;
             }
 
             ChannelSpin chsp_bkg(s.first, -1);
@@ -455,7 +453,6 @@ public:
                 }
                 root_ext::WriteObject(*matrix, directory_correlation);
                 if ( sample.first.sampleType == SampleType::Bkg_TTbar){
-                    std::cout<<std::endl;
                     continue;
                 }
                 else {

@@ -15,6 +15,8 @@ using SampleIdVarData = std::map<SampleId, VarData>;
 using ChannelSpin = std::pair<std::string,int>;
 
 
+
+
 class MvaVariablesStudy : public MvaVariables {
 private:
     std::map<std::string, double> variables;

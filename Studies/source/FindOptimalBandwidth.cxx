@@ -23,7 +23,7 @@ struct Arguments { // list of all program arguments
     REQ_ARG(std::string, cfg_file);
     REQ_ARG(unsigned, number_threads);
     REQ_ARG(bool, range);
-    OPT_ARG(int, which_range, 0);
+    REQ_ARG(int, which_range);
     OPT_ARG(Long64_t, number_events, 5000);
 };
 
@@ -48,7 +48,7 @@ public:
     std::map<ChannelSpin,SampleIdVarData> samples_mass, samples_range;
     std::map<ChannelSpin,SampleIdNameElement> bandwidth, bandwidth_range;
 
-    FindOptimalBandwidth(const Arguments& _args): args(_args), vars(1, 12345678,{}, {"channel", "mass"}), reporter(std::make_shared<TimeReporter>())
+    FindOptimalBandwidth(const Arguments& _args): args(_args), vars(1, 12345678,{}, {"channel", "mass", "spin"}), reporter(std::make_shared<TimeReporter>())
     {
         MvaSetupCollection setups;
         SampleEntryListCollection samples_list;
@@ -108,54 +108,36 @@ public:
         run::ThreadPull threads(args.number_threads());
         LoadSkimmedData();
 
-        if (!args.range()){
-            for (const auto& s: set){
-                std::cout<<std::endl<<s.first<< "  " << s.second<<std::endl;
-                for (const auto& sample: samples_mass[s]){
-                    std::cout<<"----"<<ToString(sample.first)<<"----"<<" entries: "<<sample.second.at("pt_l1").size()<<std::endl;
-                    bandwidth[s][sample.first] = OptimalBandwidth(sample.second);
-                    std::stringstream ss;
-                    ss << std::fixed << std::setprecision(0) << s.second;
-                    std::string spin = ss.str();
-                    std::ofstream ListOptimalBandwidth("OptimalBandwidth"+ToString(sample.first)+"_"+s.first+"_spin"+spin+".csv", std::ofstream::out);
-                    for(const auto& value: bandwidth[s][sample.first]){
-                       for(const auto& var_name: value.first)
-                       {
-                           ListOptimalBandwidth << var_name << "," ;
-                       }
-                       ListOptimalBandwidth << value.second << std::endl;
-                    }
-                    TimeReport();
-                }
-            }
-        }
-        else{
+        std::string file_name_prefix = "OptimalBandwidth";
+        if(args.range()) {
+            std::cout<<"RANGES"<<std::endl;
             for (const auto& s: set){
                 samples_range[s] = LoadRangeData(samples_mass[s]);
             }
-
-            for (const auto& s: samples_range){
-                std::cout<<std::endl<<s.first.first<< "  " << s.first.second<<std::endl;
-                for (const auto& sample: s.second){
-                    std::cout<<"----Range"<<ToString(sample.first)<<"----"<<" entries: "<<sample.second.begin()->second.size()<<std::endl;
-                    if (sample.second.size()<2) continue;
-                    bandwidth_range[s.first][sample.first] = OptimalBandwidth(sample.second);
-                    std::stringstream ss;
-                    ss << std::fixed << std::setprecision(0) << s.first.second;
-                    std::string spin = ss.str();
-                    std::ofstream ListOptimalBandwidth("OptimalBandwidthRange"+ToString(sample.first)+"_"+s.first.first+"_spin"+spin+".csv", std::ofstream::out);
-                    for(const auto& value: bandwidth_range[s.first][sample.first]){
-                       for(const auto& var_name: value.first)
-                       {
-                           ListOptimalBandwidth << var_name << "," ;
-                       }
-                       ListOptimalBandwidth << value.second << std::endl;
-                    }
-                    TimeReport();
-                }
-            }
+            file_name_prefix += "Range";
+        } else {
+            samples_range = samples_mass;
         }
 
+        for (const auto& s: set){
+            std::cout<<std::endl<<s.first<< "  " << s.second<<std::endl;
+            for (const auto& sample: samples_range[s]){
+                std::cout<<"----"<<ToString(sample.first)<<"----"<<" entries: "<<sample.second.at("pt_l1").size()<<std::endl;
+                bandwidth[s][sample.first] = OptimalBandwidth(sample.second);
+                std::stringstream ss;
+                ss << std::fixed << std::setprecision(0) << s.second;
+                std::string spin = ss.str();
+                std::ofstream ListOptimalBandwidth(file_name_prefix+ToString(sample.first)+"_"+s.first+"_spin"+spin+".csv", std::ofstream::out);
+                for(const auto& value: bandwidth[s][sample.first]){
+                   for(const auto& var_name: value.first)
+                   {
+                       ListOptimalBandwidth << var_name << "," ;
+                   }
+                   ListOptimalBandwidth << value.second << std::endl;
+                }
+                TimeReport();
+            }
+        }
 
         TimeReport(true);
     }
@@ -170,6 +152,7 @@ private:
     SampleEntryCollection samples;
     MvaVariablesStudy vars;
     std::shared_ptr<TimeReporter> reporter;
+    std::vector<Range<int>> massranges;
 };
 }
 }
