@@ -48,21 +48,21 @@ public:
 
 
     BTagEfficiency(const Arguments& _args) : args(_args), 
-    //outfile(root_ext::CreateRootFile(args.output_file())), anaData(outfile)
     outfile(root_ext::CreateRootFile(args.output_file()))
     {
-        anaDataMap["OSIsoEff"] =  std::make_shared<BTagData>(outfile, "OS/ISO/Efficiency");
-        anaDataMap["OSNonIsoEff"] =  std::make_shared<BTagData>(outfile, "OS/NonISO/Efficiency");
-        anaDataMap["OSIsoVal"] =  std::make_shared<BTagData>(outfile, "OS/ISO/ValidationChannel");
-        anaDataMap["OSNonIsoVal"] =  std::make_shared<BTagData>(outfile, "OS/NonISO/ValidationChannel");
-        anaDataMap["OSVal"] = std::make_shared<BTagData>(outfile,"OS/ValidationIsolation");
-        anaDataMap["SSIsoEff"] =  std::make_shared<BTagData>(outfile, "SS/ISO/Efficiency");
-        anaDataMap["SSNonIsoEff"] =  std::make_shared<BTagData>(outfile, "SS/NonISO/Efficiency");
-        anaDataMap["SSIsoVal"] =  std::make_shared<BTagData>(outfile, "SS/ISO/ValidationChannel");
-        anaDataMap["SSNonIsoVal"] =  std::make_shared<BTagData>(outfile, "SS/NonISO/ValidationChannel");
-        anaDataMap["SSVal"] = std::make_shared<BTagData>(outfile,"SS/ValidationIsolation");
-        anaDataMap["ValIso"] = std::make_shared<BTagData>(outfile,"ValidationCharge/ISO");
-        anaDataMap["ValNonIso"] = std::make_shared<BTagData>(outfile,"ValidationCharge/NonISO");
+       // for (const auto& folder: folderMap)
+       //       anaDataMap[folder.first] = std::make_shared<BTagData>(outfile,folder.second);
+        for(const auto& tau_sign : tau_signs){
+            for (const auto& tau_iso : tau_isos){
+                anaDataMap[tau_sign+tau_iso+eff] = std::make_shared<BTagData>(outfile,tau_sign+"/"+tau_iso+"/"+effMap[eff]);
+                anaDataMap[tau_sign+tau_iso+valCha] = std::make_shared<BTagData>(outfile,tau_sign+"/"+tau_iso+"/"+valMap[valCha]);
+            }
+            anaDataMap[tau_sign+valIso] = std::make_shared<BTagData>(outfile,tau_sign+"/"+valMap[valIso]);
+        }
+
+        for (const auto& tau_iso : tau_isos)
+            anaDataMap[valQ+tau_iso] = std::make_shared<BTagData>(outfile,valMap[valQ]+"/"+tau_iso);
+        
     }
     void Run()
     {
@@ -78,11 +78,11 @@ public:
         static const std::string flavour_all = "all";
         std::set<std::string> flavour_names = analysis::tools::collect_map_values(flavours);
         flavour_names.insert(flavour_all);
-        static const std::string num = "Num", denom = "Denom", eff = "Eff",val = "Val" ;
+        static const std::string num = "Num", denom = "Denom";
 
-	bool apply_pu_id_cut = args.apply_pu_id_cut() != "no";
-	DiscriminatorWP pu_wp = DiscriminatorWP::Medium;
-	if(apply_pu_id_cut) pu_wp = analysis::Parse<DiscriminatorWP>(args.apply_pu_id_cut());
+        bool apply_pu_id_cut = args.apply_pu_id_cut() != "no";
+        DiscriminatorWP pu_wp = DiscriminatorWP::Medium;
+        if(apply_pu_id_cut) pu_wp = analysis::Parse<DiscriminatorWP>(args.apply_pu_id_cut());
 
         for(const auto& channel : channels) {
             for (const auto& name : args.input_file()){
@@ -157,8 +157,6 @@ public:
             }// end loop on files
         }//end loop on channel
 
-        std::vector<std::string> tau_signs = {"SS","OS"};
-        std::vector<std::string> tau_isos = {"NonIso","Iso"};
 
         //Create Efficiency Histograms
         for(const auto& tau_sign : tau_signs){
@@ -187,9 +185,9 @@ public:
                             //Make Validation plots between tau signs
                             for(const auto& tau_sign2 : tau_signs){
                                 if(tau_sign1 == tau_sign2) continue;
-                                anaDataMap[val+tau_iso1]->validate(jet_flavour,btag_wp.first,channel1,tau_sign2,tau_sign1).
+                                anaDataMap[valQ+tau_iso1]->validate(jet_flavour,btag_wp.first,channel1,tau_sign2,tau_sign1).
                                     CopyContent(anaDataMap[tau_sign2+tau_iso1+eff]->eff(jet_flavour, btag_wp.first,channel1));
-                                anaDataMap[val+tau_iso1]->validate(jet_flavour,btag_wp.first,channel1,tau_sign2,tau_sign1).
+                                anaDataMap[valQ+tau_iso1]->validate(jet_flavour,btag_wp.first,channel1,tau_sign2,tau_sign1).
                                     Add(&anaDataMap[tau_sign1+tau_iso1+eff]->eff(jet_flavour, btag_wp.first,channel1),-1.0);
                             }
 
@@ -197,31 +195,134 @@ public:
                             //Make Vlaidation plots between Isolations
                             for (const auto& tau_iso2 : tau_isos){
                                 if(tau_iso1 == tau_iso2) continue;
-                                anaDataMap[tau_sign1+val]->validate(jet_flavour,btag_wp.first,channel1,tau_iso2,tau_iso1).
+                                anaDataMap[tau_sign1+valIso]->validate(jet_flavour,btag_wp.first,channel1,tau_iso2,tau_iso1).
                                     CopyContent(anaDataMap[tau_sign1+tau_iso2+eff]->eff(jet_flavour, btag_wp.first,channel1));
-                                anaDataMap[tau_sign1+val]->validate(jet_flavour,btag_wp.first,channel1,tau_iso2,tau_iso1).
+                                anaDataMap[tau_sign1+valIso]->validate(jet_flavour,btag_wp.first,channel1,tau_iso2,tau_iso1).
                                     Add(&anaDataMap[tau_sign1+tau_iso1+eff]->eff(jet_flavour, btag_wp.first,channel1),-1.0);
                             }
                 
                             //Make Validation plots between Channels 
                             for (const auto& channel2 : channel_names){
                                 if (channel1 == channel2) continue;
-                                anaDataMap[tau_sign1+tau_iso1+val]->validate(jet_flavour,btag_wp.first,channel2,channel1).
+                                anaDataMap[tau_sign1+tau_iso1+valCha]->validate(jet_flavour,btag_wp.first,channel2,channel1).
                                     CopyContent(anaDataMap[tau_sign1+tau_iso1+eff]->eff(jet_flavour, btag_wp.first,channel2));
-                                anaDataMap[tau_sign1+tau_iso1+val]->validate(jet_flavour,btag_wp.first,channel2,channel1).
+                                anaDataMap[tau_sign1+tau_iso1+valCha]->validate(jet_flavour,btag_wp.first,channel2,channel1).
                                     Add(&anaDataMap[tau_sign1+tau_iso1+eff]->eff(jet_flavour, btag_wp.first,channel1),-1.0);
                             }
                         }
                     }
                 }
             }
-        }
-    }
+        }//End of creating the validation plots
+
+        //Checking the Validation Plot
+        for(const auto& tau_sign1 : tau_signs){
+            for (const auto& tau_iso1 : tau_isos){
+                for(const auto& channel1 : channel_names){
+                    for(const auto& btag_wp : btag_working_points) {
+                        for(const auto& jet_flavour : flavour_names){
+
+                            //Check Validation plots between tau signs
+                            for(const auto& tau_sign2 : tau_signs){
+                                if(tau_sign1 == tau_sign2) continue;
+                                std::cout<<" Checking Histogram "<<valMap[valQ]<<"/"<<tau_iso1<<"/val_"<<jet_flavour<<
+                                    "_"<<btag_wp.first<<"_"<<channel1<<"_"<<tau_sign2<<"_"<<tau_sign1<<std::endl;
+                                int nbinsX = anaDataMap[valQ+tau_iso1]->validate(jet_flavour,btag_wp.first,channel1,
+                                        tau_sign2,tau_sign1).GetNbinsX();
+                                int nbinsY = anaDataMap[valQ+tau_iso1]->validate(jet_flavour,btag_wp.first,channel1,
+                                        tau_sign2,tau_sign1).GetNbinsY();
+                                for(int i=1;i<= nbinsX;i++){
+                                    for(int j=1;j<=nbinsY;j++){
+                                        std::cout<<" Checking Bin"<<std::endl;
+                                        std::cout<<" X Position = "<<anaDataMap[valQ+tau_iso1]->validate(jet_flavour,btag_wp.first,channel1,
+                                                tau_sign2,tau_sign1).GetXaxis()->GetBinCenter(i)<<std::endl;;
+                                        std::cout<<" Y Position = "<<anaDataMap[valQ+tau_iso1]->validate(jet_flavour,btag_wp.first,channel1,
+                                                tau_sign2,tau_sign1).GetYaxis()->GetBinCenter(j)<<std::endl;;
+                                        double value = anaDataMap[valQ+tau_iso1]->validate(jet_flavour,btag_wp.first,channel1,
+                                                tau_sign2,tau_sign1).GetBinContent(i,j);
+                                        double error = anaDataMap[valQ+tau_iso1]->validate(jet_flavour,btag_wp.first,channel1,
+                                                tau_sign2,tau_sign1).GetBinError(i,j);
+                                        if(std::abs(value) <= error) std::cout<<"====> OK"<<std::endl;
+                                        else if (std::abs(value) <= 2*error) std::cout<<"====> 1 std dev excess"<<std::endl;
+                                        else if (std::abs(value) > 2*error)  std::cout<<"====> 2 std dev excess"<<std::endl;
+                                    }
+                                }  
+                            }
+                           
+                            //Check Validation plots between tau iso
+                            for (const auto& tau_iso2 : tau_isos){
+                                if(tau_iso1 == tau_iso2) continue;
+                                std::cout<<" Checking Histogram "<<tau_sign1<<"/"<<valMap[valIso]<<"/val_"<<jet_flavour<<
+                                    "_"<<btag_wp.first<<"_"<<channel1<<"_"<<tau_iso2<<"_"<<tau_iso1<<std::endl;
+                                int nbinsX = anaDataMap[tau_sign1+valIso]->validate(jet_flavour,btag_wp.first,channel1,
+                                        tau_iso2,tau_iso1).GetNbinsX();
+                                int nbinsY = anaDataMap[tau_sign1+valIso]->validate(jet_flavour,btag_wp.first,channel1,
+                                        tau_iso2,tau_iso1).GetNbinsY();
+                                for(int i=1;i<= nbinsX;i++){
+                                    for(int j=1;j<=nbinsY;j++){
+                                        std::cout<<" Checking Bin"<<std::endl;
+                                        std::cout<<" X Position = "<<anaDataMap[tau_sign1+valIso]->validate(jet_flavour,
+                                                btag_wp.first,channel1,tau_iso2,tau_iso1).GetXaxis()->GetBinCenter(i)<<std::endl;
+                                        std::cout<<" Y Position = "<<anaDataMap[tau_sign1+valIso]->validate(jet_flavour,
+                                                btag_wp.first,channel1,tau_iso2,tau_iso1).GetYaxis()->GetBinCenter(j)<<std::endl;
+                                        double value = anaDataMap[tau_sign1+valIso]->validate(jet_flavour,
+                                                btag_wp.first,channel1,tau_iso2,tau_iso1).GetBinContent(i,j);
+                                        double error = anaDataMap[tau_sign1+valIso]->validate(jet_flavour,
+                                                btag_wp.first,channel1,tau_iso2,tau_iso1).GetBinError(i,j);
+                                        if(std::abs(value) <= error) std::cout<<"====> OK"<<std::endl;
+                                        else if (std::abs(value) <= 2*error) std::cout<<"====> 1 std dev excess"<<std::endl;
+                                        else if (std::abs(value) > 2*error)  std::cout<<"====> 2 std dev excess"<<std::endl;
+                                    }
+                                }
+                            }
+
+                            //Check Validation plots between Channel
+                            for (const auto& channel2 : channel_names){
+                                if (channel1 == channel2) continue;
+                                std::cout<<" Checking Histogram "<<tau_sign1<<"/"<<tau_iso1<<"/"<<valMap[valCha]<<
+                                    "/val_"<<jet_flavour<<"_"<<btag_wp.first<<"_"<<channel2<<"_"<<channel1<<std::endl;
+                                int nbinsX = anaDataMap[tau_sign1+tau_iso1+valCha]->validate(jet_flavour,btag_wp.first,
+                                        channel2,channel1).GetNbinsX(); 
+                                int nbinsY = anaDataMap[tau_sign1+tau_iso1+valCha]->validate(jet_flavour,btag_wp.first,
+                                        channel2,channel1).GetNbinsY(); 
+                                for(int i=1;i<= nbinsX;i++){
+                                    for(int j=1;j<=nbinsY;j++){
+                                        std::cout<<" Checking Bin"<<std::endl;
+                                        std::cout<<" X Position = "<<anaDataMap[tau_sign1+tau_iso1+valCha]->validate(
+                                                jet_flavour,btag_wp.first,channel2,channel1).GetXaxis()->GetBinCenter(i)<<std::endl;
+                                        std::cout<<" Y Position = "<<anaDataMap[tau_sign1+tau_iso1+valCha]->validate(
+                                                jet_flavour,btag_wp.first,channel2,channel1).GetYaxis()->GetBinCenter(j)<<std::endl;
+      
+                                        double value = anaDataMap[tau_sign1+tau_iso1+valCha]->validate(jet_flavour,
+                                                btag_wp.first,channel2,channel1).GetBinContent(i,j);
+                                        double error = anaDataMap[tau_sign1+tau_iso1+valCha]->validate(jet_flavour,
+                                                btag_wp.first,channel2,channel1).GetBinError(i,j);
+                                        if(std::abs(value) <= error) std::cout<<"====> OK"<<std::endl;
+                                        else if (std::abs(value) <= 2*error) std::cout<<"====> 1 std dev excess"<<std::endl;
+                                        else if (std::abs(value) > 2*error)  std::cout<<"====> 2 std dev excess"<<std::endl;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }        
+                                
+
+
+    }// End of Run Function
 private:
     Arguments args;
     std::shared_ptr<TFile> outfile;
     //BTagData anaData;
     std::map<std::string,std::shared_ptr<BTagData>> anaDataMap; 
+    std::vector<std::string> tau_signs = {"SS","OS"};
+    std::vector<std::string> tau_isos = {"NonIso","Iso"};
+    std::string eff = "Eff";
+    std::map<std::string,std::string> effMap ={ {"Eff", "Efficiency"} };
+    std::string valCha = "valCha", valIso = "valIso", valQ = "valQ";
+    std::map<std::string,std::string> valMap = { {"valCha","ValidationChannel"} , {"valIso","ValidationIsolation"}, {"valQ","ValidationCharge"} };
 
     static bool PassTauIdCut(const std::vector<uint32_t>& tauId_keys, const std::vector<float>& tauId_values,
             uint32_t discriminator_name_hash, float cut_value)
