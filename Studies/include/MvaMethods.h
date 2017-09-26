@@ -352,7 +352,7 @@ const ChannelSampleIdSpin AllBkg{all_channel, bkg, spin_tot};
 
 inline std::map<ChannelSampleIdSpin,double> Kolmogorov(const std::map<ChannelSampleIdSpin, std::map<size_t, std::vector<double>>>& evaluation,
                                             BDTData::Entry& outputBDT, BDTData::Entry& /*difference*/,
-                                            TDirectory* directory)
+                                            TDirectory* directory, const bool& ver)
 {
     std::map<ChannelSampleIdSpin,double>  kolmogorov;
     std::shared_ptr<TH1D> histo_kolmogorov;
@@ -361,14 +361,15 @@ inline std::map<ChannelSampleIdSpin,double> Kolmogorov(const std::map<ChannelSam
     for (const auto& id : evaluation){
         kolmogorov[id.first] = outputBDT(id.first.channel, id.first.sample_id, id.first.spin, 0).KolmogorovTest(&outputBDT(id.first.channel, id.first.sample_id, id.first.spin, 1), "X");
         histo_kolmogorov->Fill(kolmogorov[id.first]);
-        std::cout<<id.first.channel<<"  "<<id.first.sample_id.sampleType<<id.first.sample_id.mass<<"  "<<id.first.spin<<"   "<<kolmogorov[id.first]<<std::endl;
+        if (ver)
+            std::cout<<id.first.channel<<"  "<<id.first.sample_id.sampleType<<id.first.sample_id.mass<<"  "<<id.first.spin<<"   "<<kolmogorov[id.first]<<std::endl;
     }
     root_ext::WriteObject(*histo_kolmogorov, directory);
     return kolmogorov;
 }
 
 inline std::map<ChannelSampleIdSpin,double>  ChiSquare(const std::map<ChannelSampleIdSpin, std::map<size_t, std::vector<double>>>& evaluation,
-                                            BDTData::Entry& outputBDT, TDirectory* directory)
+                                            BDTData::Entry& outputBDT, TDirectory* directory, const bool& ver)
 {
     std::map<ChannelSampleIdSpin,double>  chi;
     std::shared_ptr<TH1D> histo_chi;
@@ -377,7 +378,8 @@ inline std::map<ChannelSampleIdSpin,double>  ChiSquare(const std::map<ChannelSam
     for (const auto& id : evaluation){
         chi[id.first] = outputBDT(id.first.channel, id.first.sample_id, id.first.spin, 0).Chi2Test(&outputBDT(id.first.channel, id.first.sample_id, id.first.spin, 1), "WW");
         histo_chi->Fill(chi[id.first]);
-        std::cout<<id.first.channel<<"  "<<id.first.sample_id.sampleType<<id.first.sample_id.mass<<"  "<<id.first.spin<<"   "<<chi[id.first]<<std::endl;
+        if (ver)
+            std::cout<<id.first.channel<<"  "<<id.first.sample_id.sampleType<<id.first.sample_id.mass<<"  "<<id.first.spin<<"   "<<chi[id.first]<<std::endl;
     }
     root_ext::WriteObject(*histo_chi, directory);
     return chi;

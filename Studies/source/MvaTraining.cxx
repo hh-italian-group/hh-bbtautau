@@ -252,49 +252,36 @@ public:
        }
     }
 
-    void RankingImportanceVariables(const std::map<std::string, std::vector<std::pair<std::string, double>>>& importance) const
+    void RankingImportanceVariables(const std::vector<std::pair<std::string, double>>& importance, std::map<std::string, std::shared_ptr<TH1D>>& histo_rank) const
     {
-        std::map<std::string, std::shared_ptr<TH1D>> histo_rank;
-        auto directory = root_ext::GetDirectory(*outfile.get(), "Ranking");
-        for (const auto& method: importance){
-            for (const auto& pair: method.second){
-                if (!histo_rank.count(pair.first)){
-                    histo_rank[pair.first] = std::make_shared<TH1D>((pair.first+"_importance").c_str(),(pair.first+"_importance").c_str(),100, 0, 0.1);
-                    histo_rank.at(pair.first)->SetCanExtend(TH1::kAllAxes);
-                    histo_rank.at(pair.first)->SetXTitle("importance");
-                }
-                histo_rank.at(pair.first)->Fill(pair.second);
+       for (const auto& pair: importance){
+            if (!histo_rank.count(pair.first)){
+                histo_rank[pair.first] = std::make_shared<TH1D>((pair.first+"_importance").c_str(),(pair.first+"_importance").c_str(),100, 0, 0.1);
+                histo_rank.at(pair.first)->SetCanExtend(TH1::kAllAxes);
+                histo_rank.at(pair.first)->SetXTitle("importance");
             }
+            histo_rank.at(pair.first)->Fill(pair.second);
         }
-        for (const auto& var: histo_rank)
-            root_ext::WriteObject(*var.second, directory);
     }
 
-    std::map<std::string, std::map<std::string, size_t>> RankingPoisitionVariables(const std::map<std::string, std::vector<std::pair<std::string, double>>>& importance) const
+    std::map<std::string, size_t> RankingPoisitionVariables(std::vector<std::pair<std::string, double>> importance, std::map<std::string, std::shared_ptr<TH1D>>& histo_rank) const
     {
-        std::map<std::string, std::map<std::string, size_t>> position;
-        for(auto method: importance){
-            std::sort(method.second.begin(), method.second.end(), [](auto el1, auto el2){
-                return el1.second > el2.second;
-            } );
-            for (size_t i = 1; i <= method.second.size(); i++){
-                position[method.first][method.second[i-1].first] = i;
-            }
-        }
-        std::map<std::string, std::shared_ptr<TH1D>> histo_rank;
-        auto directory = root_ext::GetDirectory(*outfile.get(), "Ranking");
-        for (const auto& method: position){
-            for (const auto& pair: method.second){
-               if (!histo_rank.count(pair.first)){
-                   histo_rank[pair.first] = std::make_shared<TH1D>((pair.first+"_position").c_str(),(pair.first+"_position").c_str(), method.second.size(), 0.5, method.second.size() + 0.5);
-                   histo_rank[pair.first]->SetXTitle("position");
-               }
-                histo_rank[pair.first]->Fill(pair.second);
-            }
-        }
-        for (const auto& var: histo_rank)
-            root_ext::WriteObject(*var.second, directory);
+        std::map<std::string, size_t> position;
 
+        std::sort(importance.begin(), importance.end(), [](auto el1, auto el2){
+            return el1.second > el2.second;
+        } );
+        for (size_t i = 1; i <= importance.size(); i++){
+            position[importance[i-1].first] = i;
+        }
+
+        for (const auto& pair: position){
+           if (!histo_rank.count(pair.first)){
+               histo_rank[pair.first] = std::make_shared<TH1D>((pair.first+"_position").c_str(),(pair.first+"_position").c_str(), position.size(), 0.5, position.size() + 0.5);
+               histo_rank[pair.first]->SetXTitle("position");
+           }
+            histo_rank[pair.first]->Fill(pair.second);
+        }
         return position;
     }
 
@@ -399,18 +386,19 @@ public:
         return std::vector<int>(masses.begin(), masses.end());
     }
 
+
     void Run()
     {
         std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},{"muTau",-1},{"eTau",-1},{"tauTau",-1}};
 
         std::vector<std::pair<int,int>> mass_spin{{250,0},{260,0},{270,0},{280,0},{300,0},{320,0},{340,0},{350,0},{400,0},{450,0},{500,0},{550,0},
-                                                 {600,0},{650,0},{750,0},{800,0},{900,0},{250,2},{260,2},{270,2},{280,2},{300,2},{320,2},{340,2},
+                                                 {600,0},{650,0},{750,0},{800,0},{900,0}, {250,2},{260,2},{270,2},{280,2},{300,2},{320,2},{340,2},
                                                  {350,2},{400,2},{450,2},{500,2},{550,2},{600,2},{650,2},{750,2},{800,2}};
 
         std::cout<<"Variabili iniziali: "<<enabled_vars.size()<<std::endl;
         const auto range = mva_setup.mass_range;
         auto mass_range = CreateMassRange();
-        std::cout<< mass_range.size() <<std::endl;
+        std::cout<< "quante masse? "<<mass_range.size() <<std::endl;
 
         std::uniform_int_distribution<size_t> it(0, mass_spin.size() - 1);
         std::uniform_int_distribution<int> split(0, 3);
@@ -423,6 +411,10 @@ public:
                 if ( entry.id.IsSignal() && !range.Contains(entry.id.mass) ) continue;
                 if ( entry.spin != s.second) continue;
 
+                std::pair<int,int> pair_check(entry.id.mass, s.second);
+                if ( !entry.id.IsBackground() && std::find(mass_spin.begin(),  mass_spin.end(), pair_check) ==  mass_spin.end())
+                    throw exception("Mass and spin couple is not in the possible values set");
+
                 auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
                 auto tuple = ntuple::CreateEventTuple(s.first, input_file.get(), true, ntuple::TreeState::Skimmed);
                 auto sumtuple = ntuple::CreateSummaryTuple("summary",input_file.get(), true, ntuple::TreeState::Skimmed);
@@ -431,6 +423,7 @@ public:
                 Long64_t tot_entries = 0;
                 for(const Event& event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
+                    if (event.p4_1.pt()<40 || event.p4_2.pt()<40) continue;
                     if (args.blind())
                         if (event.split_id >= (mergesummary.n_splits/2)) continue;
                     if (!args.blind())
@@ -444,7 +437,6 @@ public:
                         vars->AddEvent(event, sample_bkg, pair_mass_spin.second, s.first, entry.weight, which_set);
                     }
                     else vars->AddEvent(event, entry.id, entry.spin, s.first, entry.weight , which_set);
-
                 }
                 std::cout << " channel " << s.first << "    " << entry.filename << " number of events: " << tot_entries << std::endl;
             }
@@ -467,34 +459,54 @@ public:
         }
         std::cout << methods.size() << " metodi" << std::endl;
 
-        std::map<std::string, std::map<ChannelSampleIdSpin, double>> roc_testing;
-        std::map<std::string, std::map<ChannelSampleIdSpin, double>> roc_training;
-        std::map<std::string, std::vector<std::pair<std::string, double>>> importance;
-        std::map<std::string, std::map<ChannelSampleIdSpin, std::map<size_t, std::vector<double>>>> evaluation;
-        std::map<std::string, std::shared_ptr<BDTData>> outputBDT;
-
         auto directory = root_ext::GetDirectory(*outfile.get(), "Evaluation");
         auto directory_roc = root_ext::GetDirectory(*outfile.get(), "ROCCurve");
+        auto directory_ks = root_ext::GetDirectory(*outfile.get(), "Kolmogorov");
+        auto directory_chi = root_ext::GetDirectory(*outfile.get(), "Chi2");
+        auto directory_sb = root_ext::GetDirectory(*outfile.get(), "Significance");
+
+        auto difference = std::make_shared<BDTData>(outfile.get());
+
+        std::map<std::string, std::shared_ptr<TH1D>> histo_rank_importance;
+        std::map<std::string, std::shared_ptr<TH1D>> histo_rank_position;
+
+        MvaTuple mva_tuple(outfile.get(), false);
+
+        for(const auto& point : grid) {
+            for (const auto& val : options.GetOptionNames()){
+                mva_tuple().param_names.push_back(val.first);
+                mva_tuple().param_positions.push_back(val.second);
+                mva_tuple().param_values.push_back(options.GetNumericValue(point, val.first));
+            }
+        }
+
+        int num = 1;
         for(const auto& m : methods){
+            std::map<ChannelSampleIdSpin, double> roc_testing;
+            std::map<ChannelSampleIdSpin, double> roc_training;
+            std::vector<std::pair<std::string, double>> importance;
+            std::map<ChannelSampleIdSpin, std::map<size_t, std::vector<double>>> evaluation;
+            std::shared_ptr<BDTData> outputBDT;
+
+            mva_tuple().name = m.first;
+
+            std::cout<<"Quale metodo? "<<num<<std::endl;
             auto factory = std::make_shared<TMVA::Factory>("myFactory"+args.output_file(), outfile.get(),"!V:!Silent:Color:DrawProgressBar:Transformations=I:AnalysisType=Classification");
             factory->BookMethod(vars->loader.get(), TMVA::Types::kBDT, m.first, m.second);
             std::cout<<"Booked"<<std::endl;
 
             TrainAllMethods(*factory);
             std::cout<<"Trained"<<std::endl;
+            outputBDT = std::make_shared<BDTData>(directory, m.first);
 
-            outputBDT[m.first] = std::make_shared<BDTData>(directory, m.first);
-
-            EvaluateMethod(evaluation[m.first], outputBDT[m.first]->bdt_out, m.first);
+            EvaluateMethod(evaluation, outputBDT->bdt_out, m.first);
             std::cout<<"Evaluated"<<std::endl;
 
             auto method = dynamic_cast<TMVA::MethodBDT*>(factory->GetMethod(vars->loader->GetName(), m.first));
             for (size_t i = 0; i<vars->names.size(); i++){
-                importance[m.first].emplace_back(vars->names[i], method->GetVariableImportance(static_cast<UInt_t>(i)));
+                importance.emplace_back(vars->names[i], method->GetVariableImportance(static_cast<UInt_t>(i)));
             }
-
             for (const auto& ch_spin : set){
-
                 ChannelSampleIdSpin id_sgn_allch_sp{all_channel, mass_tot, ch_spin.second};
                 ChannelSampleIdSpin id_sgn_ch_sp{ch_spin.first, mass_tot, ch_spin.second};
                 ChannelSampleIdSpin id_bkg_allch_sp{all_channel, bkg, -1};
@@ -515,22 +527,19 @@ public:
                     id_sgn_ch_sp.spin = spin_tot;
                     id_sgn_allch_sp.spin = spin_tot;
                 }
-
-                if (!roc_testing[m.first].count(id_sgn_allch_sp)){
-                    roc_testing[m.first][id_sgn_allch_sp] = method->GetROCIntegral(&outputBDT.at(m.first)->bdt_out(id_sgn_allch_sp.channel, id_sgn_allch_sp.sample_id, id_sgn_allch_sp.spin, 0),
-                                                                                   &outputBDT.at(m.first)->bdt_out(id_bkg_allch_sp.channel, id_bkg_allch_sp.sample_id, id_bkg_allch_sp.spin, 0));
-                    roc_training[m.first][id_sgn_allch_sp] = method->GetROCIntegral(&outputBDT.at(m.first)->bdt_out(id_sgn_allch_sp.channel, id_sgn_allch_sp.sample_id, id_sgn_allch_sp.spin, 1),
-                                                                                    &outputBDT.at(m.first)->bdt_out(id_bkg_allch_sp.channel, id_bkg_allch_sp.sample_id, id_bkg_allch_sp.spin, 1));
-                    std::cout<<"channel"<< id_sgn_allch_sp.channel<<"  sampleid"<< id_sgn_allch_sp.sample_id<<" spin:"<<id_sgn_allch_sp.spin <<" ---  ROC testing:  "<<roc_testing[m.first][id_sgn_allch_sp]<<std::endl;
+                if (!roc_testing.count(id_sgn_allch_sp)){
+                    roc_testing[id_sgn_allch_sp] = method->GetROCIntegral(&outputBDT->bdt_out(id_sgn_allch_sp.channel, id_sgn_allch_sp.sample_id, id_sgn_allch_sp.spin, 0),
+                                                                                   &outputBDT->bdt_out(id_bkg_allch_sp.channel, id_bkg_allch_sp.sample_id, id_bkg_allch_sp.spin, 0));
+                    roc_training[id_sgn_allch_sp] = method->GetROCIntegral(&outputBDT->bdt_out(id_sgn_allch_sp.channel, id_sgn_allch_sp.sample_id, id_sgn_allch_sp.spin, 1),
+                                                                                    &outputBDT->bdt_out(id_bkg_allch_sp.channel, id_bkg_allch_sp.sample_id, id_bkg_allch_sp.spin, 1));
+                    std::cout<<"channel: "<< id_sgn_allch_sp.channel<<"  sampleid: "<< id_sgn_allch_sp.sample_id<<" spin: "<<id_sgn_allch_sp.spin <<" ---  ROC testing:  "<<roc_testing[id_sgn_allch_sp]<<std::endl;
                 }
-                 if (!roc_testing[m.first].count(id_sgn_ch_sp)){
-                     roc_testing[m.first][id_sgn_ch_sp] = method->GetROCIntegral(&outputBDT.at(m.first)->bdt_out(id_sgn_ch_sp.channel, id_sgn_ch_sp.sample_id, id_sgn_ch_sp.spin, 0),
-                                                                                 &outputBDT.at(m.first)->bdt_out(id_bkg_ch_sp.channel, id_bkg_ch_sp.sample_id, id_bkg_ch_sp.spin, 0));
-                     roc_training[m.first][id_sgn_ch_sp] = method->GetROCIntegral(&outputBDT.at(m.first)->bdt_out(id_sgn_ch_sp.channel, id_sgn_ch_sp.sample_id, id_sgn_ch_sp.spin, 1),
-                                                                                  &outputBDT.at(m.first)->bdt_out(id_bkg_ch_sp.channel, id_bkg_ch_sp.sample_id, id_bkg_ch_sp.spin, 1));
+                 if (!roc_testing.count(id_sgn_ch_sp)){
+                     roc_testing[id_sgn_ch_sp] = method->GetROCIntegral(&outputBDT->bdt_out(id_sgn_ch_sp.channel, id_sgn_ch_sp.sample_id, id_sgn_ch_sp.spin, 0),
+                                                                                 &outputBDT->bdt_out(id_bkg_ch_sp.channel, id_bkg_ch_sp.sample_id, id_bkg_ch_sp.spin, 0));
+                     roc_training[id_sgn_ch_sp] = method->GetROCIntegral(&outputBDT->bdt_out(id_sgn_ch_sp.channel, id_sgn_ch_sp.sample_id, id_sgn_ch_sp.spin, 1),
+                                                                                  &outputBDT->bdt_out(id_bkg_ch_sp.channel, id_bkg_ch_sp.sample_id, id_bkg_ch_sp.spin, 1));
                  }
-
-
 
                 if ( ch_spin.second == 1 || ch_spin.second == -1) continue;
 
@@ -544,82 +553,100 @@ public:
                     id_bkg_ch_sp.sample_id = sample_bkg;
 
                     if (!vars->data_pair[0].count(id_sgn_ch_sp)) continue;
-                    if (!roc_testing[m.first].count(id_sgn_allch_sp)){
-                        roc_testing[m.first][id_sgn_allch_sp] = method->GetROCIntegral(&outputBDT.at(m.first)->bdt_out(id_sgn_allch_sp.channel, id_sgn_allch_sp.sample_id, id_sgn_allch_sp.spin, 0),
-                                                                                          &outputBDT.at(m.first)->bdt_out(id_bkg_allch_sp.channel, id_bkg_allch_sp.sample_id, id_bkg_allch_sp.spin, 0));
-                        roc_training[m.first][id_sgn_allch_sp] = method->GetROCIntegral(&outputBDT.at(m.first)->bdt_out(id_sgn_allch_sp.channel, id_sgn_allch_sp.sample_id, id_sgn_allch_sp.spin, 1),
-                                                                                          &outputBDT.at(m.first)->bdt_out(id_bkg_allch_sp.channel, id_bkg_allch_sp.sample_id, id_bkg_allch_sp.spin, 1));
-                        std::cout<<"channel"<< id_sgn_allch_sp.channel<<"  sampleid"<< id_sgn_allch_sp.sample_id<<" spin:"<<id_sgn_allch_sp.spin <<" ---  ROC testing:  "<<roc_testing[m.first][id_sgn_allch_sp]<<std::endl;
+                    if (!roc_testing.count(id_sgn_allch_sp)){
+                        roc_testing[id_sgn_allch_sp] = method->GetROCIntegral(&outputBDT->bdt_out(id_sgn_allch_sp.channel, id_sgn_allch_sp.sample_id, id_sgn_allch_sp.spin, 0),
+                                                                                          &outputBDT->bdt_out(id_bkg_allch_sp.channel, id_bkg_allch_sp.sample_id, id_bkg_allch_sp.spin, 0));
+                        roc_training[id_sgn_allch_sp] = method->GetROCIntegral(&outputBDT->bdt_out(id_sgn_allch_sp.channel, id_sgn_allch_sp.sample_id, id_sgn_allch_sp.spin, 1),
+                                                                                          &outputBDT->bdt_out(id_bkg_allch_sp.channel, id_bkg_allch_sp.sample_id, id_bkg_allch_sp.spin, 1));
+                        std::cout<<"channel: "<< id_sgn_allch_sp.channel<<"  sampleid: "<< id_sgn_allch_sp.sample_id<<" spin: "<<id_sgn_allch_sp.spin <<" ---  ROC testing:  "<<roc_testing[id_sgn_allch_sp]<<std::endl;
 
                     }
-                    if (!roc_testing[m.first].count(id_sgn_ch_sp)){
-                        roc_testing[m.first][id_sgn_ch_sp] = method->GetROCIntegral(&outputBDT.at(m.first)->bdt_out(id_sgn_ch_sp.channel, id_sgn_ch_sp.sample_id, id_sgn_ch_sp.spin, 0),
-                                                                                          &outputBDT.at(m.first)->bdt_out(id_bkg_ch_sp.channel, id_bkg_ch_sp.sample_id, id_bkg_ch_sp.spin, 0));
-                        roc_training[m.first][id_sgn_ch_sp] = method->GetROCIntegral(&outputBDT.at(m.first)->bdt_out(id_sgn_ch_sp.channel, id_sgn_ch_sp.sample_id, id_sgn_ch_sp.spin, 1),
-                                                                                          &outputBDT.at(m.first)->bdt_out(id_bkg_ch_sp.channel, id_bkg_ch_sp.sample_id, id_bkg_ch_sp.spin, 1));
+                    if (!roc_testing.count(id_sgn_ch_sp)){
+                        roc_testing[id_sgn_ch_sp] = method->GetROCIntegral(&outputBDT->bdt_out(id_sgn_ch_sp.channel, id_sgn_ch_sp.sample_id, id_sgn_ch_sp.spin, 0),
+                                                                                          &outputBDT->bdt_out(id_bkg_ch_sp.channel, id_bkg_ch_sp.sample_id, id_bkg_ch_sp.spin, 0));
+                        roc_training[id_sgn_ch_sp] = method->GetROCIntegral(&outputBDT->bdt_out(id_sgn_ch_sp.channel, id_sgn_ch_sp.sample_id, id_sgn_ch_sp.spin, 1),
+                                                                                          &outputBDT->bdt_out(id_bkg_ch_sp.channel, id_bkg_ch_sp.sample_id, id_bkg_ch_sp.spin, 1));
                     }
 
                 }
+            }
+
+            for (const auto& value : roc_testing){
+                mva_tuple().roc_testing_value.push_back(value.second);
+                mva_tuple().roc_testing_channel.push_back(value.first.channel);
+                mva_tuple().roc_testing_mass.push_back(value.first.sample_id.mass);
+                mva_tuple().roc_testing_type.push_back(static_cast<int>(value.first.sample_id.sampleType));
+                mva_tuple().roc_testing_spin.push_back(value.first.spin);
+            }
+
+            for (const auto& value : roc_training){
+                mva_tuple().roc_training_value.push_back(value.second);
+                mva_tuple().roc_training_channel.push_back(value.first.channel);
+                mva_tuple().roc_training_mass.push_back(value.first.sample_id.mass);
+                mva_tuple().roc_training_type.push_back(static_cast<int>(value.first.sample_id.sampleType));
+                mva_tuple().roc_training_spin.push_back(value.first.spin);
             }
 
             auto directory_roc_method = root_ext::GetDirectory(*directory_roc, m.first);
             std::vector<float> mvaS, mvaB;
             ChannelSampleIdSpin id_sgn{all_channel, mass_tot, spin_tot};
             ChannelSampleIdSpin id_bkg{all_channel, bkg, spin_tot};
-            for (auto& eval : evaluation[m.first][id_sgn][0])
+            for (auto& eval : evaluation[id_sgn][0])
                 mvaS.push_back(static_cast<float>(eval));
-            for (auto& eval : evaluation[m.first][id_bkg][0])
+            for (auto& eval : evaluation[id_bkg][0])
                 mvaB.push_back(static_cast<float>(eval));
             TMVA::ROCCurve roccurve(mvaS, mvaB);
             auto graph = roccurve.GetROCCurve();
             root_ext::WriteObject(*graph, directory_roc_method);
-        }
+            num++;
 
-        std::cout<<"importance"<<std::endl;
-        RankingImportanceVariables(importance);
-        std::cout<<"position"<<std::endl;
-        auto position = RankingPoisitionVariables(importance);
+            std::cout<<"importance"<<std::endl;
+            RankingImportanceVariables(importance, histo_rank_importance);
+            std::cout<<"position"<<std::endl;
+            auto position = RankingPoisitionVariables(importance, histo_rank_position);
 
-        std::map<std::string, std::map<ChannelSampleIdSpin,double>> kolmogorov;
-        std::map<std::string, std::map<ChannelSampleIdSpin,double>> chi2;
+            for (const auto& var: importance){
+                mva_tuple().importance.push_back(var.second);
+                mva_tuple().var_name.push_back(var.first);
+                mva_tuple().position.push_back(position.at(var.first));
+            }
 
-        std::map<std::string, std::map<ChannelSampleIdSpin, std::pair<double, PhysicalValue>>> sign;
+            std::map<ChannelSampleIdSpin,double> kolmogorov;
+            std::map<ChannelSampleIdSpin,double> chi2;
+            std::map<ChannelSampleIdSpin, std::pair<double, PhysicalValue>> sign;
 
-        auto directory_ks = root_ext::GetDirectory(*outfile.get(), "Kolmogorov");
-        auto directory_chi = root_ext::GetDirectory(*outfile.get(), "Chi2");
-        auto directory_sb = root_ext::GetDirectory(*outfile.get(), "Significance");
-        auto difference = std::make_shared<BDTData>(outfile.get());
-        for (const auto& m: methods){
             auto directory_ks_method = root_ext::GetDirectory(*directory_ks, m.first);
             auto directory_chi_method = root_ext::GetDirectory(*directory_chi, m.first);
             auto directory_sb_method = root_ext::GetDirectory(*directory_sb, m.first);
             std::cout<<"----"<<m.first<<"----"<<std::endl;
             std::cout<<"Kolmogorov"<<std::endl;
-            kolmogorov[m.first] = Kolmogorov(evaluation[m.first], outputBDT.at(m.first)->bdt_out, difference->difference, directory_ks_method);
+            kolmogorov = Kolmogorov(evaluation, outputBDT->bdt_out, difference->difference, directory_ks_method, true);
+            for (const auto& sample : kolmogorov){
+                mva_tuple().KS_value.push_back(sample.second);
+                mva_tuple().KS_channel.push_back(sample.first.channel);
+                mva_tuple().KS_mass.push_back(sample.first.sample_id.mass);
+                mva_tuple().KS_type.push_back(static_cast<int>(sample.first.sample_id.sampleType));
+                mva_tuple().KS_spin.push_back(sample.first.spin);
+            }
+
             std::cout<<"Chi"<<std::endl;
-            chi2[m.first] = ChiSquare(evaluation[m.first], outputBDT.at(m.first)->bdt_out,  directory_chi_method);
+            chi2 = ChiSquare(evaluation, outputBDT->bdt_out,  directory_chi_method, false);
+            for (const auto& sample : chi2){
+                mva_tuple().chi_value.push_back(sample.second);
+                mva_tuple().chi_channel.push_back(sample.first.channel);
+                mva_tuple().chi_mass.push_back(sample.first.sample_id.mass);
+                mva_tuple().chi_type.push_back(static_cast<int>(sample.first.sample_id.sampleType));
+                mva_tuple().chi_spin.push_back(sample.first.spin);
+            }
+
             std::cout<<"Significance"<<std::endl;
             for (const auto& ch_spin : set){
                 if (ch_spin.second == -1)
-                    sign[m.first]  = EstimateSignificativity(ch_spin.first, spin_tot, mass_range, outputBDT.at(m.first)->bdt_out, directory_sb_method, true);
+                    sign  = EstimateSignificativity(ch_spin.first, spin_tot, mass_range, outputBDT->bdt_out, directory_sb_method, true);
                 else
-                    sign[m.first]  = EstimateSignificativity(ch_spin.first, ch_spin.second, mass_range, outputBDT.at(m.first)->bdt_out, directory_sb_method, true);
+                    sign  = EstimateSignificativity(ch_spin.first, ch_spin.second, mass_range, outputBDT->bdt_out, directory_sb_method, true);
             }
-        }
-
-        MvaTuple mva_tuple(outfile.get(), false);
-        std::cout<<"options"<<std::endl;
-        for(const auto& point : grid) {
-            auto name = options.GetName(point)+"_"+std::to_string(args.which_test());
-            mva_tuple().name = name;
-
-            for (const auto val : options.GetOptionNames()){
-                mva_tuple().param_names.push_back(val.first);
-                mva_tuple().param_positions.push_back(val.second);
-                mva_tuple().param_values.push_back(options.GetNumericValue(point, val.first));
-            }
-
-            for (const auto entry : sign[name]){
+            for (const auto& entry : sign){
                 mva_tuple().optimal_cut.push_back(entry.second.first);
                 mva_tuple().significance.push_back(entry.second.second.GetValue());
                 mva_tuple().significance_err.push_back(entry.second.second.GetFullError());
@@ -628,46 +655,16 @@ public:
                 mva_tuple().significance_type.push_back(static_cast<int>(entry.first.sample_id.sampleType));
                 mva_tuple().significance_spin.push_back(entry.first.spin);
             }
-
-            for (const auto& sample : kolmogorov.at(name)){
-                mva_tuple().KS_value.push_back(sample.second);
-                mva_tuple().KS_channel.push_back(sample.first.channel);
-                mva_tuple().KS_mass.push_back(sample.first.sample_id.mass);
-                mva_tuple().KS_type.push_back(static_cast<int>(sample.first.sample_id.sampleType));
-                mva_tuple().KS_spin.push_back(sample.first.spin);
-            }
-
-            for (const auto& sample : chi2.at(name)){
-                mva_tuple().chi_value.push_back(sample.second);
-                mva_tuple().chi_channel.push_back(sample.first.channel);
-                mva_tuple().chi_mass.push_back(sample.first.sample_id.mass);
-                mva_tuple().chi_type.push_back(static_cast<int>(sample.first.sample_id.sampleType));
-                mva_tuple().chi_spin.push_back(sample.first.spin);
-            }
-
-            for (const auto& value : roc_testing[name]){
-                mva_tuple().roc_testing_value.push_back(value.second);
-                mva_tuple().roc_testing_channel.push_back(value.first.channel);
-                mva_tuple().roc_testing_mass.push_back(value.first.sample_id.mass);
-                mva_tuple().roc_testing_type.push_back(static_cast<int>(value.first.sample_id.sampleType));
-                mva_tuple().roc_testing_spin.push_back(value.first.spin);
-            }
-
-            for (const auto& value : roc_training[name]){
-                mva_tuple().roc_training_value.push_back(value.second);
-                mva_tuple().roc_training_channel.push_back(value.first.channel);
-                mva_tuple().roc_training_mass.push_back(value.first.sample_id.mass);
-                mva_tuple().roc_training_type.push_back(static_cast<int>(value.first.sample_id.sampleType));
-                mva_tuple().roc_training_spin.push_back(value.first.spin);
-            }
-
-            for (const auto& var: importance.at(name)){
-                mva_tuple().importance.push_back(var.second);
-                mva_tuple().var_name.push_back(var.first);
-                mva_tuple().position.push_back(position.at(name).at(var.first));
-            }
             mva_tuple.Fill();
         }
+
+        auto directory_ranking = root_ext::GetDirectory(*outfile.get(), "Ranking");
+        for (const auto& var: histo_rank_importance)
+            root_ext::WriteObject(*var.second, directory_ranking);
+
+        for (const auto& var: histo_rank_position)
+            root_ext::WriteObject(*var.second, directory_ranking);
+
         mva_tuple.Write();
     }
 private:

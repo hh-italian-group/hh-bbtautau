@@ -45,9 +45,14 @@ namespace mva_study{
 
 using clock = std::chrono::system_clock;
 
+//namespace {
+//Range<int> low_mass(250, 320), medium_mass(340, 400), high_mass(450,900);
+//std::vector<Range<int>> ranges{low_mass, medium_mass, high_mass};
+//}
+
 namespace {
-Range<int> low_mass(250, 320), medium_mass(340, 400), high_mass(450,900);
-std::vector<Range<int>> ranges{low_mass, medium_mass, high_mass};
+Range<int> all_mass(250, 900);
+std::vector<Range<int>> ranges{all_mass};
 }
 
 class VariableDistribution {
@@ -266,8 +271,6 @@ public:
                 Long64_t tot_entries = 0;
                 for(const Event& event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
-                    if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
-                    if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
                     vars.AddEvent(event, entry.id, entry.spin, s.first, entry.weight);
                     tot_entries++;
                 }

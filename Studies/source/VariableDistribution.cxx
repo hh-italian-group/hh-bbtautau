@@ -94,8 +94,6 @@ public:
             std::cout<<args.input_path()+"/"+entry.filename<<std::endl;
             auto tuple = ntuple::CreateEventTuple(args.tree_name(), input_file.get(), true, ntuple::TreeState::Skimmed);
             for(const Event& event : *tuple) {
-                if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
-                if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
                 vars.AddEvent(event, entry.id, entry.spin, args.tree_name(), entry.weight);
             }
             std::cout << entry << " number of events: " << tuple->size() << std::endl;

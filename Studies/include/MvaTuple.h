@@ -23,11 +23,13 @@ namespace  analysis {
     VAR(std::vector<int>, roc_testing_type) \
     VAR(std::vector<int>, roc_testing_spin) \
     VAR(std::vector<std::string>, roc_testing_channel) \
+    VAR(std::vector<double>, err_roc_testing) \
     VAR(std::vector<double>, roc_training_value) \
     VAR(std::vector<int>, roc_training_mass) \
     VAR(std::vector<int>, roc_training_type) \
     VAR(std::vector<int>, roc_training_spin) \
     VAR(std::vector<std::string>, roc_training_channel) \
+    VAR(std::vector<double>, err_roc_training) \
     /**/ \
     VAR(std::vector<double>, KS_value) \
     VAR(std::vector<int>, KS_type) \
@@ -108,6 +110,21 @@ inline std::map<ChannelSampleIdSpin, double> GetRocTestingIntegralMap(const MvaR
 {
     std::map<ChannelSampleIdSpin, double>  rocs;
     return rocs = GetRocIntegralMap("testing", results.roc_testing_value, results.roc_testing_channel, results.roc_testing_mass,
+                                    results.roc_testing_type, results.roc_testing_spin);
+}
+
+
+inline std::map<ChannelSampleIdSpin, double> GetErrRocTrainingIntegralMap(const MvaResults& results)
+{
+    std::map<ChannelSampleIdSpin, double> rocs;
+    return rocs = GetRocIntegralMap("err training", results.err_roc_training, results.roc_training_channel, results.roc_training_mass,
+                                    results.roc_training_type, results.roc_training_spin);
+}
+
+inline std::map<ChannelSampleIdSpin, double> GetErrRocTestingIntegralMap(const MvaResults& results)
+{
+    std::map<ChannelSampleIdSpin, double>  rocs;
+    return rocs = GetRocIntegralMap("err testing", results.err_roc_testing, results.roc_testing_channel, results.roc_testing_mass,
                                     results.roc_testing_type, results.roc_testing_spin);
 }
 

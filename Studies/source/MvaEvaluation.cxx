@@ -51,6 +51,7 @@ struct Arguments { // list of all program arguments
     REQ_ARG(std::string, range);
     REQ_ARG(std::string, channel);
     REQ_ARG(int, spin);
+    OPT_ARG(std::string, error_file, "");
     OPT_ARG(bool, blind, 1);
 };
 
@@ -188,11 +189,23 @@ public:
             }
         }
 
+
+
+        std::map<ChannelSampleIdSpin,double> err_training, err_testing;
+        if (args.error_file().size()){
+            std::shared_ptr<TFile> in_file(root_ext::OpenRootFile(args.error_file()));
+            MvaTuple myTree("mva_result", in_file.get(), true);
+            for(const MvaResults& results : myTree) {
+                err_training = GetErrRocTrainingIntegralMap(results);
+                err_testing = GetErrRocTestingIntegralMap(results);
+            }
+        }
+
         BDTData outputBDT(outfile, "Evaluation");
         CreateOutputHistos(data, outputBDT.bdt_out);
 
         BDTData difference(outfile, "Difference");
-        auto histo_roc = std::make_shared<TGraph>();
+        auto histo_roc = std::make_shared<TGraphErrors>();
         histo_roc->SetTitle("ROC");
         histo_roc->SetName("ROC");
         std::map<int, double> roc, roc_testing, roc_training;
@@ -204,16 +217,18 @@ public:
             std::cout<<mass<<std::endl;
             SampleId sample_sgn(SampleType::Sgn_Res, mass);
             SampleId sample_bkg(SampleType::Bkg_TTbar, mass);
+            ChannelSampleIdSpin id_sgn(args.channel(), sample_sgn, args.spin());
+            ChannelSampleIdSpin id_bkg(args.channel(), sample_bkg, args.spin());
             roc[mass] = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), sample_sgn, args.spin(), test_train), &outputBDT.bdt_out(args.channel(),sample_bkg,args.spin(), test_train));
             roc_testing[mass] = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), sample_sgn, args.spin(), 0), &outputBDT.bdt_out(args.channel(),sample_bkg,args.spin(),0));
             roc_training[mass] = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), sample_sgn, args.spin(), 1), &outputBDT.bdt_out(args.channel(),sample_bkg,args.spin(),1));
             histo_roc->SetPoint(i, mass, roc[mass]);
-            std::cout<<mass<<"  ROC: "<<roc[mass]<<std::endl;
+            histo_roc->SetPointError(i,0, err_testing[id_sgn]);
+
+            std::cout<<mass<<"  ROC: "<<roc[mass] << " +- "<<err_testing[id_sgn]<<std::endl;
             i++;
             auto directory_roc_mass = root_ext::GetDirectory(*directory_roc, std::to_string(mass));
             std::vector<float> mvaS, mvaB;
-            ChannelSampleIdSpin id_sgn(args.channel(), sample_sgn, args.spin());
-            ChannelSampleIdSpin id_bkg(args.channel(), sample_bkg, args.spin());
             for (const auto& eval : data[id_sgn][test_train])
                 mvaS.push_back(static_cast<float>(eval));
             for (const auto& eval : data[id_bkg][test_train])
@@ -245,10 +260,10 @@ public:
 
         auto directory = root_ext::GetDirectory(*outfile.get(), "Kolmogorov");
         std::cout<<"kolmogorov"<<std::endl;
-        auto kolmogorov = Kolmogorov(data, outputBDT.bdt_out,  difference.difference ,directory);
+        auto kolmogorov = Kolmogorov(data, outputBDT.bdt_out,  difference.difference,directory,true);
         auto directory_chi = root_ext::GetDirectory(*outfile.get(), "Chi2");
         std::cout<<"chi2"<<std::endl;
-        auto chi = ChiSquare(data, outputBDT.bdt_out, directory_chi);
+        auto chi = ChiSquare(data, outputBDT.bdt_out, directory_chi,true);
 
         auto directory_sb = root_ext::GetDirectory(*outfile.get(), "Significance");
         std::cout<<"Significativity"<<std::endl;

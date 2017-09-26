@@ -160,7 +160,7 @@ public:
                     if(KS_results.at(AllSgn) <= cut || KS_results.at(AllBkg) <= cut) continue;
 
                 if (args.which_test() == "chi")
-                    if(chi_results.at(AllSgn) <= cut && chi_results.at(AllBkg) <= cut) continue;
+                    if(chi_results.at(AllSgn) <= cut || chi_results.at(AllBkg) <= cut) continue;
                 method_params[method_name] = grid_point;
                 ++method_seed_count[method_name];
                 std::cout<<method_seed_count[method_name]<<std::endl;
@@ -200,6 +200,8 @@ public:
                 for(const auto& rank : ranking)
                     position[method_name][rank.first].push_back(rank.second);
              }
+            std::cout<<std::endl;
+
         }
 
         std::cout<<"Quanti metodi?"<<method_seed_count.size()<<std::endl;
@@ -208,6 +210,7 @@ public:
         std::map<std::string, std::map<ChannelSampleIdSpin, double>> roc_training_value, roc_testing_value;
         std::map<std::string, std::map<ChannelSampleIdSpin, double>> roc_training_err, roc_testing_err;
 
+        MvaTuple mva_tuple(outfile.get(), false);
 
         for(const auto& method : method_seed_count) {
             if (args.cross_validation())
@@ -215,14 +218,30 @@ public:
             const std::string method_name = method.first;
             std::cout<<method_name<<std::endl;
 
+            mva_tuple().name = method_name;
+
             for (const auto& value: vec_roc_training[method_name]){
                 roc_training_value[method_name][value.first] = std::accumulate(value.second.begin(), value.second.end(), 0.) / value.second.size();
-                roc_training_err[method_name][value.first] = stat_estimators::Variance(value.second);
+                roc_training_err[method_name][value.first] = std::sqrt(stat_estimators::Variance(value.second));
+
+                std::cout<<roc_training_value[method_name][value.first]<<"pm"<<roc_training_err[method_name][value.first]<<std::endl;
+                mva_tuple().err_roc_training.push_back(roc_training_err[method_name][value.first]);
+                mva_tuple().roc_training_channel.push_back(value.first.channel);
+                mva_tuple().roc_training_mass.push_back(value.first.sample_id.mass);
+                mva_tuple().roc_training_type.push_back(static_cast<int>(value.first.sample_id.sampleType));
+                mva_tuple().roc_training_value.push_back(roc_training_value[method_name][value.first]);
+                mva_tuple().roc_training_spin.push_back(value.first.spin);
             }
 
             for (const auto& value: vec_roc_testing[method_name]){
                 roc_testing_value[method_name][value.first] = std::accumulate(value.second.begin(), value.second.end(), 0.) / value.second.size();
                 roc_testing_err[method_name][value.first] = stat_estimators::Variance(value.second);
+                mva_tuple().err_roc_testing.push_back(roc_testing_err[method_name][value.first]);
+                mva_tuple().roc_testing_channel.push_back(value.first.channel);
+                mva_tuple().roc_testing_mass.push_back(value.first.sample_id.mass);
+                mva_tuple().roc_testing_type.push_back(static_cast<int>(value.first.sample_id.sampleType));
+                mva_tuple().roc_testing_value.push_back(roc_testing_value[method_name][value.first]);
+                mva_tuple().roc_testing_spin.push_back(value.first.spin);
             }
 
             double roc = roc_testing_value[method_name][AllSgn];
@@ -252,7 +271,11 @@ public:
             const auto average = AveragePosition(position[method_name]);
             CreatePositionHisto(histo_position, average);
             i++;
+
+            mva_tuple.Fill();
         }
+
+        mva_tuple.Write();
 
         auto directory = root_ext::GetDirectory(*outfile.get(), "RankingPosition");
         for (const auto& var: histo_position)
