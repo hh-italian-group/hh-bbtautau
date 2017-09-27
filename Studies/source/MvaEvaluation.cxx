@@ -52,6 +52,7 @@ struct Arguments { // list of all program arguments
     REQ_ARG(std::string, channel);
     REQ_ARG(int, spin);
     OPT_ARG(std::string, error_file, "");
+    OPT_ARG(bool, all_data, 1);
     OPT_ARG(bool, blind, 1);
 };
 
@@ -132,29 +133,31 @@ public:
         auto vars = reader.AddRange(range, args.method_name(), args.file_xml(), enabled_vars, args.isLegacy(), args.isLow());
         std::mt19937_64 seed_gen(args.seed());
 
-        std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0},{"tauTau",0},{"muTau",2},{"eTau",2},{"tauTau",2},{"muTau",1},{"eTau",1},{"tauTau",1},{"muTau",-1},{"eTau",-1},{"tauTau",-1}};
+        std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},{"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin}, {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
 
         for (const auto& s : set){
-            std::cout << s.first << s.second <<std::endl;
-            if (s.first != args.channel()) continue;
+            std::cout << s.channel << s.spin <<std::endl;
+            if (s.channel != args.channel()) continue;
             for(const SampleEntry& entry : samples)
             {
                 if ( entry.id.IsSignal() && (entry.id.mass<args.min() || entry.id.mass>args.max())) continue;
-                if ( entry.spin != s.second) continue;
+                if ( entry.spin != s.spin) continue;
                 if ( !entry.id.IsBackground() && entry.spin!=args.spin()) continue;
 
                 auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
-                auto tuple = ntuple::CreateEventTuple(s.first, input_file.get(), true, ntuple::TreeState::Skimmed);
+                auto tuple = ntuple::CreateEventTuple(s.channel, input_file.get(), true, ntuple::TreeState::Skimmed);
                 auto sumtuple = ntuple::CreateSummaryTuple("summary",input_file.get(), true, ntuple::TreeState::Skimmed);
                 auto mergesummary = ntuple::MergeSummaryTuple(*sumtuple.get());
 
                 Long64_t tot_entries = 0;
                 for(const Event& event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
-                    if (args.blind())
-                        if (event.split_id >= (mergesummary.n_splits/2)) continue;
-                    if (!args.blind())
-                        if (event.split_id < (mergesummary.n_splits/2)) continue;
+                    if(!args.all_data()){
+                        if (args.blind())
+                            if (event.split_id >= (mergesummary.n_splits/2)) continue;
+                        if (!args.blind())
+                            if (event.split_id < (mergesummary.n_splits/2)) continue;
+                    }
                     tot_entries++;
                     std::uniform_int_distribution<uint_fast32_t> seed_distr(100000, std::numeric_limits<uint_fast32_t>::max());
                     size_t test_split = test_vs_training(seed_gen);
@@ -165,7 +168,7 @@ public:
                             ChannelSampleIdSpin id_ch_sample_spin{args.channel(), sample_bkg, args.spin()};
                             ChannelSampleIdSpin id_ch_bkg_spin{args.channel(), bkg, args.spin()};
 
-                            vars->AddEvent(event, sample_bkg, args.spin(), s.first, entry.weight);
+                            vars->AddEvent(event, sample_bkg, args.spin(), s.channel, entry.weight);
                             double eval = reader.Evaluate(event, mass, args.method_name(), args.spin(), args.channel());
                             data[id_ch_sample_spin][test_split].push_back(eval);
                             data[id_ch_bkg_spin][test_split].push_back(eval);
@@ -174,7 +177,7 @@ public:
                         }
                     }
                     else{
-                        vars->AddEvent(event, entry.id, entry.spin, s.first, entry.weight);
+                        vars->AddEvent(event, entry.id, entry.spin, s.channel, entry.weight);
                         double eval = reader.Evaluate(event, entry.id.mass, args.method_name(), args.spin(), args.channel());
 
                         ChannelSampleIdSpin id_ch_sample_spin{args.channel(), entry.id, args.spin()};
@@ -185,26 +188,26 @@ public:
                         data[id_ch_tot_spin][test_train].push_back(eval);
                     }
                 }
-                std::cout << " channel " << s.first << "    " << entry.filename << " number of events: " << tot_entries << std::endl;
+                std::cout << " channel " << s.channel << "    " << entry.filename << " number of events: " << tot_entries << std::endl;
             }
         }
 
 
 
-        std::map<ChannelSampleIdSpin,double> err_training, err_testing;
+        std::map<ChannelSampleIdSpin, PhysicalValue> err_training, err_testing;
         if (args.error_file().size()){
             std::shared_ptr<TFile> in_file(root_ext::OpenRootFile(args.error_file()));
             MvaTuple myTree("mva_result", in_file.get(), true);
             for(const MvaResults& results : myTree) {
-                err_training = GetErrRocTrainingIntegralMap(results);
-                err_testing = GetErrRocTestingIntegralMap(results);
+                err_training = GetRocTrainingIntegralMap(results);
+                err_testing = GetRocTestingIntegralMap(results);
             }
         }
 
         BDTData outputBDT(outfile, "Evaluation");
         CreateOutputHistos(data, outputBDT.bdt_out);
 
-        BDTData difference(outfile, "Difference");
+//        BDTData difference(outfile, "Difference");
         auto histo_roc = std::make_shared<TGraphErrors>();
         histo_roc->SetTitle("ROC");
         histo_roc->SetName("ROC");
@@ -223,9 +226,9 @@ public:
             roc_testing[mass] = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), sample_sgn, args.spin(), 0), &outputBDT.bdt_out(args.channel(),sample_bkg,args.spin(),0));
             roc_training[mass] = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), sample_sgn, args.spin(), 1), &outputBDT.bdt_out(args.channel(),sample_bkg,args.spin(),1));
             histo_roc->SetPoint(i, mass, roc[mass]);
-            histo_roc->SetPointError(i,0, err_testing[id_sgn]);
+            histo_roc->SetPointError(i,0, err_testing[id_sgn].GetFullError());
 
-            std::cout<<mass<<"  ROC: "<<roc[mass] << " +- "<<err_testing[id_sgn]<<std::endl;
+            std::cout<<mass<<"  ROC: "<<roc[mass] << " +- "<<err_testing[id_sgn].GetFullError()<<std::endl;
             i++;
             auto directory_roc_mass = root_ext::GetDirectory(*directory_roc, std::to_string(mass));
             std::vector<float> mvaS, mvaB;
@@ -241,8 +244,8 @@ public:
         root_ext::WriteObject(*histo_roc, outfile.get());
 
         auto roctot = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), mass_tot, args.spin(), test_train), &outputBDT.bdt_out(args.channel(),  bkg, args.spin(), test_train));
-        auto roctot_testing = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), mass_tot, args.spin(), 0), &outputBDT.bdt_out(args.channel(),  bkg, args.spin(), 0));
-        auto roctot_training = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), mass_tot, args.spin(), 1), &outputBDT.bdt_out(args.channel(),  bkg, args.spin(), 1));
+//        auto roctot_testing = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), mass_tot, args.spin(), 0), &outputBDT.bdt_out(args.channel(),  bkg, args.spin(), 0));
+//        auto roctot_training = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), mass_tot, args.spin(), 1), &outputBDT.bdt_out(args.channel(),  bkg, args.spin(), 1));
 
         std::cout<<roctot<<std::endl;
 
@@ -260,10 +263,10 @@ public:
 
         auto directory = root_ext::GetDirectory(*outfile.get(), "Kolmogorov");
         std::cout<<"kolmogorov"<<std::endl;
-        auto kolmogorov = Kolmogorov(data, outputBDT.bdt_out,  difference.difference,directory,true);
+        auto kolmogorov = KolmogorovTest(data, outputBDT.bdt_out,directory,true);
         auto directory_chi = root_ext::GetDirectory(*outfile.get(), "Chi2");
         std::cout<<"chi2"<<std::endl;
-        auto chi = ChiSquare(data, outputBDT.bdt_out, directory_chi,true);
+        auto chi = ChiSquareTest(data, outputBDT.bdt_out, directory_chi,true);
 
         auto directory_sb = root_ext::GetDirectory(*outfile.get(), "Significance");
         std::cout<<"Significativity"<<std::endl;
@@ -287,16 +290,23 @@ public:
         }
 
         for (const auto& value : roc){
-            mva_tuple().roc_value.push_back(value.second);
-            mva_tuple().roc_mass.push_back(value.first);
+            mva_tuple().roc_testing_value.push_back(value.second);
+            mva_tuple().roc_testing_mass.push_back(value.first);
+            mva_tuple().roc_testing_channel.push_back(args.channel());
+            mva_tuple().roc_testing_spin.push_back(args.spin());
+            mva_tuple().roc_testing_type.push_back(static_cast<int>(SampleType::Sgn_Res));
         }
 
-        mva_tuple().roc_value.push_back(roctot);
-        mva_tuple().roc_mass.push_back(mass_tot.mass);
+        mva_tuple().roc_testing_value.push_back(roctot);
+        mva_tuple().roc_testing_mass.push_back(mass_tot.mass);
+        mva_tuple().roc_testing_channel.push_back(args.channel());
+        mva_tuple().roc_testing_spin.push_back(args.spin());
+        mva_tuple().roc_testing_type.push_back(static_cast<int>(SampleType::Sgn_Res));
 
         for (const auto& value : sign){
-            mva_tuple().significance.push_back(value.second.second.GetValue());
-            mva_tuple().significance_err.push_back(value.second.second.GetStatisticalError());
+            mva_tuple().optimal_cut.push_back(value.second.cut);
+            mva_tuple().significance.push_back(value.second.significance.GetValue());
+            mva_tuple().significance_err.push_back(value.second.significance.GetStatisticalError());
             mva_tuple().significance_mass.push_back(value.first.sample_id.mass);
             mva_tuple().significance_type.push_back(static_cast<int>(value.first.sample_id.sampleType));
             mva_tuple().significance_spin.push_back(value.first.spin);

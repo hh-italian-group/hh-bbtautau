@@ -12,10 +12,19 @@ namespace mva_study{
 using DataVector = std::vector<double>;
 using VarData = std::map<std::string, DataVector>;
 using SampleIdVarData = std::map<SampleId, VarData>;
-using ChannelSpin = std::pair<std::string,int>;
 
+struct ChannelSpin{
+    std::string channel;
+    int spin;
 
+    ChannelSpin(std::string _channel, int _spin) : channel(_channel), spin(_spin) {}
 
+    bool operator<(const ChannelSpin& x) const
+    {
+        if (channel != x.channel) return channel < x.channel;
+        return spin < x.spin;
+    }
+};
 
 class MvaVariablesStudy : public MvaVariables {
 private:
@@ -59,6 +68,8 @@ private:
 
 public:
     using const_iterator = std::set<std::string>::const_iterator;
+
+    Name_ND() {}
 
     Name_ND(const std::string& name) { names.insert(name); }
     Name_ND(std::initializer_list<std::string> _names) : names(_names.begin(), _names.end()){}

@@ -134,7 +134,7 @@ public:
         std::map<std::string, std::map<ChannelSampleIdSpin, std::vector<PhysicalValue>>> significance;
         std::map<std::string, std::map<ChannelSampleIdSpin, std::vector<double>>> optimal_cut;
         std::map<std::string, std::map<std::string, std::vector<VarRank>>> position;
-        std::map<std::string, std::map<ChannelSampleIdSpin, double>> roc_training, roc_testing;
+        std::map<std::string, std::map<ChannelSampleIdSpin, PhysicalValue>> roc_training, roc_testing;
         std::map<std::string, std::map<ChannelSampleIdSpin, std::vector<double>>> vec_roc_training, vec_roc_testing;
 
         const size_t n_seeds = args.input_file().size();
@@ -169,18 +169,18 @@ public:
                 roc_testing[method_name] = GetRocTestingIntegralMap(results);
 
                 for (const auto& entry: roc_training[method_name])
-                    vec_roc_training[method_name][entry.first].push_back(entry.second);
+                    vec_roc_training[method_name][entry.first].push_back(entry.second.GetValue());
                 for (const auto& entry: roc_testing[method_name])
-                    vec_roc_testing[method_name][entry.first].push_back(entry.second);
+                    vec_roc_testing[method_name][entry.first].push_back(entry.second.GetValue());
 
                 for(const auto& integral : roc_training[method_name]){
                     if (!integral.first.IsAllChannel() || !integral.first.IsAllSpin()) continue;
-                    anaData.ROC("relativeROC_training").Fill(integral.first.sample_id.mass, integral.second/roc_training[method_name][AllSgn]);
+                    anaData.ROC("relativeROC_training").Fill(integral.first.sample_id.mass, integral.second.GetValue()/roc_training[method_name][AllSgn].GetValue());
                 }
 
                 for(const auto& integral : roc_testing[method_name]){
                     if (!integral.first.IsAllChannel() || !integral.first.IsAllSpin()) continue;
-                    anaData.ROC("relativeROC_testing").Fill(integral.first.sample_id.mass, integral.second/roc_testing[method_name][AllSgn]);
+                    anaData.ROC("relativeROC_testing").Fill(integral.first.sample_id.mass, integral.second.GetValue()/roc_testing[method_name][AllSgn].GetValue());
                 }
 
 

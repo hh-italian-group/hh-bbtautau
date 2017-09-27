@@ -275,7 +275,7 @@ inline std::istream& operator>>(std::istream& is, SampleEntry& entry)
     std::string str;
     std::getline(is, str);
     const auto columns = SplitValueList(str, true);
-    if(columns.size() < 3 || columns.size() > 4)
+    if(columns.size() != 4)
         throw exception("Invalid sample entry");
     entry.filename = columns.at(0);
     entry.id = Parse<SampleId>(columns.at(1));

@@ -120,11 +120,7 @@ public:
 
     virtual ~MvaVariables() {}
     virtual void SetValue(const std::string& name, double value, char type = 'F') = 0;
-    virtual void
-
-
-
-    AddEventVariables(size_t which_set, const SampleId& mass, double weight, double sampleweight, int spin, std::string channel) = 0;
+    virtual void AddEventVariables(size_t which_set, const SampleId& mass, double weight, double sampleweight, int spin, std::string channel) = 0;
     bool IsEnabled(const std::string& name) const
     {
         return (!enabled_vars.size() && !disabled_vars.count(name)) || enabled_vars.count(name);

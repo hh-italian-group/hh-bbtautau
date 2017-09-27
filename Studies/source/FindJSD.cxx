@@ -43,7 +43,7 @@ public:
     using Event = ntuple::Event;
     using EventTuple = ntuple::EventTuple;
 
-    std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0},{"tauTau",0},{"muTau",2},{"eTau",2},{"tauTau",2},{"muTau",1},{"eTau",1},{"tauTau",1},{"muTau",-1},{"eTau",-1},{"tauTau",-1}};
+    std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},{"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin}, {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
 
     std::map<ChannelSpin,SampleIdVarData> samples_mass, samples_range;
     std::map<ChannelSpin,SampleIdNameElement> bandwidth, bandwidth_range, JSDivergenceSB, JSDivergenceSB_range;
@@ -67,24 +67,24 @@ public:
     void LoadSkimmedData()
     {
         for (const auto& s: set){
-            std::cout << s.first << s.second <<std::endl;
+            std::cout << s.channel << s.spin <<std::endl;
             for(const SampleEntry& entry:samples)
             {
-                if ( entry.spin != s.second) continue;
+                if ( entry.spin != s.spin) continue;
                 auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
-                auto tuple = ntuple::CreateEventTuple(s.first, input_file.get(), true, ntuple::TreeState::Skimmed);
+                auto tuple = ntuple::CreateEventTuple(s.channel, input_file.get(), true, ntuple::TreeState::Skimmed);
                 Long64_t tot_entries = 0;
                 for(const Event& event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
 
                     if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
                     if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
-                    vars.AddEvent(event, entry.id, entry.spin, s.first, entry.weight);
+                    vars.AddEvent(event, entry.id, entry.spin, s.channel, entry.weight);
                     tot_entries++;
                 }
                 std::cout << entry << " number of events: " << tuple->size() << std::endl;
             }
-            samples_mass[s] = vars.GetSampleVariables(s.first, s.second);
+            samples_mass[s] = vars.GetSampleVariables(s.channel, s.spin);
             TimeReport();
         }
     }
@@ -114,7 +114,7 @@ public:
            for(auto sample_mass2 = sample_mass1; sample_mass2 != samples_mass.at(chsp).end(); ++sample_mass2) {
                if ( sample_mass2->first.IsBackground()) continue;
                SamplePair mass_pair(sample_mass1->first, sample_mass2->first);
-               ChannelSpin chsp_bkg(chsp.first,-1);
+               ChannelSpin chsp_bkg(chsp.channel, bkg_spin);
                for (const auto& var: samples_mass.at(chsp_bkg).at(SampleType::Bkg_TTbar)){
                    Name_ND var_1{var.first};
                    std::vector<const DataVector*> sample_1, sample_2;
@@ -164,7 +164,7 @@ public:
                 if (!range.Contains(sample_mass.first.mass)) continue;
                 SampleId rangemin{SampleType::Sgn_Res, range.min()};
                 SamplePair mass_pair(rangemin, sample_mass.first);
-                ChannelSpin chsp_bkg(chsp.first,-1);
+                ChannelSpin chsp_bkg(chsp.channel, bkg_spin);
                 std::cout<<sample_mass.first<<std::endl;
 
                 for (const auto& var: samples_mass.at(chsp_bkg).at(SampleType::Bkg_TTbar)){
@@ -226,23 +226,23 @@ public:
         }
 
         for (const auto& s: set){
-            std::cout<<std::endl<<s.first<< "  " << s.second<<std::endl;
+            std::cout<<s.channel<< "  " << s.spin<<std::endl;
             std::stringstream ss;
-            ss << std::fixed << std::setprecision(0) << s.second;
+            ss << std::fixed << std::setprecision(0) << s.spin;
             std::string spin = ss.str();
             for (const auto& sample: samples_mass[s]){
                 std::cout<<"----"<<ToString(sample.first)<<"----"<<" entries: "<<sample.second.at("pt_l1").size()<<std::endl;
-                bandwidth[s][sample.first] = Read_csvfile(args.optband_folder()+"/OptimalBandwidth"+ToString(sample.first)+"_"+s.first+"_spin"+spin+".csv");
+                bandwidth[s][sample.first] = Read_csvfile(args.optband_folder()+"/OptimalBandwidth"+ToString(sample.first)+"_"+s.channel+"_spin"+spin+".csv");
                 if(args.range()){
-                    bandwidth_range[s][sample.first] = Read_csvfile(args.optband_folder()+"/OptimalBandwidthRange"+ToString(sample.first)+"_"+s.first+"_spin"+spin+".csv");
+                    bandwidth_range[s][sample.first] = Read_csvfile(args.optband_folder()+"/OptimalBandwidthRange"+ToString(sample.first)+"_"+s.channel+"_spin"+spin+".csv");
                 }
             }
-            bandwidth[s][SampleType::Bkg_TTbar] = Read_csvfile(args.optband_folder()+"/OptimalBandwidthTT_"+s.first+"_spin"+spin+".csv");
+            bandwidth[s][SampleType::Bkg_TTbar] = Read_csvfile(args.optband_folder()+"/OptimalBandwidthTT_"+s.channel+"_spin"+spin+".csv");
         }
 
         std::cout<<"SIGNAL-BACKGROUND"<<std::endl;
         for (const auto& s: set){
-            std::cout<<std::endl<<s.first<< "  " << s.second<<std::endl;
+            std::cout<<s.channel<< "  " << s.spin<<std::endl;
             for (const auto& sample: samples_range[s]){
                 if(args.range())
                     std::cout<<"----Range"<<ToString(sample.first)<<"----"<<" entries: "<<sample.second.begin()->second.size()<<std::endl;
@@ -250,9 +250,9 @@ public:
                     std::cout<<"----"<<ToString(sample.first)<<"----"<<" entries: "<<sample.second.at("pt_l1").size()<<std::endl;
 
                 std::stringstream ss;
-                ss << std::fixed << std::setprecision(0) << s.second;
+                ss << std::fixed << std::setprecision(0) << s.spin;
                 std::string spin = ss.str();
-                std::pair<std::string,double> chsp_bkg(s.first,-1);
+                ChannelSpin chsp_bkg(s.channel,-1);
 
 
                 if(args.range()){
@@ -262,7 +262,7 @@ public:
                     JSDivergenceSB[s][sample.first] = JensenDivergenceSB(sample.second, samples_mass.at(chsp_bkg).at(SampleType::Bkg_TTbar), bandwidth.at(s).at(sample.first), bandwidth.at(chsp_bkg).at(SampleType::Bkg_TTbar));
                 }
 
-                std::ofstream ListJSD(file_name_prefix_JSDSB+ToString(sample.first)+"_"+s.first+"_spin"+spin+".csv", std::ofstream::out);
+                std::ofstream ListJSD(file_name_prefix_JSDSB+ToString(sample.first)+"_"+s.channel+"_spin"+spin+".csv", std::ofstream::out);
                 std::cout<<"list"<<std::endl;
                 for(const auto& value: JSDivergenceSB[s][sample.first]){
                    for(const auto& var_name: value.first)
@@ -281,7 +281,7 @@ public:
 
 
         for (const auto& s: set){
-            std::cout<<std::endl<<s.first<< "  " << s.second<<std::endl;
+            std::cout<<s.channel<< "  " << s.spin<<std::endl;
             if(args.range()){
                 JSDivergenceSS[s] = JensenDivergenceSSRange(s);
             }
@@ -290,13 +290,13 @@ public:
         }
 
         for (const auto& entry :  JSDivergenceSS){
-            std::cout<<entry.first.first<< "  " << entry.first.second<<std::endl;
+            std::cout<<entry.first.channel<< "  " << entry.first.spin<<std::endl;
             for (const auto& sample: entry.second){
                 SamplePair mass_pair(sample.first.first, sample.first.second);
                 std::stringstream ss;
-                ss << std::fixed << std::setprecision(0) << entry.first.second;
+                ss << std::fixed << std::setprecision(0) << entry.first.spin;
                 std::string spin = ss.str();
-                std::ofstream ListJSD(file_name_prefix_JSDSS+ToString(sample.first.first)+"_"+ToString(sample.first.second)+"_"+entry.first.first+"_spin"+spin+".csv", std::ofstream::out);
+                std::ofstream ListJSD(file_name_prefix_JSDSS+ToString(sample.first.first)+"_"+ToString(sample.first.second)+"_"+entry.first.channel+"_spin"+spin+".csv", std::ofstream::out);
                 for (const auto& value: sample.second){
                     for (const auto& var: value.first){
                         ListJSD << var << "," ;

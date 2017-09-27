@@ -50,6 +50,7 @@ struct Arguments { // list of all program arguments
     OPT_ARG(size_t, number_sets, 2);
     OPT_ARG(uint_fast32_t, seed, std::numeric_limits<uint_fast32_t>::max());
     OPT_ARG(std::string, save, "");
+    OPT_ARG(bool, all_data, 1);
     OPT_ARG(bool, blind, 1);
 };
 
@@ -303,8 +304,8 @@ public:
                 ChannelSampleIdSpin allch_sample_allspin{all_channel, entry.first.sample_id, spin_tot};
                 ChannelSampleIdSpin ch_sample_allspin{entry.first.channel, entry.first.sample_id, spin_tot};
                 if (entry.first.sample_id.IsBackground()){
-                    allch_sample_allspin.spin = -1;
-                    ch_sample_allspin.spin = -1;
+                    allch_sample_allspin.spin = bkg_spin;
+                    ch_sample_allspin.spin = bkg_spin;
                 }
 
                 for (const auto& val: current_evaluation){
@@ -322,16 +323,16 @@ public:
 
                 if (entry.first.sample_id.IsBackground()){
                     allch_allsample_allspin.sample_id = bkg;
-                    allch_allsample_allspin.spin = -1;
+                    allch_allsample_allspin.spin = bkg_spin;
 
                     ch_allsample_allspin.sample_id = bkg;
-                    ch_allsample_allspin.spin = -1;
+                    ch_allsample_allspin.spin = bkg_spin;
 
                     allch_allsample_spin.sample_id = bkg;
-                    allch_allsample_spin.spin = -1;
+                    allch_allsample_spin.spin = bkg_spin;
 
                     ch_allsample_spin.sample_id = bkg;
-                    ch_allsample_spin.spin = -1;
+                    ch_allsample_spin.spin = bkg_spin;
                 }
 
                 auto& eval_aaa = evaluation[allch_allsample_allspin][type_entry.first];
@@ -386,59 +387,73 @@ public:
         return std::vector<int>(masses.begin(), masses.end());
     }
 
+    std::vector<std::pair<int,int>> CreateMassSpinRange(const Range<int>& range)
+    {
+        std::set<std::pair<int,int>> mass_spin;
+        for(const SampleEntry& entry : samples)
+        {
+            if ( entry.id.IsBackground()) continue;
+            if ( entry.id.IsSignal() && !range.Contains(entry.id.mass)) continue;
+            std::pair<int,int> pair(entry.id.mass, entry.spin);
+            mass_spin.insert(pair);
+        }
+
+        return std::vector<std::pair<int,int>>(mass_spin.begin(), mass_spin.end());
+    }
+
 
     void Run()
     {
-        std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},{"muTau",-1},{"eTau",-1},{"tauTau",-1}};
-
-        std::vector<std::pair<int,int>> mass_spin{{250,0},{260,0},{270,0},{280,0},{300,0},{320,0},{340,0},{350,0},{400,0},{450,0},{500,0},{550,0},
-                                                 {600,0},{650,0},{750,0},{800,0},{900,0}, {250,2},{260,2},{270,2},{280,2},{300,2},{320,2},{340,2},
-                                                 {350,2},{400,2},{450,2},{500,2},{550,2},{600,2},{650,2},{750,2},{800,2}};
+        std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},/*{"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin}, */{"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
 
         std::cout<<"Variabili iniziali: "<<enabled_vars.size()<<std::endl;
         const auto range = mva_setup.mass_range;
         auto mass_range = CreateMassRange();
         std::cout<< "quante masse? "<<mass_range.size() <<std::endl;
+        auto mass_spin = CreateMassSpinRange(range);
+        std::cout<< "quante copie massa-spin? "<<mass_spin.size() <<std::endl;
 
         std::uniform_int_distribution<size_t> it(0, mass_spin.size() - 1);
         std::uniform_int_distribution<int> split(0, 3);
         std::cout<<bkg<<std::endl;
 
         for (const auto& s : set){
-            std::cout << s.first << s.second <<std::endl;
+            std::cout << s.channel << s.spin <<std::endl;
             for(const SampleEntry& entry : samples)
             {
                 if ( entry.id.IsSignal() && !range.Contains(entry.id.mass) ) continue;
-                if ( entry.spin != s.second) continue;
+                if ( entry.spin != s.spin) continue;
 
-                std::pair<int,int> pair_check(entry.id.mass, s.second);
+                std::pair<int,int> pair_check(entry.id.mass, s.spin);
                 if ( !entry.id.IsBackground() && std::find(mass_spin.begin(),  mass_spin.end(), pair_check) ==  mass_spin.end())
                     throw exception("Mass and spin couple is not in the possible values set");
 
                 auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
-                auto tuple = ntuple::CreateEventTuple(s.first, input_file.get(), true, ntuple::TreeState::Skimmed);
+                auto tuple = ntuple::CreateEventTuple(s.channel, input_file.get(), true, ntuple::TreeState::Skimmed);
                 auto sumtuple = ntuple::CreateSummaryTuple("summary",input_file.get(), true, ntuple::TreeState::Skimmed);
                 auto mergesummary = ntuple::MergeSummaryTuple(*sumtuple.get());
 
                 Long64_t tot_entries = 0;
                 for(const Event& event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
-                    if (event.p4_1.pt()<40 || event.p4_2.pt()<40) continue;
-                    if (args.blind())
-                        if (event.split_id >= (mergesummary.n_splits/2)) continue;
-                    if (!args.blind())
-                        if (event.split_id < (mergesummary.n_splits/2)) continue;
+//                    if (event.p4_1.pt()<40 || event.p4_2.pt()<40) continue;
+                    if(!args.all_data()){
+                        if (args.blind())
+                            if (event.split_id >= (mergesummary.n_splits/2)) continue;
+                        if (!args.blind())
+                            if (event.split_id < (mergesummary.n_splits/2)) continue;
+                    }
                     tot_entries++;
                     int set = split(gen2);
                     int which_set = set == args.which_test() ? 0 : 1;
                     if (entry.id.IsBackground()) {
                         const auto pair_mass_spin = mass_spin.at(it(gen));
                         const SampleId sample_bkg(SampleType::Bkg_TTbar, pair_mass_spin.first);
-                        vars->AddEvent(event, sample_bkg, pair_mass_spin.second, s.first, entry.weight, which_set);
+                        vars->AddEvent(event, sample_bkg, pair_mass_spin.second, s.channel, entry.weight, which_set);
                     }
-                    else vars->AddEvent(event, entry.id, entry.spin, s.first, entry.weight , which_set);
+                    else vars->AddEvent(event, entry.id, entry.spin, s.channel, entry.weight , which_set);
                 }
-                std::cout << " channel " << s.first << "    " << entry.filename << " number of events: " << tot_entries << std::endl;
+                std::cout << " channel " << s.channel << "    " << entry.filename << " number of events: " << tot_entries << std::endl;
             }
         }
 
@@ -465,7 +480,7 @@ public:
         auto directory_chi = root_ext::GetDirectory(*outfile.get(), "Chi2");
         auto directory_sb = root_ext::GetDirectory(*outfile.get(), "Significance");
 
-        auto difference = std::make_shared<BDTData>(outfile.get());
+//        auto difference = std::make_shared<BDTData>(outfile.get());
 
         std::map<std::string, std::shared_ptr<TH1D>> histo_rank_importance;
         std::map<std::string, std::shared_ptr<TH1D>> histo_rank_position;
@@ -507,15 +522,15 @@ public:
                 importance.emplace_back(vars->names[i], method->GetVariableImportance(static_cast<UInt_t>(i)));
             }
             for (const auto& ch_spin : set){
-                ChannelSampleIdSpin id_sgn_allch_sp{all_channel, mass_tot, ch_spin.second};
-                ChannelSampleIdSpin id_sgn_ch_sp{ch_spin.first, mass_tot, ch_spin.second};
-                ChannelSampleIdSpin id_bkg_allch_sp{all_channel, bkg, -1};
-                ChannelSampleIdSpin id_bkg_ch_sp{ch_spin.first, bkg, -1};
+                ChannelSampleIdSpin id_sgn_allch_sp{all_channel, mass_tot, ch_spin.spin};
+                ChannelSampleIdSpin id_sgn_ch_sp{ch_spin.channel, mass_tot, ch_spin.spin};
+                ChannelSampleIdSpin id_bkg_allch_sp{all_channel, bkg, bkg_spin};
+                ChannelSampleIdSpin id_bkg_ch_sp{ch_spin.channel, bkg, bkg_spin};
 
                 if (args.range()!="SM"){
-                    if (ch_spin.second == 1) continue;
+                    if (ch_spin.spin == SM_spin) continue;
                 }
-                else if (ch_spin.second == 1){
+                else if (ch_spin.spin == SM_spin){
                     id_sgn_allch_sp.sample_id.sampleType = SampleType::Sgn_NonRes;
                     id_sgn_allch_sp.sample_id.mass = 0;
                     id_sgn_ch_sp.sample_id.sampleType = SampleType::Sgn_NonRes;
@@ -523,7 +538,7 @@ public:
                 }
                 else continue;
 
-                if (ch_spin.second == -1) {
+                if (ch_spin.spin == bkg_spin) {
                     id_sgn_ch_sp.spin = spin_tot;
                     id_sgn_allch_sp.spin = spin_tot;
                 }
@@ -541,7 +556,7 @@ public:
                                                                                   &outputBDT->bdt_out(id_bkg_ch_sp.channel, id_bkg_ch_sp.sample_id, id_bkg_ch_sp.spin, 1));
                  }
 
-                if ( ch_spin.second == 1 || ch_spin.second == -1) continue;
+                if ( ch_spin.spin == SM_spin || ch_spin.spin == bkg_spin) continue;
 
                 for(const auto& sample : mass_range){
                     SampleId sample_sgn(SampleType::Sgn_Res, sample);
@@ -574,6 +589,7 @@ public:
             for (const auto& value : roc_testing){
                 mva_tuple().roc_testing_value.push_back(value.second);
                 mva_tuple().roc_testing_channel.push_back(value.first.channel);
+                mva_tuple().err_roc_testing.push_back(0.);
                 mva_tuple().roc_testing_mass.push_back(value.first.sample_id.mass);
                 mva_tuple().roc_testing_type.push_back(static_cast<int>(value.first.sample_id.sampleType));
                 mva_tuple().roc_testing_spin.push_back(value.first.spin);
@@ -582,6 +598,7 @@ public:
             for (const auto& value : roc_training){
                 mva_tuple().roc_training_value.push_back(value.second);
                 mva_tuple().roc_training_channel.push_back(value.first.channel);
+                mva_tuple().err_roc_training.push_back(0.);
                 mva_tuple().roc_training_mass.push_back(value.first.sample_id.mass);
                 mva_tuple().roc_training_type.push_back(static_cast<int>(value.first.sample_id.sampleType));
                 mva_tuple().roc_training_spin.push_back(value.first.spin);
@@ -613,14 +630,14 @@ public:
 
             std::map<ChannelSampleIdSpin,double> kolmogorov;
             std::map<ChannelSampleIdSpin,double> chi2;
-            std::map<ChannelSampleIdSpin, std::pair<double, PhysicalValue>> sign;
+            std::map<ChannelSampleIdSpin, OptimalSignificance> sign;
 
             auto directory_ks_method = root_ext::GetDirectory(*directory_ks, m.first);
             auto directory_chi_method = root_ext::GetDirectory(*directory_chi, m.first);
             auto directory_sb_method = root_ext::GetDirectory(*directory_sb, m.first);
             std::cout<<"----"<<m.first<<"----"<<std::endl;
             std::cout<<"Kolmogorov"<<std::endl;
-            kolmogorov = Kolmogorov(evaluation, outputBDT->bdt_out, difference->difference, directory_ks_method, true);
+            kolmogorov = KolmogorovTest(evaluation, outputBDT->bdt_out, directory_ks_method, true);
             for (const auto& sample : kolmogorov){
                 mva_tuple().KS_value.push_back(sample.second);
                 mva_tuple().KS_channel.push_back(sample.first.channel);
@@ -630,7 +647,7 @@ public:
             }
 
             std::cout<<"Chi"<<std::endl;
-            chi2 = ChiSquare(evaluation, outputBDT->bdt_out,  directory_chi_method, false);
+            chi2 = ChiSquareTest(evaluation, outputBDT->bdt_out,  directory_chi_method, false);
             for (const auto& sample : chi2){
                 mva_tuple().chi_value.push_back(sample.second);
                 mva_tuple().chi_channel.push_back(sample.first.channel);
@@ -641,15 +658,15 @@ public:
 
             std::cout<<"Significance"<<std::endl;
             for (const auto& ch_spin : set){
-                if (ch_spin.second == -1)
-                    sign  = EstimateSignificativity(ch_spin.first, spin_tot, mass_range, outputBDT->bdt_out, directory_sb_method, true);
+                if (ch_spin.spin == bkg_spin)
+                    sign  = EstimateSignificativity(ch_spin.channel, spin_tot, mass_range, outputBDT->bdt_out, directory_sb_method, true);
                 else
-                    sign  = EstimateSignificativity(ch_spin.first, ch_spin.second, mass_range, outputBDT->bdt_out, directory_sb_method, true);
+                    sign  = EstimateSignificativity(ch_spin.channel, ch_spin.spin, mass_range, outputBDT->bdt_out, directory_sb_method, true);
             }
             for (const auto& entry : sign){
-                mva_tuple().optimal_cut.push_back(entry.second.first);
-                mva_tuple().significance.push_back(entry.second.second.GetValue());
-                mva_tuple().significance_err.push_back(entry.second.second.GetFullError());
+                mva_tuple().optimal_cut.push_back(entry.second.cut);
+                mva_tuple().significance.push_back(entry.second.significance.GetValue());
+                mva_tuple().significance_err.push_back(entry.second.significance.GetFullError());
                 mva_tuple().significance_channel.push_back(entry.first.channel);
                 mva_tuple().significance_mass.push_back(entry.first.sample_id.mass);
                 mva_tuple().significance_type.push_back(static_cast<int>(entry.first.sample_id.sampleType));

@@ -61,7 +61,7 @@ public:
     using EventTuple = ntuple::EventTuple;
     using SummaryTuple = ntuple::SummaryTuple;
 
-    std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0},{"tauTau",0},{"muTau",2},{"eTau",2},{"tauTau",2},{"muTau",1},{"eTau",1},{"tauTau",1},{"muTau",-1},{"eTau",-1},{"tauTau",-1}};
+    std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},{"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin}, {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
 
     std::map<ChannelSpin, SampleIdVarData> samples_mass;
     std::map<ChannelSpin, SampleIdNameElement> bandwidth, mutual_matrix, correlation_matrix, JSDivergenceSB, JSDvars_range_sb;
@@ -155,7 +155,7 @@ public:
                         for(const auto& other_entry : samples_mass.at(se).at(entry.first)) {
                             if(other_entry.first == name) continue;
                             const Name_ND names({name, other_entry.first});
-                            ChannelSpin chsp_bkg(se.first, -1);
+                            ChannelSpin chsp_bkg(se.channel, bkg_spin);
                             if (!mutual_matrix.at(se).at(entry.first).count(names) || !mutual_matrix.at(chsp_bkg).at(SampleType::Bkg_TTbar).count(names)) continue;
                             if(mutual_matrix.at(se).at(entry.first).at(names) < threashold_mi && mutual_matrix.at(chsp_bkg).at(SampleType::Bkg_TTbar).at(names) < threashold_mi){
                                 not_corrected.insert(other_entry.first);
@@ -262,21 +262,21 @@ public:
     void LoadSkimmedData()
     {
         for (const auto& s: set){
-            std::cout << s.first << s.second <<std::endl;
+            std::cout << s.channel << s.spin <<std::endl;
             for(const SampleEntry& entry:samples)
             {
-                if ( entry.spin != s.second) continue;
+                if ( entry.spin != s.spin) continue;
                 auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
-                auto tuple = ntuple::CreateEventTuple(s.first, input_file.get(), true, ntuple::TreeState::Skimmed);
+                auto tuple = ntuple::CreateEventTuple(s.channel, input_file.get(), true, ntuple::TreeState::Skimmed);
                 Long64_t tot_entries = 0;
                 for(const Event& event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
-                    vars.AddEvent(event, entry.id, entry.spin, s.first, entry.weight);
+                    vars.AddEvent(event, entry.id, entry.spin, s.channel, entry.weight);
                     tot_entries++;
                 }
                 std::cout << entry << " number of events: " << tot_entries << std::endl;
             }
-            samples_mass[s] = vars.GetSampleVariables(s.first, s.second);
+            samples_mass[s] = vars.GetSampleVariables(s.channel, s.spin);
             TimeReport();
         }
     }
@@ -288,15 +288,15 @@ public:
 
         std::cout << "Bandwidth, Mutual Information, JensenShannon" << std::endl;
         for (const auto& s: set){
-            std::cout<<std::endl<<s.first<< "  " << s.second<<std::endl;
+            std::cout<<s.channel<< "  " << s.spin<<std::endl;
             for (const auto& sample: samples_mass[s]){
                 std::cout<<"----"<<ToString(sample.first)<<"----"<<" entries: "<<sample.second.at("pt_l1").size()<<std::endl;
                 std::stringstream ss;
-                ss << std::fixed << std::setprecision(0) << s.second;
+                ss << std::fixed << std::setprecision(0) << s.spin;
                 std::string spin = ss.str();
-                bandwidth[s][sample.first] = Read_csvfile(args.optband_folder()+"/OptimalBandwidth"+ToString(sample.first)+"_"+s.first+"_spin"+spin+".csv");
-                mutual_matrix[s][sample.first] = Read_csvfile(args.mutual_folder()+"/MutualInformationDistance"+ToString(sample.first)+"_"+s.first+"_spin"+spin+".csv");
-                JSDivergenceSB[s][sample.first] = Read_csvfile(args.jsd_folder()+"/JensenShannonDivergenceSB"+ToString(sample.first)+"_"+s.first+"_spin"+spin+".csv");
+                bandwidth[s][sample.first] = Read_csvfile(args.optband_folder()+"/OptimalBandwidth"+ToString(sample.first)+"_"+s.channel+"_spin"+spin+".csv");
+                mutual_matrix[s][sample.first] = Read_csvfile(args.mutual_folder()+"/MutualInformationDistance"+ToString(sample.first)+"_"+s.channel+"_spin"+spin+".csv");
+                JSDivergenceSB[s][sample.first] = Read_csvfile(args.jsd_folder()+"/JensenShannonDivergenceSB"+ToString(sample.first)+"_"+s.channel+"_spin"+spin+".csv");
             }
         }
 
@@ -304,12 +304,12 @@ public:
 
         for (const auto& s: set){
             std::string spin;
-            if (s.second == 0) spin = "Radion";
-            else if (s.second == 2) spin = "Graviton";
-            else if (s.second == 1) spin = "SM";
+            if (s.spin == 0) spin = "Radion";
+            else if (s.spin == 2) spin = "Graviton";
+            else if (s.spin == SM_spin) spin = "SM";
             else spin = "Bkg";
 
-            std::cout << std::endl << s.first << "  " << spin << std::endl;
+            std::cout << std::endl << s.channel << "  " << spin << std::endl;
 
             int i = 0;
 
@@ -335,13 +335,13 @@ public:
         std::map<ChannelSpin, std::map<int, std::map<Name_ND, std::shared_ptr<TGraph>>>> plot_ss;
         for (const auto& s: set){
             std::string spin;
-            if (s.second == 0) spin = "Radion";
-            else if (s.second == 2) spin = "Graviton";
-            else if (s.second == 1) spin = "SM";
+            if (s.spin == 0) spin = "Radion";
+            else if (s.spin == 2) spin = "Graviton";
+            else if (s.spin == SM_spin) spin = "SM";
             else spin = "Bkg";
-            std::cout << std::endl << s.first << "  " << spin << std::endl;
+            std::cout << std::endl << s.channel << "  " << spin << std::endl;
 
-            auto directory_set = root_ext::GetDirectory(*outfile, s.first+spin);
+            auto directory_set = root_ext::GetDirectory(*outfile, s.channel+spin);
 
             auto directory_jensenshannon = root_ext::GetDirectory(*directory_set,"JensenShannonDivergence");
             std::cout<<"Signal Compatibility"<<std::endl;
@@ -356,9 +356,9 @@ public:
                     if (!range.Contains(sample_mass.first.mass)) continue;
                     std::pair<int, int> mass_pair(range.min(), sample_mass.first.mass);
                     std::stringstream ss;
-                    ss << std::fixed << std::setprecision(0) << s.second;
+                    ss << std::fixed << std::setprecision(0) << s.spin;
                     std::string spin = ss.str();
-                    JSDvars_range_ss[mass_pair] = Read_csvfile(args.jsd_folder()+"/JensenShannonDivergenceSSM"+ToString(range.min())+"_"+ToString(sample_mass.first)+"_"+s.first+"_spin"+spin+".csv");
+                    JSDvars_range_ss[mass_pair] = Read_csvfile(args.jsd_folder()+"/JensenShannonDivergenceSSM"+ToString(range.min())+"_"+ToString(sample_mass.first)+"_"+s.channel+"_spin"+spin+".csv");
                     histo_distribution[mass_pair] = std::make_shared<TH1D>(("JSDrange_"+std::to_string(range.min())+"_"+std::to_string(sample_mass.first.mass)).c_str(), ("JSDrange_"+std::to_string(range.min())+"_"+std::to_string(sample_mass.first.mass)).c_str(), 50,0,1);
                     histo_distribution[mass_pair]->SetXTitle("JSD");
                     for (const auto& value: JSDvars_range_ss[mass_pair]){
@@ -403,12 +403,11 @@ public:
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         std::cout<<"Union sample"<<std::endl;
 
-
         for (const auto& s : set){
-            std::cout<< s.first << "    " << s.second << std::endl;
+            std::cout<< s.channel << "    " << s.spin<< std::endl;
             std::string spin;
-            if (s.second == 0) spin = "Radion";
-            else if (s.second == 2) spin = "Graviton";
+            if (s.spin == 0) spin = "Radion";
+            else if (s.spin == 2) spin = "Graviton";
             else continue;
             for (const auto& range : ranges){
                 for (const auto& var: range_selected.at(SampleId{SampleType::Sgn_Res, range.min()})){
@@ -423,15 +422,15 @@ public:
 
             for (const auto& sample: samples_range.at(s)){
                 std::stringstream ss;
-                ss << std::fixed << std::setprecision(0) << s.second;
+                ss << std::fixed << std::setprecision(0) << s.spin;
                 std::string spin = ss.str();
-                bandwidth_range[s][sample.first] = Read_csvfile(args.optband_folder()+"/OptimalBandwidthRange"+ToString(sample.first)+"_"+s.first+"_spin"+spin+".csv");
-                mutual_matrix_range[s][sample.first] = Read_csvfile(args.mutual_folder()+"/MutualInformationDistanceRange"+ToString(sample.first)+"_"+s.first+"_spin"+spin+".csv");
-                JSDvars_range_sb[s][sample.first] = Read_csvfile(args.jsd_folder()+"/JensenShannonDivergenceSBRange"+ToString(sample.first)+"_"+s.first+"_spin"+spin+".csv");
+                bandwidth_range[s][sample.first] = Read_csvfile(args.optband_folder()+"/OptimalBandwidthRange"+ToString(sample.first)+"_"+s.channel+"_spin"+spin+".csv");
+                mutual_matrix_range[s][sample.first] = Read_csvfile(args.mutual_folder()+"/MutualInformationDistanceRange"+ToString(sample.first)+"_"+s.channel+"_spin"+spin+".csv");
+                JSDvars_range_sb[s][sample.first] = Read_csvfile(args.jsd_folder()+"/JensenShannonDivergenceSBRange"+ToString(sample.first)+"_"+s.channel+"_spin"+spin+".csv");
             }
 
-            ChannelSpin chsp_bkg(s.first, -1);
-            auto directory_set = root_ext::GetDirectory(*outfile, s.first+spin);
+            ChannelSpin chsp_bkg(s.channel, bkg_spin);
+            auto directory_set = root_ext::GetDirectory(*outfile, s.channel+spin);
             auto directory_mutinf = root_ext::GetDirectory(*directory_set, "MutualInformation");
             auto directory_correlation = root_ext::GetDirectory(*directory_set,"Correlation");
 

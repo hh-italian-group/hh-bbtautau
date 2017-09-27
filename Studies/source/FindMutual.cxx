@@ -43,7 +43,7 @@ public:
     using Event = ntuple::Event;
     using EventTuple = ntuple::EventTuple;
 
-        std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0},{"tauTau",0},{"muTau",2},{"eTau",2},{"tauTau",2},{"muTau",1},{"eTau",1},{"tauTau",1},{"muTau",-1},{"eTau",-1},{"tauTau",-1}};
+    std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},{"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin}, {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
 
     std::map<ChannelSpin,SampleIdVarData> samples_mass, samples_range;
     std::map<ChannelSpin,SampleIdNameElement> bandwidth, bandwidth_range, mutualmatrix, mutualmatrix_range;
@@ -67,23 +67,23 @@ public:
     void LoadSkimmedData()
     {
         for (const auto& s: set){
-            std::cout << s.first << s.second <<std::endl;
+            std::cout << s.channel << s.spin <<std::endl;
             for(const SampleEntry& entry:samples)
             {
-                if ( entry.spin != s.second) continue;
+                if ( entry.spin != s.spin) continue;
                 auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
-                auto tuple = ntuple::CreateEventTuple(s.first, input_file.get(), true, ntuple::TreeState::Skimmed);
+                auto tuple = ntuple::CreateEventTuple(s.channel, input_file.get(), true, ntuple::TreeState::Skimmed);
                 Long64_t tot_entries = 0;
                 for(const Event& event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
                     if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
                     if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
-                    vars.AddEvent(event, entry.id, entry.spin, s.first, entry.weight);
+                    vars.AddEvent(event, entry.id, entry.spin, s.channel, entry.weight);
                     tot_entries++;
                 }
                 std::cout << entry << " number of events: " << tot_entries << std::endl;
             }
-            samples_mass[s] = vars.GetSampleVariables(s.first, s.second);
+            samples_mass[s] = vars.GetSampleVariables(s.channel, s.spin);
             TimeReport();
         }
     }
@@ -123,15 +123,15 @@ public:
         }
 
         for (const auto& s: set){
-            std::cout<<std::endl<<s.first<< "  " << s.second<<std::endl;
+            std::cout<<s.channel<< "  " << s.spin<<std::endl;
             for (const auto& sample: samples_range[s]){
                 std::cout<<"----"<<ToString(sample.first)<<"----"<<" entries: "<<sample.second.at("pt_l1").size()<<std::endl;
                 std::stringstream ss;
-                ss << std::fixed << std::setprecision(0) << s.second;
+                ss << std::fixed << std::setprecision(0) << s.spin;
                 std::string spin = ss.str();
-                bandwidth[s][sample.first] = Read_csvfile(args.optband_folder()+file_name_prefix_bandwidth+ToString(sample.first)+"_"+s.first+"_spin"+spin+".csv");
+                bandwidth[s][sample.first] = Read_csvfile(args.optband_folder()+file_name_prefix_bandwidth+ToString(sample.first)+"_"+s.channel+"_spin"+spin+".csv");
                 mutualmatrix[s][sample.first] = Mutual(sample.second, bandwidth.at(s).at(sample.first));
-                std::ofstream ListMID(file_name_prefix+ToString(sample.first)+"_"+s.first+"_spin"+spin+".csv", std::ofstream::out);
+                std::ofstream ListMID(file_name_prefix+ToString(sample.first)+"_"+s.channel+"_spin"+spin+".csv", std::ofstream::out);
                 for(const auto& value: mutualmatrix[s][sample.first]){
                    for(const auto& var_name: value.first)
                    {

@@ -15,15 +15,13 @@ namespace  analysis {
     VAR(std::vector<double>, param_values) \
     VAR(std::vector<size_t>, param_positions) \
     /**/ \
-    VAR(std::vector<double>, roc_value) \
-    VAR(std::vector<int>, roc_mass) \
-    /**/ \
     VAR(std::vector<double>, roc_testing_value) \
     VAR(std::vector<int>, roc_testing_mass) \
     VAR(std::vector<int>, roc_testing_type) \
     VAR(std::vector<int>, roc_testing_spin) \
     VAR(std::vector<std::string>, roc_testing_channel) \
     VAR(std::vector<double>, err_roc_testing) \
+    /**/ \
     VAR(std::vector<double>, roc_training_value) \
     VAR(std::vector<int>, roc_training_mass) \
     VAR(std::vector<int>, roc_training_type) \
@@ -54,6 +52,7 @@ namespace  analysis {
     VAR(std::vector<int>, significance_type) \
     VAR(std::vector<int>, significance_spin) \
     VAR(std::vector<std::string>, significance_channel) \
+    /**/ \
     VAR(std::string, name) \
     /**/
 
@@ -83,49 +82,35 @@ inline GridPoint GetGridPoint(const MvaResults& results)
     return params;
 }
 
-inline std::map<ChannelSampleIdSpin, double> GetRocIntegralMap(const std::string& name, const std::vector<double>& vec_value,
-                                                              const std::vector<std::string>& vec_channel, const std::vector<int>& vec_mass,
-                                                              const std::vector<int>& vec_type, const std::vector<int>& vec_spin)
+inline std::map<ChannelSampleIdSpin, PhysicalValue> GetRocIntegralMap(const std::string& name, const std::vector<double>& vec_value,
+                                                                      const std::vector<double>& vec_err, const std::vector<std::string>& vec_channel,
+                                                                      const std::vector<int>& vec_mass, const std::vector<int>& vec_type,
+                                                                      const std::vector<int>& vec_spin)
 {
-    std::map<ChannelSampleIdSpin, double> rocs;
+    std::map<ChannelSampleIdSpin, PhysicalValue> rocs;
     const size_t N = vec_mass.size();
-    if(vec_value.size() != N || vec_spin.size() != N || vec_channel.size()!=N || vec_type.size()!=N)
+    if(vec_value.size() != N || vec_spin.size() != N || vec_channel.size()!=N || vec_type.size()!=N || vec_err.size()!=N)
         throw exception("Incompatible "+name+" roc info in mva tuple.");
     for(size_t n = 0; n < N; ++n){
         const SampleId sample_id(static_cast<SampleType>(vec_type[n]), vec_mass[n]);
         const ChannelSampleIdSpin id{vec_channel[n], sample_id, vec_spin[n]};
-        rocs[id] = vec_value[n];
+        rocs[id] = PhysicalValue(vec_value[n], vec_err[n]);
     }
     return rocs;
 }
 
-inline std::map<ChannelSampleIdSpin, double> GetRocTrainingIntegralMap(const MvaResults& results)
+inline std::map<ChannelSampleIdSpin, PhysicalValue> GetRocTrainingIntegralMap(const MvaResults& results)
 {
-    std::map<ChannelSampleIdSpin, double> rocs;
-    return rocs = GetRocIntegralMap("training", results.roc_training_value, results.roc_training_channel, results.roc_training_mass,
-                                    results.roc_training_type, results.roc_training_spin);
+    std::map<ChannelSampleIdSpin, PhysicalValue> rocs;
+    return rocs = GetRocIntegralMap("training", results.roc_training_value, results.err_roc_training, results.roc_training_channel,
+                                    results.roc_training_mass, results.roc_training_type, results.roc_training_spin);
 }
 
-inline std::map<ChannelSampleIdSpin, double> GetRocTestingIntegralMap(const MvaResults& results)
+inline std::map<ChannelSampleIdSpin, PhysicalValue> GetRocTestingIntegralMap(const MvaResults& results)
 {
-    std::map<ChannelSampleIdSpin, double>  rocs;
-    return rocs = GetRocIntegralMap("testing", results.roc_testing_value, results.roc_testing_channel, results.roc_testing_mass,
-                                    results.roc_testing_type, results.roc_testing_spin);
-}
-
-
-inline std::map<ChannelSampleIdSpin, double> GetErrRocTrainingIntegralMap(const MvaResults& results)
-{
-    std::map<ChannelSampleIdSpin, double> rocs;
-    return rocs = GetRocIntegralMap("err training", results.err_roc_training, results.roc_training_channel, results.roc_training_mass,
-                                    results.roc_training_type, results.roc_training_spin);
-}
-
-inline std::map<ChannelSampleIdSpin, double> GetErrRocTestingIntegralMap(const MvaResults& results)
-{
-    std::map<ChannelSampleIdSpin, double>  rocs;
-    return rocs = GetRocIntegralMap("err testing", results.err_roc_testing, results.roc_testing_channel, results.roc_testing_mass,
-                                    results.roc_testing_type, results.roc_testing_spin);
+    std::map<ChannelSampleIdSpin, PhysicalValue>  rocs;
+    return rocs = GetRocIntegralMap("testing", results.roc_testing_value, results.err_roc_testing, results.roc_testing_channel,
+                                    results.roc_testing_mass,results.roc_testing_type, results.roc_testing_spin);
 }
 
 inline std::map<ChannelSampleIdSpin, double> GetTestResultsMap(const std::string& name, const std::vector<int>& vec_type,  const std::vector<std::string>& vec_channel,
@@ -173,11 +158,6 @@ inline VarRankMap GetRankingMap(const MvaResults& results)
         ranks[results.var_name[n]] = VarRank{results.position[n], results.importance[n]};
     return ranks;
 }
-
-struct OptimalSignificance {
-    double cut;
-    PhysicalValue significance;
-};
 
 using OptimalSignificanceMap = std::map<ChannelSampleIdSpin, OptimalSignificance>;
 
