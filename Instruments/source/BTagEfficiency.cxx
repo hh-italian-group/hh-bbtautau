@@ -23,8 +23,8 @@ struct Arguments { // list of all program arguments
 
 class BTagData : public root_ext::AnalyzerData {
 public:
-    explicit BTagData(std::shared_ptr<TFile> _outputFile, const std::string& directoryName = "") :
-        AnalyzerData(_outputFile, directoryName)
+    /*explicit BTagData(std::shared_ptr<TFile> _outputFile, const std::string& directoryName = "") :
+        AnalyzerData::(_outputFile, directoryName)
         {
             static const std::vector<double> x_bins = {20,30,40,60,100,150,200,300,1000};
             static const std::vector<double> y_bins = {0,0.6,1.2,2.1,2.4}; 
@@ -32,11 +32,14 @@ public:
             eff.SetMasterHist(x_bins, y_bins);
             validate.SetMasterHist(x_bins, y_bins);
             val_check.SetMasterHist(x_bins, y_bins);
-        }
-        ANA_DATA_ENTRY(TH2D, h2)
-        ANA_DATA_ENTRY(TH2D, eff)
-        ANA_DATA_ENTRY(TH2D, validate)
-        ANA_DATA_ENTRY(TH2D,val_check)
+        }*/
+        using AnalyzerData::AnalyzerData;
+        const std::vector<double> x_bins = {20,30,40,60,100,150,200,300,1000};
+        const std::vector<double> y_bins = {0,0.6,1.2,2.1,2.4}; 
+        TH2D_ENTRY_CUSTOM(h2,x_bins,y_bins)
+        TH2D_ENTRY_CUSTOM(eff,x_bins,y_bins)
+        TH2D_ENTRY_CUSTOM(validate,x_bins,y_bins)
+        TH2D_ENTRY_CUSTOM(val_check,x_bins,y_bins)
 };
 
 class BTagEfficiency { 
@@ -54,6 +57,7 @@ public:
     {
        // for (const auto& folder: folderMap)
        //       anaDataMap[folder.first] = std::make_shared<BTagData>(outfile,folder.second);
+        anaDataMap["All"] = std::make_shared<BTagData>(outfile,"All");      
         for(const auto& tau_sign : tau_signs){
             for (const auto& tau_iso : tau_isos){
                 anaDataMap[tau_sign+tau_iso+eff] = std::make_shared<BTagData>(outfile,tau_sign+"/"+tau_iso+"/"+effMap[eff]);
@@ -133,25 +137,48 @@ public:
                         int jet_hadronFlavour = event.jets_hadronFlavour.at(i);
                         const std::string& jet_flavour = flavours.at(jet_hadronFlavour);
 
+                        //For folder/subfolder structure in Sign and Isolation
                         anaDataMap[tau_sign+tau_iso+eff]->h2(denom, flavour_all, btag_wp_all, channel).
                             Fill(jet.Pt(), std::abs(jet.Eta()));
-                        anaDataMap[tau_sign+tau_iso+eff]->h2(denom, flavour_all, btag_wp_all, channel_all).
-                            Fill(jet.Pt(), std::abs(jet.Eta()));
+                        if (channel != "muMu") anaDataMap[tau_sign+tau_iso+eff]->h2(denom, flavour_all, btag_wp_all,
+                                channel_all).Fill(jet.Pt(), std::abs(jet.Eta()));
                         anaDataMap[tau_sign+tau_iso+eff]->h2(denom, jet_flavour, btag_wp_all, channel).
                             Fill(jet.Pt(), std::abs(jet.Eta()));
-                        anaDataMap[tau_sign+tau_iso+eff]->h2(denom, jet_flavour, btag_wp_all, channel_all).
+                        if (channel != "muMu") anaDataMap[tau_sign+tau_iso+eff]->h2(denom, jet_flavour, btag_wp_all,
+                                channel_all).Fill(jet.Pt(), std::abs(jet.Eta()));
+                
+                        //For "ALL" folder
+                        anaDataMap["All"]->h2(denom, flavour_all, btag_wp_all, channel).
                             Fill(jet.Pt(), std::abs(jet.Eta()));
+                        if (channel != "muMu") anaDataMap["All"]->h2(denom, flavour_all, btag_wp_all,
+                                channel_all).Fill(jet.Pt(), std::abs(jet.Eta()));
+                        anaDataMap["All"]->h2(denom, jet_flavour, btag_wp_all, channel).
+                            Fill(jet.Pt(), std::abs(jet.Eta()));
+                        if (channel != "muMu") anaDataMap["All"]->h2(denom, jet_flavour, btag_wp_all,
+                                channel_all).Fill(jet.Pt(), std::abs(jet.Eta()));
 
                         for(const auto& btag_wp : btag_working_points) {
                             if( jet_csv >= btag_wp.second){
+                                //For folder/subfolder structure in Sign and Isolation
                                 anaDataMap[tau_sign+tau_iso+eff]->h2(num, flavour_all, btag_wp.first, channel).
                                     Fill(jet.Pt(), std::abs(jet.Eta()));
-                                anaDataMap[tau_sign+tau_iso+eff]->h2(num, flavour_all, btag_wp.first, channel_all).
+                                if (channel != "muMu") anaDataMap[tau_sign+tau_iso+eff]->h2(num, flavour_all,
+                                        btag_wp.first, channel_all).Fill(jet.Pt(), std::abs(jet.Eta()));
+                                anaDataMap[tau_sign+tau_iso+eff]->h2(num, jet_flavour,btag_wp.first, channel).
                                     Fill(jet.Pt(), std::abs(jet.Eta()));
-                                anaDataMap[tau_sign+tau_iso+eff]->h2(num, jet_flavour, btag_wp.first, channel).
+                                if (channel != "muMu") anaDataMap[tau_sign+tau_iso+eff]->h2(num, jet_flavour,
+                                        btag_wp.first, channel_all).Fill(jet.Pt(), std::abs(jet.Eta()));
+
+                                //For "ALL" folder
+                                anaDataMap["All"]->h2(num, flavour_all, btag_wp.first, channel).
                                     Fill(jet.Pt(), std::abs(jet.Eta()));
-                                anaDataMap[tau_sign+tau_iso+eff]->h2(num, jet_flavour, btag_wp.first, channel_all).
+                                if (channel != "muMu") anaDataMap["All"]->h2(num, flavour_all,
+                                        btag_wp.first, channel_all).Fill(jet.Pt(), std::abs(jet.Eta()));
+                                anaDataMap["All"]->h2(num, jet_flavour,btag_wp.first, channel).
                                     Fill(jet.Pt(), std::abs(jet.Eta()));
+                                if (channel != "muMu") anaDataMap["All"]->h2(num, jet_flavour,
+                                        btag_wp.first, channel_all).Fill(jet.Pt(), std::abs(jet.Eta()));
+
                             }
                         }
                     }//end loop on jets 
@@ -161,70 +188,78 @@ public:
 
 
         //Create Efficiency Histograms
-        for(const auto& tau_sign : tau_signs){
-            for (const auto& tau_iso : tau_isos){ 
-                for(const auto& channel : channel_names){
-                    for(const auto& btag_wp : btag_working_points) {
-                        for(const auto& jet_flavour : flavour_names){
+        for(const auto& channel : channel_names){
+            for(const auto& btag_wp : btag_working_points) {
+                for(const auto& jet_flavour : flavour_names){
+                    for(const auto& tau_sign : tau_signs){
+                        for (const auto& tau_iso : tau_isos){ 
+                            //For folder/subfolder structure in Sign and Isolation
                             anaDataMap[tau_sign+tau_iso+eff]->eff(jet_flavour,btag_wp.first,channel).
                                 CopyContent(anaDataMap[tau_sign+tau_iso+eff]->h2(num,jet_flavour,btag_wp.first,channel));
                             anaDataMap[tau_sign+tau_iso+eff]->eff(jet_flavour,btag_wp.first,channel).
                                 Divide(&anaDataMap[tau_sign+tau_iso+eff]->h2(denom,jet_flavour, btag_wp_all,channel));
                         }
                     }
+
+                    //For "ALL" folder
+                    anaDataMap["All"]->eff(jet_flavour,btag_wp.first,channel).
+                        CopyContent(anaDataMap["All"]->h2(num,jet_flavour,btag_wp.first,channel));
+                    anaDataMap["All"]->eff(jet_flavour,btag_wp.first,channel).
+                        Divide(&anaDataMap["All"]->h2(denom,jet_flavour, btag_wp_all,channel));
+
                 }
             }
         }//End of loop to create Efficiency Histograms
         
 
         //Make Validation plots             
-        for(const auto& tau_sign1 : tau_signs){
-            for (const auto& tau_iso1 : tau_isos){
-                for(const auto& channel1 : channel_names){
+        for(auto tau_sign1 = tau_signs.begin(); tau_sign1 != tau_signs.end(); ++tau_sign1 ){
+            for (auto tau_iso1 = tau_isos.begin(); tau_iso1 != tau_isos.end(); ++tau_iso1){
+                for(auto channel1 = channel_names.begin(); channel1 != channel_names.end(); ++ channel1){
                     for(const auto& btag_wp : btag_working_points) {
                         for(const auto& jet_flavour : flavour_names){
 
                             //Make Validation plots between tau signs
-                            for(const auto& tau_sign2 : tau_signs){
-                                if(tau_sign1 == tau_sign2) continue;
-                                anaDataMap[valQ+tau_iso1]->validate(jet_flavour,btag_wp.first,channel1,tau_sign2,tau_sign1).
-                                    CopyContent(anaDataMap[tau_sign2+tau_iso1+eff]->eff(jet_flavour, btag_wp.first,channel1));
-                                anaDataMap[valQ+tau_iso1]->validate(jet_flavour,btag_wp.first,channel1,tau_sign2,tau_sign1).
-                                    Add(&anaDataMap[tau_sign1+tau_iso1+eff]->eff(jet_flavour, btag_wp.first,channel1),-1.0);
-                                checkValidation(anaDataMap[valQ+tau_iso1]->validate(jet_flavour,btag_wp.first,channel1,
-                                            tau_sign2,tau_sign1),valMap[valQ]+"/"+tau_iso1+"/val_"+jet_flavour+"_"+
-                                        btag_wp.first+"_"+channel1+"_"+tau_sign2+"_"+tau_sign1,
-                                        &anaDataMap[valQ+tau_iso1]->val_check(jet_flavour,btag_wp.first,channel1,
-                                            tau_sign2,tau_sign1));    
+                            for(auto tau_sign2 = std::next(tau_sign1); tau_sign2 != tau_signs.end(); ++tau_sign2){
+                                //if(tau_sign1 == tau_sign2) continue;
+                                anaDataMap[valQ+*tau_iso1]->validate(jet_flavour,btag_wp.first,*channel1,*tau_sign2,*tau_sign1).
+                                    CopyContent(anaDataMap[*tau_sign2+*tau_iso1+eff]->eff(jet_flavour, btag_wp.first,*channel1));
+                                anaDataMap[valQ+*tau_iso1]->validate(jet_flavour,btag_wp.first,*channel1,*tau_sign2,*tau_sign1).
+                                    Add(&anaDataMap[*tau_sign1+*tau_iso1+eff]->eff(jet_flavour, btag_wp.first,*channel1),-1.0);
+                                checkValidation(anaDataMap[valQ+*tau_iso1]->validate(jet_flavour,btag_wp.first,*channel1,
+                                            *tau_sign2,*tau_sign1),valMap[valQ]+"/"+*tau_iso1+"/val_"+jet_flavour+"_"+
+                                        btag_wp.first+"_"+*channel1+"_"+*tau_sign2+"_"+*tau_sign1,
+                                        anaDataMap[valQ+*tau_iso1]->val_check(jet_flavour,btag_wp.first,*channel1,
+                                            *tau_sign2,*tau_sign1));
                             }
 
                    
                             //Make Vlaidation plots between Isolations
-                            for (const auto& tau_iso2 : tau_isos){
-                                if(tau_iso1 == tau_iso2) continue;
-                                anaDataMap[tau_sign1+valIso]->validate(jet_flavour,btag_wp.first,channel1,tau_iso2,tau_iso1).
-                                    CopyContent(anaDataMap[tau_sign1+tau_iso2+eff]->eff(jet_flavour, btag_wp.first,channel1));
-                                anaDataMap[tau_sign1+valIso]->validate(jet_flavour,btag_wp.first,channel1,tau_iso2,tau_iso1).
-                                    Add(&anaDataMap[tau_sign1+tau_iso1+eff]->eff(jet_flavour, btag_wp.first,channel1),-1.0);
-                                checkValidation(anaDataMap[tau_sign1+valIso]->validate(jet_flavour,btag_wp.first,
-                                            channel1,tau_iso2,tau_iso1),tau_sign1+"/"+valMap[valIso]+"/val_"+
-                                        jet_flavour+"_"+btag_wp.first+"_"+channel1+"_"+tau_iso2+"_"+tau_iso1,
-                                        &anaDataMap[tau_sign1+valIso]->val_check(jet_flavour,btag_wp.first,
-                                            channel1,tau_iso2,tau_iso1));
+                            for (auto tau_iso2 = std::next(tau_iso1); tau_iso2 != tau_isos.end(); ++tau_iso2){
+                                //if(tau_iso1 == tau_iso2) continue;
+                                anaDataMap[*tau_sign1+valIso]->validate(jet_flavour,btag_wp.first,*channel1,*tau_iso2,*tau_iso1).
+                                    CopyContent(anaDataMap[*tau_sign1+*tau_iso2+eff]->eff(jet_flavour, btag_wp.first,*channel1));
+                                anaDataMap[*tau_sign1+valIso]->validate(jet_flavour,btag_wp.first,*channel1,*tau_iso2,*tau_iso1).
+                                    Add(&anaDataMap[*tau_sign1+*tau_iso1+eff]->eff(jet_flavour, btag_wp.first,*channel1),-1.0);
+                                checkValidation(anaDataMap[*tau_sign1+valIso]->validate(jet_flavour,btag_wp.first,
+                                            *channel1,*tau_iso2,*tau_iso1),*tau_sign1+"/"+valMap[valIso]+"/val_"+
+                                        jet_flavour+"_"+btag_wp.first+"_"+*channel1+"_"+*tau_iso2+"_"+*tau_iso1,
+                                        anaDataMap[*tau_sign1+valIso]->val_check(jet_flavour,btag_wp.first,
+                                            *channel1,*tau_iso2,*tau_iso1));
                             }
                 
                             //Make Validation plots between Channels 
-                            for (const auto& channel2 : channel_names){
-                                if (channel1 == channel2) continue;
-                                anaDataMap[tau_sign1+tau_iso1+valCha]->validate(jet_flavour,btag_wp.first,channel2,channel1).
-                                    CopyContent(anaDataMap[tau_sign1+tau_iso1+eff]->eff(jet_flavour, btag_wp.first,channel2));
-                                anaDataMap[tau_sign1+tau_iso1+valCha]->validate(jet_flavour,btag_wp.first,channel2,channel1).
-                                    Add(&anaDataMap[tau_sign1+tau_iso1+eff]->eff(jet_flavour, btag_wp.first,channel1),-1.0);
-                                checkValidation(anaDataMap[tau_sign1+tau_iso1+valCha]->validate(jet_flavour,
-                                            btag_wp.first,channel2,channel1),tau_sign1+"/"+tau_iso1+"/"+valMap[valCha]+
-                                        "/val_"+jet_flavour+"_"+btag_wp.first+"_"+channel2+"_"+channel1,
-                                        &anaDataMap[tau_sign1+tau_iso1+valCha]->val_check(jet_flavour,
-                                            btag_wp.first,channel2,channel1));
+                            for (auto channel2 = std::next(channel1); channel2 != channel_names.end(); ++channel2){
+                               // if (channel1 == channel2) continue;
+                                anaDataMap[*tau_sign1+*tau_iso1+valCha]->validate(jet_flavour,btag_wp.first,*channel2,*channel1).
+                                    CopyContent(anaDataMap[*tau_sign1+*tau_iso1+eff]->eff(jet_flavour, btag_wp.first,*channel2));
+                                anaDataMap[*tau_sign1+*tau_iso1+valCha]->validate(jet_flavour,btag_wp.first,*channel2,*channel1).
+                                    Add(&anaDataMap[*tau_sign1+*tau_iso1+eff]->eff(jet_flavour, btag_wp.first,*channel1),-1.0);
+                                checkValidation(anaDataMap[*tau_sign1+*tau_iso1+valCha]->validate(jet_flavour,
+                                            btag_wp.first,*channel2,*channel1),*tau_sign1+"/"+*tau_iso1+"/"+valMap[valCha]+
+                                        "/val_"+jet_flavour+"_"+btag_wp.first+"_"+*channel2+"_"+*channel1,
+                                        anaDataMap[*tau_sign1+*tau_iso1+valCha]->val_check(jet_flavour,
+                                            btag_wp.first,*channel2,*channel1));
                             }
                         }
                     }
@@ -270,7 +305,7 @@ private:
         return true; 
     }
     
-    void checkValidation(TH2D validation_histo, std::string histo_name,TH2D* output_histo){
+    static void checkValidation(const TH2D& validation_histo, const std::string histo_name,TH2D& output_histo){
         int nbinsX = validation_histo.GetNbinsX(); 
         int nbinsY = validation_histo.GetNbinsY(); 
         for(int i=1;i<= nbinsX;i++){
@@ -280,8 +315,9 @@ private:
                 double value = validation_histo.GetBinContent(i,j);
                 double error = validation_histo.GetBinError(i,j);
                 double n_sigma = error != 0 ? std::floor(value/error) : 0;
-                output_histo->SetBinContent(i,j,n_sigma);
-                if(n_sigma >0) std::cout<<n_sigma<<" sigma: "<<histo_name<<" in (pt,eta) bin ("<<
+                if (n_sigma < 0) n_sigma = n_sigma+1;
+                output_histo.SetBinContent(i,j,n_sigma);
+                if(n_sigma !=0) std::cout<<n_sigma<<" sigma: "<<histo_name<<" in (pt,eta) bin ("<<
                     xPosition<<","<<yPosition<<"):"<<value<<"+-"<<error<<std::endl;
             }
         }
