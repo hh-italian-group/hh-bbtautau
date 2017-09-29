@@ -390,5 +390,8 @@ private:
 using MvaSetupCollection = std::unordered_map<std::string, MvaSetup>;
 using SampleEntryListCollection = std::unordered_map<std::string, SampleEntryList>;
 
+static const Range<int> low_mass(250, 320), medium_mass(340, 400), high_mass(450,900);
+static const std::vector<Range<int>> ranges{low_mass, medium_mass, high_mass};
+
 }
 }

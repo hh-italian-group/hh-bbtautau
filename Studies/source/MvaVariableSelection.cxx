@@ -45,16 +45,6 @@ namespace mva_study{
 
 using clock = std::chrono::system_clock;
 
-//namespace {
-//Range<int> low_mass(250, 320), medium_mass(340, 400), high_mass(450,900);
-//std::vector<Range<int>> ranges{low_mass, medium_mass, high_mass};
-//}
-
-namespace {
-Range<int> all_mass(250, 900);
-std::vector<Range<int>> ranges{all_mass};
-}
-
 class VariableDistribution {
 public:
     using Event = ntuple::Event;
@@ -135,7 +125,6 @@ public:
             });
             const auto& best_entry = distance.front();
             for(const auto& name : best_entry.first) {
-                if (name == "mass_H" || name ==  "MX") continue;
                 const auto counts = std::make_pair(selected.count(name), not_corrected.count(name));
                 const auto& prefix = prefixes.at(counts);
                 best_entries_file << prefix << name << prefix << ",";
@@ -174,15 +163,15 @@ public:
     void CreateMatrixIntersection(const SampleIdSetNamesVar& range_selected) const
     {
         std::cout << std::endl << "Intersection ranges" << std::endl;
-        auto matrix_intersection = std::make_shared<TH2D>("Intersection", "Intersection of variables", ranges.size(), 0, ranges.size(),
-                                                          ranges.size(), 0, ranges.size());
+        auto matrix_intersection = std::make_shared<TH2D>("Intersection", "Intersection of variables", mva_study::ranges.size(), 0, mva_study::ranges.size(),
+                                                          mva_study::ranges.size(), 0, mva_study::ranges.size());
         matrix_intersection->SetXTitle("range");
         matrix_intersection->SetYTitle("range");
         int c_label = 1;
         int k_row = 1;
-        for (const auto& range1: ranges){
+        for (const auto& range1: analysis::mva_study::ranges){
             int j_column = 1;
-            for (const auto& range2: ranges){
+            for (const auto& range2: analysis::mva_study::ranges){
                 if (range1.min() == range2.min()) {
                     std::string label = std::to_string(range1.min()) + "-" + std::to_string(range1.max());
                     matrix_intersection->GetXaxis()->SetBinLabel(c_label, (label).c_str());
@@ -217,7 +206,7 @@ public:
                 max_distance[s][entry.first] = JSDivergence_vector.at(s).at(entry.first).front().second;
             }
         }
-        for (const auto& range: ranges){
+        for (const auto& range: mva_study::ranges){
             std::ofstream list_variables(("Selected_range"+std::to_string(range.min())+"_"+std::to_string(range.max())+"_"+std::to_string(args.set())+"_"+std::to_string(args.number_sets())+".txt").c_str(), std::ofstream::out);
             range_selected[SampleId{SampleType::Sgn_Res, range.min()}] = FindBestRangeVariables(range, max_distance, JSDivergence_vector);
             std::cout<<" range: "<<range.min()<<"-"<<range.max();
@@ -279,6 +268,11 @@ public:
             samples_mass[s] = vars.GetSampleVariables(s.channel, s.spin);
             TimeReport();
         }
+    }
+
+    void TimeReport(bool tot = false) const
+    {
+        reporter->TimeReport(tot);
     }
 
     void Run()
@@ -350,7 +344,7 @@ public:
             auto directory_ks = root_ext::GetDirectory(*directory_set,"Kolmogorov");
             auto directory_jenshan_ss = root_ext::GetDirectory(*directory_jensenshannon, "Range_SignalSignal");
             auto directory_plotselected = root_ext::GetDirectory(*directory_jenshan_ss, "Plot_RangeSelected");
-            for (const auto& range : ranges){
+            for (const auto& range : mva_study::ranges){
                 KolmogorovSignalPlotSelected(range_selected.at(SampleId{SampleType::Sgn_Res, range.min()}), range, directory_ks, s);
                 for (const auto& sample_mass: samples_mass.at(s)){
                     if (!range.Contains(sample_mass.first.mass)) continue;
@@ -386,7 +380,7 @@ public:
                 }
                 k++;
             }
-            for (const auto& range : ranges){
+            for (const auto& range : mva_study::ranges){
                 auto directory_plotrange = root_ext::GetDirectory(*directory_plotselected, ("Range"+std::to_string(range.min())+"_"+std::to_string(range.max())).c_str());
                 for (const auto& name : plot_ss.at(s).at(range.min())){
                     root_ext::WriteObject(*name.second, directory_plotrange);
@@ -397,10 +391,6 @@ public:
             }
             TimeReport();
         }
-
-
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         std::cout<<"Union sample"<<std::endl;
 
         for (const auto& s : set){
@@ -409,7 +399,7 @@ public:
             if (s.spin == 0) spin = "Radion";
             else if (s.spin == 2) spin = "Graviton";
             else continue;
-            for (const auto& range : ranges){
+            for (const auto& range : mva_study::ranges){
                 for (const auto& var: range_selected.at(SampleId{SampleType::Sgn_Res, range.min()})){
                     for (const auto& sample_mass : samples_mass.at(s)){
                         if (!range.Contains(sample_mass.first.mass)) continue;
@@ -476,7 +466,7 @@ public:
             std::map<Name_ND, std::shared_ptr<TGraph>> plot_sb;
             std::map<SampleId, std::shared_ptr<TH1D>> histo_distribution_sb;
 
-            for (const auto& range : ranges){
+            for (const auto& range : mva_study::ranges){
                 SampleId samplerangemin(SampleType::Sgn_Res, range.min());
                 histo_distribution_sb[samplerangemin] = std::make_shared<TH1D>(("JSDrange_"+std::to_string(range.min())+"_SignalBkg").c_str(),
                                                                           ("JSDrange_"+std::to_string(range.min())+"_SignalBkg").c_str(),
@@ -527,7 +517,7 @@ public:
 
             std::cout<<"Plot matrix"<<std::endl;
             auto directory_matrix = root_ext::GetDirectory(*directory_rangebkg, "Matrix");
-            for (const auto& range: ranges){
+            for (const auto& range: mva_study::ranges){
                 SampleId samplerangemin(SampleType::Sgn_Res, range.min());
                 int bin = static_cast<int>(range_selected.at(SampleId{SampleType::Sgn_Res, range.min()}).size());
                 auto matrix_jsd_sb = std::make_shared<TH2D>(("JSD_Signal_Bkg_Range"+std::to_string(range.min())+"_"+std::to_string(range.min())).c_str(),("JSD_Signal_Bkg_Range"+std::to_string(range.min())+"_"+std::to_string(range.min())).c_str(), bin, 0, bin, bin, 0, bin);
@@ -552,7 +542,7 @@ public:
             }
             auto directory_compare = root_ext::GetDirectory(*directory_jensenshannon, "Comparison");
             std::map<Name_ND, TCanvas*> canvas;
-            for (const auto & range: ranges){
+            for (const auto & range: mva_study::ranges){
                 for (const auto& selected_name : plot_ss.at(s).at(range.min())){
                     if (canvas.count(selected_name.first)) continue;
                     canvas[selected_name.first] = new TCanvas(selected_name.first.ToString().c_str(), selected_name.first.ToString().c_str(), 10,10,800,800);
@@ -563,7 +553,7 @@ public:
             for (const auto& selected_name : plot_sb){
                 canvas.at(selected_name.first)->cd();
                 selected_name.second->Draw("P");
-                for (const auto & range: ranges){
+                for (const auto & range: mva_study::ranges){
                     if (!plot_ss.at(s).at(range.min()).count(selected_name.first)) continue;
                     plot_ss.at(s).at(range.min()).at(selected_name.first)->Draw();
                 }
@@ -572,18 +562,7 @@ public:
                 canvas[selected_name.first]->Close();
             }
         }
-
-
-
-
-
-
         TimeReport(true);
-    }
-
-    void TimeReport(bool tot = false) const
-    {
-        reporter->TimeReport(tot);
     }
 
 private:

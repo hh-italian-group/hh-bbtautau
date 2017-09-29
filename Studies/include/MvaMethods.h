@@ -196,7 +196,7 @@ inline std::shared_ptr<Graph> CreatePlot(const std::string& title, const std::st
     return plot;
 }
 
-inline NameElement JensenDivergenceSB(const VarData& sample_signal, const VarData& sample_bkg,
+inline NameElement JensenDivergenceSamples(const VarData& sample_signal, const VarData& sample_bkg,
                                const NameElement& bandwidth_signal, const NameElement& bandwidth_bkg)
 {
     NameElementFuture JSDivergenceND_future;
@@ -342,7 +342,7 @@ inline std::map<ChannelSampleIdSpin,double>  ChiSquareTest(const std::map<Channe
                                             BDTData::Entry& outputBDT, TDirectory* directory, bool ver)
 {
     auto test_fn = [](const TH1D& h1, const TH1D& h2) { return h1.KolmogorovTest(&h2, "WW"); };
-    return DistributionCompatibilityTest("chi", evaluation, outputBDT, directory, ver, test_fn);
+    return DistributionCompatibilityTest("chi^2 probability", evaluation, outputBDT, directory, ver, test_fn);
 }
 
 struct OptimalSignificance {

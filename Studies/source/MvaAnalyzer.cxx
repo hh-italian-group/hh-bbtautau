@@ -177,12 +177,10 @@ public:
                     if (!integral.first.IsAllChannel() || !integral.first.IsAllSpin()) continue;
                     anaData.ROC("relativeROC_training").Fill(integral.first.sample_id.mass, integral.second.GetValue()/roc_training[method_name][AllSgn].GetValue());
                 }
-
                 for(const auto& integral : roc_testing[method_name]){
                     if (!integral.first.IsAllChannel() || !integral.first.IsAllSpin()) continue;
                     anaData.ROC("relativeROC_testing").Fill(integral.first.sample_id.mass, integral.second.GetValue()/roc_testing[method_name][AllSgn].GetValue());
                 }
-
 
                 for(const auto& s : sign)
                 {

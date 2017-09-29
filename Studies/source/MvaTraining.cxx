@@ -188,8 +188,6 @@ public:
     using EventTuple = ::ntuple::EventTuple;
     using SummaryTuple = ntuple::SummaryTuple;
 
-
-
     MVATraining(const Arguments& _args): args(_args),
         outfile(root_ext::CreateRootFile(args.output_file()+"_"+std::to_string(args.which_test())+".root"))
     {
@@ -253,7 +251,8 @@ public:
        }
     }
 
-    void RankingImportanceVariables(const std::vector<std::pair<std::string, double>>& importance, std::map<std::string, std::shared_ptr<TH1D>>& histo_rank) const
+    void RankingImportanceVariables(const std::vector<std::pair<std::string, double>>& importance,
+                                    std::map<std::string, std::shared_ptr<TH1D>>& histo_rank) const
     {
        for (const auto& pair: importance){
             if (!histo_rank.count(pair.first)){
@@ -265,7 +264,8 @@ public:
         }
     }
 
-    std::map<std::string, size_t> RankingPoisitionVariables(std::vector<std::pair<std::string, double>> importance, std::map<std::string, std::shared_ptr<TH1D>>& histo_rank) const
+    std::map<std::string, size_t> RankingPoisitionVariables(std::vector<std::pair<std::string, double>> importance,
+                                                            std::map<std::string, std::shared_ptr<TH1D>>& histo_rank) const
     {
         std::map<std::string, size_t> position;
 
@@ -297,7 +297,8 @@ public:
             std::cout<<type_entry.first<<std::endl;
             for(const auto& entry : sample_entry){
 
-                auto current_evaluation = vars->EvaluateForAllEvents(method_name, type_entry.first, entry.first.channel, entry.first.spin, entry.first.sample_id);
+                auto current_evaluation = vars->EvaluateForAllEvents(method_name, type_entry.first, entry.first.channel,
+                                                                     entry.first.spin, entry.first.sample_id);
 
                 ChannelSampleIdSpin allch_sample_spin{all_channel, entry.first.sample_id, entry.first.spin};
 
@@ -401,10 +402,11 @@ public:
         return std::vector<std::pair<int,int>>(mass_spin.begin(), mass_spin.end());
     }
 
-
     void Run()
     {
-        std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},/*{"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin}, */{"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
+        std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},
+                                     /*{"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin}, */
+                                     {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
 
         std::cout<<"Variabili iniziali: "<<enabled_vars.size()<<std::endl;
         const auto range = mva_setup.mass_range;

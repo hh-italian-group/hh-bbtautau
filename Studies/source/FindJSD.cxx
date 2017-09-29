@@ -33,21 +33,14 @@ namespace mva_study{
 
 using clock = std::chrono::system_clock;
 
-namespace {
-Range<int> low_mass(250, 320), medium_mass(340, 400), high_mass(450,900);
-std::vector<Range<int>> ranges{low_mass, medium_mass, high_mass};
-}
-
 class FindJSD {
 public:
     using Event = ntuple::Event;
     using EventTuple = ntuple::EventTuple;
 
-    std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},{"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin}, {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
-
-    std::map<ChannelSpin,SampleIdVarData> samples_mass, samples_range;
-    std::map<ChannelSpin,SampleIdNameElement> bandwidth, bandwidth_range, JSDivergenceSB, JSDivergenceSB_range;
-    std::map<ChannelSpin, SamplePairNameNDElement> JSDivergenceSS, JSDivergenceSS_range;
+    std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},
+                                 {"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin},
+                                 {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
 
     FindJSD(const Arguments& _args): args(_args), vars(1, 12345678,{}, {"channel", "mass", "spin"}), reporter(std::make_shared<TimeReporter>())
     {
@@ -91,7 +84,7 @@ public:
 
     SampleIdVarData LoadRangeData(const SampleIdVarData& samples_mass){
         SampleIdVarData samples_range;
-        for (const auto& range : ranges){
+        for (const auto& range : analysis::mva_study::ranges){
             if (!range.Contains(args.which_range())) continue;
             for (const auto& sample : samples_mass){
                 if (!range.Contains(sample.first.mass)) continue;
@@ -108,55 +101,22 @@ public:
 
     SamplePairNameNDElement JensenDivergenceSS(const ChannelSpin& chsp){
        SamplePairNameNDElement JSDss_range;
-       std::map<SamplePair, std::map<Name_ND, std::future<double>>> JSDss_range_future;
        for(auto sample_mass1 = samples_mass.at(chsp).begin(); sample_mass1 != samples_mass.at(chsp).end(); ++sample_mass1) {
            if ( sample_mass1->first.IsBackground()) continue;
            for(auto sample_mass2 = sample_mass1; sample_mass2 != samples_mass.at(chsp).end(); ++sample_mass2) {
                if ( sample_mass2->first.IsBackground()) continue;
                SamplePair mass_pair(sample_mass1->first, sample_mass2->first);
-               ChannelSpin chsp_bkg(chsp.channel, bkg_spin);
-               for (const auto& var: samples_mass.at(chsp_bkg).at(SampleType::Bkg_TTbar)){
-                   Name_ND var_1{var.first};
-                   std::vector<const DataVector*> sample_1, sample_2;
-                   DataVector band_1, band_2;
-                   sample_1.push_back(&samples_mass.at(chsp).at(sample_mass1->first).at(var.first));
-                   band_1.push_back(bandwidth.at(chsp).at(sample_mass1->first).at(var_1));
-                   sample_2.push_back(&samples_mass.at(chsp).at(sample_mass2->first).at(var.first));
-                   band_2.push_back( bandwidth.at(chsp).at(sample_mass2->first).at(var_1));
-                   JSDss_range_future[mass_pair][var_1]  = run::async(stat_estimators::JensenShannonDivergence_ND<double>,
-                                                                         sample_1, sample_2, band_1, band_2);
-                   for (const auto& other_var: samples_mass.at(chsp_bkg).at(SampleType::Bkg_TTbar)){
-                       if (other_var.first <= var.first) continue;
-                       Name_ND var2{other_var.first};
-                       Name_ND var_pair{var.first, other_var.first};
-                       sample_1.push_back(&samples_mass.at(chsp).at(sample_mass1->first).at(other_var.first));
-                       band_1.push_back(bandwidth.at(chsp).at(sample_mass1->first).at(var2));
-                       sample_2.push_back(&samples_mass.at(chsp).at(sample_mass2->first).at(other_var.first));
-                       band_2.push_back( bandwidth.at(chsp).at(sample_mass2->first).at(var2));
-                       JSDss_range_future[mass_pair][var_pair] = run::async(stat_estimators::JensenShannonDivergence_ND<double>,
-                                                                                           sample_1, sample_2, band_1, band_2);
-
-                       sample_1.erase(sample_1.end() - 1);
-                       sample_2.erase(sample_2.end() - 1);
-                       band_1.erase(band_1.end() - 1);
-                       band_2.erase(band_2.end() - 1);
-                   }
-               }
-           }
-       }
-       for(auto& mass_pair : JSDss_range_future) {
-           std::cout<<ToString(mass_pair.first.first)<<"   "<<ToString(mass_pair.first.second)<<std::endl;
-           for(auto& name : mass_pair.second) {
-               JSDss_range[mass_pair.first][name.first] = name.second.get();
+               JSDss_range[mass_pair] = JensenDivergenceSamples(samples_mass.at(chsp).at(sample_mass1->first),
+                                                                samples_mass.at(chsp).at(sample_mass2->first),
+                                                                bandwidth.at(chsp).at(sample_mass1->first),
+                                                                bandwidth.at(chsp).at(sample_mass2->first));
            }
        }
        return JSDss_range;
       }
 
-
      SamplePairNameNDElement JensenDivergenceSSRange(const ChannelSpin& chsp){
         SamplePairNameNDElement JSDss_range;
-        std::map<SamplePair, std::map<Name_ND, std::future<double>>> JSDss_range_future;
         for(auto const& range : ranges){
             std::cout<<range.min()<<std::endl;
             if (!range.Contains(args.which_range())) continue;
@@ -164,48 +124,20 @@ public:
                 if (!range.Contains(sample_mass.first.mass)) continue;
                 SampleId rangemin{SampleType::Sgn_Res, range.min()};
                 SamplePair mass_pair(rangemin, sample_mass.first);
-                ChannelSpin chsp_bkg(chsp.channel, bkg_spin);
                 std::cout<<sample_mass.first<<std::endl;
-
-                for (const auto& var: samples_mass.at(chsp_bkg).at(SampleType::Bkg_TTbar)){
-                    Name_ND var_1{var.first};
-                    std::vector<const DataVector*> sample_1, sample_2;
-                    DataVector band_1, band_2;
-                    sample_1.push_back(&samples_range.at(chsp).at(SampleId{SampleType::Sgn_Res, range.min()}).at(var.first));
-                    band_1.push_back(bandwidth_range.at(chsp).at(SampleId{SampleType::Sgn_Res, range.min()}).at(var_1));
-                    sample_2.push_back(&samples_mass.at(chsp).at(sample_mass.first).at(var.first));
-                    band_2.push_back(bandwidth.at(chsp).at(sample_mass.first).at(var_1));
-
-                    JSDss_range_future[mass_pair][var_1]  = run::async(stat_estimators::JensenShannonDivergence_ND<double>,
-                                                                          sample_1, sample_2, band_1, band_2);
-                    for (const auto& other_var: samples_mass.at(chsp_bkg).at(SampleType::Bkg_TTbar)){
-                        if (other_var.first <= var.first) continue;
-                        Name_ND var2{other_var.first};
-                        Name_ND var_pair{var.first, other_var.first};
-                        sample_1.push_back(&samples_range.at(chsp).at(SampleId{SampleType::Sgn_Res, range.min()}).at(other_var.first));
-                        band_1.push_back(bandwidth_range.at(chsp).at(SampleId{SampleType::Sgn_Res, range.min()}).at(var2));
-                        sample_2.push_back(&samples_mass.at(chsp).at(sample_mass.first).at(other_var.first));
-                        band_2.push_back( bandwidth.at(chsp).at(sample_mass.first).at(var2));
-                        JSDss_range_future[mass_pair][var_pair] = run::async(stat_estimators::JensenShannonDivergence_ND<double>,
-                                                                                            sample_1, sample_2, band_1, band_2);
-
-                        sample_1.erase(sample_1.end() - 1);
-                        sample_2.erase(sample_2.end() - 1);
-                        band_1.erase(band_1.end() - 1);
-                        band_2.erase(band_2.end() - 1);
-                    }
-                }
-            }
-            TimeReport();
-        }
-        for(auto& mass_pair : JSDss_range_future) {
-            for(auto& name : mass_pair.second) {
-                JSDss_range[mass_pair.first][name.first] = name.second.get();
+                JSDss_range[mass_pair] = JensenDivergenceSamples(samples_range.at(chsp).at(SampleId{SampleType::Sgn_Res, range.min()}),
+                                                                 samples_mass.at(chsp).at(sample_mass.first),
+                                                                 bandwidth_range.at(chsp).at(SampleId{SampleType::Sgn_Res, range.min()}),
+                                                                 bandwidth.at(chsp).at(sample_mass.first));
             }
         }
         return JSDss_range;
-       }
+     }
 
+     void TimeReport(bool tot = false) const
+     {
+         reporter->TimeReport(tot);
+     }
 
     void Run()
     {
@@ -232,9 +164,11 @@ public:
             std::string spin = ss.str();
             for (const auto& sample: samples_mass[s]){
                 std::cout<<"----"<<ToString(sample.first)<<"----"<<" entries: "<<sample.second.at("pt_l1").size()<<std::endl;
-                bandwidth[s][sample.first] = Read_csvfile(args.optband_folder()+"/OptimalBandwidth"+ToString(sample.first)+"_"+s.channel+"_spin"+spin+".csv");
+                bandwidth[s][sample.first] = Read_csvfile(args.optband_folder()+"/OptimalBandwidth"+ToString(sample.first)+"_"+s.channel+
+                                                          "_spin"+spin+".csv");
                 if(args.range()){
-                    bandwidth_range[s][sample.first] = Read_csvfile(args.optband_folder()+"/OptimalBandwidthRange"+ToString(sample.first)+"_"+s.channel+"_spin"+spin+".csv");
+                    bandwidth_range[s][sample.first] = Read_csvfile(args.optband_folder()+"/OptimalBandwidthRange"+ToString(sample.first)+
+                                                                    "_"+s.channel+"_spin"+spin+".csv");
                 }
             }
             bandwidth[s][SampleType::Bkg_TTbar] = Read_csvfile(args.optband_folder()+"/OptimalBandwidthTT_"+s.channel+"_spin"+spin+".csv");
@@ -254,13 +188,9 @@ public:
                 std::string spin = ss.str();
                 ChannelSpin chsp_bkg(s.channel,-1);
 
-
-                if(args.range()){
-                    JSDivergenceSB[s][sample.first] = JensenDivergenceSB(sample.second, samples_mass.at(chsp_bkg).at(SampleType::Bkg_TTbar), bandwidth_range.at(s).at(sample.first), bandwidth.at(chsp_bkg).at(SampleType::Bkg_TTbar));
-                }
-                else{
-                    JSDivergenceSB[s][sample.first] = JensenDivergenceSB(sample.second, samples_mass.at(chsp_bkg).at(SampleType::Bkg_TTbar), bandwidth.at(s).at(sample.first), bandwidth.at(chsp_bkg).at(SampleType::Bkg_TTbar));
-                }
+                auto sgn_band_ptr = args.range() ? bandwidth_range.at(s).at(sample.first) : bandwidth.at(s).at(sample.first);
+                JSDivergenceSB[s][sample.first] = JensenDivergenceSamples(sample.second, samples_mass.at(chsp_bkg).at(SampleType::Bkg_TTbar),
+                                                                     sgn_band_ptr, bandwidth.at(chsp_bkg).at(SampleType::Bkg_TTbar));
 
                 std::ofstream ListJSD(file_name_prefix_JSDSB+ToString(sample.first)+"_"+s.channel+"_spin"+spin+".csv", std::ofstream::out);
                 std::cout<<"list"<<std::endl;
@@ -275,28 +205,21 @@ public:
             }
         }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         std::cout<<std::endl<<"SIGNAL-SIGNAL"<<std::endl;
-
-
-
         for (const auto& s: set){
             std::cout<<s.channel<< "  " << s.spin<<std::endl;
-            if(args.range()){
-                JSDivergenceSS[s] = JensenDivergenceSSRange(s);
-            }
-            else
-                JSDivergenceSS[s] = JensenDivergenceSS(s);
-        }
 
+            JSDivergenceSS[s] = args.range() ? JensenDivergenceSSRange(s) : JensenDivergenceSS(s);
+
+        }
         for (const auto& entry :  JSDivergenceSS){
             std::cout<<entry.first.channel<< "  " << entry.first.spin<<std::endl;
             for (const auto& sample: entry.second){
-                SamplePair mass_pair(sample.first.first, sample.first.second);
                 std::stringstream ss;
                 ss << std::fixed << std::setprecision(0) << entry.first.spin;
                 std::string spin = ss.str();
-                std::ofstream ListJSD(file_name_prefix_JSDSS+ToString(sample.first.first)+"_"+ToString(sample.first.second)+"_"+entry.first.channel+"_spin"+spin+".csv", std::ofstream::out);
+                std::ofstream ListJSD(file_name_prefix_JSDSS+ToString(sample.first.first)+"_"+ToString(sample.first.second)+"_"+
+                                      entry.first.channel+"_spin"+spin+".csv", std::ofstream::out);
                 for (const auto& value: sample.second){
                     for (const auto& var: value.first){
                         ListJSD << var << "," ;
@@ -305,22 +228,16 @@ public:
                 }
             }
         }
-
         TimeReport(true);
-
     }
-
-
-    void TimeReport(bool tot = false) const
-    {
-        reporter->TimeReport(tot);
-    }
-
 private:
     Arguments args;
     SampleEntryCollection samples;
     MvaVariablesStudy vars;
     std::shared_ptr<TimeReporter> reporter;
+    std::map<ChannelSpin,SampleIdVarData> samples_mass, samples_range;
+    std::map<ChannelSpin,SampleIdNameElement> bandwidth, bandwidth_range, JSDivergenceSB, JSDivergenceSB_range;
+    std::map<ChannelSpin, SamplePairNameNDElement> JSDivergenceSS, JSDivergenceSS_range;
 };
 }
 }

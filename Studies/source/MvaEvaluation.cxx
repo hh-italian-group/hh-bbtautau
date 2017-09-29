@@ -133,7 +133,9 @@ public:
         auto vars = reader.AddRange(range, args.method_name(), args.file_xml(), enabled_vars, args.isLegacy(), args.isLow());
         std::mt19937_64 seed_gen(args.seed());
 
-        std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},{"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin}, {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
+        std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},
+                                     {"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin},
+                                     {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
 
         for (const auto& s : set){
             std::cout << s.channel << s.spin <<std::endl;
@@ -152,23 +154,14 @@ public:
                 Long64_t tot_entries = 0;
                 for(const Event& event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
-                    if(!args.all_data()){
-                        if (args.blind())
-                            if (event.split_id >= (mergesummary.n_splits/2)) continue;
-                        if (!args.blind())
-                            if (event.split_id < (mergesummary.n_splits/2)) continue;
-                    }
+                    if (!args.all_data() && args.blind()!=(event.split_id >= mergesummary.n_splits/2)) continue;
                     tot_entries++;
-                    std::uniform_int_distribution<uint_fast32_t> seed_distr(100000, std::numeric_limits<uint_fast32_t>::max());
                     size_t test_split = test_vs_training(seed_gen);
-                    gen.seed(seed_distr(seed_gen));
                     if (entry.id.IsBackground()) {
                         for (const auto mass : mass_range){
                             SampleId sample_bkg(SampleType::Bkg_TTbar, mass);
                             ChannelSampleIdSpin id_ch_sample_spin{args.channel(), sample_bkg, args.spin()};
                             ChannelSampleIdSpin id_ch_bkg_spin{args.channel(), bkg, args.spin()};
-
-                            vars->AddEvent(event, sample_bkg, args.spin(), s.channel, entry.weight);
                             double eval = reader.Evaluate(event, mass, args.method_name(), args.spin(), args.channel());
                             data[id_ch_sample_spin][test_split].push_back(eval);
                             data[id_ch_bkg_spin][test_split].push_back(eval);
@@ -177,9 +170,7 @@ public:
                         }
                     }
                     else{
-                        vars->AddEvent(event, entry.id, entry.spin, s.channel, entry.weight);
                         double eval = reader.Evaluate(event, entry.id.mass, args.method_name(), args.spin(), args.channel());
-
                         ChannelSampleIdSpin id_ch_sample_spin{args.channel(), entry.id, args.spin()};
                         ChannelSampleIdSpin id_ch_tot_spin{args.channel(), mass_tot, args.spin()};
                         data[id_ch_sample_spin][test_split].push_back(eval);
@@ -191,8 +182,6 @@ public:
                 std::cout << " channel " << s.channel << "    " << entry.filename << " number of events: " << tot_entries << std::endl;
             }
         }
-
-
 
         std::map<ChannelSampleIdSpin, PhysicalValue> err_training, err_testing;
         if (args.error_file().size()){
@@ -243,9 +232,12 @@ public:
         }
         root_ext::WriteObject(*histo_roc, outfile.get());
 
-        auto roctot = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), mass_tot, args.spin(), test_train), &outputBDT.bdt_out(args.channel(),  bkg, args.spin(), test_train));
-//        auto roctot_testing = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), mass_tot, args.spin(), 0), &outputBDT.bdt_out(args.channel(),  bkg, args.spin(), 0));
-//        auto roctot_training = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), mass_tot, args.spin(), 1), &outputBDT.bdt_out(args.channel(),  bkg, args.spin(), 1));
+        auto roctot = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), mass_tot, args.spin(), test_train),
+                                             &outputBDT.bdt_out(args.channel(),  bkg, args.spin(), test_train));
+//        auto roctot_testing = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), mass_tot, args.spin(), 0),
+//                                                     &outputBDT.bdt_out(args.channel(),  bkg, args.spin(), 0));
+//        auto roctot_training = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), mass_tot, args.spin(), 1),
+//                                                      &outputBDT.bdt_out(args.channel(),  bkg, args.spin(), 1));
 
         std::cout<<roctot<<std::endl;
 
@@ -321,7 +313,7 @@ private:
     SampleEntryCollection samples;
     MvaSetup mva_setup;
     std::shared_ptr<TFile> outfile;
-    std::mt19937_64 gen, gen2;
+    std::mt19937_64 gen;
     MvaVariables::VarNameSet enabled_vars;
     MvaReader reader;
     std::uniform_int_distribution<size_t>  test_vs_training;

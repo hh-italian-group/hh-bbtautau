@@ -33,10 +33,6 @@ public:
     using Event = ntuple::Event;
     using EventTuple = ntuple::EventTuple;
 
-
-
-    SampleIdVarData sample_vars;
-
     VariablesDistribution(const Arguments& _args): args(_args),
         outfile(root_ext::CreateRootFile(args.output_file())), reporter(std::make_shared<TimeReporter>())
     {
@@ -131,6 +127,10 @@ public:
         TimeReport();
     }
 
+    void TimeReport(bool tot = false) const
+    {
+        reporter->TimeReport(tot);
+    }
 
     void Run()
     {
@@ -159,17 +159,14 @@ public:
         TimeReport(true);
     }
 
-    void TimeReport(bool tot = false) const
-    {
-        reporter->TimeReport(tot);
-    }
-
 private:
     Arguments args;
     SampleEntryCollection samples;
     std::shared_ptr<TFile> outfile;
     MvaVariablesStudy vars;
     std::shared_ptr<TimeReporter> reporter;
+    SampleIdVarData sample_vars;
+
 };
 }
 }

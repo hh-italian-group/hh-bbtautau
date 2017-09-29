@@ -133,9 +133,7 @@ public:
 inline std::ostream& operator<<(std::ostream& os, const Name_ND& name)
 {
     if(name.size() > 0){
-        os << name.at(0);
-        for(size_t n = 1; n < name.size(); ++n)
-            os << "," << name.at(n);
+        os << name.ToString(",");
     }
     return os;
 }

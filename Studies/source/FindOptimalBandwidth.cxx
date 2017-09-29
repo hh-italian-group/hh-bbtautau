@@ -32,23 +32,17 @@ namespace mva_study{
 
 using clock = std::chrono::system_clock;
 
-namespace {
-Range<int> low_mass(250, 320), medium_mass(340, 400), high_mass(450,900);
-std::vector<Range<int>> ranges{low_mass, medium_mass, high_mass};
-}
-
-
 class FindOptimalBandwidth {
 public:
     using Event = ntuple::Event;
     using EventTuple = ntuple::EventTuple;
 
-    std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},{"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin}, {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
+    std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},
+                                 {"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin},
+                                 {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
 
-    std::map<ChannelSpin,SampleIdVarData> samples_mass, samples_range;
-    std::map<ChannelSpin,SampleIdNameElement> bandwidth, bandwidth_range;
-
-    FindOptimalBandwidth(const Arguments& _args): args(_args), vars(1, 12345678,{}, {"channel", "mass", "spin"}), reporter(std::make_shared<TimeReporter>())
+    FindOptimalBandwidth(const Arguments& _args): args(_args), vars(1, 12345678,{}, {"channel", "mass", "spin"}),
+        reporter(std::make_shared<TimeReporter>())
     {
         MvaSetupCollection setups;
         SampleEntryListCollection samples_list;
@@ -89,7 +83,7 @@ public:
 
     SampleIdVarData LoadRangeData(const SampleIdVarData& samples_mass){
         SampleIdVarData samples_range;
-        for (const auto& range : ranges){
+        for (const auto& range : analysis::mva_study::ranges){
             if (!range.Contains(args.which_range())) continue;
             for (const auto& sample : samples_mass){
                 if (!range.Contains(sample.first.mass)) continue;
@@ -101,6 +95,11 @@ public:
             }
         }
         return samples_range;
+    }
+
+    void TimeReport(bool tot = false) const
+    {
+        reporter->TimeReport(tot);
     }
 
     void Run()
@@ -142,17 +141,14 @@ public:
         TimeReport(true);
     }
 
-    void TimeReport(bool tot = false) const
-    {
-        reporter->TimeReport(tot);
-    }
-
 private:
     Arguments args;
     SampleEntryCollection samples;
     MvaVariablesStudy vars;
     std::shared_ptr<TimeReporter> reporter;
     std::vector<Range<int>> massranges;
+    std::map<ChannelSpin,SampleIdVarData> samples_mass, samples_range;
+    std::map<ChannelSpin,SampleIdNameElement> bandwidth, bandwidth_range;
 };
 }
 }

@@ -33,21 +33,14 @@ namespace mva_study{
 
 using clock = std::chrono::system_clock;
 
-namespace {
-Range<int> low_mass(250, 320), medium_mass(340, 400), high_mass(450,900);
-std::vector<Range<int>> ranges{low_mass, medium_mass, high_mass};
-}
-
 class FindJSD {
 public:
     using Event = ntuple::Event;
     using EventTuple = ntuple::EventTuple;
 
-    std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},{"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin}, {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
-
-    std::map<ChannelSpin,SampleIdVarData> samples_mass, samples_range;
-    std::map<ChannelSpin,SampleIdNameElement> bandwidth, bandwidth_range, mutualmatrix, mutualmatrix_range;
-    std::map<ChannelSpin, SamplePairNameNDElement> JSDivergenceSS, JSDivergenceSS_range;
+    std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},
+                                 {"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin},
+                                 {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
 
     FindJSD(const Arguments& _args): args(_args), vars(1, 12345678,{}, {"channel", "mass", "spin"}), reporter(std::make_shared<TimeReporter>())
     {
@@ -90,7 +83,7 @@ public:
 
     SampleIdVarData LoadRangeData(const SampleIdVarData& samples_mass){
         SampleIdVarData samples_range;
-        for (const auto& range : ranges){
+        for (const auto& range : analysis::mva_study::ranges){
             if (!range.Contains(args.which_range())) continue;
             for (const auto& sample : samples_mass){
                 if (!range.Contains(sample.first.mass)) continue;
@@ -102,6 +95,12 @@ public:
             }
         }
         return samples_range;
+    }
+
+
+    void TimeReport(bool tot = false) const
+    {
+        reporter->TimeReport(tot);
     }
 
     void Run()
@@ -129,7 +128,8 @@ public:
                 std::stringstream ss;
                 ss << std::fixed << std::setprecision(0) << s.spin;
                 std::string spin = ss.str();
-                bandwidth[s][sample.first] = Read_csvfile(args.optband_folder()+file_name_prefix_bandwidth+ToString(sample.first)+"_"+s.channel+"_spin"+spin+".csv");
+                bandwidth[s][sample.first] = Read_csvfile(args.optband_folder()+file_name_prefix_bandwidth+ToString(sample.first)+"_"+
+                                                          s.channel+"_spin"+spin+".csv");
                 mutualmatrix[s][sample.first] = Mutual(sample.second, bandwidth.at(s).at(sample.first));
                 std::ofstream ListMID(file_name_prefix+ToString(sample.first)+"_"+s.channel+"_spin"+spin+".csv", std::ofstream::out);
                 for(const auto& value: mutualmatrix[s][sample.first]){
@@ -146,17 +146,14 @@ public:
         TimeReport(true);
     }
 
-
-    void TimeReport(bool tot = false) const
-    {
-        reporter->TimeReport(tot);
-    }
-
 private:
     Arguments args;
     SampleEntryCollection samples;
     MvaVariablesStudy vars;
     std::shared_ptr<TimeReporter> reporter;
+    std::map<ChannelSpin,SampleIdVarData> samples_mass, samples_range;
+    std::map<ChannelSpin,SampleIdNameElement> bandwidth, bandwidth_range, mutualmatrix, mutualmatrix_range;
+    std::map<ChannelSpin, SamplePairNameNDElement> JSDivergenceSS, JSDivergenceSS_range;
 };
 }
 }
