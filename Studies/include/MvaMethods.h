@@ -341,7 +341,7 @@ inline std::map<ChannelSampleIdSpin,double> KolmogorovTest(const std::map<Channe
 inline std::map<ChannelSampleIdSpin,double>  ChiSquareTest(const std::map<ChannelSampleIdSpin, std::map<size_t, std::vector<double>>>& evaluation,
                                             BDTData::Entry& outputBDT, TDirectory* directory, bool ver)
 {
-    auto test_fn = [](const TH1D& h1, const TH1D& h2) { return h1.KolmogorovTest(&h2, "WW"); };
+    auto test_fn = [](const TH1D& h1, const TH1D& h2) { return h1.Chi2Test(&h2, "WW"); };
     return DistributionCompatibilityTest("chi^2 probability", evaluation, outputBDT, directory, ver, test_fn);
 }
 

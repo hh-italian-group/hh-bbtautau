@@ -67,7 +67,7 @@ public:
     using MassData = std::map<SampleId, DataVector>;
 
     MVAEvaluation(const Arguments& _args): args(_args),
-        outfile(root_ext::CreateRootFile(args.output_file()+".root")), test_vs_training(0, args.number_sets()-1)
+        outfile(root_ext::CreateRootFile(args.output_file()+".root")), gen(args.seed()), test_vs_training(0, args.number_sets()-1)
     {
         MvaSetupCollection setups;
         SampleEntryListCollection samples_list;
@@ -131,7 +131,6 @@ public:
         std::cout<<"SAMPLES nel RANGE:"<<mass_range.size() <<std::endl;
         ::analysis::Range<int> range(args.min(), args.max());
         auto vars = reader.AddRange(range, args.method_name(), args.file_xml(), enabled_vars, args.isLegacy(), args.isLow());
-        std::mt19937_64 seed_gen(args.seed());
 
         std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},
                                      {"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin},
@@ -156,7 +155,7 @@ public:
                     if(tot_entries >= args.number_events()) break;
                     if (!args.all_data() && args.blind()!=(event.split_id >= mergesummary.n_splits/2)) continue;
                     tot_entries++;
-                    size_t test_split = test_vs_training(seed_gen);
+                    size_t test_split = test_vs_training(gen);
                     if (entry.id.IsBackground()) {
                         for (const auto mass : mass_range){
                             SampleId sample_bkg(SampleType::Bkg_TTbar, mass);
