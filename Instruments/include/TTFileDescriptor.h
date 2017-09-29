@@ -23,7 +23,6 @@ struct TTBinDescriptor {
     std::vector<std::string> file_paths;
     FileType fileType;
     Range<int> genType;
-    std::string channel;
 
     PhysicalValue nu;
     PhysicalValue weight;

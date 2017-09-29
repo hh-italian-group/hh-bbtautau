@@ -29,22 +29,24 @@ public:
     using VectorDYBinDescriptor = std::vector<NJets_HT_BinFileDescriptor>;
     NJets_HT_BinFileMerger(const Arguments& _args) : args(_args)
     {
-        LoadInputs();
-        std::cout << "Done LoadInputs" << std::endl;
         output_bins = NJets_HT_BinFileDescriptor::LoadConfig(args.cfg_name());
         std::cout << "Done LoadCfg" << std::endl;
+        LoadInputs();
+        std::cout << "Done LoadInputs" << std::endl;
     }
 
 public:
 
     void Run()
     {
-        for(auto& output_bin : output_bins)
+        VectorDYBinDescriptor processed_bins;
+		for(auto& output_bin : output_bins)
         {
-            CalculateWeight(output_bin);
+			if (CalculateWeight(output_bin))
+				processed_bins.push_back(output_bin);
         }
         std::cout << "Done CalculateWeight" << std::endl;
-        NJets_HT_BinFileDescriptor::SaveCfg(args.output_file(), output_bins);
+        NJets_HT_BinFileDescriptor::SaveCfg(args.output_file(), processed_bins);
         std::cout << "Done SaveCfg" << std::endl;
     }
 
@@ -93,6 +95,10 @@ private:
                         const ntuple::GenId genId(summaryTuple.data().lhe_n_partons.at(i),
                                                   summaryTuple.data().lhe_n_b_partons.at(i),
                                                   summaryTuple.data().lhe_ht10_bin.at(i));
+                        if (!sample_desc.bin.Contains(genId))
+                            throw exception("sample_desc bin doesn't contain genId");
+                        if(!OutputBinContains(genId))
+                            throw exception("It doesn't exist at least an output bin which contains genId");
                         size_t nevents = summaryTuple.data().lhe_n_events.at(i);
                         sample_desc.gen_counts[genId] += nevents;
                         global_map.gen_counts[genId] += nevents;
@@ -107,13 +113,24 @@ private:
         } //end loop n file_descriptors
     }
 
+    bool OutputBinContains(const ntuple::GenId& genId) const
+    {
+        for(auto& output_bin : output_bins)
+        {
+            if(output_bin.Contains(genId))
+                return true;
+        }
+        return false;
+    }
 
-    void CalculateWeight(NJets_HT_BinFileDescriptor& output_bin) const
+
+    bool CalculateWeight(NJets_HT_BinFileDescriptor& output_bin) const
     {
         double all_events = global_map.Integral(output_bin);
+		if(all_events == 0) return false;
         for(auto& sample : all_samples) {
             double contribution = sample.Integral(output_bin);
-            if(contribution == 0) continue;
+			if(contribution == 0) continue;
             //formula 2
             PhysicalValue nu ( contribution , sqrt(contribution));
             PhysicalValue weight (nu.GetValue()/all_events, (all_events - contribution)/std::pow(all_events,2)*sqrt(contribution));
@@ -127,7 +144,6 @@ private:
                 nu *= nu_incl;
                 weight *= nu_incl;
             }
-
             if(output_bin.nu.GetStatisticalError() > nu.GetStatisticalError()) {
                 output_bin.nu = nu;
                 output_bin.ref_sample = sample.bin.name;
@@ -140,6 +156,8 @@ private:
 
         if(output_bin.nu.GetStatisticalError() == std::numeric_limits<double>::infinity())
             throw exception("ref not found");
+
+		return true;
     }
 
 

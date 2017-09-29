@@ -71,7 +71,6 @@ struct SkimJob {
     std::vector<FileDescriptor> files;
     bool apply_common_weights{true};
     mc_corrections::WeightingMode weights;
-    bool ignore_trigger_info{false};
 
     bool ProduceMergedOutput() const { return merged_output.size(); }
 };

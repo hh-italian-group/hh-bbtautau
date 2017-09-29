@@ -26,7 +26,6 @@ public:
         CheckReadParamCounts("file_path", 0, Condition::greater_equal);
         CheckReadParamCounts("genType", 1, Condition::equal_to);
         CheckReadParamCounts("fileType", 1, Condition::equal_to);
-        CheckReadParamCounts("channel", 1, Condition::equal_to);
 
         (*descriptors)[current.name] = current;
     }
@@ -37,7 +36,6 @@ public:
         ParseEntry("file_path", current.file_paths);
         ParseEntry("genType", current.genType);
         ParseEntry("fileType", current.fileType);
-        ParseEntry("channel", current.channel);
     }
 
 private:
