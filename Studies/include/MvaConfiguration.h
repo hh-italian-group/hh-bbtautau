@@ -261,12 +261,12 @@ struct SampleEntry{
     std::string filename;
     double weight{-1};
     SampleId id;
-    std::string channel;
+    int spin;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SampleEntry& entry)
 {
-    os << entry.filename << " " << entry.id << " " << entry.weight << " " <<  entry.channel;
+    os << entry.filename << " " << entry.id << " " << entry.weight << " " <<  entry.spin;
     return os;
 }
 
@@ -274,14 +274,13 @@ inline std::istream& operator>>(std::istream& is, SampleEntry& entry)
 {
     std::string str;
     std::getline(is, str);
-    const auto columns = SplitValueList(str, false);
-    if(columns.size() < 3 || columns.size() > 4)
+    const auto columns = SplitValueList(str, true);
+    if(columns.size() != 4)
         throw exception("Invalid sample entry");
     entry.filename = columns.at(0);
     entry.id = Parse<SampleId>(columns.at(1));
-    entry.weight = Parse<double>(columns.at(2));
-    if(columns.size() > 3)
-        entry.channel = columns.at(3);
+    entry.spin = Parse<int>(columns.at(2));
+    entry.weight = NumericalExpression(columns.at(3));
     return is;
 }
 
@@ -390,6 +389,9 @@ private:
 };
 using MvaSetupCollection = std::unordered_map<std::string, MvaSetup>;
 using SampleEntryListCollection = std::unordered_map<std::string, SampleEntryList>;
+
+static const Range<int> low_mass(250, 320), medium_mass(340, 400), high_mass(450,900);
+static const std::vector<Range<int>> ranges{low_mass, medium_mass, high_mass};
 
 }
 }
