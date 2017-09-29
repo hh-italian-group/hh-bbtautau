@@ -14,7 +14,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/ProgressReporter.h"
 #include "AnalysisTools/Run/include/MultiThread.h"
 #include "AnalysisTools/Core/include/NumericPrimitives.h"
-#include "hh-bbtautau/Analysis/include/MvaMethods.h"
+#include "hh-bbtautau/Studies/include/MvaMethods.h"
 #include "h-tautau/Cuts/include/Btag_2016.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
@@ -24,7 +24,9 @@ struct Arguments { // list of all program arguments
     REQ_ARG(std::string, input_path);
     REQ_ARG(std::string, output_file);
     REQ_ARG(std::string, cfg_file);
-    REQ_ARG(std::string, tree_name);
+    REQ_ARG(std::string, optband_folder);
+    REQ_ARG(std::string, jsd_folder);
+    REQ_ARG(std::string, mutual_folder);
     REQ_ARG(unsigned, number_threads);
     REQ_ARG(size_t, number_variables);
     OPT_ARG(Long64_t, number_events, 1000000);
@@ -44,11 +46,15 @@ public:
     using EventTuple = ntuple::EventTuple;
     using VecVariables =  std::vector<std::string>;
 
-    SampleIdVarData samples_mass;
-    SampleIdNameElement bandwidth, mutual_matrix, correlation_matrix, JSDivergenceSB;
+    std::map<ChannelSpin,SampleIdVarData> samples_mass;
+    std::map<ChannelSpin,SampleIdNameElement> bandwidth, mutual_matrix, correlation_matrix, JSDivergenceSB;
+
+    std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},
+                                 /*{"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin}, */
+                                 {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
 
     MvaClassification(const Arguments& _args): args(_args),
-        outfile(root_ext::CreateRootFile(args.output_file())), vars(args.number_sets(), args.seed()),
+        outfile(root_ext::CreateRootFile(args.output_file())), vars(args.number_sets(), args.seed(),{}, {"channel", "mass", "spin"}),
         reporter(std::make_shared<TimeReporter>())
     {
         MvaSetupCollection setups;
@@ -61,27 +67,33 @@ public:
         configReader.AddEntryReader("FILES", sampleReader, false);
         configReader.ReadConfig(args.cfg_file());
 
-        samples = samples_list.at("inputs").files;
+        samples = samples_list.at("Samples").files;
     }
 
-    void DistributionJSD_SB(const SampleId& mass_entry, TDirectory* directory) const
+    void DistributionJSD_SB(const SampleId& mass_entry, TDirectory* directory, const ChannelSpin& set) const
     {
         auto mass = ToString(mass_entry);
         auto histo = std::make_shared<TH1D>(("JSD_"+mass+"_Background").c_str(), ("JensenShannonDivergence_Signal"+mass+"_Background").c_str(), 50,0,1);
         histo->SetXTitle("JSD");
-        std::ofstream of("InformationTable_"+ToString(mass)+"_"+std::to_string(args.set())+"_"+std::to_string(args.number_sets())+args.tree_name()+".csv", std::ofstream::out);
+        std::string spin;
+        if (set.spin == 0) spin = "Radion";
+        else if (set.spin == 2) spin = "Graviton";
+        else if (set.spin == SM_spin) spin = "SM";
+        else spin = "Bkg";
+        std::ofstream of("InformationTable_"+ToString(mass)+"_"+std::to_string(args.set())+"_"+std::to_string(args.number_sets())
+                         +set.channel+"_spin"+spin+".csv", std::ofstream::out);
         of<<"Var_1"<<","<<"Var_2"<<","<<"JSD_ND"<<","<<"JSD_12-(JSD_1+JSD_2)"<<","<<"ScaledMI_Signal_12" <<","<<"ScaledMI_Bkg_12"<<","<<"selected"<<","<<","<<"eliminated by"<<std::endl;
-        for(auto& entry : JSDivergenceSB.at(mass_entry)){
+        for(auto& entry : JSDivergenceSB.at(set).at(mass_entry)){
              histo->Fill(entry.second);
              root_ext::WriteObject(*histo, directory);
         }
     }
 
-    void PlotJensenShannonSB(TDirectory* directory) const
+    void PlotJensenShannonSB(TDirectory* directory, const ChannelSpin& set) const
     {
         std::map<std::string, std::shared_ptr<TGraph>> plot;
         int i = 0;
-        for (const auto& entry: JSDivergenceSB){
+        for (const auto& entry: JSDivergenceSB.at(set)){
             if ( entry.first.sampleType == SampleType::Bkg_TTbar )
                 continue;
             for (const auto& var : entry.second){
@@ -99,70 +111,78 @@ public:
         }
     }
 
-    void JensenShannonSignalCompatibility(TDirectory* directory) const
+    void JensenShannonSignalCompatibility(TDirectory* directory, const ChannelSpin& set) const
     {
-        std::map<std::string, std::map<SamplePair, std::future<double>>> JSDss_selected_future;
-        for (const auto& var: samples_mass.at(SampleType::Bkg_TTbar)){
-            for(auto mass_entry_1 = samples_mass.begin(); mass_entry_1 != samples_mass.end(); ++mass_entry_1) {
-                if ( mass_entry_1->first.IsBackground())
-                    continue;
-                std::vector<const DataVector*> sample_1;
-                DataVector band_1;
-                sample_1.push_back(&samples_mass.at(mass_entry_1->first).at(var.first));
-                band_1.push_back(bandwidth.at(mass_entry_1->first).at(var.first));
+        SamplePairNameNDElement JSDivergenceSS;
+        std::stringstream ss;
+        ss << std::fixed << std::setprecision(0) << set.spin;
+        std::string spin = ss.str();
 
-                for(auto mass_entry_2 = std::next(mass_entry_1); mass_entry_2 != samples_mass.end(); ++mass_entry_2) {
-                    if ( mass_entry_2->first.IsBackground())
-                        continue;
-                    SamplePair mass_pair(mass_entry_1->first, mass_entry_2->first);
-                    std::vector<const DataVector*> sample_2;
-                    DataVector band_2;
-                    sample_2.push_back(&samples_mass.at(mass_entry_2->first).at(var.first));
-                    band_2.push_back(bandwidth.at(mass_entry_2->first).at(var.first));
-                    JSDss_selected_future[var.first][mass_pair] = run::async(stat_estimators::JensenShannonDivergence_ND<double>, sample_1, sample_2, band_1, band_2);
-                }
+        for(auto mass_entry_1 = samples_mass.at(set).begin(); mass_entry_1 != samples_mass.at(set).end(); ++mass_entry_1) {
+            if ( mass_entry_1->first.IsBackground())
+                continue;
+            for(auto mass_entry_2 = mass_entry_1; mass_entry_2 != samples_mass.at(set).end(); ++mass_entry_2) {
+                if ( mass_entry_2->first.IsBackground())
+                    continue;
+                SamplePair mass_pair(mass_entry_1->first,mass_entry_2->first);
+                JSDivergenceSS[mass_pair] = Read_csvfile(args.jsd_folder()+"/JensenShannonDivergenceSS"+ToString(mass_entry_1->first)
+                                                         +"_"+ToString(mass_entry_2->first)+"_"+set.channel+"_spin"+spin+".csv");
             }
         }
-        for(auto& futures : JSDss_selected_future) {
-            auto JSDss_selected = CollectFutures(futures.second);
-            CreateMatrixHistosCompatibility(samples_mass, JSDss_selected, futures.first+"_Signal_compatibility_JSD", directory);
+        std::map<Name_ND, std::map<SamplePair,double>> histovalue;
+        for(const auto& entrypair: JSDivergenceSS){
+            SamplePair masspair = entrypair.first;
+            for (const auto& entryelement: entrypair.second){
+                histovalue[entryelement.first][masspair] = entryelement.second;
+            }
+        }
+        for(const auto& var: histovalue){
+            CreateMatrixHistosCompatibility(samples_mass.at(set), var.second, ToString(var.first)+"_Signal_compatibility_JSD", directory);
         }
     }
 
-    void KolmogorovSignalCompatibility(TDirectory* directory) const
+    void KolmogorovSignalCompatibility(TDirectory* directory, const ChannelSpin& set) const
     {
-        for (const auto& var: samples_mass.at(SampleType::Bkg_TTbar)){
+        ChannelSpin chsp_bkg(set.channel, bkg_spin);
+        for (const auto& var: samples_mass.at(chsp_bkg).at(SampleType::Bkg_TTbar)){
             std::map<SamplePair, double> kolmogorov;
-            for(auto mass_entry_1 = samples_mass.begin(); mass_entry_1 != samples_mass.end(); ++mass_entry_1) {
+            for(auto mass_entry_1 = samples_mass.at(set).begin(); mass_entry_1 != samples_mass.at(set).end(); ++mass_entry_1) {
                 if ( mass_entry_1->first.IsBackground())
                     continue;
-                for(auto mass_entry_2 = std::next(mass_entry_1); mass_entry_2 != samples_mass.end(); ++mass_entry_2) {
+                for(auto mass_entry_2 = mass_entry_1; mass_entry_2 != samples_mass.at(set).end(); ++mass_entry_2) {
                     if ( mass_entry_2->first.IsBackground())
                         continue;
                     SamplePair mass_pair(mass_entry_1->first, mass_entry_2->first);
-                    std::vector<double> vector_signal = samples_mass.at(mass_entry_1->first).at(var.first);
-                    std::sort(vector_signal.begin(), vector_signal.end());\
-                    std::vector<double> vector_signal_2 = samples_mass.at(mass_entry_2->first).at(var.first);
+                    std::vector<double> vector_signal = samples_mass.at(set).at(mass_entry_1->first).at(var.first);
+                    std::sort(vector_signal.begin(), vector_signal.end());
+                    std::vector<double> vector_signal_2 = samples_mass.at(set).at(mass_entry_2->first).at(var.first);
                     std::sort(vector_signal_2.begin(), vector_signal_2.end());
                     Double_t* v_s = vector_signal.data(), *v_s_2 = vector_signal_2.data();
                     kolmogorov[mass_pair]  = TMath::KolmogorovTest(static_cast<int>(vector_signal.size()), v_s,
                                                                    static_cast<int>(vector_signal_2.size()), v_s_2, "");
                 }
             }
-            CreateMatrixHistosCompatibility(samples_mass, kolmogorov, var.first+"_Signal_compatibility_KS", directory);
+            CreateMatrixHistosCompatibility(samples_mass.at(set), kolmogorov, var.first+"_Signal_compatibility_KS", directory);
         }
     }
 
-    SetNamesVar FindBestVariables(SampleId mass, std::map<std::string, std::string>& eliminated) const
+    SetNamesVar FindBestVariables(SampleId mass, std::map<std::string, std::string>& eliminated, const ChannelSpin& set) const
     {
-        static constexpr double threashold_mi = 0.7;
-        const NameElement& JSDivergenceND = JSDivergenceSB.at(mass);
-        const NameElement& mutual_matrix_signal = mutual_matrix.at(mass);
-        const NameElement& mutual_matrix_bkg = mutual_matrix.at(SampleType::Bkg_TTbar);
+        std::string spin;
+        if (set.spin == 0) spin = "Radion";
+        else if (set.spin == 2) spin = "Graviton";
+        else if (set.spin == SM_spin) spin = "SM";
+        else spin = "Bkg";
+        static constexpr double threashold_mi = 0.8;
+        ChannelSpin chsp_bkg(set.channel, bkg_spin);
+        const NameElement& JSDivergenceND = JSDivergenceSB.at(set).at(mass);
+        const NameElement& mutual_matrix_signal = mutual_matrix.at(set).at(mass);
+        const NameElement& mutual_matrix_bkg = mutual_matrix.at(chsp_bkg).at(SampleType::Bkg_TTbar);
         SetNamesVar selected, not_corrected;
         VectorName_ND JSDivergence_vector(JSDivergenceND.begin(), JSDivergenceND.end());
 
-        std::ofstream best_entries_file("Best_entries_"+ToString(mass)+"_"+std::to_string(args.set())+"_"+std::to_string(args.number_sets())+args.tree_name()+".csv", std::ofstream::out);
+        std::ofstream best_entries_file("Best_entries_"+ToString(mass)+"_"+std::to_string(args.set())+"_"
+                                        +std::to_string(args.number_sets())+set.channel+"_spin"+spin+".csv", std::ofstream::out);
         best_entries_file<<","<<","<<"JSD_sb"<<","<<"MI_sgn"<<","<<"Mi_bkg"<<std::endl;
 
         static const std::map<std::pair<size_t, size_t>, std::string> prefixes = {
@@ -174,6 +194,7 @@ public:
             });
             auto best_entry = JSDivergence_vector.front();
             for(const auto& name : best_entry.first) {
+                if (!mutual_matrix_bkg.count(name)) continue;
                 const auto counts = std::make_pair(selected.count(name), not_corrected.count(name));
                 const auto& prefix = prefixes.at(counts);
                 best_entries_file << prefix << name << prefix << ",";
@@ -184,8 +205,9 @@ public:
                     if(entry.first.count(name))
                         entry.second -= JS_1d;
                 }
-                for(const auto& other_entry : samples_mass.at(mass)) {
+                for(const auto& other_entry : samples_mass.at(set).at(mass)) {
                     if(other_entry.first == name) continue;
+                    if (!mutual_matrix_bkg.count(other_entry.first)) continue;
                     const Name_ND names({name, other_entry.first});
                     if(mutual_matrix_signal.at(names) < threashold_mi && mutual_matrix_bkg.at(names) < threashold_mi){
                         eliminated[other_entry.first] = "MI-"+name;
@@ -205,17 +227,24 @@ public:
         return selected;
     }
 
-
-    void InformationTable(const SampleId& mass_entry, const SetNamesVar& selected, const std::map<std::string, std::string>& eliminated) const
+    void InformationTable(const SampleId& mass_entry, const SetNamesVar& selected, const std::map<std::string, std::string>& eliminated, const ChannelSpin& set) const
     {
+        std::string spin;
+        if (set.spin == 0) spin = "Radion";
+        else if (set.spin == 2) spin = "Graviton";
+        else if (set.spin == SM_spin) spin = "SM";
+        else spin = "Bkg";
+        ChannelSpin chsp_bkg(set.channel, bkg_spin);
         auto mass = ToString(mass_entry);
-        std::ofstream of("InformationTable_"+ToString(mass)+"_"+std::to_string(args.set())+"_"+std::to_string(args.number_sets())+args.tree_name()+".csv", std::ofstream::out);
+        std::ofstream of("InformationTable_"+ToString(mass)+"_"+std::to_string(args.set())+"_"+std::to_string(args.number_sets())
+                         +set.channel+"_spin"+spin+".csv", std::ofstream::out);
         of<<"Var_1"<<","<<"Var_2"<<","<<"JSD_ND"<<","<<"JSD_12-(JSD_1+JSD_2)"<<","<<"ScaledMI_Signal_12" <<","<<"ScaledMI_Bkg_12"<<","<<"selected"<<","<<","<<"eliminated by"<<std::endl;
-        for(auto& entry : JSDivergenceSB.at(mass_entry)){
+        for(auto& entry : JSDivergenceSB.at(set).at(mass_entry)){
              if (entry.first.size() == 1){
                  auto name_1 = entry.first.at(0);
                  bool selected_1 = selected.count(name_1);
-                 of<<name_1<<","<<"   "<<","<<JSDivergenceSB.at(mass_entry).at(name_1)<<","<<","<<","<<","<<selected_1;
+                 if (!JSDivergenceSB.at(set).at(mass_entry).count(name_1)) continue;
+                 of<<name_1<<","<<"   "<<","<<JSDivergenceSB.at(set).at(mass_entry).at(name_1)<<","<<","<<","<<","<<selected_1;
                  if(eliminated.count(name_1)) of<<","<<","<<eliminated.at(name_1);
                  of<<std::endl;
              }
@@ -224,9 +253,10 @@ public:
                  auto name_2 = entry.first.at(1);
                  bool selected_1 = selected.count(name_1);
                  bool selected_2 = selected.count(name_2);
-                 of<<name_1<<","<<name_2<<","<<JSDivergenceSB.at(mass_entry).at(entry.first)<<","
-                  <<JSDivergenceSB.at(mass_entry).at(entry.first)-(JSDivergenceSB.at(mass_entry).at(name_1)+JSDivergenceSB.at(mass_entry).at(name_2))
-                  <<","<<mutual_matrix.at(mass_entry).at(entry.first)<<","<<mutual_matrix.at(SampleType::Bkg_TTbar).at(entry.first)<<","<<selected_1<<","<<selected_2;
+                 if (!mutual_matrix.at(set).at(mass_entry).count(entry.first) || !mutual_matrix.at(chsp_bkg).at(SampleType::Bkg_TTbar).count(entry.first)) continue;
+                 of<<name_1<<","<<name_2<<","<<JSDivergenceSB.at(set).at(mass_entry).at(entry.first)<<","
+                  <<JSDivergenceSB.at(set).at(mass_entry).at(entry.first)-(JSDivergenceSB.at(set).at(mass_entry).at(name_1)+JSDivergenceSB.at(set).at(mass_entry).at(name_2))
+                  <<","<<mutual_matrix.at(set).at(mass_entry).at(entry.first)<<","<<mutual_matrix.at(chsp_bkg).at(SampleType::Bkg_TTbar).at(entry.first)<<","<<selected_1<<","<<selected_2;
                  if(eliminated.count(name_1)) of<<","<<eliminated.at(name_1);
                  if(eliminated.count(name_2)) of<<","<<eliminated.at(name_2);
                  of<<std::endl;
@@ -235,8 +265,14 @@ public:
         of.close();
     }
 
-    void CreateMatrixIntersection(const SampleIdSetNamesVar& mass_selected) const
+    void CreateMatrixIntersection(const SampleIdSetNamesVar& mass_selected, const ChannelSpin& set) const
     {
+        std::string spin;
+        if (set.spin == 0) spin = "Radion";
+        else if (set.spin == 2) spin = "Graviton";
+        else if (set.spin == SM_spin) spin = "SM";
+        else if (set.spin == bkg_spin) spin = "Bkg";
+        auto directory_set = root_ext::GetDirectory(*outfile, set.channel+spin);
         std::cout << std::endl << "Intersection" << std::endl;
         int bin = static_cast<int>(mass_selected.size());
         auto matrix_intersection = std::make_shared<TH2D>("Intersection", "Intersection of variables", bin, 0, bin, bin, 0, bin);
@@ -257,129 +293,159 @@ public:
             }
             k++;
         }
-        root_ext::WriteObject(*matrix_intersection, outfile.get());;
+        root_ext::WriteObject(*matrix_intersection, directory_set);;
     }
 
-    void VariablesSelection() const
+    void VariablesSelection(const ChannelSpin& set) const
     {
         SampleIdSetNamesVar mass_selected;
-        std::ofstream ofs("SelectedVariable_"+std::to_string(args.set())+"_"+std::to_string(args.number_sets())+args.tree_name()+".csv", std::ofstream::out);
-        for (const auto& mass_entry : samples_mass){
+        std::string spin;
+        if (set.spin == 0) spin = "Radion";
+        else if (set.spin == 2) spin = "Graviton";
+        else if (set.spin == SM_spin) spin = "SM";
+        else spin = "Bkg";
+        std::ofstream ofs("SelectedVariable_"+std::to_string(args.set())+"_"+std::to_string(args.number_sets())
+                          +set.channel+"_spin"+spin+".csv", std::ofstream::out);
+        for (const auto& mass_entry : samples_mass.at(set)){
             if (mass_entry.first.IsBackground())
                 continue;
             ofs << ToString(mass_entry.first) << std::endl;
             std::cout << ToString(mass_entry.first) << " " << std::flush;
             std::map<std::string, std::string> eliminated;
-            mass_selected[mass_entry.first] =  FindBestVariables(mass_entry.first, eliminated);
+            mass_selected[mass_entry.first] =  FindBestVariables(mass_entry.first, eliminated, set);
             for(auto& entry_selected: mass_selected[mass_entry.first]){
                     ofs << entry_selected<<",";
             }
             ofs << std::endl;
-            InformationTable(mass_entry.first, mass_selected.at(mass_entry.first), eliminated);
+
+            InformationTable(mass_entry.first, mass_selected.at(mass_entry.first), eliminated, set);
         }
-        CreateMatrixIntersection(mass_selected);
+        CreateMatrixIntersection(mass_selected, set);
     }
 
-    void LoadData()
+    void LoadSkimmedData(const ChannelSpin& set)
     {
-        for(const SampleEntry& entry : samples)
+        std::cout << set.channel << set.spin <<std::endl;
+        for(const SampleEntry& entry:samples)
         {
-            if ( entry.channel != "" && args.tree_name() != entry.channel ) continue;
+            if ( entry.spin != set.spin) continue;
             auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
-            EventTuple tuple(args.tree_name(), input_file.get(), true, {} , GetMvaBranches());
+            auto tuple = ntuple::CreateEventTuple(set.channel, input_file.get(), true, ntuple::TreeState::Skimmed);
             Long64_t tot_entries = 0;
-            for(Long64_t current_entry = 0; tot_entries < args.number_events() && current_entry < tuple.GetEntries(); ++current_entry) {
-                tuple.GetEntry(current_entry);
-                const Event& event = tuple.data();
-                if (static_cast<EventEnergyScale>(event.eventEnergyScale) != EventEnergyScale::Central || (event.q_1+event.q_2) != 0 || event.jets_p4.size() < 2
-                    || event.extraelec_veto == true || event.extramuon_veto == true || event.jets_p4[0].eta() > cuts::btag_2016::eta
-                    || event.jets_p4[1].eta() > cuts::btag_2016::eta)
-                    continue;
-                auto bb = event.jets_p4[0] + event.jets_p4[1];
-                if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideEllipse(event.SVfit_p4.mass(), bb.mass()))
-                    continue;
+            for(const Event& event : *tuple) {
+                if(tot_entries >= args.number_events()) break;
+                if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
+                if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
+                vars.AddEvent(event, entry.id, entry.spin, set.channel, entry.weight);
                 tot_entries++;
-                vars.AddEvent(event, entry.id, entry.weight);
             }
             std::cout << entry << " number of events: " << tot_entries << std::endl;
         }
+        samples_mass[set] = vars.GetSampleVariables(set.channel, set.spin);
+
         TimeReport();
-        samples_mass = vars.GetSampleVariables(args.set());
-    }
-
-    void Run()
-    {
-        run::ThreadPull threads(args.number_threads());
-        LoadData();
-
-        std::cout << "n.variabili: " << samples_mass.at(SampleType::Bkg_TTbar).size() << std::endl;
-        std::cout << "n.masse segnale: " << samples_mass.size() - 1 << " + " << 1 << " fondo."<<std::endl;
-        std::cout << "Bandwidth and Mutual Information" << std::endl;
-        auto directory_mutinf = root_ext::GetDirectory(*outfile, "MutualInformation");
-        auto directory_jensenshannon =root_ext::GetDirectory(*outfile, "JensenShannonDivergence");
-        auto directory_jenshan_sgnlbkg = root_ext::GetDirectory(*directory_jensenshannon, "Signal_Background");
-        auto directory_jenshan_distrib = root_ext::GetDirectory(*directory_jenshan_sgnlbkg,"Distribution");
-
-        for (const auto& sample: samples_mass){
-            std::cout<<"----"<<ToString(sample.first)<<"----"<<" entries: "<<sample.second.at("pt_l1").size()<<std::endl;
-            std::cout<<"correlation  " << std::flush;
-            correlation_matrix[sample.first] = Correlation(sample.second);
-            std::cout<<"bandwidth  "<<std::flush;
-            bandwidth[sample.first] = OptimalBandwidth(sample.second);
-            std::cout<<"mutual  "<< std::flush;
-            mutual_matrix[sample.first] = Mutual(sample.second, bandwidth.at(sample.first));
-            if (sample.first.sampleType == SampleType::Bkg_TTbar){
-                TimeReport();
-                continue;
-            }
-            std::cout<<"mutual plot  "<< std::flush;
-            MutualHisto(sample.first, mutual_matrix.at(sample.first), mutual_matrix.at(SampleType::Bkg_TTbar), directory_mutinf);
-            std::cout<<"JSD_sgn_bkg  "<< std::flush;
-            JSDivergenceSB[sample.first] = JensenDivergenceSB(sample.second, samples_mass.at(SampleType::Bkg_TTbar), bandwidth.at(sample.first), bandwidth.at(SampleType::Bkg_TTbar));
-            DistributionJSD_SB(sample.first, directory_jenshan_distrib);
-            TimeReport();
-        }
-        std::cout <<"Mutual histos" << std::endl;
-        auto directory_mutinf_matrix = root_ext::GetDirectory(*directory_mutinf, "Matrix");
-        CreateMatrixHistos(samples_mass, mutual_matrix, "MI", directory_mutinf_matrix);
-        std::cout <<"Correlation histos" << std::endl;
-        auto directory_correlation = root_ext::GetDirectory(*outfile, "Correlation");
-        CreateMatrixHistos(samples_mass, correlation_matrix, "correlation", directory_correlation, true);
-
-        auto directory_mi_corr = root_ext::GetDirectory(*outfile, "MI_Correlation");
-        for(const auto& sample : samples_mass){
-            std::string mass ="MI_Correlation_"+ToString(sample.first);
-            auto histo = std::make_shared<TH2D>(mass.c_str(), mass.c_str(),50,0,1,50,0,1);
-            histo->SetXTitle("1-MI");
-            histo->SetYTitle("Correlation");
-            for (const auto& pair: mutual_matrix.at(sample.first)){
-                histo->Fill(pair.second, std::abs(correlation_matrix.at(sample.first).at(pair.first)));
-            }
-            root_ext::WriteObject(*histo, directory_mi_corr);
-        }
-        auto directory_jenshan_matrix = root_ext::GetDirectory(*directory_jenshan_sgnlbkg, "Matrix");
-        CreateMatrixHistos(samples_mass, JSDivergenceSB, "JSD", directory_jenshan_matrix);
-        std::cout<<"Plot Jensen Shannon"<<std::endl;
-        auto directory_jenshan_allvars = root_ext::GetDirectory(*directory_jenshan_sgnlbkg, "All_variables");
-        PlotJensenShannonSB(directory_jenshan_allvars);
-
-        std::cout<<"Signal Compatibility Jensen Shannon  "<<std::flush;
-        auto directory_jenshan_sgnlsgnl = root_ext::GetDirectory(*directory_jensenshannon, "Signal_Signal");
-        JensenShannonSignalCompatibility(directory_jenshan_sgnlsgnl);
-        TimeReport();
-        std::cout<<"Signal Compatibility Kolmogorov"<<std::flush;
-        auto directory_ks = root_ext::GetDirectory(*outfile, "Kolmogorov");
-        KolmogorovSignalCompatibility(directory_ks);
-        TimeReport();
-
-        std::cout<<"Selection variables"<<std::endl;
-        VariablesSelection();
-        TimeReport(true);
     }
 
     void TimeReport(bool tot = false) const
     {
         reporter->TimeReport(tot);
+    }
+
+    void Run()
+    {
+        run::ThreadPull threads(args.number_threads());
+
+        std::cout << "Bandwidth, Mutual Information, JensenShannon" << std::endl;
+        for (const auto& s: set){
+            std::cout<<s.channel<< "  " << s.spin<<std::endl;
+            LoadSkimmedData(s);
+            for (const auto& sample: samples_mass[s]){
+                std::cout<<"----"<<sample.first.sampleType<<"   "<<sample.first.mass<<"----"<<" entries: "<<sample.second.at("pt_l1").size()<<std::endl;
+                std::stringstream ss;
+                ss << std::fixed << std::setprecision(0) << s.spin;
+                std::string spin = ss.str();
+                bandwidth[s][sample.first] = Read_csvfile(args.optband_folder()+"/OptimalBandwidth"+ToString(sample.first)+"_"+s.channel+"_spin"+spin+".csv");
+                mutual_matrix[s][sample.first] = Read_csvfile(args.mutual_folder()+"/MutualInformationDistance"+ToString(sample.first)+"_"+s.channel+"_spin"+spin+".csv");
+                JSDivergenceSB[s][sample.first] = Read_csvfile(args.jsd_folder()+"/JensenShannonDivergenceSB"+ToString(sample.first)+"_"+s.channel+"_spin"+spin+".csv");
+            }
+        }
+
+        for (const auto& s: set){
+            std::string spin;
+            if (s.spin == 0) spin = "Radion";
+            else if (s.spin == 2) spin = "Graviton";
+            else if (s.spin == SM_spin) spin = "SM";
+            else spin = "Bkg";
+            ChannelSpin chsp_bkg(s.channel, bkg_spin);
+            std::cout << s.channel << "  " << spin << std::endl;
+
+            auto directory_set = root_ext::GetDirectory(*outfile, s.channel+spin);
+
+            auto directory_mutinf = root_ext::GetDirectory(*directory_set, "MutualInformation");
+            auto directory_jensenshannon =root_ext::GetDirectory(*directory_set, "JensenShannonDivergence");
+            auto directory_jenshan_sgnlbkg = root_ext::GetDirectory(*directory_jensenshannon, "Signal_Background");
+            auto directory_jenshan_distrib = root_ext::GetDirectory(*directory_jenshan_sgnlbkg,"Distribution");
+
+            for (const auto& sample: samples_mass[s]){
+                std::cout<<"----"<<ToString(sample.first)<<"----"<<" entries: "<<sample.second.at("pt_l1").size()<<std::endl;
+                std::cout<<"correlation  " << std::flush;
+                correlation_matrix[s][sample.first] = Correlation(sample.second);
+                if (sample.first.sampleType == SampleType::Bkg_TTbar){
+                    TimeReport();
+                    continue;
+                }
+                std::cout<<"mutual plot  "<< std::flush;
+                MutualHisto(sample.first, mutual_matrix.at(s).at(sample.first), mutual_matrix.at(chsp_bkg).at(SampleId{SampleType::Bkg_TTbar,0}), directory_mutinf);
+                std::cout<<"JSD_sgn_bkg  "<< std::flush;
+                DistributionJSD_SB(sample.first, directory_jenshan_distrib, s);
+                TimeReport();
+            }
+
+
+
+
+            std::cout <<"Mutual histos" << std::endl;
+            auto directory_mutinf_matrix = root_ext::GetDirectory(*directory_mutinf, "Matrix");
+            CreateMatrixHistos(samples_mass.at(s), mutual_matrix.at(s), "MI", directory_mutinf_matrix);
+            std::cout <<"Correlation histos" << std::endl;
+            auto directory_correlation = root_ext::GetDirectory(*directory_set, "Correlation");
+            CreateMatrixHistos(samples_mass.at(s), correlation_matrix.at(s), "correlation", directory_correlation, true);
+
+            std::cout <<"MI-Correlation histos" << std::endl;
+            auto directory_mi_corr = root_ext::GetDirectory(*directory_set, "MI_Correlation");
+            for(const auto& sample : samples_mass.at(s)){
+                std::string mass ="MI_Correlation_"+ToString(sample.first);
+                auto histo = std::make_shared<TH2D>(mass.c_str(), mass.c_str(),50,0,1,50,0,1);
+                histo->SetXTitle("MID");
+                histo->SetYTitle("Correlation");
+                for (const auto& pair: mutual_matrix.at(s).at(sample.first)){
+                    if (!correlation_matrix.at(s).at(sample.first).count(pair.first)) continue;
+                    histo->Fill(pair.second, std::abs(correlation_matrix.at(s).at(sample.first).at(pair.first)));
+                }
+                root_ext::WriteObject(*histo, directory_mi_corr);
+            }
+            auto directory_jenshan_matrix = root_ext::GetDirectory(*directory_jenshan_sgnlbkg, "Matrix");
+            std::cout <<"JSD histos" << std::endl;
+            CreateMatrixHistos(samples_mass.at(s), JSDivergenceSB.at(s), "JSD", directory_jenshan_matrix);
+            std::cout<<"Plot Jensen Shannon"<<std::endl;
+            auto directory_jenshan_allvars = root_ext::GetDirectory(*directory_jenshan_sgnlbkg, "All_variables");
+            PlotJensenShannonSB(directory_jenshan_allvars,s);
+
+            if (s.spin == 0 || s.spin == 2){
+                std::cout<<"Signal Compatibility Jensen Shannon  "<<std::flush;
+                auto directory_jenshan_sgnlsgnl = root_ext::GetDirectory(*directory_jensenshannon, "Signal_Signal");
+                JensenShannonSignalCompatibility(directory_jenshan_sgnlsgnl,s);
+                TimeReport();
+                std::cout<<"Signal Compatibility Kolmogorov"<<std::flush;
+                auto directory_ks = root_ext::GetDirectory(*directory_set, "Kolmogorov");
+                KolmogorovSignalCompatibility(directory_ks,s);
+                TimeReport();
+            }
+            if (s.spin == SM_spin) continue;
+            std::cout<<"Selection variables"<<std::endl;
+            VariablesSelection(s);
+        }
+        TimeReport(true);
     }
 
 private:

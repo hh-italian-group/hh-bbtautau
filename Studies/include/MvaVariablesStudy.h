@@ -13,12 +13,24 @@ using DataVector = std::vector<double>;
 using VarData = std::map<std::string, DataVector>;
 using SampleIdVarData = std::map<SampleId, VarData>;
 
+struct ChannelSpin{
+    std::string channel;
+    int spin;
+
+    ChannelSpin(std::string _channel, int _spin) : channel(_channel), spin(_spin) {}
+
+    bool operator<(const ChannelSpin& x) const
+    {
+        if (channel != x.channel) return channel < x.channel;
+        return spin < x.spin;
+    }
+};
 
 class MvaVariablesStudy : public MvaVariables {
 private:
     std::map<std::string, double> variables;
     using SplittedSampleIdVarData = std::map<size_t, SampleIdVarData>;
-    SplittedSampleIdVarData all_variables;
+    std::map<ChannelSpin,SplittedSampleIdVarData> all_variables;
 
 public:
     using MvaVariables::MvaVariables;
@@ -27,9 +39,10 @@ public:
         variables[name] = value;
     }
 
-    virtual void AddEventVariables(size_t set, const SampleId& mass,  double /*weight*/) override
+    virtual void AddEventVariables(size_t set, const SampleId& mass,  double /*weight*/, double /*sampleweight*/, int spin, std::string channel) override
     {
-        VarData& sample_vars = all_variables[set][mass];
+        ChannelSpin chsp(channel,spin);
+        VarData& sample_vars = all_variables[chsp][set][mass];
         for(const auto& name_value : variables) {
             const std::string& name = name_value.first;
             const double value = name_value.second;
@@ -37,24 +50,17 @@ public:
         }
     }
 
-    const SampleIdVarData& GetSampleVariables(size_t set = 0) const
+    const SampleIdVarData& GetSampleVariables(std::string channel, int spin, size_t set = 0) const
     {
         if(set >= all_variables.size())
             throw exception("Sample part is out of range.");
-        return all_variables.at(set);
+        ChannelSpin chsp(channel,spin);
+        return all_variables.at(chsp).at(set);
     }
 
     virtual std::shared_ptr<TMVA::Reader> GetReader() override {throw exception ("GetReader not supported.");}
 };
 
-inline const std::set<std::string>& GetMvaBranches()
-{
-    static const std::set<std::string> EnabledBranches_read = {
-        "eventEnergyScale", "q_1", "q_2", "jets_p4", "extraelec_veto", "extramuon_veto ", "SVfit_p4",
-        "pfMET_p4", "p4_1", "p4_2", "channelId"
-    };
-    return EnabledBranches_read;
-}
 
 struct Name_ND{
 private:
@@ -62,6 +68,8 @@ private:
 
 public:
     using const_iterator = std::set<std::string>::const_iterator;
+
+    Name_ND() {}
 
     Name_ND(const std::string& name) { names.insert(name); }
     Name_ND(std::initializer_list<std::string> _names) : names(_names.begin(), _names.end()){}
@@ -121,5 +129,13 @@ public:
         return ss.str();
     }
 };
+
+inline std::ostream& operator<<(std::ostream& os, const Name_ND& name)
+{
+    if(name.size() > 0){
+        os << name.ToString(",");
+    }
+    return os;
+}
 }
 }
