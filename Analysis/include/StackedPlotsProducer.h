@@ -1,4 +1,4 @@
-/*! Definition of BaseEventAnalyzer class, the base class for event analyzers.
+/*! Definition of the stacked prots producer.
 This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #pragma once
@@ -72,7 +72,8 @@ public:
     }
 
     void PrintStackedPlots(const std::string& outputFileNamePrefix, const EventRegion& eventRegion,
-                           const EventCategorySet& eventCategories, const EventSubCategorySet& eventSubCategories) const
+                           const EventCategorySet& eventCategories,
+                           const EventSubCategorySet& eventSubCategories, const std::set<std::string>& signals) const
     {
         const std::string blindCondition = isBlind ? "_blind" : "_noBlind";
         const std::string ratioCondition = drawRatio ? "_ratio" : "_noRatio";
@@ -95,25 +96,22 @@ public:
                                                           ToString(eventCategory), drawRatio, false);
 
                     for(const Sample* sample : samples) {
-                        const auto& drawList = sample->GetDrawList();
-                        for(const auto& item : drawList) {
-                            const std::string& item_name = item.first;
-                            const root_ext::Color& color = item.second;
+                        for(const Sample::Point& item : sample->working_points) {
+                            if(!item.draw) continue;
+                            const std::string& item_name = item.full_name;
+                            const root_ext::Color& color = item.color;
                             const auto histogram = GetHistogram(anaDataMetaId, item_name, hist_name);
                             if(!histogram) continue;
 
-                            if((sample->categoryType == DataCategoryType::Signal
-                                    || sample->categoryType == DataCategoryType::Signal_SM)
-                                    && eventCategory == EventCategory::TwoJets_Inclusive()) continue;
-                            else if(sample->categoryType == DataCategoryType::Signal
-                                    || sample->categoryType == DataCategoryType::Signal_SM)
+                            if(signals.count(sample->name) && eventCategory == EventCategory::TwoJets_Inclusive())
+                                continue;
+                            else if(signals.count(sample->name))
                                 stackDescriptor.AddSignalHistogram(*histogram, sample->title, color, sample->draw_sf);
-                            else if(sample->categoryType == DataCategoryType::Background
-                                    || sample->categoryType == DataCategoryType::DataDrivenBkg)
-                                stackDescriptor.AddBackgroundHistogram(*histogram, sample->title, color);
-                            else if(sample->categoryType == DataCategoryType::Data)
+                            else if(sample->sampleType == SampleType::Data)
                                 stackDescriptor.AddDataHistogram(*histogram, sample->title, isBlind,
                                                                  GetBlindRegion(subCategory, hist_name));
+                            else
+                                stackDescriptor.AddBackgroundHistogram(*histogram, sample->title, color);
                         }
                     }
 

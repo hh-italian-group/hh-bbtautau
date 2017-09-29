@@ -385,14 +385,14 @@ public:
             auto name = options.GetName(point)+"_"+std::to_string(args.seed());
             mva_tuple().name = name;
 
-            for (const auto val : options.GetOptionNames()){
+            for (const auto& val : options.GetOptionNames()){
                 mva_tuple().param_names.push_back(val.first);
                 mva_tuple().param_positions.push_back(val.second);
                 mva_tuple().param_values.push_back(options.GetNumericValue(point, val.first));
             }
 
 
-            for (const auto entry : sign[name]){
+            for (const auto& entry : sign[name]){
                 mva_tuple().optimal_cut.push_back(entry.second.first);
                 mva_tuple().significance.push_back(entry.second.second.GetValue());
                 mva_tuple().significance_err.push_back(entry.second.second.GetFullError());

@@ -9,11 +9,9 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 namespace analysis {
 
-enum class DataCategoryType { Signal, Signal_SM, Background, DataDrivenBkg, Data };
-ENUM_NAMES(DataCategoryType) = {
-    { DataCategoryType::Signal, "Signal" }, { DataCategoryType::Signal_SM, "Signal_SM" },
-    { DataCategoryType::Background, "Background" }, { DataCategoryType::DataDrivenBkg, "DataDrivenBkg" },
-    { DataCategoryType::Data, "Data" },
+enum class SampleType { Data, MC, DY, QCD };
+ENUM_NAMES(SampleType) = {
+    { SampleType::Data, "Data" }, { SampleType::MC, "MC" }, { SampleType::DY, "DY" }, { SampleType::QCD, "QCD" }
 };
 
 struct EventRegion {

@@ -33,7 +33,6 @@ public:
     using PlotsProducer = ::analysis::StackedPlotsProducer<FirstLeg, SecondLeg>;
 
     static constexpr Channel ChannelId() { return ChannelInfo::IdentifyChannel<FirstLeg, SecondLeg>(); }
-    static const std::string& ChannelName() { return __Channel_names<>::names.EnumToString(ChannelId()); }
     static const std::string& ChannelNameLatex() { return __Channel_names_latex.EnumToString(ChannelId()); }
 
     virtual const EventCategorySet& EventCategoriesToProcess() const
@@ -131,7 +130,7 @@ public:
         SampleDescriptorConfigEntryReader sample_entry_reader(sample_descriptors);
         config_reader.AddEntryReader("SAMPLE", sample_entry_reader, true);
 
-        CombineSampleDescriptorConfigEntryReader combine_entry_reader(combine_descriptors,sample_descriptors);
+        CombineSampleDescriptorConfigEntryReader combine_entry_reader(cmb_sample_descriptors,sample_descriptors);
         config_reader.AddEntryReader("SAMPLE_CMB", combine_entry_reader, false);
 
         config_reader.ReadConfig(args.sources());
@@ -139,6 +138,8 @@ public:
         if(!ana_setup_collection.count(args.setup()))
             throw exception("Setup '%1%' not found in the configuration file '%2%'.") % args.setup() % args.sources();
         ana_setup = ana_setup_collection.at(args.setup());
+
+        RemoveUnusedSamples();
     }
 
     virtual ~BaseEventAnalyzer() {}
@@ -146,17 +147,18 @@ public:
     void Run()
     {
         ProcessSamples(ana_setup.signals, "signals");
-        ProcessSamples(ana_setup.backgrounds, "backgrounds");
         ProcessSamples(ana_setup.data, "data");
+        ProcessSamples(ana_setup.backgrounds, "backgrounds");
 
         if(args.draw()) {
             std::cout << "Creating plots..." << std::endl;
             const auto samplesToDraw = PlotsProducer::CreateOrderedSampleCollection(
-                        ana_setup.draw_sequence, sample_descriptors, combine_descriptors, ana_setup.signals,
+                        ana_setup.draw_sequence, sample_descriptors, cmb_sample_descriptors, ana_setup.signals,
                         ana_setup.data);
             PlotsProducer plotsProducer(anaDataCollection, samplesToDraw, false, true);
+            std::set<std::string> signal_names(ana_setup.signals.begin(), ana_setup.signals.end());
             plotsProducer.PrintStackedPlots(args.output(), EventRegion::SignalRegion(), EventCategoriesToProcess(),
-                                            EventSubCategoriesToProcess());
+                                            EventSubCategoriesToProcess(), signal_names);
         }
 
         std::cout << "Saving output file..." << std::endl;
@@ -168,31 +170,36 @@ protected:
     void ProcessSamples(const std::vector<std::string>& sample_names, const std::string& sample_set_name)
     {
         std::cout << "Processing " << sample_set_name << " samples... " << std::endl;
-        for(const auto& sample_name : sample_names) {
+        for(size_t sample_index = 0; sample_index < sample_names.size(); ++sample_index) {
+            const std::string& sample_name = sample_names.at(sample_index);
             if(!sample_descriptors.count(sample_name))
                 throw exception("Sample '%1%' not found.") % sample_name;
-            const SampleDescriptor& sample = sample_descriptors.at(sample_name);
+            SampleDescriptor& sample = sample_descriptors.at(sample_name);
             if(sample.channels.size() && !sample.channels.count(ChannelId())) continue;
             std::cout << sample.name << std::endl;
-            std::vector<std::pair<std::string, std::string>> fileNames;
-            for(const auto& file : sample.file_paths)
-                fileNames.emplace_back(sample.name, file);
-            for(size_t n = 0; n < sample.GetNSignalPoints(); ++n)
-                fileNames.emplace_back(sample.GetFullName(n), sample.GetFileName(n));
-            for(const auto& fileEntry : fileNames) {
-                auto file = root_ext::OpenRootFile(tools::FullPath({args.input(), fileEntry.second}));
-                auto tuple = ntuple::CreateEventTuple(ChannelName(), file.get(), true,
+            sample.CreateWorkingPoints();
+            if(sample.sampleType == SampleType::QCD) {
+                if(sample_index != sample_names.size() - 1)
+                    throw exception("QCD sample should be the last in the background list.");
+                EstimateQCD(sample);
+                continue;
+            }
+            std::set<std::string> processed_files;
+            for(const auto& sample_wp : sample.working_points) {
+                if(!sample_wp.file_path.size() || processed_files.count(sample_wp.file_path)) continue;
+                auto file = root_ext::OpenRootFile(tools::FullPath({args.input(), sample_wp.file_path}));
+                auto tuple = ntuple::CreateEventTuple(ToString(ChannelId()), file.get(), true,
                                                       ntuple::TreeState::Skimmed);
                 auto summary_tuple = ntuple::CreateSummaryTuple("summary", file.get(), true,
                                                                 ntuple::TreeState::Skimmed);
                 const auto prod_summary = ntuple::MergeSummaryTuple(*summary_tuple);
-                ProcessDataSource(sample, tuple, prod_summary, fileEntry.first);
+                ProcessDataSource(sample, sample_wp, tuple, prod_summary);
             }
         }
     }
 
-    void ProcessDataSource(const SampleDescriptor& sample, std::shared_ptr<ntuple::EventTuple> tuple,
-                           const ntuple::ProdSummary& prod_summary, const std::string& full_name)
+    void ProcessDataSource(const SampleDescriptor& sample, const SampleDescriptor::Point& sample_wp,
+                           std::shared_ptr<ntuple::EventTuple> tuple, const ntuple::ProdSummary& prod_summary)
     {
         const SummaryInfo summary(prod_summary);
         for(const auto& tupleEvent : *tuple) {
@@ -208,12 +215,69 @@ protected:
                 for(const auto& subCategory : EventSubCategoriesToProcess()) {
                     if(!eventSubCategory.Implies(subCategory)) continue;
                     const EventAnalyzerDataId anaDataId(eventCategory, subCategory, eventRegion,
-                                                     event.GetEnergyScale(), full_name);
-                    const double weight = sample.categoryType == DataCategoryType::Data ? 1
-                        : event->weight_total * sample.cross_section * ana_setup.int_lumi / summary->totalShapeWeight;
-                    anaDataCollection.Fill(anaDataId, event, weight);
+                                                        event.GetEnergyScale(), sample_wp.full_name);
+                    if(sample.sampleType == SampleType::Data) {
+                        anaDataCollection.Fill(anaDataId, event, 1);
+                    } else {
+                        const double weight = event->weight_total * sample.cross_section * ana_setup.int_lumi
+                                            / summary->totalShapeWeight;
+                        if(sample.sampleType == SampleType::MC)
+                            anaDataCollection.Fill(anaDataId, event, weight);
+                        else
+                            ProcessSpecialEvent(sample, sample_wp, anaDataId, event, weight);
+                    }
                 }
             }
+        }
+    }
+
+    virtual void EstimateQCD(const SampleDescriptor& /*qcd_sample*/)
+    {
+        // TODO: implement QCD estimation.
+    }
+
+    virtual void ProcessSpecialEvent(const SampleDescriptor& /*sample*/, const SampleDescriptor::Point& /*sample_wp*/,
+                                     const EventAnalyzerDataId& anaDataId, EventInfo& event, double weight)
+    {
+        // TODO: implement DY estimation.
+        anaDataCollection.Fill(anaDataId, event, weight);
+    }
+
+    template<typename SampleCollection>
+    static std::vector<std::string> FilterInactiveSamples(const SampleCollection& samples,
+                                                          const std::vector<std::string>& sample_names)
+    {
+        std::vector<std::string> filtered;
+        for(const auto& name : sample_names) {
+            if(!samples.count(name))
+                throw exception("Sample '%1%' not found.") % name;
+            const auto& sample = samples.at(name);
+            if(sample.channels.size() && !sample.channels.count(ChannelId())) continue;
+            filtered.push_back(name);
+        }
+        return filtered;
+    }
+
+    void RemoveUnusedSamples()
+    {
+        RemoveUnusedSamples(sample_descriptors, { &ana_setup.signals, &ana_setup.backgrounds, &ana_setup.data });
+        RemoveUnusedSamples(cmb_sample_descriptors, { &ana_setup.cmb_samples });
+    }
+
+    template<typename SampleCollection>
+    void RemoveUnusedSamples(SampleCollection& samples,
+                             const std::vector< std::vector<std::string>*> selected_sample_names) const
+    {
+        std::set<std::string> used_samples;
+        for(auto selected_collection : selected_sample_names) {
+            *selected_collection = FilterInactiveSamples(samples, *selected_collection);
+            used_samples.insert(selected_collection->begin(), selected_collection->end());
+        }
+
+        const std::set<std::string> all_sample_names = tools::collect_map_keys(samples);
+        for(const auto& sample_name : all_sample_names) {
+            if(!used_samples.count(sample_name))
+                samples.erase(sample_name);
         }
     }
 
@@ -222,7 +286,7 @@ protected:
     AnaDataCollection anaDataCollection;
     AnalyzerSetup ana_setup;
     SampleDescriptorCollection sample_descriptors;
-    CombineSampleDescriptorCollection combine_descriptors;
+    CombineSampleDescriptorCollection cmb_sample_descriptors;
 };
 
 } // namespace analysis
