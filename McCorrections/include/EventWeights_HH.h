@@ -19,10 +19,7 @@ public:
         if(period != Period::Run2016)
             throw exception("Period %1% is not supported.") % period;
         providers[WeightType::DY] = std::make_shared<NJets_HT_weight>("DY", Full_Cfg_Name("dyjets_weights.cfg"));
-        providers[WeightType::TTbar] = std::shared_ptr<TTbar_weight_multiChannel>(new TTbar_weight_multiChannel
-                    { { Channel::ETau, Full_Cfg_Name("ttbar_weights_eTau.cfg") },
-                      { Channel::MuTau, Full_Cfg_Name("ttbar_weights_muTau.cfg") },
-                      { Channel::TauTau, Full_Cfg_Name("ttbar_weights_tauTau.cfg") } });
+        providers[WeightType::TTbar] = std::make_shared<TTbar_weight>(Full_Cfg_Name("ttbar_weights_full.cfg"));
         providers[WeightType::BSM_to_SM] = std::make_shared<HH_BMStoSM_weight>(
                     FullBSMtoSM_Name("weight_SM.root"), "weight_node_BSM");
         providers[WeightType::Wjets] = std::make_shared<NJets_HT_weight>("Wjets", Full_Cfg_Name("wjets_weights.cfg"));
