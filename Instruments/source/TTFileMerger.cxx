@@ -27,6 +27,7 @@ public:
     using GenEventTypeMap = std::map<GenEventType, double>;
     using VectorSampleDescriptor = std::vector<SampleDescriptor<TTBinDescriptor, GenEventTypeMap>>;
     using VectorDYBinDescriptor = std::vector<TTBinDescriptor>;
+
     TTFileMerger(const Arguments& _args) : args(_args)
     {
         LoadInputs();
@@ -34,7 +35,6 @@ public:
     }
 
 public:
-
     void Run()
     {
         for(auto& output_bin : output_bins)
@@ -44,16 +44,7 @@ public:
         TTBinDescriptor::SaveCfg(args.output_file(), output_bins);
     }
 
-
 private:
-    SampleDescriptor<TTBinDescriptor, GenEventTypeMap> global_map;
-    SampleDescriptor<TTBinDescriptor, GenEventTypeMap> inclusive;
-    VectorSampleDescriptor all_samples;
-    VectorDYBinDescriptor output_bins;
-    size_t totalNumerOfevents;
-    Arguments args;
-
-
     static const std::set<std::string>& GetEnabledBranches()
     {
         static const std::set<std::string> EnabledBranches_read = {
@@ -62,10 +53,8 @@ private:
         return EnabledBranches_read;
     }
 
-    
     void LoadInputs()
     {
-        size_t totalNevents = 0;
         analysis::ConfigReader config_reader;
 
         TTBinDescriptorCollection file_descriptors;
@@ -111,13 +100,12 @@ private:
 
     }
 
-
     void CalculateWeight(TTBinDescriptor& output_bin) const
     {
         double all_events = global_map.Integral(output_bin);
         double sample_contribution = inclusive.Integral(output_bin);
         // formula 2
-        
+
         PhysicalValue nu_incl(sample_contribution,
                               sqrt(sample_contribution));
         PhysicalValue weight (nu_incl.GetValue()/all_events,
@@ -131,9 +119,12 @@ private:
             throw exception("ref not found");
     }
 
-
-
-
+private:
+    SampleDescriptor<TTBinDescriptor, GenEventTypeMap> global_map;
+    SampleDescriptor<TTBinDescriptor, GenEventTypeMap> inclusive;
+    VectorSampleDescriptor all_samples;
+    VectorDYBinDescriptor output_bins;
+    Arguments args;
 };
 
 } //namespace sample_merging

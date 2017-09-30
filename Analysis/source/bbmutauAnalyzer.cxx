@@ -1,4 +1,4 @@
-/*! Analyze flat-tree for mu-tau channel for HHbbtautau analysis.
+/*! Final analysis step for the muTau channel in the HH->bbtautau analysis.
 This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include "Analysis/include/BaseEventAnalyzer.h"
