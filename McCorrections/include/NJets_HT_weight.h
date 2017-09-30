@@ -48,7 +48,6 @@ public:
         return GetWeight(event.lhe_n_partons, event.lhe_n_b_partons, event.lhe_ht10_bin);
     }
 
-private:
     double GetWeight(size_t n_partons, size_t n_b_partons, size_t ht_bin) const
     {
         auto njet_iter = weight_map.find(n_partons);

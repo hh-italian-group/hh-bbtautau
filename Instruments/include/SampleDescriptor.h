@@ -35,7 +35,7 @@ struct SampleDescriptor {
     {
         size_t total_n_events = 0;
         for (const auto& genEventCount : gen_counts){
-            const size_t nevents = genEventCount.second;
+            const size_t nevents = static_cast<size_t>(genEventCount.second);
             total_n_events += nevents;
         }
         return total_n_events;

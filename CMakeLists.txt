@@ -1,5 +1,5 @@
 project(hh-bbtautau)
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.6)
 
 get_filename_component(AnalysisTools_DIR "${PROJECT_SOURCE_DIR}/../AnalysisTools" ABSOLUTE)
 include("${AnalysisTools_DIR}/cmake/include/common.cmake")
@@ -17,7 +17,7 @@ foreach(exe_name ${EXE_LIST})
     target_link_libraries("${exe_name}" HTT-utilities HHKinFit2)
 endforeach()
 
-set_target_properties(LimitConfigurationProducer bbetauAnalyzer bbmutauAnalyzer bbtautauAnalyzer BjetSelectionStudy BjetEffSF KinFitStudy PROPERTIES EXCLUDE_FROM_ALL 1)
+set_target_properties(LimitConfigurationProducer BjetSelectionStudy BjetEffSF KinFitStudy PROPERTIES EXCLUDE_FROM_ALL 1)
 
 add_library("hh-bbtautau" OBJECT ${HEADER_LIST} ${SOURCE_LIST} ${EXE_SOURCE_LIST} ${SCRIPT_LIST} ${CONFIG_LIST})
 set_target_properties("hh-bbtautau" PROPERTIES EXCLUDE_FROM_ALL 1)

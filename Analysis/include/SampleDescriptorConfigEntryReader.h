@@ -15,10 +15,17 @@ public:
 
     virtual void EndEntry() override
     {
-        CheckReadParamCounts("int_lumi", 1, Condition::equal_to);
+        CheckReadParamCounts("int_lumi", 1, Condition::less_equal);
         CheckReadParamCounts("final_variable", 0, Condition::greater_equal);
-        CheckReadParamCounts("apply_mass_cut", 1, Condition::equal_to);
-        CheckReadParamCounts("energy_scales", 0, Condition::greater_equal);
+        CheckReadParamCounts("apply_mass_cut", 1, Condition::less_equal);
+        CheckReadParamCounts("apply_os_cut", 1, Condition::less_equal);
+        CheckReadParamCounts("apply_iso_cut", 1, Condition::less_equal);
+        CheckReadParamCounts("energy_scales", 1, Condition::less_equal);
+        CheckReadParamCounts("data", 1, Condition::less_equal);
+        CheckReadParamCounts("signals", 1, Condition::less_equal);
+        CheckReadParamCounts("backgrounds", 1, Condition::less_equal);
+        CheckReadParamCounts("cmb_samples", 1, Condition::less_equal);
+        CheckReadParamCounts("draw_sequence", 1, Condition::less_equal);
 
         ConfigEntryReaderT<AnalyzerSetup>::EndEntry();
     }
@@ -29,13 +36,20 @@ public:
         ParseEntry("int_lumi", current.int_lumi);
         ParseEntry("final_variable", current.final_variables);
         ParseEntry("apply_mass_cut", current.apply_mass_cut);
+        ParseEntry("apply_os_cut", current.apply_os_cut);
+        ParseEntry("apply_iso_cut", current.apply_iso_cut);
         ParseEnumList("energy_scales", current.energy_scales);
+        ParseEntryList("data", current.data);
+        ParseEntryList("signals", current.signals);
+        ParseEntryList("backgrounds", current.backgrounds);
+        ParseEntryList("cmb_samples", current.cmb_samples);
+        ParseEntryList("draw_sequence", current.draw_sequence);
     }
 };
 
 
 template<typename Descriptor>
-class SampleDescriptorBaseConfigEntryReader : public ConfigEntryReaderT<Descriptor>, public virtual ConfigEntryReader  {
+class SampleDescriptorBaseConfigEntryReader : public ConfigEntryReaderT<Descriptor>, public virtual ConfigEntryReader {
 public:
     using Condition = ConfigEntryReader::Condition;
     using ConfigEntryReaderT<Descriptor>::ConfigEntryReaderT;
@@ -44,9 +58,9 @@ public:
     {
         CheckReadParamCounts("title", 1, Condition::less_equal);
         CheckReadParamCounts("color", 1, Condition::less_equal);
-        CheckReadParamCounts("draw", 1, Condition::less_equal);
+        CheckReadParamCounts("draw_sf", 1, Condition::less_equal);
         CheckReadParamCounts("channels", 1, Condition::less_equal);
-        CheckReadParamCounts("categoryType", 1, Condition::less_equal);
+        CheckReadParamCounts("sample_type", 1, Condition::less_equal);
         CheckReadParamCounts("datacard_name", 1, Condition::less_equal);
 
         ConfigEntryReaderT<Descriptor>::EndEntry();
@@ -57,9 +71,9 @@ public:
     {
         ParseEntry("title", this->current.title);
         ParseEntry("color", this->current.color);
-        ParseEntry("draw", this->current.draw);
+        ParseEntry("draw_sf", this->current.draw_sf);
         ParseEntryList("channels", this->current.channels);
-        ParseEntry("categoryType", this->current.categoryType);
+        ParseEntry("sample_type", this->current.sampleType);
         ParseEntry("datacard_name", this->current.datacard_name);
     }
 };
@@ -74,31 +88,25 @@ public:
 
     virtual void EndEntry() override
     {
-        CheckReadParamCounts("file_path", 0, Condition::greater_equal);
-        CheckReadParamCounts("file_path_pattern", 1, Condition::less_equal);
+        CheckReadParamCounts("name_suffix", 1, Condition::less_equal);
+        CheckReadParamCounts("file_path", 1, Condition::less_equal);
         CheckReadParamCounts("cross_section", 1, Condition::less_equal);
-        CheckReadParamCounts("signal_points", 0, Condition::greater_equal);
+        CheckReadParamCounts("points", 0, Condition::greater_equal);
         CheckReadParamCounts("draw_ex", 0, Condition::greater_equal);
         CheckReadParamCounts("norm_sf", 1, Condition::less_equal);
-        CheckReadParamCounts("datacard_name_ex", 0, Condition::greater_equal);
-
-        current.UpdateSignalPoints();
 
         Base::EndEntry();
-
-
     }
 
     virtual void ReadParameter(const std::string& param_name, const std::string& param_value,
                                std::istringstream& ss) override
     {
-        ParseEntry("file_path", current.file_paths);
-        ParseEntry("file_path_pattern", current.file_path_pattern);
+        ParseEntry("name_suffix", current.name_suffix);
+        ParseEntry("file_path", current.file_path);
         ParseEntry<double,NumericalExpression>("cross_section", current.cross_section, [](double xs){return xs > 0;});
-        ParseEntry("signal_points", current.signal_points_raw);
+        ParseMappedEntryList("points", current.points, true);
         ParseEntry("draw_ex", current.draw_ex);
         ParseEntry("norm_sf", current.norm_sf);
-        ParseEntry("datacard_name_ex", current.datacard_name_ex);
 
         Base::ReadParameter(param_name,param_value,ss);
     }
@@ -116,7 +124,7 @@ public:
 
     virtual void EndEntry() override
     {
-        CheckReadParamCounts("sample_descriptor", 0, Condition::greater_equal);
+        CheckReadParamCounts("sample_descriptors", 1, Condition::equal_to);
 
         Base::EndEntry();
 
@@ -125,7 +133,7 @@ public:
     virtual void ReadParameter(const std::string& param_name, const std::string& param_value,
                                std::istringstream& ss) override
     {
-        ParseEntry("sample_descriptor", current.sample_descriptors,
+        ParseEntryList("sample_descriptors", current.sample_descriptors, false, " \t",
                    [&](const std::string& name){return sampleDescriptorCollection->count(name);});
 
         Base::ReadParameter(param_name,param_value,ss);

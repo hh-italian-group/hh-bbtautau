@@ -52,23 +52,21 @@ public:
 
         } //end loop ana_descriptors
 
-        for (const auto& sample_descriptor : sample_descriptors){ //loop sample_descriptors
-            const SampleDescriptor sample_descriptor_element = sample_descriptor.second;
+        for (auto& sample_descriptor : sample_descriptors){ //loop sample_descriptors
+            SampleDescriptor& sample_descriptor_element = sample_descriptor.second;
             const std::string& name = sample_descriptor_element.name;
 
-            std::cout << "Sample descriptor characteristics: " << name << ", " <<
-                            sample_descriptor_element.categoryType << ", " <<
+            std::cout << "Sample descriptor characteristics: " << name << ", "<<
+                         sample_descriptor_element.sampleType << ", " <<
                          sample_descriptor_element.channels.size() << ", " <<
                          sample_descriptor_element.color << ", " <<
-                         sample_descriptor_element.file_path_pattern << ", " <<
+                         sample_descriptor_element.file_path << ", " <<
                          sample_descriptor_element.cross_section << ", " <<
-                         sample_descriptor_element.signal_points_raw.size() << ", " <<
-                         sample_descriptor_element.GetNSignalPoints() << ", " << std::endl;
+                         sample_descriptor_element.points.size() << ", " <<
+                         sample_descriptor_element.GetNWorkingPoints() << ", " << std::endl;
 
-            if(!sample_descriptor_element.signal_points_raw.size()) continue;
-            else
-                std::cout<< "FileName: " << sample_descriptor_element.GetFileName(sample_descriptor_element.GetNSignalPoints() - 1) << std::endl; //
-
+            sample_descriptor_element.CreateWorkingPoints();
+            std::cout<< "FileName: "<< sample_descriptor_element.working_points.rbegin()->file_path << std::endl;
         } //end loop sample_descriptors
 
         for (auto combine_descriptor : combine_descriptors){ //loop combine_descriptors

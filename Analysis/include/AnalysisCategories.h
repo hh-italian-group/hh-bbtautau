@@ -3,163 +3,240 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #pragma once
 
-#include <iostream>
-#include <list>
-#include <map>
-#include <set>
-#include <cmath>
-
-#include <Rtypes.h>
-
+#include <boost/optional/optional.hpp>
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
 #include "AnalysisTools/Core/include/Tools.h"
-//#include "AnalysisTools/Print/include/PlotPrimitives.h"
-//#include "AnalysisTools/Print/include/RootPrintTools.h"
-#include "h-tautau/Analysis/include/EventInfo.h"
 
 namespace analysis {
 
-enum class DataCategoryType { Signal, Signal_SM, Background, DataDrivenBkg, Data};
-
-ENUM_NAMES(DataCategoryType) = {
-    { DataCategoryType::Signal, "Signal" }, { DataCategoryType::Signal_SM, "Signal_SM" },
-    { DataCategoryType::Background, "Background" }, { DataCategoryType::DataDrivenBkg, "DataDrivenBkg" },
-    { DataCategoryType::Data, "Data" },
+enum class SampleType { Data, MC, DY, QCD };
+ENUM_NAMES(SampleType) = {
+    { SampleType::Data, "Data" }, { SampleType::MC, "MC" }, { SampleType::DY, "DY" }, { SampleType::QCD, "QCD" }
 };
 
+struct EventRegion {
+    static const EventRegion& Unknown() { static const EventRegion er; return er; }
+    static const EventRegion& OS_Isolated() { static const EventRegion er(true, true); return er; }
+    static const EventRegion& OS_AntiIsolated() { static const EventRegion er(true, false); return er; }
+    static const EventRegion& SS_Isolated() { static const EventRegion er(false, true); return er; }
+    static const EventRegion& SS_AntiIsolated() { static const EventRegion er(false, true); return er; }
+    static const EventRegion& SignalRegion() { return OS_Isolated(); }
 
-enum class EventRegion { Unknown = 0, OS_Isolated = 1, OS_AntiIsolated = 2, SS_Isolated = 3, SS_AntiIsolated = 4,
-                         OS_Iso_HighMt = 5, SS_Iso_HighMt = 6, OS_AntiIso_HighMt = 7, SS_AntiIso_HighMt = 8 };
+    EventRegion() {}
+    EventRegion(bool _os) : os(_os) {}
+    EventRegion(bool _os, bool _iso) : os(_os), iso(_iso) {}
 
-enum class EventCategory { Inclusive = 0, TwoJets_Inclusive = 1, TwoJets_ZeroBtag = 2, TwoJets_OneBtag = 3,
-                           TwoJets_TwoBtag = 4, TwoJets_ZeroLooseBtag = 5, TwoJets_OneLooseBtag = 6,
-                           TwoJets_TwoLooseBtag = 7, TwoJets_AtLeastOneBtag = 8, TwoJets_AtLeastOneLooseBtag = 9 };
+    bool OS() const { return os.is_initialized() && *os; }
+    bool SS() const { return os.is_initialized() && !*os; }
+    bool Iso() const { return iso.is_initialized() && *iso; }
+    bool AntiIso() const { return iso.is_initialized() && !*iso; }
 
-enum class EventSubCategory { NoCuts = 0, KinematicFitConverged = 1, MassWindow = 2,
-                              KinematicFitConvergedWithMassWindow = 3, OutsideMassWindow = 4,
-                              KinematicFitConvergedOutsideMassWindow = 5
-                            };
+    bool operator ==(const EventRegion& er) const { return os == er.os && iso == er.iso; }
+    bool operator !=(const EventRegion& er) const { return !(*this == er); }
+    bool operator <(const EventRegion& er) const
+    {
+        if(os != er.os) return os < er.os;
+        return iso < er.iso;
+    }
 
-ENUM_NAMES(EventRegion) = {
-    { EventRegion::Unknown, "Unknown"}, { EventRegion::OS_Isolated, "OS_Isolated"},
-    { EventRegion::OS_AntiIsolated, "OS_AntiIsolated"}, { EventRegion::SS_Isolated, "SS_Isolated"},
-    { EventRegion::SS_AntiIsolated, "SS_AntiIsolated"},  { EventRegion::OS_Iso_HighMt, "OS_Iso_HighMt"},
-    { EventRegion::SS_Iso_HighMt, "SS_Iso_HighMt"} , { EventRegion::OS_AntiIso_HighMt, "OS_AntiIso_HighMt"},
-    { EventRegion::SS_AntiIso_HighMt, "SS_AntiIso_HighMt"}
+    std::string ToString() const
+    {
+        if(*this == Unknown()) return "Unknown";
+        std::ostringstream s;
+        s << SignPairStr(*os);
+        if(iso.is_initialized())
+            s << "_" << IsoStr(*iso);
+        return s.str();
+    }
+
+private:
+    boost::optional<bool> os, iso;
+
+    static std::string SignPairStr(bool sign_pair) { return sign_pair ? "OS" : "SS"; }
+    static std::string IsoStr(bool iso) { return iso ? "Isolated" : "AntiIsolated"; }
 };
 
-ENUM_NAMES(EventCategory) = {
-    { EventCategory::Inclusive, "Inclusive" }, { EventCategory::TwoJets_Inclusive, "2jets" },
-    { EventCategory::TwoJets_ZeroBtag, "2jets0btag" }, { EventCategory::TwoJets_OneBtag, "2jets1btag"},
-    { EventCategory::TwoJets_TwoBtag, "2jets2btag" },
-    { EventCategory::TwoJets_ZeroLooseBtag, "2jets0Loosebtag" },
-    { EventCategory::TwoJets_OneLooseBtag, "2jets1Loosebtag" },
-    { EventCategory::TwoJets_TwoLooseBtag, "2jets2Loosebtag" },
-    { EventCategory::TwoJets_AtLeastOneBtag, "2jets_at_least_1btag" },
-    { EventCategory::TwoJets_AtLeastOneLooseBtag, "2jets_at_least_1Loosebtag" }
-};
-
-ENUM_NAMES(EventSubCategory) = {
-    { EventSubCategory::NoCuts, "NoCuts" }, { EventSubCategory::KinematicFitConverged, "KinFitConverged" },
-    { EventSubCategory::MassWindow, "MassWindow" },
-    { EventSubCategory::KinematicFitConvergedWithMassWindow, "KinFitConvergedWithMassWindow" },
-    { EventSubCategory::KinematicFitConvergedOutsideMassWindow, "KinematicFitConvergedOutsideMassWindow" },
-    { EventSubCategory::OutsideMassWindow, "OutsideMassWindow" }
-};
-
-using EventCategoryVector = std::vector<EventCategory>;
-using EventCategorySet = EnumNameMap<EventCategory>::EnumEntrySet;
-using EventCategoryMap = std::map<EventCategory, EventCategory>;
-using EventSubCategorySet = EnumNameMap<EventSubCategory>::EnumEntrySet;
-
-static const EventCategorySet AllEventCategories = __EventCategory_names<>::names.GetEnumEntries();
-static const EventSubCategorySet AllEventSubCategories = __EventSubCategory_names<>::names.GetEnumEntries();
-
-static const EventCategoryMap MediumToLoose_EventCategoryMap = {
-    { EventCategory::TwoJets_ZeroBtag, EventCategory::TwoJets_ZeroLooseBtag },
-    { EventCategory::TwoJets_OneBtag, EventCategory::TwoJets_OneLooseBtag },
-    { EventCategory::TwoJets_TwoBtag, EventCategory::TwoJets_TwoLooseBtag },
-    { EventCategory::TwoJets_AtLeastOneBtag, EventCategory::TwoJets_AtLeastOneLooseBtag }
-};
-
-static const EventCategorySet TwoJetsEventCategories_MediumBjets =
-    tools::collect_map_keys<decltype(MediumToLoose_EventCategoryMap), EventCategorySet>(MediumToLoose_EventCategoryMap);
-
-static const EventCategorySet TwoJetsEventCategories_LooseBjets =
-    tools::collect_map_values<decltype(MediumToLoose_EventCategoryMap), EventCategorySet>(MediumToLoose_EventCategoryMap);
-
-using EventRegionSet = EnumNameMap<EventRegion>::EnumEntrySet;
-using EventRegionMap = std::map<EventRegion, EventRegion>;
-
-static const EventRegionMap HighMt_LowMt_RegionMap =
-        { { EventRegion::OS_Iso_HighMt, EventRegion::OS_Isolated },
-          { EventRegion::SS_Iso_HighMt, EventRegion::SS_Isolated },
-          { EventRegion::OS_AntiIso_HighMt, EventRegion::OS_AntiIsolated },
-          { EventRegion::SS_AntiIso_HighMt, EventRegion::SS_AntiIsolated } };
-
-static const EventRegionSet HighMtRegions = { EventRegion::OS_Iso_HighMt, EventRegion::SS_Iso_HighMt,
-                                              EventRegion::OS_AntiIso_HighMt, EventRegion::SS_AntiIso_HighMt };
-
-static const EventRegionSet QcdRegions = { EventRegion::OS_Isolated, EventRegion::SS_Isolated,
-                                           EventRegion::OS_AntiIsolated, EventRegion::SS_AntiIsolated};
-
-static const EventRegionSet AllEventRegions = __EventRegion_names<>::names.GetEnumEntries();
-
-enum class HTbinning { lt0 = -1, lt100 = 0, f100to200 = 1, f200to400 = 2, f400to600 = 3, gt600 = 4 };
-inline HTbinning GetHTbin(double HT)
+std::ostream& operator<<(std::ostream& os, const EventRegion& eventRegion)
 {
-    if(HT < 0) return HTbinning::lt0;
-    if(HT < 100) return HTbinning::lt100;
-    if(HT < 200) return HTbinning::f100to200;
-    if(HT < 400) return HTbinning::f200to400;
-    if(HT < 600) return HTbinning::f400to600;
-    return HTbinning::gt600;
+    os << eventRegion.ToString();
+    return os;
 }
 
-//EventCategoryVector DetermineEventCategories(const std::vector<float>& csv_Bjets,
-//                                             const EventInfoBase::BjetPair& selected_bjets, Int_t nBjets_retagged,
-//                                             double CSVL, double CSVM, bool doRetag = false)
-//{
-//    EventCategoryVector categories;
-//    categories.push_back(EventCategory::Inclusive);
+struct EventCategory {
+    static const EventCategory& Inclusive() { static const EventCategory ec; return ec; }
+    static const EventCategory& TwoJets_Inclusive() { static const EventCategory ec(2); return ec; }
+    static const EventCategory& TwoJets_ZeroBtag()
+        { static const EventCategory ec(2, 0, DiscriminatorWP::Medium); return ec; }
+    static const EventCategory& TwoJets_OneBtag()
+        { static const EventCategory ec(2, 1, DiscriminatorWP::Medium); return ec; }
+    static const EventCategory& TwoJets_TwoBtag()
+        { static const EventCategory ec(2, 2, DiscriminatorWP::Medium); return ec; }
+    static const EventCategory& TwoJets_ZeroLooseBtag()
+        { static const EventCategory ec(2, 0, DiscriminatorWP::Loose); return ec; }
+    static const EventCategory& TwoJets_OneLooseBtag()
+        { static const EventCategory ec(2, 1, DiscriminatorWP::Loose); return ec; }
+    static const EventCategory& TwoJets_TwoLooseBtag()
+        { static const EventCategory ec(2, 2, DiscriminatorWP::Loose); return ec; }
 
-//    static const std::map< size_t, EventCategory> mediumCategories_map {
-//        {  0 , EventCategory::TwoJets_ZeroBtag }, { 1 , EventCategory::TwoJets_OneBtag },
-//        {  2 , EventCategory::TwoJets_TwoBtag }
-//    };
+    EventCategory() {}
+    explicit EventCategory(size_t _n_jets) : n_jets(_n_jets) {}
+    EventCategory(size_t _n_jets, size_t _n_btag, DiscriminatorWP _btag_wp) :
+        n_jets(_n_jets), n_btag(_n_btag), btag_wp(_btag_wp)
+    {
+        if(n_btag > n_jets)
+            throw exception("Number of btag can't be greater than number of jets");
+    }
 
-//    static const std::map< size_t, EventCategory> looseCategories_map {
-//        { 0 , EventCategory::TwoJets_ZeroLooseBtag }, { 1, EventCategory::TwoJets_OneLooseBtag },
-//        { 2 , EventCategory::TwoJets_TwoLooseBtag }
-//    };
+    bool HasJetConstraint() const { return n_jets.is_initialized(); }
+    size_t N_jets() const
+    {
+        if(!HasJetConstraint())
+            throw exception("Jet constraint is not defined.");
+        return *n_jets;
+    }
 
-//    if (selected_bjets.first < csv_Bjets.size() && selected_bjets.second < csv_Bjets.size()){
-//        categories.push_back(EventCategory::TwoJets_Inclusive);
+    bool HasBtagConstraint() const { return n_btag.is_initialized(); }
+    size_t N_btag() const
+    {
+        if(!HasBtagConstraint())
+            throw exception("Btag constraint is not defined.");
+        return *n_btag;
+    }
+    DiscriminatorWP BtagWP() const
+    {
+        if(!HasBtagConstraint())
+            throw exception("Btag constraint is not defined.");
+        return *btag_wp;
+    }
 
-//        size_t n_mediumBtag = 0;
-//        if(doRetag) {
-//            n_mediumBtag = std::min<size_t>(nBjets_retagged, 2);
-//        } else {
-//            if(csv_Bjets.at(selected_bjets.first) > CSVM) ++n_mediumBtag;
-//            if(csv_Bjets.at(selected_bjets.second) > CSVM) ++n_mediumBtag;
-//        }
+    bool operator ==(const EventCategory& ec) const
+    {
+        return n_jets == ec.n_jets && n_btag == ec.n_btag && btag_wp == ec.btag_wp;
+    }
+    bool operator !=(const EventCategory& ec) const { return !(*this == ec); }
+    bool operator <(const EventCategory& ec) const
+    {
+        if(n_jets != ec.n_jets) return n_jets < ec.n_jets;
+        if(n_btag != ec.n_btag) return n_btag < ec.n_btag;
+        return btag_wp < ec.btag_wp;
+    }
 
-//        if(mediumCategories_map.count(n_mediumBtag))
-//            categories.push_back(mediumCategories_map.at(n_mediumBtag));
-//        if(n_mediumBtag > 0)
-//            categories.push_back(EventCategory::TwoJets_AtLeastOneBtag);
+    std::string ToString() const
+    {
+        if(*this == Inclusive()) return "Inclusive";
+        std::ostringstream s;
+        s << *n_jets << "jets";
+        if(HasBtagConstraint()) {
+            s << *n_btag;
+            if(*btag_wp != DiscriminatorWP::Medium)
+                s << *btag_wp;
+            s << "btag";
+        }
+        return s.str();
+    }
 
-//        size_t n_looseBtag = 0;
-//        if(csv_Bjets.at(selected_bjets.first) > CSVL) ++n_looseBtag;
-//        if(csv_Bjets.at(selected_bjets.second) > CSVL) ++n_looseBtag;
+private:
+    boost::optional<size_t> n_jets, n_btag;
+    boost::optional<DiscriminatorWP> btag_wp;
+};
 
-//        if(looseCategories_map.count(n_looseBtag))
-//            categories.push_back(looseCategories_map.at(n_looseBtag));
-//        if(n_looseBtag > 0)
-//            categories.push_back(EventCategory::TwoJets_AtLeastOneLooseBtag);
-//    }
+std::ostream& operator<<(std::ostream& os, const EventCategory& eventCategory)
+{
+    os << eventCategory.ToString();
+    return os;
+}
 
-//    return categories;
-//}
+enum class SelectionCut { InsideMassWindow = 0, MVA = 1, KinematicFitConverged = 2 };
+ENUM_NAMES(SelectionCut) = {
+    { SelectionCut::InsideMassWindow, "InsideMassWindow" }, { SelectionCut::MVA, "MVA" },
+    { SelectionCut::KinematicFitConverged, "KinematicFitConverged" }
+};
+
+struct EventSubCategory {
+    using BitsContainer = unsigned long;
+    static constexpr size_t MaxNumberOfCuts = std::numeric_limits<BitsContainer>::digits;
+    using Bits = std::bitset<MaxNumberOfCuts>;
+
+    static const EventSubCategory& NoCuts() { static const EventSubCategory esc; return esc; }
+
+    bool HasCut(SelectionCut cut) const { return presence[GetIndex(cut)]; }
+    bool Passed(SelectionCut cut) const
+    {
+        if(!HasCut(cut))
+            throw exception("Cut '%1%' is not defined.") % cut;
+        return results[GetIndex(cut)];
+    }
+    bool Failed(SelectionCut cut) const { return !Passed(cut); }
+    EventSubCategory& SetCutResult(SelectionCut cut, bool result)
+    {
+        if(HasCut(cut))
+            throw exception("Cut '%1%' is aready defined.") % cut;
+        results[GetIndex(cut)] = result;
+        presence[GetIndex(cut)] = true;
+        return *this;
+    }
+
+    BitsContainer GetPresenceBits() const { return presence.to_ulong(); }
+    BitsContainer GetResultBits() const { return results.to_ulong(); }
+
+    bool operator ==(const EventSubCategory& sc) const
+    {
+        return GetPresenceBits() == sc.GetPresenceBits() && GetResultBits() == sc.GetResultBits();
+    }
+    bool operator !=(const EventSubCategory& sc) const { return !(*this == sc); }
+    bool operator <(const EventSubCategory& sc) const
+    {
+        if(GetPresenceBits() != sc.GetPresenceBits()) return GetPresenceBits() < sc.GetPresenceBits();
+        return GetResultBits() < sc.GetResultBits();
+    }
+
+    bool Implies(const EventSubCategory& sc) const
+    {
+        const BitsContainer pres_a = GetPresenceBits(), pres_b = sc.GetPresenceBits();
+        if((pres_a ^ pres_b) & pres_b) return false;
+        const BitsContainer res_a = GetResultBits(), res_b = sc.GetResultBits();
+        return (res_a & pres_b) == res_b;
+    }
+
+    std::string ToString() const
+    {
+        bool is_first = true;
+        std::ostringstream s;
+        for(size_t n = 0; n < MaxNumberOfCuts; ++n) {
+            if(!presence[n]) continue;
+            if(!is_first) {
+                s << "_";
+            }
+            is_first = false;
+            if(!results[n])
+                s << "not";
+            s << static_cast<SelectionCut>(n);
+        }
+        return s.str();
+    }
+
+private:
+    static size_t GetIndex(SelectionCut cut)
+    {
+        size_t index = static_cast<size_t>(cut);
+        if(index >= MaxNumberOfCuts)
+            throw exception("Cut index is out of range for cut '%1%'.") % cut;
+        return index;
+    }
+
+private:
+    Bits presence, results;
+};
+
+std::ostream& operator<<(std::ostream& os, const EventSubCategory& eventSubCategory)
+{
+    os << eventSubCategory.ToString();
+    return os;
+}
+
+using EventRegionSet = std::set<EventRegion>;
+using EventCategorySet = std::set<EventCategory>;
+using EventSubCategorySet = std::set<EventSubCategory>;
+using Dataset = std::string;
 
 } // namespace analysis
