@@ -103,10 +103,10 @@ public:
                     static const uint32_t tau_iso_disc_hash = analysis::tools::hash(tau_iso_disc);
                     static const double tau_iso_cut = 0.5;
                   
-                    std::string tau_iso = "";
-                    if(!PassTauIdCut(event.tauId_keys_1, event.tauId_values_1, tau_iso_disc_hash, tau_iso_cut) ||
-                             !PassTauIdCut(event.tauId_keys_2, event.tauId_values_2, tau_iso_disc_hash, tau_iso_cut)) tau_iso = "NonIso" ;
-                    else tau_iso = "Iso";   
+                    bool passTauId = PassTauIdCut(event.tauId_keys_1, event.tauId_values_1, tau_iso_disc_hash,
+                                        tau_iso_cut) && PassTauIdCut(event.tauId_keys_2, event.tauId_values_2,
+                                        tau_iso_disc_hash, tau_iso_cut);
+                    std::string tau_iso = passTauId ? "Iso" : "NonIso";
 
                     for (size_t i=0; i<2; i++){
                         const auto& jet = event.jets_p4.at(i);
@@ -215,7 +215,11 @@ public:
                                 checkValidation(anaDataMap[valQ+*tau_iso1]->validate(jet_flavour,btag_wp.first,
                                         *channel1,*tau_sign2,*tau_sign1),tools::FullPath({valMap[valQ],*tau_iso1}),
                                         anaDataMap[valQ+*tau_iso1]->val_check(jet_flavour,btag_wp.first,*channel1,
-                                            *tau_sign2,*tau_sign1));
+                                            *tau_sign2,*tau_sign1),
+                                        anaDataMap[*tau_sign1+*tau_iso1+eff]->eff(jet_flavour,
+                                                                                  btag_wp.first,*channel1),
+                                        anaDataMap[*tau_sign2+*tau_iso1+eff]->eff(jet_flavour,
+                                                                                  btag_wp.first,*channel1));
                             }
                    
                             //Make Vlaidation plots between Isolations
@@ -230,7 +234,11 @@ public:
                                 checkValidation(anaDataMap[*tau_sign1+valIso]->validate(jet_flavour,btag_wp.first,
                                             *channel1,*tau_iso2,*tau_iso1),tools::FullPath({*tau_sign1,valMap[valIso]}),
                                         anaDataMap[*tau_sign1+valIso]->val_check(jet_flavour,btag_wp.first,
-                                            *channel1,*tau_iso2,*tau_iso1));
+                                            *channel1,*tau_iso2,*tau_iso1),
+                                        anaDataMap[*tau_sign1+*tau_iso1+eff]->eff(jet_flavour,
+                                                                                  btag_wp.first,*channel1),
+                                        anaDataMap[*tau_sign1+*tau_iso2+eff]->eff(jet_flavour,
+                                                                                  btag_wp.first,*channel1));
                             }
                 
                             //Make Validation plots between Channels 
@@ -245,7 +253,11 @@ public:
                                 checkValidation(anaDataMap[*tau_sign1+*tau_iso1+valCha]->validate(jet_flavour,
                                         btag_wp.first,*channel2,*channel1),tools::FullPath({*tau_sign1,*tau_iso1,
                                         valMap[valCha]}),anaDataMap[*tau_sign1+*tau_iso1+valCha]->val_check(jet_flavour,
-                                        btag_wp.first,*channel2,*channel1));
+                                        btag_wp.first,*channel2,*channel1),
+                                        anaDataMap[*tau_sign1+*tau_iso1+eff]->eff(jet_flavour, btag_wp.first,
+                                                                                  *channel1),
+                                        anaDataMap[*tau_sign1+*tau_iso1+eff]->eff(jet_flavour, btag_wp.first,
+                                                                                  *channel2));
                             }
                         }
                     }
@@ -264,7 +276,8 @@ private:
     std::string eff = "Eff";
     std::map<std::string,std::string> effMap ={ {"Eff", "Efficiency"} };
     std::string valCha = "valCha", valIso = "valIso", valQ = "valQ";
-    std::map<std::string,std::string> valMap = { {"valCha","ValidationChannel"} , {"valIso","ValidationIsolation"}, {"valQ","ValidationCharge"} };
+    std::map<std::string,std::string> valMap = { {"valCha","ValidationChannel"} , {"valIso","ValidationIsolation"},
+                                                 {"valQ","ValidationCharge"} };
 
     static bool PassTauIdCut(const std::vector<uint32_t>& tauId_keys, const std::vector<float>& tauId_values,
             uint32_t discriminator_name_hash, float cut_value)
@@ -291,7 +304,8 @@ private:
         return true; 
     }
     
-    static void checkValidation(const TH2D& validation_histo, const std::string histo_path,TH2D& output_histo){
+    static void checkValidation(const TH2D& validation_histo, const std::string histo_path,TH2D& output_histo,
+                                const TH2D& eff_histo1, const TH2D& eff_histo2){
         int nbinsX = validation_histo.GetNbinsX(); 
         int nbinsY = validation_histo.GetNbinsY();
         std::string histo_name = tools::FullPath({histo_path,validation_histo.GetName()});
@@ -302,6 +316,10 @@ private:
                 double value = validation_histo.GetBinContent(i,j);
                 double error = validation_histo.GetBinError(i,j);
                 double n_sigma = error != 0 ? std::floor(value/error) : 0;
+                double eff1 = eff_histo1.GetBinContent(i,j);
+                double eff2 = eff_histo2.GetBinContent(i,j);
+                bool has_entry = (eff1 != 0) && (eff2 != 0);
+                n_sigma = has_entry ? n_sigma : 0 ;
                 if (n_sigma < 0) n_sigma = n_sigma+1;
                 output_histo.SetBinContent(i,j,n_sigma);
                 if(n_sigma !=0) std::cout<<n_sigma<<" sigma: "<<histo_name<<" in (pt,eta) bin ("<<
