@@ -182,8 +182,8 @@ private:
             }
         } catch(std::exception&) {
             processQueue.SetAllDone(true);
-            process_thread->join();
-            writer_thread->join();
+            if(process_thread) process_thread->join();
+            if(writer_thread) writer_thread->join();
             throw;
         }
     }
