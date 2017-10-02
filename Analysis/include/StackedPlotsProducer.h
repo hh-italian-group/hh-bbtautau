@@ -106,12 +106,12 @@ public:
                             if(signals.count(sample->name) && eventCategory == EventCategory::TwoJets_Inclusive())
                                 continue;
                             else if(signals.count(sample->name))
-                                stackDescriptor.AddSignalHistogram(*histogram, sample->title, color, sample->draw_sf);
+                                stackDescriptor.AddSignalHistogram(*histogram, item.title, color, sample->draw_sf);
                             else if(sample->sampleType == SampleType::Data)
-                                stackDescriptor.AddDataHistogram(*histogram, sample->title, isBlind,
+                                stackDescriptor.AddDataHistogram(*histogram, item.title, isBlind,
                                                                  GetBlindRegion(subCategory, hist_name));
                             else
-                                stackDescriptor.AddBackgroundHistogram(*histogram, sample->title, color);
+                                stackDescriptor.AddBackgroundHistogram(*histogram, item.title, color);
                         }
                     }
 

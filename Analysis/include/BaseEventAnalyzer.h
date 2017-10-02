@@ -8,7 +8,9 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "SampleDescriptorConfigEntryReader.h"
 #include "h-tautau/Cuts/include/Btag_2016.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
+#include "h-tautau/Analysis/include/EventLoader.h"
 #include "StackedPlotsProducer.h"
+
 
 namespace analysis {
 
@@ -27,6 +29,8 @@ class BaseEventAnalyzer {
 public:
     using FirstLeg = _FirstLeg;
     using SecondLeg = _SecondLeg;
+    using Event = ntuple::Event;
+    using EventPtr = std::shared_ptr<Event>;
     using EventInfo = ::analysis::EventInfo<FirstLeg, SecondLeg>;
     using AnaData = ::analysis::EventAnalyzerData<FirstLeg, SecondLeg>;
     using AnaDataCollection = ::analysis::EventAnalyzerDataCollection<AnaData>;
@@ -62,15 +66,6 @@ public:
             EventRegion::SS_Isolated(), EventRegion::SS_AntiIsolated()
         };
         return regions;
-    }
-
-    virtual const EventEnergyScaleSet& EventEnergyScaleToProcess() const
-    {
-        static const EventEnergyScaleSet scales = {
-            EventEnergyScale::Central, EventEnergyScale::TauUp, EventEnergyScale::TauDown,
-            EventEnergyScale::JetUp, EventEnergyScale::JetDown
-        };
-        return scales;
     }
 
     static EventCategorySet DetermineEventCategories(EventInfo& event)
@@ -202,9 +197,14 @@ protected:
                            std::shared_ptr<ntuple::EventTuple> tuple, const ntuple::ProdSummary& prod_summary)
     {
         const SummaryInfo summary(prod_summary);
-        for(const auto& tupleEvent : *tuple) {
+        Event prevFullEvent, *prevFullEventPtr = nullptr;
+        for(auto tupleEvent : *tuple) {
             EventInfo event(tupleEvent, ntuple::JetPair{0, 1}, summary);
-            if(!EventEnergyScaleToProcess().count(event.GetEnergyScale())) continue;
+            if(!ana_setup.energy_scales.count(event.GetEnergyScale())) continue;
+            if(ntuple::EventLoader::Load(tupleEvent, prevFullEventPtr).IsFull()) {
+                prevFullEvent = tupleEvent;
+                prevFullEventPtr = &prevFullEvent;
+            }
             const auto eventCategories = DetermineEventCategories(event);
             for(auto eventCategory : eventCategories) {
                 if (!EventCategoriesToProcess().count(eventCategory)) continue;

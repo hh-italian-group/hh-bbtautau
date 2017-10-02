@@ -192,12 +192,17 @@ private:
     {
         try {
             EventPtr event, prev_full_event;
+            bool prev_full_event_stored = false;
             while(processQueue.Pop(event)) {
                 ntuple::StorageMode storage_mode;
-                if(ProcessEvent(*event, prev_full_event, storage_mode))
+                const EventEnergyScale es = static_cast<EventEnergyScale>(event->eventEnergyScale);
+                const bool store_event = ProcessEvent(*event, prev_full_event, storage_mode, prev_full_event_stored);
+                if(store_event)
                     writeQueue.Push(event);
-                if(storage_mode.IsFull())
+                if(storage_mode.IsFull() && es = EventEnergyScale::Central) {
                     prev_full_event = event;
+                    prev_full_event_stored = store_event;
+                }
             }
             writeQueue.SetAllDone();
         } catch(std::exception& e) {
@@ -302,7 +307,8 @@ private:
         return true;
     }
 
-    bool ProcessEvent(Event& event, const std::shared_ptr<Event>& prev_event, ntuple::StorageMode& storage_mode)
+    bool ProcessEvent(Event& event, const std::shared_ptr<Event>& prev_event, ntuple::StorageMode& storage_mode,
+                      bool prev_event_stored)
     {
         using EventPart = ntuple::StorageMode::EventPart;
         using WeightType = mc_corrections::WeightType;
@@ -310,6 +316,11 @@ private:
         Event full_event = event;
         storage_mode = ntuple::EventLoader::Load(full_event, prev_event.get());
         const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
+        if(!prev_event_stored) {
+            event = full_event;
+            storage_mode = ntuple::StorageMode::Full();
+            event.storageMode = static_cast<UInt_t>(storage_mode.Mode());
+        }
 
         if (!setup.energy_scales.count(es) || full_event.jets_p4.size() < 2 || full_event.extraelec_veto
                 || full_event.extramuon_veto
@@ -317,7 +328,8 @@ private:
                 || std::abs(full_event.jets_p4.at(1).eta()) >= cuts::btag_2016::eta) return false;
 
         auto bb = full_event.jets_p4.at(0) + full_event.jets_p4.at(1);
-        if (setup.apply_mass_cut && !cuts::hh_bbtautau_2016::hh_tag::IsInsideEllipse(full_event.SVfit_p4.mass(),bb.mass())) return false;
+        if (setup.apply_mass_cut
+                && !cuts::hh_bbtautau_2016::hh_tag::IsInsideEllipse(full_event.SVfit_p4.mass(),bb.mass())) return false;
 
         if (setup.apply_charge_cut && (full_event.q_1+full_event.q_2) != 0) return false;
 
@@ -333,7 +345,6 @@ private:
         event.n_jets = static_cast<unsigned>(full_event.jets_p4.size());
         event.ht_other_jets = static_cast<float>(
                     Calculate_HT(full_event.jets_p4.begin() + 2, full_event.jets_p4.end()));
-
 
         event.weight_pu = weighting_mode.count(WeightType::PileUp)
                         ? eventWeights_HH->GetWeight(full_event, WeightType::PileUp) : 1;

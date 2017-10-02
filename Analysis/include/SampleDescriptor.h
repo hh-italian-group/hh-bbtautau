@@ -63,7 +63,7 @@ struct SampleDescriptorBase {
         working_points.clear();
         Point point;
         point.full_name = name;
-        point.title = title;
+        point.title = title.size() ? title : point.full_name;
         point.datacard_name = datacard_name;
         point.draw_sf = draw_sf;
         point.draw = true;
@@ -80,7 +80,7 @@ public:
     using SampleDescriptorBase::SampleDescriptorBase; //to inherit the constructor, copy constructor and assignment of parent class
                                                       // otherwise you should declare them as well as parent class, except the destructor
 
-    std::string name, name_suffix;
+    std::string name_suffix;
     std::string file_path;
     double cross_section{1};
     std::map<std::string, std::vector<double>> points; // mass for resonant, radion or graviton, nodes for non-resonant
@@ -101,7 +101,7 @@ public:
             Point point;
             point.name = ResolvePattern(name_suffix, n);
             point.full_name = name + "_" + point.name;
-            point.title = ResolvePattern(title, n);
+            point.title = title.size() ? ResolvePattern(title, n) : point.full_name;
             point.file_path = ResolvePattern(file_path, n);
             point.datacard_name = ResolvePattern(datacard_name, n);
             point.norm_sf = n < norm_sf.size() ? norm_sf.at(n) : 1;
