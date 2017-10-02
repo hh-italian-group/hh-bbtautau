@@ -199,7 +199,7 @@ private:
                 const bool store_event = ProcessEvent(*event, prev_full_event, storage_mode, prev_full_event_stored);
                 if(store_event)
                     writeQueue.Push(event);
-                if(storage_mode.IsFull() && es = EventEnergyScale::Central) {
+                if(storage_mode.IsFull() && es == EventEnergyScale::Central) {
                     prev_full_event = event;
                     prev_full_event_stored = store_event;
                 }
