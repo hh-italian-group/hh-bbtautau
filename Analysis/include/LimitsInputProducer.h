@@ -17,7 +17,8 @@ public:
     using AnaData = ::analysis::EventAnalyzerData<FirstLeg, SecondLeg>;
     using AnaDataCollection = ::analysis::EventAnalyzerDataCollection<AnaData>;
     using Sample = ::analysis::SampleDescriptorBase;
-    using SampleCollection = std::vector<const Sample*>;
+    using SampleWP = Sample::Point;
+    using SampleWPCollection = std::vector<SampleWP>;
     using Hist = TH1D;
     using HistPtr = std::shared_ptr<root_ext::SmartHistogram<Hist>>;
 
@@ -31,7 +32,7 @@ public:
         std::ostringstream full_name;
         full_name << datacard_name << "_CMS_scale_";
         if(eventEnergyScale == EventEnergyScale::TauUp || eventEnergyScale == EventEnergyScale::TauDown)
-            full_name << "t_";
+            full_name << "t";
         else if(eventEnergyScale == EventEnergyScale::JetUp || eventEnergyScale == EventEnergyScale::JetDown)
             full_name << "j";
         else
@@ -44,15 +45,12 @@ public:
         return full_name.str();
     }
 
-    LimitsInputProducer(AnaDataCollection& _anaDataCollection, const SampleDescriptorCollection& sample_descs,
-                        const CombineSampleDescriptorCollection& combined_sample_descs) :
+    template<typename ...Args>
+    LimitsInputProducer(AnaDataCollection& _anaDataCollection, Args&&... sample_descriptors) :
         anaDataCollection(&_anaDataCollection)
     {
+        CollectWorkingPoints(std::forward<Args>(sample_descriptors)...);
         for(const auto& sample : sample_descs) {
-            if(sample.datacard_name.size() || sample.datacard_name_ex.size())
-                samples.push_back(&sample);
-        }
-        for(const auto& sample : combined_sample_descs) {
             if(sample.datacard_name.size() || sample.datacard_name_ex.size())
                 samples.push_back(&sample);
         }
@@ -67,8 +65,8 @@ public:
             { EventCategory::TwoJets_TwoBtag, "res2b" }
         };
 
-        static const double tiny_value = 1e-9;
-        static const double tiny_value_error = tiny_value;
+        static constexpr double tiny_value = 1e-9;
+        static constexpr double tiny_value_error = tiny_value;
 
         std::ostringstream s_file_name;
         s_file_name << outputFileNamePrefix << "_" << hist_name;
@@ -119,8 +117,23 @@ public:
     }
 
 private:
+    void CollectWorkingPoints() {}
+
+    template<typename SampleCollection, typename ...Args>
+    void CollectWorkingPoints(const SampleCollection& sample_descriptors, Args&&... other_sample_descriptors)
+    {
+        for(const auto& sample : sample_descriptors) {
+            for(const SampleWP& wp : sample.working_points) {
+                if(wp.datacard_name)
+                    sampleWorkingPoints.push_back(wp);
+            }
+        }
+        CollectWorkingPoints(std::forward<Args>(other_sample_descriptors)...);
+    }
+
+private:
     AnaDataCollection* anaDataCollection;
-    SampleCollection samples;
+    SampleWPCollection sampleWorkingPoints;
 };
 
 } // namespace analysis
