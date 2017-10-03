@@ -159,6 +159,8 @@ struct EventSubCategory {
 
     static const EventSubCategory& NoCuts() { static const EventSubCategory esc; return esc; }
 
+    EventSubCategory() {}
+
     bool HasCut(SelectionCut cut) const { return presence[GetIndex(cut)]; }
     bool Passed(SelectionCut cut) const
     {
