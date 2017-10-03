@@ -33,7 +33,7 @@ using AnalyzerSetupCollection = std::unordered_map<std::string, AnalyzerSetup>;
 struct SampleDescriptorBase {
     struct Point {
         std::string name, full_name, title, file_path, datacard_name;
-        double norm_sf{1}, draw_sf{1};
+        double norm_sf{1}, datacard_sf{1}, draw_sf{1};
         bool draw{false};
         root_ext::Color color{kBlack};
         std::vector<double> param_values;
@@ -43,7 +43,7 @@ struct SampleDescriptorBase {
     std::string name;
     std::string title;
     root_ext::Color color{kBlack};
-    double draw_sf{1};
+    double datacard_sf{1}, draw_sf{1};
     std::set<Channel> channels;
     SampleType sampleType{SampleType::MC};
     std::string datacard_name;
@@ -64,14 +64,24 @@ struct SampleDescriptorBase {
         Point point;
         point.full_name = name;
         point.title = title.size() ? title : point.full_name;
+        ReplacePatternItem(point.title, "factor", draw_sf);
         point.datacard_name = datacard_name;
         point.draw_sf = draw_sf;
+        point.datacard_sf = datacard_sf;
         point.draw = true;
         point.color = color;
         working_points.push_back(point);
     }
 
-    virtual std::vector<std::string> GetModelParameterNames() const { return {}; }
+    virtual std::map<std::string, size_t> GetModelParameterNames() const { return {}; }
+
+protected:
+    template<typename T>
+    static void ReplacePatternItem(std::string& str, const std::string& pattern_item, const T& value)
+    {
+        const auto value_str = ToString(value);
+        boost::algorithm::replace_all(str, "{" + pattern_item + "}", value_str);
+    }
 };
 
 struct SampleDescriptor : SampleDescriptorBase
@@ -86,7 +96,6 @@ public:
     std::map<std::string, std::vector<double>> points; // mass for resonant, radion or graviton, nodes for non-resonant
     std::map<std::string, root_ext::Color> draw_ex;
     std::vector<double> norm_sf;
-    bool draw_combined{false};
 
     virtual void CreateWorkingPoints() override
     {
@@ -102,10 +111,12 @@ public:
             point.name = ResolvePattern(name_suffix, n);
             point.full_name = name + "_" + point.name;
             point.title = title.size() ? ResolvePattern(title, n) : point.full_name;
+            ReplacePatternItem(point.title, "factor", draw_sf);
             point.file_path = ResolvePattern(file_path, n);
             point.datacard_name = ResolvePattern(datacard_name, n);
             point.norm_sf = n < norm_sf.size() ? norm_sf.at(n) : 1;
             point.draw_sf = draw_sf;
+            point.datacard_sf = datacard_sf;
             if(draw_ex.count(point.name)) {
                 point.draw = true;
                 point.color = draw_ex.at(point.name);
@@ -116,24 +127,27 @@ public:
         }
     }
 
-    virtual std::vector<std::string> GetModelParameterNames() const override
+    virtual std::map<std::string, size_t> GetModelParameterNames() const override
     {
-        return tools::collect_map_keys<decltype(points), std::vector<std::string>>(points);
+        std::map<std::string, size_t> param_names;
+        size_t param_id = 0;
+        for (auto& p : points)
+            param_names[p.first] = param_id++;
+        return param_names;
     }
 
     size_t GetNWorkingPoints() const { return points.size() ? points.begin()->second.size() : 1; }
 
 private:
-    std::string ResolvePattern(const std::string& pattern, size_t signal_point) const
+    std::string ResolvePattern(const std::string& pattern, size_t point_index) const
     {
-        if(signal_point >= GetNWorkingPoints())
+        if(point_index >= GetNWorkingPoints())
             throw analysis::exception("Signal point chosen is bigger than the size of signal points.");
         std::string result = pattern;
         for (const auto& point_iter : points){
             const auto& point_prefix = point_iter.first;
             const auto& points_list = point_iter.second;
-            const std::string& point_value = ToString(points_list.at(signal_point));
-            boost::algorithm::replace_all(result, "{" + point_prefix + "}", point_value);
+            ReplacePatternItem(result, point_prefix, points_list.at(point_index));
         }
         return result;
     }
@@ -141,15 +155,14 @@ private:
 
 using SampleDescriptorCollection = std::unordered_map<std::string, SampleDescriptor>;
 
-struct CombineSampleDescriptor : public SampleDescriptorBase
+struct CombinedSampleDescriptor : public SampleDescriptorBase
 {
     using SampleDescriptorBase::SampleDescriptorBase;
 
-    std::string name;
     std::vector<std::string> sample_descriptors;
 };
 
-using CombineSampleDescriptorCollection = std::unordered_map<std::string, CombineSampleDescriptor>;
+using CombinedSampleDescriptorCollection = std::unordered_map<std::string, CombinedSampleDescriptor>;
 
 } // namespace analysis
 

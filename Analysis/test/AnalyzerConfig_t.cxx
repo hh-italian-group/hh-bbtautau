@@ -33,8 +33,8 @@ public:
         SampleDescriptorConfigEntryReader sample_entry_reader(sample_descriptors);
         config_reader.AddEntryReader("SAMPLE", sample_entry_reader, true);
 
-        CombineSampleDescriptorCollection combine_descriptors;
-        CombineSampleDescriptorConfigEntryReader combine_entry_reader(combine_descriptors,sample_descriptors);
+        CombinedSampleDescriptorCollection combined_descriptors;
+        CombinedSampleDescriptorConfigEntryReader combine_entry_reader(combined_descriptors,sample_descriptors);
         config_reader.AddEntryReader("SAMPLE_CMB", combine_entry_reader, false);
 
         config_reader.ReadConfig(args.file_cfg_name());
@@ -69,8 +69,8 @@ public:
             std::cout<< "FileName: "<< sample_descriptor_element.working_points.rbegin()->file_path << std::endl;
         } //end loop sample_descriptors
 
-        for (auto combine_descriptor : combine_descriptors){ //loop combine_descriptors
-            const CombineSampleDescriptor combine_descriptor_element = combine_descriptor.second;
+        for (auto combine_descriptor : combined_descriptors){ //loop combine_descriptors
+            const CombinedSampleDescriptor combine_descriptor_element = combine_descriptor.second;
             const std::string& name = combine_descriptor_element.name;
 
             std::cout << "Combine descriptor characteristics: " << name << ", " <<

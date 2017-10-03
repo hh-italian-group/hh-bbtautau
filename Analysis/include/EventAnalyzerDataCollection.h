@@ -22,7 +22,12 @@ public:
     template<typename T>
     bool Has() const { return std::get<Optional<T>>(id_tuple).is_initialized(); }
     template<typename T>
-    void Set(const T& value) { std::get<Optional<T>>(id_tuple) = value; }
+    EventAnalyzerDataId Set(const T& value) const
+    {
+        EventAnalyzerDataId new_id(*this);
+        std::get<Optional<T>>(new_id.id_tuple) = value;
+        return new_id;
+    }
     template<typename T>
     const T& Get() const
     {
@@ -135,7 +140,7 @@ private:
         const bool fill_all = id.Get<EventEnergyScale>() == EventEnergyScale::Central;
         if(file) {
             if(!id.IsComplete())
-                throw exception("EventAnalyzerDataId is not complete.");
+                throw exception("EventAnalyzerDataId '%1%' is not complete.") % id;
             const std::string dir_name = id.GetName();
             return std::make_shared<Data>(file, dir_name, fill_all, readMode);
         }
