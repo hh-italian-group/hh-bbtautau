@@ -71,7 +71,9 @@ public:
     {
         ParseEntry("title", this->current.title);
         ParseEntry("color", this->current.color);
-        ParseEntry("draw_sf", this->current.draw_sf);
+        ParseEntry<double, NumericalExpression>("datacard_sf", this->current.datacard_sf,
+                                                [](double sf){ return sf > 0; });
+        ParseEntry<double, NumericalExpression>("draw_sf", this->current.draw_sf, [](double sf){ return sf > 0; });
         ParseEntryList("channels", this->current.channels);
         ParseEntry("sample_type", this->current.sampleType);
         ParseEntry("datacard_name", this->current.datacard_name);
@@ -103,22 +105,24 @@ public:
     {
         ParseEntry("name_suffix", current.name_suffix);
         ParseEntry("file_path", current.file_path);
-        ParseEntry<double,NumericalExpression>("cross_section", current.cross_section, [](double xs){return xs > 0;});
+        ParseEntry<double, NumericalExpression>("cross_section", current.cross_section,
+                                                [](double xs){ return xs > 0; });
         ParseMappedEntryList("points", current.points, true);
         ParseEntry("draw_ex", current.draw_ex);
-        ParseEntry("norm_sf", current.norm_sf);
+        ParseEntryList("norm_sf", current.norm_sf);
 
         Base::ReadParameter(param_name,param_value,ss);
     }
 
 };
 
-class CombineSampleDescriptorConfigEntryReader : public SampleDescriptorBaseConfigEntryReader<CombineSampleDescriptor> {
+class CombinedSampleDescriptorConfigEntryReader :
+        public SampleDescriptorBaseConfigEntryReader<CombinedSampleDescriptor> {
 public:
-    using Base = SampleDescriptorBaseConfigEntryReader<CombineSampleDescriptor>;
+    using Base = SampleDescriptorBaseConfigEntryReader<CombinedSampleDescriptor>;
     using Base::SampleDescriptorBaseConfigEntryReader;
 
-    CombineSampleDescriptorConfigEntryReader(CombineSampleDescriptorCollection& _descriptors,
+    CombinedSampleDescriptorConfigEntryReader(CombinedSampleDescriptorCollection& _descriptors,
                                              const SampleDescriptorCollection& _sampleDescriptors) :
        Base(_descriptors), sampleDescriptorCollection(&_sampleDescriptors) {}
 

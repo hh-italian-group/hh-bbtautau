@@ -27,7 +27,7 @@ public:
 
     static SampleCollection CreateOrderedSampleCollection(const std::vector<std::string>& draw_sequence,
                                                           const SampleDescriptorCollection& samples,
-                                                          const CombineSampleDescriptorCollection& combined_samples,
+                                                          const CombinedSampleDescriptorCollection& combined_samples,
                                                           const std::vector<std::string>& signals,
                                                           const std::vector<std::string>& data)
     {
@@ -106,12 +106,12 @@ public:
                             if(signals.count(sample->name) && eventCategory == EventCategory::TwoJets_Inclusive())
                                 continue;
                             else if(signals.count(sample->name))
-                                stackDescriptor.AddSignalHistogram(*histogram, sample->title, color, sample->draw_sf);
+                                stackDescriptor.AddSignalHistogram(*histogram, item.title, color, sample->draw_sf);
                             else if(sample->sampleType == SampleType::Data)
-                                stackDescriptor.AddDataHistogram(*histogram, sample->title, isBlind,
+                                stackDescriptor.AddDataHistogram(*histogram, item.title, isBlind,
                                                                  GetBlindRegion(subCategory, hist_name));
                             else
-                                stackDescriptor.AddBackgroundHistogram(*histogram, sample->title, color);
+                                stackDescriptor.AddBackgroundHistogram(*histogram, item.title, color);
                         }
                     }
 
@@ -125,8 +125,7 @@ private:
     HistPtr GetHistogram(const EventAnalyzerDataId& metaId, const std::string& sample_name,
                          const std::string& hist_name) const
     {
-        EventAnalyzerDataId dataId = metaId;
-        dataId.Set(sample_name);
+        const EventAnalyzerDataId dataId = metaId.Set(sample_name);
         const auto& anaData = anaDataCollection->Get(dataId);
         return anaData.template TryGetHistogramEx<Hist>(hist_name);
     }

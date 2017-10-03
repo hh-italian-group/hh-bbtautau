@@ -8,7 +8,9 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "SampleDescriptorConfigEntryReader.h"
 #include "h-tautau/Cuts/include/Btag_2016.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
+#include "h-tautau/Analysis/include/EventLoader.h"
 #include "StackedPlotsProducer.h"
+
 
 namespace analysis {
 
@@ -27,6 +29,8 @@ class BaseEventAnalyzer {
 public:
     using FirstLeg = _FirstLeg;
     using SecondLeg = _SecondLeg;
+    using Event = ntuple::Event;
+    using EventPtr = std::shared_ptr<Event>;
     using EventInfo = ::analysis::EventInfo<FirstLeg, SecondLeg>;
     using AnaData = ::analysis::EventAnalyzerData<FirstLeg, SecondLeg>;
     using AnaDataCollection = ::analysis::EventAnalyzerDataCollection<AnaData>;
@@ -62,15 +66,6 @@ public:
             EventRegion::SS_Isolated(), EventRegion::SS_AntiIsolated()
         };
         return regions;
-    }
-
-    virtual const EventEnergyScaleSet& EventEnergyScaleToProcess() const
-    {
-        static const EventEnergyScaleSet scales = {
-            EventEnergyScale::Central, EventEnergyScale::TauUp, EventEnergyScale::TauDown,
-            EventEnergyScale::JetUp, EventEnergyScale::JetDown
-        };
-        return scales;
     }
 
     static EventCategorySet DetermineEventCategories(EventInfo& event)
@@ -130,8 +125,8 @@ public:
         SampleDescriptorConfigEntryReader sample_entry_reader(sample_descriptors);
         config_reader.AddEntryReader("SAMPLE", sample_entry_reader, true);
 
-        CombineSampleDescriptorConfigEntryReader combine_entry_reader(cmb_sample_descriptors,sample_descriptors);
-        config_reader.AddEntryReader("SAMPLE_CMB", combine_entry_reader, false);
+        CombinedSampleDescriptorConfigEntryReader combined_entry_reader(cmb_sample_descriptors, sample_descriptors);
+        config_reader.AddEntryReader("SAMPLE_CMB", combined_entry_reader, false);
 
         config_reader.ReadConfig(args.sources());
 
@@ -146,9 +141,10 @@ public:
 
     void Run()
     {
-        ProcessSamples(ana_setup.signals, "signals");
+        ProcessSamples(ana_setup.signals, "signal");
         ProcessSamples(ana_setup.data, "data");
-        ProcessSamples(ana_setup.backgrounds, "backgrounds");
+        ProcessSamples(ana_setup.backgrounds, "background");
+        ProcessCombinedSamples(ana_setup.cmb_samples);
 
         if(args.draw()) {
             std::cout << "Creating plots..." << std::endl;
@@ -194,6 +190,7 @@ protected:
                                                                 ntuple::TreeState::Skimmed);
                 const auto prod_summary = ntuple::MergeSummaryTuple(*summary_tuple);
                 ProcessDataSource(sample, sample_wp, tuple, prod_summary);
+                processed_files.insert(sample_wp.file_path);
             }
         }
     }
@@ -202,9 +199,14 @@ protected:
                            std::shared_ptr<ntuple::EventTuple> tuple, const ntuple::ProdSummary& prod_summary)
     {
         const SummaryInfo summary(prod_summary);
-        for(const auto& tupleEvent : *tuple) {
+        Event prevFullEvent, *prevFullEventPtr = nullptr;
+        for(auto tupleEvent : *tuple) {
             EventInfo event(tupleEvent, ntuple::JetPair{0, 1}, summary);
-            if(!EventEnergyScaleToProcess().count(event.GetEnergyScale())) continue;
+            if(!ana_setup.energy_scales.count(event.GetEnergyScale())) continue;
+            if(ntuple::EventLoader::Load(tupleEvent, prevFullEventPtr).IsFull()) {
+                prevFullEvent = tupleEvent;
+                prevFullEventPtr = &prevFullEvent;
+            }
             const auto eventCategories = DetermineEventCategories(event);
             for(auto eventCategory : eventCategories) {
                 if (!EventCategoriesToProcess().count(eventCategory)) continue;
@@ -236,11 +238,87 @@ protected:
         // TODO: implement QCD estimation.
     }
 
-    virtual void ProcessSpecialEvent(const SampleDescriptor& /*sample*/, const SampleDescriptor::Point& /*sample_wp*/,
+    virtual void ProcessSpecialEvent(const SampleDescriptor& sample, const SampleDescriptor::Point& /*sample_wp*/,
                                      const EventAnalyzerDataId& anaDataId, EventInfo& event, double weight)
     {
-        // TODO: implement DY estimation.
-        anaDataCollection.Fill(anaDataId, event, weight);
+        if(sample.sampleType == SampleType::DY) {
+            static auto const find_b_index = [&]() {
+                const auto& param_names = sample.GetModelParameterNames();
+                const auto b_param_iter = param_names.find("b");
+                if(b_param_iter == param_names.end())
+                    throw exception("Unable to find b_parton WP for DY sample");
+                return b_param_iter->second;
+            };
+            static const size_t b_index = find_b_index();
+
+            bool wp_found = false;
+            for(const auto& sample_wp : sample.working_points) {
+                const size_t n_b_partons = static_cast<size_t>(sample_wp.param_values.at(b_index));
+                if(event->lhe_n_b_partons == n_b_partons ||
+                        (n_b_partons == sample.GetNWorkingPoints() - 1 && event->lhe_n_b_partons > n_b_partons)) {
+                    const auto finalId = anaDataId.Set(sample_wp.full_name);
+                    anaDataCollection.Fill(finalId, event, weight * sample_wp.norm_sf);
+                    wp_found = true;
+                    break;
+                }
+            }
+            if(!wp_found)
+                throw exception("Unable to find WP for DY event with lhe_n_b_partons = %1%") % event->lhe_n_b_partons;
+
+        } else
+            throw exception("Unsupported special event type '%1%'.") % sample.sampleType;
+    }
+
+    void ProcessCombinedSamples(const std::vector<std::string>& sample_names)
+    {
+        std::cout << "Processing combined samples... " << std::endl;
+        for(const std::string& sample_name : sample_names) {
+            if(!cmb_sample_descriptors.count(sample_name))
+                throw exception("Combined sample '%1%' not found.") % sample_name;
+            CombinedSampleDescriptor& sample = cmb_sample_descriptors.at(sample_name);
+            if(sample.channels.size() && !sample.channels.count(ChannelId())) continue;
+            std::cout << sample.name << std::endl;
+            sample.CreateWorkingPoints();
+            for(const std::string& sub_sample_name : sample.sample_descriptors) {
+                if(!sample_descriptors.count(sub_sample_name))
+                    throw exception("Unable to create '%1%': sub-sample '%2%' not found.")
+                        % sample_name % sub_sample_name;
+                SampleDescriptor& sub_sample =  sample_descriptors.at(sub_sample_name);
+                AddSampleToCombined(sample, sub_sample);
+            }
+        }
+    }
+
+    void AddSampleToCombined(CombinedSampleDescriptor& sample, SampleDescriptor& sub_sample)
+    {
+        for(const auto& energyScale : ana_setup.energy_scales) {
+            for(const auto& category : EventCategoriesToProcess()) {
+                for(const auto& subCategory : EventSubCategoriesToProcess()) {
+                    for(const auto& region : EventRegionsToProcess()) {
+                        const EventAnalyzerDataId metaDataId(category, subCategory, region, energyScale);
+                        const auto anaDataId = metaDataId.Set(sample.name);
+                        auto& anaData = anaDataCollection.Get(anaDataId);
+                        for(const auto& sub_sample_wp : sub_sample.working_points) {
+                            const auto subDataId = metaDataId.Set(sub_sample_wp.full_name);
+                            auto& subAnaData = anaDataCollection.Get(subDataId);
+                            for(const auto& sub_entry_base : subAnaData.GetEntries()) {
+                                auto sub_entry = dynamic_cast<root_ext::AnalyzerDataEntry<TH1D>*>(
+                                            sub_entry_base.second);
+                                if(!sub_entry) continue;
+                                auto entry = dynamic_cast<root_ext::AnalyzerDataEntry<TH1D>*>(
+                                            anaData.GetEntries().at(sub_entry_base.first));
+                                if(!entry)
+                                    throw exception("Unable to get entry '%1%' for combined sample '%2%'.")
+                                        % sub_entry_base.first % sample.name;
+                                for(const auto& hist : sub_entry->GetHistograms()) {
+                                    (*entry)(hist.first).Add(hist.second.get(), 1);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     template<typename SampleCollection>
@@ -286,7 +364,7 @@ protected:
     AnaDataCollection anaDataCollection;
     AnalyzerSetup ana_setup;
     SampleDescriptorCollection sample_descriptors;
-    CombineSampleDescriptorCollection cmb_sample_descriptors;
+    CombinedSampleDescriptorCollection cmb_sample_descriptors;
 };
 
 } // namespace analysis
