@@ -109,7 +109,7 @@ public:
                                                 [](double xs){ return xs > 0; });
         ParseMappedEntryList("points", current.points, true);
         ParseEntry("draw_ex", current.draw_ex);
-        ParseEntryList("norm_sf", current.norm_sf);
+        ParseEntryList("norm_sf", current.norm_sf, true);
 
         Base::ReadParameter(param_name,param_value,ss);
     }

@@ -146,7 +146,7 @@ std::ostream& operator<<(std::ostream& os, const EventCategory& eventCategory)
     return os;
 }
 
-enum class SelectionCut { InsideMassWindow = 0, MVA = 1, KinematicFitConverged = 2 };
+enum class SelectionCut { InsideMassWindow = 0, MVA = 1, KinematicFitConverged = 2, };
 ENUM_NAMES(SelectionCut) = {
     { SelectionCut::InsideMassWindow, "InsideMassWindow" }, { SelectionCut::MVA, "MVA" },
     { SelectionCut::KinematicFitConverged, "KinematicFitConverged" }
@@ -158,6 +158,8 @@ struct EventSubCategory {
     using Bits = std::bitset<MaxNumberOfCuts>;
 
     static const EventSubCategory& NoCuts() { static const EventSubCategory esc; return esc; }
+
+    EventSubCategory() {}
 
     bool HasCut(SelectionCut cut) const { return presence[GetIndex(cut)]; }
     bool Passed(SelectionCut cut) const
