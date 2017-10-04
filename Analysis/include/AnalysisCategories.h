@@ -6,6 +6,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include <boost/optional/optional.hpp>
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
 #include "AnalysisTools/Core/include/Tools.h"
+#include "AnalysisTools/Core/include/TextIO.h"
 
 namespace analysis {
 
@@ -135,6 +136,35 @@ struct EventCategory {
         return s.str();
     }
 
+    static EventCategory Parse(const std::string& str)
+    {
+        static const std::string numbers = "0123456789";
+        static const std::string jets_suffix = "jets", btag_suffix = "btag";
+
+        if(str == "Inclusive") return Inclusive();
+        try {
+            const size_t jet_pos = str.find_first_not_of(numbers);
+            if(jet_pos == std::string::npos && str.substr(jet_pos, jets_suffix.size()) != "jets")
+                throw exception("");
+            const size_t n_jets = ::analysis::Parse<size_t>(str.substr(0, jet_pos));
+            const size_t btag_str_pos = jet_pos + jets_suffix.size();
+            if(str.size() == btag_str_pos)
+                return EventCategory(n_jets);
+            const size_t btag_wp_pos = str.find_first_not_of(numbers, btag_str_pos);
+            if(btag_wp_pos == std::string::npos)
+                throw exception("");
+            const size_t n_btag = ::analysis::Parse<size_t>(str.substr(btag_str_pos, btag_wp_pos - btag_str_pos));
+            const size_t btag_pos = str.find(btag_suffix, btag_wp_pos);
+            if(btag_pos == std::string::npos)
+                throw exception("");
+            const DiscriminatorWP btag_wp = btag_wp_pos == btag_pos ? DiscriminatorWP::Medium
+                    : ::analysis::Parse<DiscriminatorWP>(str.substr(btag_wp_pos, btag_pos - btag_wp_pos));
+            return EventCategory(n_jets, n_btag, btag_wp);
+        }catch(exception& e) {
+            throw exception("Invalid EventCategory '%1%'. %2%") % str % e.message();
+        }
+    }
+
 private:
     boost::optional<size_t> n_jets, n_btag;
     boost::optional<DiscriminatorWP> btag_wp;
@@ -144,6 +174,14 @@ std::ostream& operator<<(std::ostream& os, const EventCategory& eventCategory)
 {
     os << eventCategory.ToString();
     return os;
+}
+
+std::istream& operator>>(std::istream& is, EventCategory& eventCategory)
+{
+    std::string str;
+    is >> str;
+    eventCategory = EventCategory::Parse(str);
+    return is;
 }
 
 enum class SelectionCut { InsideMassWindow = 0, MVA = 1, KinematicFitConverged = 2 };
@@ -202,19 +240,37 @@ struct EventSubCategory {
 
     std::string ToString() const
     {
-        bool is_first = true;
         std::ostringstream s;
         for(size_t n = 0; n < MaxNumberOfCuts; ++n) {
             if(!presence[n]) continue;
-            if(!is_first) {
-                s << "_";
-            }
-            is_first = false;
-            if(!results[n])
-                s << "not";
-            s << static_cast<SelectionCut>(n);
+            if(!results[n]) s << "not";
+            s << static_cast<SelectionCut>(n) << "_";
         }
-        return s.str();
+        std::string str = s.str();
+        if(str.size())
+            str.erase(str.size() - 1);
+        return str;
+    }
+
+    static EventSubCategory Parse(const std::string& str)
+    {
+        EventSubCategory sub;
+        const std::vector<std::string> cut_strings = SplitValueList(str, false, "_");
+        try {
+            for(auto cut_str : cut_strings) {
+                bool result = true;
+                if(cut_str.substr(0, 3) == "not") {
+                    cut_str.erase(0, 3);
+                    result = false;
+                }
+                const auto cut = ::analysis::Parse<SelectionCut>(cut_str);
+                sub.SetCutResult(cut, result);
+            }
+        } catch(exception& e) {
+            throw exception("Invalid event sub-category '%1%'. %2%") % str % e.message();
+        }
+
+        return sub;
     }
 
 private:
@@ -234,6 +290,14 @@ std::ostream& operator<<(std::ostream& os, const EventSubCategory& eventSubCateg
 {
     os << eventSubCategory.ToString();
     return os;
+}
+
+std::istream& operator>>(std::istream& is, EventSubCategory& eventSubCategory)
+{
+    std::string str;
+    is >> str;
+    eventSubCategory = EventSubCategory::Parse(str);
+    return is;
 }
 
 using EventRegionSet = std::set<EventRegion>;

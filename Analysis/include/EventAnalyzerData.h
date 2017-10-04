@@ -15,11 +15,14 @@ public:
     const bool SaveAll = true;
 
     const BinVector M_tt_Bins = { 10, 35, 60, 85, 110, 135, 160, 185, 210, 250, 300, 350, 400, 500 };
-    const BinVector M_ttbb_Bins = { 260, 300, 350, 400, 450, 500, 600, 700, 850, 1000 };
+    const BinVector M_ttbb_Bins = { 250, 260, 270, 280, 290, 300, 325, 350, 375, 400, 425, 450, 475, 500, 550,
+                                    600, 650, 700, 850, 1000 };
+    const BinVector MT2_Bins = { 0, 25, 50, 75, 100, 125, 150, 175, 200, 250, 300, 500 };
 
     TH1D_ENTRY_CUSTOM_EX(m_ttbb, M_ttbb_Bins, "M_{#tau#tau+jj} (GeV)", "dN/dm_{#tau#tau+jj} (1/GeV)", false, 1.5, true, SaveAll)
     TH1D_ENTRY_CUSTOM_EX(m_ttbb_kinfit, M_ttbb_Bins, "M_{H}^{kinfit} (GeV)", "dN/dm_{H}^{kinfit} (1/GeV)", false, 1.4, true, true)
     TH1D_ENTRY_CUSTOM_EX(m_sv, M_tt_Bins, "M_{#tau#tau} (GeV)", "dN/dm_{#tau#tau} (1/GeV)", false, 1.3, true, true)
+    TH1D_ENTRY_CUSTOM_EX(MT2, MT2_Bins, "MT2_{H} (GeV)", "dN/dm (1/GeV)", false, 1.4, true, true)
 
     TH1D_ENTRY_CUSTOM_EX(m_tt_vis, M_tt_Bins, "M_{vis}(GeV)", "Events", false, 1.1, false, SaveAll)
     TH1D_ENTRY_EX(pt_H_tt, 20, 0, 300, "P_{T}(GeV)", "Events", false, 1.2, false, SaveAll)
@@ -59,6 +62,7 @@ public:
             const auto& kinfit = event.GetKinFitResults();
             if(kinfit.HasValidMass())
                 m_ttbb_kinfit().Fill(kinfit.mass, weight);
+            MT2().Fill(event.GetMT2(), weight);
         }
 
         const double m_SVfit = event.GetHiggsTTMomentum(true).M();
