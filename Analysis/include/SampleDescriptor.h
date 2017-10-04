@@ -23,9 +23,10 @@ struct AnalyzerSetup {
     double int_lumi{0};
     std::vector<std::string> final_variables;
     bool apply_mass_cut{false}, apply_os_cut{true}, apply_iso_cut{true};
-    std::set<EventEnergyScale> energy_scales;
+    EventEnergyScaleSet energy_scales;
     std::vector<std::string> data, signals, backgrounds, cmb_samples;
     std::vector<std::string> draw_sequence;
+    std::map<EventCategory, std::string> limit_categories;
 };
 
 using AnalyzerSetupCollection = std::unordered_map<std::string, AnalyzerSetup>;

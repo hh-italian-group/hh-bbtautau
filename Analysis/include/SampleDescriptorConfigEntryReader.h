@@ -16,7 +16,7 @@ public:
     virtual void EndEntry() override
     {
         CheckReadParamCounts("int_lumi", 1, Condition::less_equal);
-        CheckReadParamCounts("final_variable", 0, Condition::greater_equal);
+        CheckReadParamCounts("final_variables", 1, Condition::less_equal);
         CheckReadParamCounts("apply_mass_cut", 1, Condition::less_equal);
         CheckReadParamCounts("apply_os_cut", 1, Condition::less_equal);
         CheckReadParamCounts("apply_iso_cut", 1, Condition::less_equal);
@@ -26,6 +26,7 @@ public:
         CheckReadParamCounts("backgrounds", 1, Condition::less_equal);
         CheckReadParamCounts("cmb_samples", 1, Condition::less_equal);
         CheckReadParamCounts("draw_sequence", 1, Condition::less_equal);
+        CheckReadParamCounts("limit_category", 0, Condition::greater_equal);
 
         ConfigEntryReaderT<AnalyzerSetup>::EndEntry();
     }
@@ -34,7 +35,7 @@ public:
                                std::istringstream& /*ss*/) override
     {
         ParseEntry("int_lumi", current.int_lumi);
-        ParseEntry("final_variable", current.final_variables);
+        ParseEntryList("final_variables", current.final_variables);
         ParseEntry("apply_mass_cut", current.apply_mass_cut);
         ParseEntry("apply_os_cut", current.apply_os_cut);
         ParseEntry("apply_iso_cut", current.apply_iso_cut);
@@ -44,6 +45,7 @@ public:
         ParseEntryList("backgrounds", current.backgrounds);
         ParseEntryList("cmb_samples", current.cmb_samples);
         ParseEntryList("draw_sequence", current.draw_sequence);
+        ParseEntry("limit_category", current.limit_categories);
     }
 };
 
