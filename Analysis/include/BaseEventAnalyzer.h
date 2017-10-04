@@ -212,12 +212,12 @@ protected:
         const SummaryInfo summary(prod_summary);
         Event prevFullEvent, *prevFullEventPtr = nullptr;
         for(auto tupleEvent : *tuple) {
-            EventInfo event(tupleEvent, ntuple::JetPair{0, 1}, summary);
-            if(!ana_setup.energy_scales.count(event.GetEnergyScale())) continue;
             if(ntuple::EventLoader::Load(tupleEvent, prevFullEventPtr).IsFull()) {
                 prevFullEvent = tupleEvent;
                 prevFullEventPtr = &prevFullEvent;
             }
+            EventInfo event(tupleEvent, ntuple::JetPair{0, 1}, summary);
+            if(!ana_setup.energy_scales.count(event.GetEnergyScale())) continue;
             const auto eventCategories = DetermineEventCategories(event);
             for(auto eventCategory : eventCategories) {
                 if (!EventCategoriesToProcess().count(eventCategory)) continue;
@@ -316,17 +316,10 @@ protected:
             for(const auto& sub_sample_wp : sub_sample.working_points) {
                 const auto subDataId = metaDataId.Set(sub_sample_wp.full_name);
                 auto& subAnaData = anaDataCollection.Get(subDataId);
-                for(const auto& sub_entry_base : subAnaData.GetEntries()) {
-                    auto sub_entry = dynamic_cast<root_ext::AnalyzerDataEntry<TH1D>*>(
-                                sub_entry_base.second);
-                    if(!sub_entry) continue;
-                    auto entry = dynamic_cast<root_ext::AnalyzerDataEntry<TH1D>*>(
-                                anaData.GetEntries().at(sub_entry_base.first));
-                    if(!entry)
-                        throw exception("Unable to get entry '%1%' for combined sample '%2%'.")
-                            % sub_entry_base.first % sample.name;
-                    for(const auto& hist : sub_entry->GetHistograms()) {
-                        (*entry)(hist.first).Add(hist.second.get(), 1);
+                for(const auto& sub_entry : subAnaData.template GetEntriesEx<TH1D>()) {
+                    auto& entry = anaData.template GetEntryEx<TH1D>(sub_entry.first);
+                    for(const auto& hist : sub_entry.second->GetHistograms()) {
+                        entry(hist.first).Add(hist.second.get(), 1);
                     }
                 }
             }

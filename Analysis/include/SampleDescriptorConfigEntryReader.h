@@ -49,7 +49,6 @@ public:
     }
 };
 
-
 template<typename Descriptor>
 class SampleDescriptorBaseConfigEntryReader : public ConfigEntryReaderT<Descriptor>, public virtual ConfigEntryReader {
 public:
@@ -111,7 +110,7 @@ public:
                                                 [](double xs){ return xs > 0; });
         ParseMappedEntryList("points", current.points, true);
         ParseEntry("draw_ex", current.draw_ex);
-        ParseEntryList("norm_sf", current.norm_sf);
+        ParseEntryList("norm_sf", current.norm_sf, true);
 
         Base::ReadParameter(param_name,param_value,ss);
     }

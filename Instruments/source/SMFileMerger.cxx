@@ -25,23 +25,14 @@ namespace sample_merging{
 class SMFileMergerData : public root_ext::AnalyzerData {
 public:
     using AnalyzerData::AnalyzerData;
-    TH1D_ENTRY(lhe_hh_m, 100, 0, 1000)
-    TH1D_ENTRY(lhe_hh_cosTheta, 6, -1.0, 1.0)
-    //TH2D_ENTRY(lhe_hh_cosTheta_vs_m, 25, 200, 2000, 30, -1.1, 1.1)
-    TH2D_ENTRY_CUSTOM(lhe_hh_cosTheta_vs_m, mhh_Bins(), cosTheta_Bins())
-    TH2D_ENTRY_CUSTOM(weight, mhh_Bins(), cosTheta_Bins())
 
-    virtual const std::vector<double>& cosTheta_Bins() const
-    {
-        static const std::vector<double> bins = { 0.0,0.4,0.6,0.8, 0.9,1.0 };
-        return bins;
-    }
+    const std::vector<double> mhh_Bins{ 245, 270, 300, 330, 360, 390, 420, 450, 500, 550, 600, 700, 800, 1000, 10000 };
+    const std::vector<double> cosTheta_Bins{ 0.0, 0.4, 0.6, 0.8, 0.9, 1.0 };
 
-    virtual const std::vector<double>& mhh_Bins() const
-    {
-        static const std::vector<double> bins = { 245.,270.,300.,330.,360.,390., 420.,450.,500.,550.,600.,700.,800.,1000.,1500. };
-        return bins;
-    }
+    TH1D_ENTRY_CUSTOM(lhe_hh_m, mhh_Bins)
+    TH1D_ENTRY_CUSTOM(lhe_hh_cosTheta, cosTheta_Bins)
+    TH2D_ENTRY_CUSTOM(lhe_hh_cosTheta_vs_m, mhh_Bins, cosTheta_Bins)
+    TH2D_ENTRY_CUSTOM(weight, mhh_Bins, cosTheta_Bins)
 };
 
 
@@ -93,7 +84,7 @@ private:
 
                     //std::cout << "Mhh: " << event->lhe_hh_m << ", cosTheta: " << event->lhe_hh_cosTheta << std::endl;
                     anaData.lhe_hh_m(name).Fill(event->lhe_hh_m);
-                    anaData.lhe_hh_cosTheta(name).Fill(event->lhe_hh_cosTheta);
+                    anaData.lhe_hh_cosTheta(name).Fill(std::abs(event->lhe_hh_cosTheta));
                     anaData.lhe_hh_cosTheta_vs_m(name).Fill(event->lhe_hh_m,std::abs(event->lhe_hh_cosTheta));
                 } //end loop on entries
 
@@ -108,12 +99,19 @@ private:
 
         for (const auto& file_descriptor : file_descriptors) {
             const std::string& name = file_descriptor.second.name;
-
-            for (Int_t n = 1; n <= anaData.lhe_hh_cosTheta_vs_m(name).GetNbinsX()+1; ++n){
-                for (Int_t h = 1; h <= anaData.lhe_hh_cosTheta_vs_m(name).GetNbinsY(); ++h){
-                    if (anaData.lhe_hh_cosTheta_vs_m(name).GetBinContent(n,h) == 0){
-                        std::cout << name <<  " - Empty Bin! (" << n << "," << h << ")" << std::endl ;
-                        throw analysis::exception("Empty bins!");
+            const auto& hist = anaData.lhe_hh_cosTheta_vs_m(name);
+            const Int_t N = hist.GetNbinsX() + 1;
+            const Int_t H = hist.GetNbinsY() + 1;
+            for (Int_t n = 0; n <= N; ++n){
+                for (Int_t h = 0; h <= H; ++h){
+                    const bool zero_content = anaData.lhe_hh_cosTheta_vs_m(name).GetBinContent(n,h) == 0;
+                    const bool overflow_bin = n == 0 || n == N || h == 0 || h == H;
+                    if((zero_content && !overflow_bin) || (!zero_content && overflow_bin)) {
+                        std::ostringstream ss;
+                        const std::string prefix = overflow_bin ? "Non empty" : "Empty";
+                        ss << prefix << " bin in " << name << ": (" << n << ", " << h << ") with center at ("
+                           << hist.GetXaxis()->GetBinCenter(n) << ", " << hist.GetYaxis()->GetBinCenter(h) << ").";
+                        throw exception(ss.str());
                     }
                 }
             }
