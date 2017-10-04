@@ -112,6 +112,7 @@ public:
             }
             weights[id] = entry.second.sampleweight / (tot_weight);
         }
+        std::cout<<"pesi"<<std::endl;
         for(const auto& data_entry : data_pair) {
             const bool istraining = data_entry.first;
             const TMVA::Types::ETreeType treetype = istraining ? TMVA::Types::kTraining : TMVA::Types::kTesting;
@@ -413,7 +414,7 @@ public:
         auto mass_range = CreateMassRange();
         std::cout<< "quante masse? "<<mass_range.size() <<std::endl;
         auto mass_spin = CreateMassSpinRange(range);
-        std::cout<< "quante copie massa-spin? "<<mass_spin.size() <<std::endl;
+        std::cout<< "quante coppie massa-spin? "<<mass_spin.size() <<std::endl;
 
         std::uniform_int_distribution<size_t> it(0, mass_spin.size() - 1);
         std::uniform_int_distribution<int> split(0, 3);
@@ -445,7 +446,7 @@ public:
                         if (!args.blind())
                             if (event.split_id < (mergesummary.n_splits/2)) continue;
                     }
-                    tot_entries++;
+                   tot_entries++;
                     int set = split(gen2);
                     int which_set = set == args.which_test() ? 0 : 1;
                     if (entry.id.IsBackground()) {
@@ -639,7 +640,7 @@ public:
             auto directory_sb_method = root_ext::GetDirectory(*directory_sb, m.first);
             std::cout<<"----"<<m.first<<"----"<<std::endl;
             std::cout<<"Kolmogorov"<<std::endl;
-            kolmogorov = KolmogorovTest(evaluation, outputBDT->bdt_out, directory_ks_method, true);
+            kolmogorov = KolmogorovTest(evaluation, outputBDT->bdt_out, directory_ks_method, false);
             for (const auto& sample : kolmogorov){
                 mva_tuple().KS_value.push_back(sample.second);
                 mva_tuple().KS_channel.push_back(sample.first.channel);
