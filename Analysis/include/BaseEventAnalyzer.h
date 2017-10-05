@@ -257,9 +257,9 @@ protected:
     {
         for(const EventAnalyzerDataId& metaDataId : EventAnalyzerDataId::MetaLoop(EventCategoriesToProcess(),
                 EventSubCategoriesToProcess(), EventSidebandRegionsToProcess(), ana_setup.energy_scales)) {
-            const auto anaDataId = metaDataId.Set(qcd_sample.name);
+            const auto anaDataId = metaDataId.Set(qcd_sample.name); //qcdanadata
             auto& anaData = anaDataCollection.Get(anaDataId);
-            for(const std::string& sub_sample_name : sample_descriptors) {
+            for(const auto& sub_sample_name : sample_descriptors) { //map correggi..sample e nn sub_sample
                 SampleDescriptor& sub_sample =  sample_descriptors.at(sub_sample_name);
                 if(sub_sample.sampleType == SampleType::QCD || sub_sample_name == "signals") continue;
                 for(const auto& sub_sample_wp : sub_sample.working_points) {
