@@ -68,15 +68,6 @@ public:
         return regions;
     }
 
-    virtual const EventRegionSet& EventSidebandRegionsToProcess() const
-    {
-        static const EventRegionSet regions = {
-            EventRegion::OS_AntiIsolated(),
-            EventRegion::SS_Isolated(), EventRegion::SS_AntiIsolated()
-        };
-        return regions;
-    }
-
     static EventCategorySet DetermineEventCategories(EventInfo& event)
     {
         static const std::map<DiscriminatorWP, double> btag_working_points = {
@@ -255,18 +246,24 @@ protected:
 
     virtual void EstimateQCD(const SampleDescriptor& qcd_sample)
     {
+        static const EventRegionSet sidebandRegions = {
+                EventRegion::OS_AntiIsolated(),
+                EventRegion::SS_Isolated(), EventRegion::SS_AntiIsolated()
+            };
+
+
         for(const EventAnalyzerDataId& metaDataId : EventAnalyzerDataId::MetaLoop(EventCategoriesToProcess(),
-                EventSubCategoriesToProcess(), EventSidebandRegionsToProcess(), ana_setup.energy_scales)) {
-            const auto anaDataId = metaDataId.Set(qcd_sample.name); //qcdanadata
-            auto& anaData = anaDataCollection.Get(anaDataId);
-            for(const auto& sub_sample_name : sample_descriptors) { //map correggi..sample e nn sub_sample
-                SampleDescriptor& sub_sample =  sample_descriptors.at(sub_sample_name);
-                if(sub_sample.sampleType == SampleType::QCD || sub_sample_name == "signals") continue;
+                EventSubCategoriesToProcess(), sidebandRegions, ana_setup.energy_scales)) {
+            const auto qcdAnaDataId = metaDataId.Set(qcd_sample.name); //qcdanadata
+            auto& qcdAnaData = anaDataCollection.Get(qcdAnaDataId);
+            for(const auto& sample_name : sample_descriptors) { //map correggi..sample e nn sub_sample
+                SampleDescriptor& sample =  sample_name.second;
+                if(sample.sampleType == SampleType::QCD || sub_sample_name == "signals") continue;
                 for(const auto& sub_sample_wp : sub_sample.working_points) {
                     const auto subDataId = metaDataId.Set(sub_sample_wp.full_name);
                     auto& subAnaData = anaDataCollection.Get(subDataId);
                     for(const auto& sub_entry : subAnaData.template GetEntriesEx<TH1D>()) {
-                        auto& entry = anaData.template GetEntryEx<TH1D>(sub_entry.first);
+                        auto& entry = qcdAnaData.template GetEntryEx<TH1D>(sub_entry.first);
                         for(const auto& hist : sub_entry.second->GetHistograms()) {
                             if(hist.first == "data")
                                 entry(hist.first).Add(hist.second.get(), 1);
