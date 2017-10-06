@@ -272,8 +272,8 @@ protected:
             bool wp_found = false;
             for(const auto& sample_wp : sample.working_points) {
                 const size_t n_b_partons = static_cast<size_t>(sample_wp.param_values.at(b_index));
-                if(event->jets_nTotal_hadronFlavour_b == n_b_partons ||
-                        (n_b_partons == sample.GetNWorkingPoints() - 1 && event->jets_nTotal_hadronFlavour_b > n_b_partons)) {
+                if(event->lhe_n_b_partons == n_b_partons ||
+                        (n_b_partons == sample.GetNWorkingPoints() - 1 && event->lhe_n_b_partons > n_b_partons)) {
                     const auto finalId = anaDataId.Set(sample_wp.full_name);
                     anaDataCollection.Fill(finalId, event, weight * sample_wp.norm_sf);
                     wp_found = true;
@@ -281,8 +281,7 @@ protected:
                 }
             }
             if(!wp_found)
-                throw exception("Unable to find WP for DY event with jets_nTotal_hadronFlavour_b = %1%") %
-                    event->jets_nTotal_hadronFlavour_b;
+                throw exception("Unable to find WP for DY event with lhe_n_b_partons = %1%") % event->lhe_n_b_partons;
 
         } else
             throw exception("Unsupported special event type '%1%'.") % sample.sampleType;
