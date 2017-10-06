@@ -97,7 +97,7 @@ public:
         return categories;
     }
 
-    static EventSubCategory DetermineEventSubCategory(EventInfo& event)
+    virtual EventSubCategory DetermineEventSubCategory(EventInfo& event)
     {
         using namespace cuts::hh_bbtautau_2016::hh_tag;
         EventSubCategory sub_category;
