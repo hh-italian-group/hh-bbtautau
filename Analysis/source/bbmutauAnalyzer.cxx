@@ -22,7 +22,7 @@ protected:
 
         if(!event.GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) return EventRegion::Unknown();
 
-//        if(!tau->byIsolationMVA(DiscriminatorWP::VLoose))
+//        if(ana_setup.apply_iso_cut && !tau->byIsolationMVA(DiscriminatorWP::VLoose))
 //            return EventRegion::Unknown();
 
         const bool os = !ana_setup.apply_os_cut || muon.GetCharge() * tau.GetCharge() == -1;

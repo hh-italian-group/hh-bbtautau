@@ -288,10 +288,20 @@ protected:
                 auto& entry_ssAntiIso = ssAntiIsoData.template GetEntryEx<TH1D>(sub_entry.first);
                 for(const auto& hist : sub_entry.second->GetHistograms()) {
                     std::string debug_info, negative_bins_info;
-                    if(!HasNegativeContribution(*hist.second.get(),debug_info, negative_bins_info)) continue;
+                    if(!HasNegativeContribution(*hist.second,debug_info, negative_bins_info)) continue;
+                    const auto osAntiIso_integral = analysis::Integral(entry_osAntiIso(hist.first), true);
+                    const auto ssAntiIso_integral = analysis::Integral(entry_ssAntiIso(hist.first), true);
+                    if (osAntiIso_integral.GetValue() < 0){
+                        std::cout << "Warning: OS Anti Iso integral less than 0 for " << hist.first << std::endl;
+                        continue;
+                    }
+
+                    if (ssAntiIso_integral.GetValue() < 0){
+                        std::cout << "Warning: SS Anti Iso integral less than 0 for " << hist.first << std::endl;
+                        continue;
+                    }
+                    const double k_factor = osAntiIso_integral.GetValue()/ssAntiIso_integral.GetValue();
                     entry_osIso(hist.first).CopyContent(*hist.second.get());
-                    const double k_factor = entry_osAntiIso(hist.first).Integral(0, hist.second.get()->GetNbinsX() + 1)/
-                            entry_ssAntiIso(hist.first).Integral(0, hist.second.get()->GetNbinsX() + 1);
                     entry_osIso(hist.first).Scale(k_factor);
                 }
             }
