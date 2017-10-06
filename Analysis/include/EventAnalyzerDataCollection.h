@@ -8,6 +8,22 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 
 namespace analysis {
 
+namespace detail {
+
+template<typename CollectionItem>
+struct EventAnalyzerDataId_IdElementAccessor {
+    using ElementType = CollectionItem;
+    static ElementType Get(const CollectionItem& item) { return item; }
+};
+
+template<typename Key, typename Value>
+struct EventAnalyzerDataId_IdElementAccessor<std::pair<const Key, Value>> {
+    using ElementType = Key;
+    static ElementType Get(const std::pair<Key, Value>& item) { return item.first; }
+};
+
+} // namesapce detail
+
 struct EventAnalyzerDataId {
 public:
     template<typename T> using Optional = boost::optional<T>;
@@ -39,6 +55,14 @@ public:
     bool operator< (const EventAnalyzerDataId& other) const { return id_tuple < other.id_tuple; }
     std::string GetName() const { return GetSubName(std::make_index_sequence<TupleSize>{}); }
     bool IsComplete() const { return ItemsAreInitialized(std::make_index_sequence<TupleSize>{}); }
+
+    template<typename ...Collections>
+    static std::vector<EventAnalyzerDataId> MetaLoop(Collections&&... cols)
+    {
+        std::vector<EventAnalyzerDataId> result;
+        AddMetaLoopLevels(result, std::forward<Collections>(cols)...);
+        return result;
+    }
 
 private:
     void Initialize() {}
@@ -79,6 +103,39 @@ private:
         for(bool init : is_initialized)
             if(!init) return false;
         return true;
+    }
+
+    static void AddMetaLoopLevels(std::vector<EventAnalyzerDataId>&) {}
+
+    template<typename Collection, typename ...OtherCollections>
+    static void AddMetaLoopLevels(std::vector<EventAnalyzerDataId>& result, Collection&& collection,
+                         OtherCollections&&... other_collections)
+    {
+        using Item = typename std::remove_reference<Collection>::type::value_type;
+        using ElementAccessor = typename detail::EventAnalyzerDataId_IdElementAccessor<Item>;
+        using ElementType = typename ElementAccessor::ElementType;
+
+        const size_t N = std::max<size_t>(result.size(), 1) * collection.size();
+        std::vector<EventAnalyzerDataId> new_result;
+        new_result.reserve(N);
+        if(!result.size()) {
+            for(const auto& item : collection) {
+                const auto& id_element = ElementAccessor::Get(item);
+                new_result.emplace_back(id_element);
+            }
+        } else {
+            for(const EventAnalyzerDataId& ref_id : result) {
+                if(ref_id.Has<ElementType>())
+                    throw exception("Duplicated element type '%1%' in meta loop.") % typeid(ElementType).name();
+                for(const auto& item : collection) {
+                    const auto& id_element = ElementAccessor::Get(item);
+                    new_result.push_back(ref_id.Set(id_element));
+                }
+            }
+        }
+
+        result = std::move(new_result);
+        AddMetaLoopLevels(result, std::forward<OtherCollections>(other_collections)...);
     }
 
 private:

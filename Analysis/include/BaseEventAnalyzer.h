@@ -10,7 +10,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
 #include "h-tautau/Analysis/include/EventLoader.h"
 #include "StackedPlotsProducer.h"
-
+#include "LimitsInputProducer.h"
 
 namespace analysis {
 
@@ -146,6 +146,17 @@ public:
         ProcessSamples(ana_setup.backgrounds, "background");
         ProcessCombinedSamples(ana_setup.cmb_samples);
 
+        std::cout << "Producing inputs for limits..." << std::endl;
+        LimitsInputProducer<FirstLeg, SecondLeg> limitsInputProducer(anaDataCollection, sample_descriptors,
+                                                                     cmb_sample_descriptors);
+        for(const std::string& hist_name : ana_setup.final_variables) {
+            for(const auto& subCategory : EventSubCategoriesToProcess()) {
+                std::cout << '\t' << hist_name << "/" << subCategory << std::endl;
+                limitsInputProducer.Produce(args.output(), hist_name, ana_setup.limit_categories, subCategory,
+                                            ana_setup.energy_scales);
+            }
+        }
+
         if(args.draw()) {
             std::cout << "Creating plots..." << std::endl;
             const auto samplesToDraw = PlotsProducer::CreateOrderedSampleCollection(
@@ -172,7 +183,7 @@ protected:
                 throw exception("Sample '%1%' not found.") % sample_name;
             SampleDescriptor& sample = sample_descriptors.at(sample_name);
             if(sample.channels.size() && !sample.channels.count(ChannelId())) continue;
-            std::cout << sample.name << std::endl;
+            std::cout << '\t' << sample.name << std::endl;
             sample.CreateWorkingPoints();
             if(sample.sampleType == SampleType::QCD) {
                 if(sample_index != sample_names.size() - 1)
@@ -201,12 +212,12 @@ protected:
         const SummaryInfo summary(prod_summary);
         Event prevFullEvent, *prevFullEventPtr = nullptr;
         for(auto tupleEvent : *tuple) {
-            EventInfo event(tupleEvent, ntuple::JetPair{0, 1}, summary);
-            if(!ana_setup.energy_scales.count(event.GetEnergyScale())) continue;
             if(ntuple::EventLoader::Load(tupleEvent, prevFullEventPtr).IsFull()) {
                 prevFullEvent = tupleEvent;
                 prevFullEventPtr = &prevFullEvent;
             }
+            EventInfo event(tupleEvent, ntuple::JetPair{0, 1}, summary);
+            if(!ana_setup.energy_scales.count(event.GetEnergyScale())) continue;
             const auto eventCategories = DetermineEventCategories(event);
             for(auto eventCategory : eventCategories) {
                 if (!EventCategoriesToProcess().count(eventCategory)) continue;
@@ -219,7 +230,7 @@ protected:
                     const EventAnalyzerDataId anaDataId(eventCategory, subCategory, eventRegion,
                                                         event.GetEnergyScale(), sample_wp.full_name);
                     if(sample.sampleType == SampleType::Data) {
-                        anaDataCollection.Fill(anaDataId, event, 1);
+                        ProcessDataEvent(anaDataId, event);
                     } else {
                         const double weight = event->weight_total * sample.cross_section * ana_setup.int_lumi
                                             / summary->totalShapeWeight;
@@ -236,6 +247,13 @@ protected:
     virtual void EstimateQCD(const SampleDescriptor& /*qcd_sample*/)
     {
         // TODO: implement QCD estimation.
+    }
+
+    void ProcessDataEvent(const EventAnalyzerDataId& anaDataId, EventInfo& event)
+    {
+        for(const auto& es : ana_setup.energy_scales) {
+            anaDataCollection.Fill(anaDataId.Set<EventEnergyScale>(es), event, 1);
+        }
     }
 
     virtual void ProcessSpecialEvent(const SampleDescriptor& sample, const SampleDescriptor::Point& /*sample_wp*/,
@@ -292,30 +310,17 @@ protected:
 
     void AddSampleToCombined(CombinedSampleDescriptor& sample, SampleDescriptor& sub_sample)
     {
-        for(const auto& energyScale : ana_setup.energy_scales) {
-            for(const auto& category : EventCategoriesToProcess()) {
-                for(const auto& subCategory : EventSubCategoriesToProcess()) {
-                    for(const auto& region : EventRegionsToProcess()) {
-                        const EventAnalyzerDataId metaDataId(category, subCategory, region, energyScale);
-                        const auto anaDataId = metaDataId.Set(sample.name);
-                        auto& anaData = anaDataCollection.Get(anaDataId);
-                        for(const auto& sub_sample_wp : sub_sample.working_points) {
-                            const auto subDataId = metaDataId.Set(sub_sample_wp.full_name);
-                            auto& subAnaData = anaDataCollection.Get(subDataId);
-                            for(const auto& sub_entry_base : subAnaData.GetEntries()) {
-                                auto sub_entry = dynamic_cast<root_ext::AnalyzerDataEntry<TH1D>*>(
-                                            sub_entry_base.second);
-                                if(!sub_entry) continue;
-                                auto entry = dynamic_cast<root_ext::AnalyzerDataEntry<TH1D>*>(
-                                            anaData.GetEntries().at(sub_entry_base.first));
-                                if(!entry)
-                                    throw exception("Unable to get entry '%1%' for combined sample '%2%'.")
-                                        % sub_entry_base.first % sample.name;
-                                for(const auto& hist : sub_entry->GetHistograms()) {
-                                    (*entry)(hist.first).Add(hist.second.get(), 1);
-                                }
-                            }
-                        }
+        for(const EventAnalyzerDataId& metaDataId : EventAnalyzerDataId::MetaLoop(EventCategoriesToProcess(),
+                EventSubCategoriesToProcess(), EventRegionsToProcess(), ana_setup.energy_scales)) {
+            const auto anaDataId = metaDataId.Set(sample.name);
+            auto& anaData = anaDataCollection.Get(anaDataId);
+            for(const auto& sub_sample_wp : sub_sample.working_points) {
+                const auto subDataId = metaDataId.Set(sub_sample_wp.full_name);
+                auto& subAnaData = anaDataCollection.Get(subDataId);
+                for(const auto& sub_entry : subAnaData.template GetEntriesEx<TH1D>()) {
+                    auto& entry = anaData.template GetEntryEx<TH1D>(sub_entry.first);
+                    for(const auto& hist : sub_entry.second->GetHistograms()) {
+                        entry(hist.first).Add(hist.second.get(), 1);
                     }
                 }
             }
