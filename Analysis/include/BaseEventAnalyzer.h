@@ -257,15 +257,15 @@ protected:
             const auto qcdAnaDataId = metaDataId.Set(qcd_sample.name);
             auto& qcdAnaData = anaDataCollection.Get(qcdAnaDataId);
             for(const auto& sample_name : sample_descriptors) {
-                SampleDescriptor& sample =  sample_name.second;
+                const SampleDescriptor& sample =  sample_name.second;
                 if(sample.sampleType == SampleType::QCD) continue;
-                const auto iter = std::find(ana_setup.signals.begin(), ana_setup.signals.end(), "signals");
+                const auto iter = std::find(ana_setup.signals.begin(), ana_setup.signals.end(), sample.name);
                 if(iter != ana_setup.signals.end()) continue;
                 double factor = sample.sampleType == SampleType::Data ? +1 : -1;
                 for(const auto& sample_wp : sample.working_points) {
                     const auto anaDataId = metaDataId.Set(sample_wp.full_name);
-                    auto& AnaData = anaDataCollection.Get(anaDataId);
-                    for(const auto& sub_entry : AnaData.template GetEntriesEx<TH1D>()) {
+                    auto& anaData = anaDataCollection.Get(anaDataId);
+                    for(const auto& sub_entry : anaData.template GetEntriesEx<TH1D>()) {
                         auto& entry = qcdAnaData.template GetEntryEx<TH1D>(sub_entry.first);
                         for(const auto& hist : sub_entry.second->GetHistograms()) {
                             entry(hist.first).Add(hist.second.get(), factor);
@@ -278,8 +278,21 @@ protected:
         for(const EventAnalyzerDataId& metaDataId : EventAnalyzerDataId::MetaLoop(EventCategoriesToProcess(),
                 EventSubCategoriesToProcess(), ana_setup.energy_scales)) {
             const auto anaDataId = metaDataId.Set(qcd_sample.name);
-            OsIso_anaDataId = anaDataId.Set(analysis::EventRegion::OS_Isolated());
-            auto& anaData = anaDataCollection.Get(anaDataId);
+            auto& osIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::OS_Isolated()));
+            auto& ssIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::SS_Isolated()));
+            auto& osAntiIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::OS_AntiIsolated()));
+            auto& ssAntiIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::OS_AntiIsolated()));
+            for(const auto& sub_entry : ssIsoData.template GetEntriesEx<TH1D>()) {
+                auto& entry_osIso = osIsoData.template GetEntryEx<TH1D>(sub_entry.first);
+                auto& entry_osAntiIso = osAntiIsoData.template GetEntryEx<TH1D>(sub_entry.first);
+                auto& entry_ssAntiIso = ssAntiIsoData.template GetEntryEx<TH1D>(sub_entry.first);
+                for(const auto& hist : sub_entry.second->GetHistograms()) {
+                    entry_osIso(hist.first).CopyContent(*dynamic_cast<TH1D*>(hist.second.get()));
+                    const double k_factor = entry_osAntiIso(hist.first).Integral(0, hist.second.get()->GetNbinsX() + 1)/
+                            entry_ssAntiIso(hist.first).Integral(0, hist.second.get()->GetNbinsX() + 1);
+                    RenormalizeHistogram(entry_osIso(hist.first), k_factor, true);
+                }
+            }
         }
     }
 
