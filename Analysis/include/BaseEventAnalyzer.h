@@ -287,13 +287,61 @@ protected:
                 auto& entry_osAntiIso = osAntiIsoData.template GetEntryEx<TH1D>(sub_entry.first);
                 auto& entry_ssAntiIso = ssAntiIsoData.template GetEntryEx<TH1D>(sub_entry.first);
                 for(const auto& hist : sub_entry.second->GetHistograms()) {
-                    entry_osIso(hist.first).CopyContent(*dynamic_cast<TH1D*>(hist.second.get()));
+                    std::string debug_info, negative_bins_info;
+                    if(!HasNegativeContribution(*hist.second.get(),debug_info, negative_bins_info)) continue;
+                    entry_osIso(hist.first).CopyContent(*hist.second.get());
                     const double k_factor = entry_osAntiIso(hist.first).Integral(0, hist.second.get()->GetNbinsX() + 1)/
                             entry_ssAntiIso(hist.first).Integral(0, hist.second.get()->GetNbinsX() + 1);
-                    RenormalizeHistogram(entry_osIso(hist.first), k_factor, true);
+                    entry_osIso(hist.first).Scale(k_factor);
                 }
             }
         }
+    }
+
+    bool HasNegativeContribution(/*const FlatAnalyzerDataMetaId_noRegion_noName& anaDataMetaId,
+                                      EventRegion eventRegion,*/ TH1D& histogram, /*const std::string& current_category,*/
+                                      std::string& debug_info, std::string& negative_bins_info)
+    {
+        static const double correction_factor = 0.0000001;
+
+        std::ostringstream ss_debug;
+
+//        ss_debug << "\nSubtracting background for '" << histogram.GetName() << "' in region " << eventRegion
+//                 << " for Event category '" << anaDataMetaId.eventCategory
+//                 << "' for data category '" << current_category
+//                 << "'.\nInitial integral: " << Integral(histogram, true) << ".\n";
+
+
+        const PhysicalValue original_Integral = Integral(histogram, true);
+        ss_debug << "\nSubtracted hist for '" << histogram.GetName() << ".\n";
+        ss_debug << "Integral after bkg subtraction: " << original_Integral << ".\n";
+        debug_info = ss_debug.str();
+        if (original_Integral.GetValue() < 0) {
+            std::cout << debug_info << std::endl;
+            std::cout << "Integral after bkg subtraction is negative for histogram '"
+                << histogram.GetName() << /*"' in event category " << anaDataMetaId.eventCategory
+                << " for event region " << eventRegion << "." <<*/ std::endl;
+            return false;
+        }
+
+        std::ostringstream ss_negative;
+
+        for (Int_t n = 1; n <= histogram.GetNbinsX(); ++n) {
+            if (histogram.GetBinContent(n) >= 0) continue;
+            const std::string prefix = histogram.GetBinContent(n) + histogram.GetBinError(n) >= 0 ? "WARNING" : "ERROR";
+
+            ss_negative << prefix << ": " << histogram.GetName() << " Bin " << n << ", content = "
+                        << histogram.GetBinContent(n) << ", error = " << histogram.GetBinError(n)
+                        << ", bin limits=[" << histogram.GetBinLowEdge(n) << "," << histogram.GetBinLowEdge(n+1)
+                        << "].\n";
+            const double error = correction_factor - histogram.GetBinContent(n);
+            const double new_error = std::sqrt(std::pow(error,2) + std::pow(histogram.GetBinError(n),2));
+            histogram.SetBinContent(n, correction_factor);
+            histogram.SetBinError(n, new_error);
+        }
+        analysis::RenormalizeHistogram(histogram, original_Integral.GetValue(), true);
+        negative_bins_info = ss_negative.str();
+        return true;
     }
 
     void ProcessDataEvent(const EventAnalyzerDataId& anaDataId, EventInfo& event)
