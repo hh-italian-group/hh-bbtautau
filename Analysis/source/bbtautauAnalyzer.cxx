@@ -13,8 +13,14 @@ public:
 protected:
     virtual EventRegion DetermineEventRegion(EventInfo& event, EventCategory /*eventCategory*/) override
     {
+        static const std::vector<std::string> trigger_patterns = {
+            "HLT_DoubleMediumIsoPFTau35_Trk1_eta2p1_Reg_v", "HLT_DoubleMediumCombinedIsoPFTau35_Trk1_eta2p1_Reg_v"
+        };
+
         const TauCandidate& tau_1 = event.GetFirstLeg();
         const TauCandidate& tau_2 = event.GetSecondLeg();
+
+        if(!event.GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) return EventRegion::Unknown();
 
         const bool os = !ana_setup.apply_os_cut || tau_1.GetCharge() * tau_2.GetCharge() == -1;
         const bool iso = !ana_setup.apply_iso_cut ||

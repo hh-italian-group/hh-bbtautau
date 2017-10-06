@@ -13,8 +13,14 @@ public:
 protected:
     virtual EventRegion DetermineEventRegion(EventInfo& event, EventCategory /*eventCategory*/) override
     {
+        static const std::vector<std::string> trigger_patterns = {
+            "HLT_IsoMu22_eta2p1_v", "HLT_IsoTkMu22_eta2p1_v", "HLT_IsoMu22_v", "HLT_IsoTkMu22_v"
+        };
+
         const MuonCandidate& muon = event.GetFirstLeg();
         const TauCandidate& tau = event.GetSecondLeg();
+
+        if(!event.GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) return EventRegion::Unknown();
 
 //        if(!tau->byIsolationMVA(DiscriminatorWP::VLoose))
 //            return EventRegion::Unknown();

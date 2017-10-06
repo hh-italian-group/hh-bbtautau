@@ -212,12 +212,12 @@ protected:
         const SummaryInfo summary(prod_summary);
         Event prevFullEvent, *prevFullEventPtr = nullptr;
         for(auto tupleEvent : *tuple) {
-            EventInfo event(tupleEvent, ntuple::JetPair{0, 1}, summary);
-            if(!ana_setup.energy_scales.count(event.GetEnergyScale())) continue;
             if(ntuple::EventLoader::Load(tupleEvent, prevFullEventPtr).IsFull()) {
                 prevFullEvent = tupleEvent;
                 prevFullEventPtr = &prevFullEvent;
             }
+            EventInfo event(tupleEvent, ntuple::JetPair{0, 1}, summary);
+            if(!ana_setup.energy_scales.count(event.GetEnergyScale())) continue;
             const auto eventCategories = DetermineEventCategories(event);
             for(auto eventCategory : eventCategories) {
                 if (!EventCategoriesToProcess().count(eventCategory)) continue;

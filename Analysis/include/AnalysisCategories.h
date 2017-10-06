@@ -184,14 +184,38 @@ std::istream& operator>>(std::istream& is, EventCategory& eventCategory)
     return is;
 }
 
-enum class SelectionCut { InsideMassWindow = 0, MVA = 1, KinematicFitConverged = 2 };
-ENUM_NAMES(SelectionCut) = {
-    { SelectionCut::InsideMassWindow, "InsideMassWindow" }, { SelectionCut::MVA, "MVA" },
-    { SelectionCut::KinematicFitConverged, "KinematicFitConverged" }
-};
+#define DECL_MVA_SEL(z, n, first) MVA##n = n + first,
+#define MVA_CUT_LIST(first, count) BOOST_PP_REPEAT(count, DECL_MVA_SEL, first)
+
+enum class SelectionCut { InsideMassWindow = 0, KinematicFitConverged = 1,
+                          MVA_CUT_LIST(2, 100) MVA_first = MVA0, MVA_last = MVA99 };
+
+#undef MVA_CUT_LIST
+#undef DECL_MVA_SEL
+
+namespace detail {
+inline std::map<SelectionCut, std::string> CreateSelectionCutNames()
+{
+    std::map<SelectionCut, std::string> names;
+    names[SelectionCut::InsideMassWindow] = "InsideMassWindow";
+    names[SelectionCut::KinematicFitConverged] = "KinematicFitConverged";
+    const size_t MVA_first_index = static_cast<size_t>(SelectionCut::MVA_first);
+    const size_t MVA_last_index = static_cast<size_t>(SelectionCut::MVA_last);
+    const size_t n_mva_cuts = MVA_last_index - MVA_first_index + 1;
+    for(size_t n = 0; n < n_mva_cuts; ++n) {
+        const SelectionCut cut = static_cast<SelectionCut>(n + MVA_first_index);
+        std::ostringstream ss;
+        ss << "MVA" << n;
+        names[cut] = ss.str();
+    }
+    return names;
+}
+} // namespace detail
+
+ENUM_NAMES(SelectionCut) = detail::CreateSelectionCutNames();
 
 struct EventSubCategory {
-    using BitsContainer = unsigned long;
+    using BitsContainer = unsigned long long;
     static constexpr size_t MaxNumberOfCuts = std::numeric_limits<BitsContainer>::digits;
     using Bits = std::bitset<MaxNumberOfCuts>;
 
