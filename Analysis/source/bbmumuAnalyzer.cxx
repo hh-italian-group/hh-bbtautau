@@ -1,4 +1,4 @@
-/*! Final analysis step for the muTau channel in the HH->bbtautau analysis.
+/*! Final analysis step to estimate correction for DY normalization using the muMu channel in the HH->bbtautau analysis.
 This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include "Analysis/include/BaseEventAnalyzer.h"
