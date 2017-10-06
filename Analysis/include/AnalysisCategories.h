@@ -237,6 +237,8 @@ struct EventSubCategory {
             throw exception("Cut '%1%' is aready defined.") % cut;
         results[GetIndex(cut)] = result;
         presence[GetIndex(cut)] = true;
+        if(cut >= SelectionCut::MVA_first && cut <= SelectionCut::MVA_last)
+            last_mva_cut = cut;
         return *this;
     }
 
@@ -260,6 +262,13 @@ struct EventSubCategory {
         if((pres_a ^ pres_b) & pres_b) return false;
         const BitsContainer res_a = GetResultBits(), res_b = sc.GetResultBits();
         return (res_a & pres_b) == res_b;
+    }
+
+    bool TryGetLastMvaCut(SelectionCut& cut) const
+    {
+        if(!last_mva_cut.is_initialized()) return false;
+        cut = *last_mva_cut;
+        return true;
     }
 
     std::string ToString() const
@@ -308,6 +317,7 @@ private:
 
 private:
     Bits presence, results;
+    boost::optional<SelectionCut> last_mva_cut;
 };
 
 std::ostream& operator<<(std::ostream& os, const EventSubCategory& eventSubCategory)

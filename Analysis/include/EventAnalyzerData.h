@@ -23,6 +23,7 @@ public:
     TH1D_ENTRY_CUSTOM_EX(m_ttbb_kinfit, M_ttbb_Bins, "M_{H}^{kinfit} (GeV)", "dN/dm_{H}^{kinfit} (1/GeV)", false, 1.4, true, true)
     TH1D_ENTRY_CUSTOM_EX(m_sv, M_tt_Bins, "M_{#tau#tau} (GeV)", "dN/dm_{#tau#tau} (1/GeV)", false, 1.3, true, true)
     TH1D_ENTRY_CUSTOM_EX(MT2, MT2_Bins, "MT2_{H} (GeV)", "dN/dm (1/GeV)", false, 1.4, true, true)
+    TH1D_ENTRY_EX(mva_score, 40, -1, 1, "MVA score", "Events", false, 1.2, false, true)
 
     TH1D_ENTRY_CUSTOM_EX(m_tt_vis, M_tt_Bins, "M_{vis}(GeV)", "Events", false, 1.1, false, SaveAll)
     TH1D_ENTRY_EX(pt_H_tt, 20, 0, 300, "P_{T}(GeV)", "Events", false, 1.2, false, SaveAll)
@@ -63,6 +64,7 @@ public:
             if(kinfit.HasValidMass())
                 m_ttbb_kinfit().Fill(kinfit.mass, weight);
             MT2().Fill(event.GetMT2(), weight);
+            mva_score().Fill(event.GetMvaScore(), weight);
         }
 
         const double m_SVfit = event.GetHiggsTTMomentum(true).M();

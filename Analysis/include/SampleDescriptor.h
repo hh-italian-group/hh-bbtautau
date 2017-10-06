@@ -41,10 +41,11 @@ struct MvaReaderSetup {
 
     std::string name;
     std::map<std::string, std::string> trainings;
-    std::map<std::string, std::vector<std::string>> variables;
+    std::map<std::string, std::unordered_set<std::string>> variables;
     std::map<std::string, std::vector<double>> masses;
     std::map<std::string, std::vector<int>> spins;
     std::map<std::string, std::vector<double>> cuts;
+    std::map<std::string, std::string> legacy;
 
     std::map<SelectionCut, Params> selections;
 

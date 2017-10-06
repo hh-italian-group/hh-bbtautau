@@ -27,6 +27,7 @@ public:
         CheckReadParamCounts("cmb_samples", 1, Condition::less_equal);
         CheckReadParamCounts("draw_sequence", 1, Condition::less_equal);
         CheckReadParamCounts("limit_category", 0, Condition::greater_equal);
+        CheckReadParamCounts("mva_setup", 1, Condition::less_equal);
 
         ConfigEntryReaderT<AnalyzerSetup>::EndEntry();
     }
@@ -46,6 +47,7 @@ public:
         ParseEntryList("cmb_samples", current.cmb_samples);
         ParseEntryList("draw_sequence", current.draw_sequence);
         ParseEntry("limit_category", current.limit_categories);
+        ParseEntry("mva_setup", current.mva_setup);
     }
 };
 
@@ -61,7 +63,9 @@ public:
         CheckReadParamCounts("masses", 0, Condition::greater_equal);
         CheckReadParamCounts("spins", 0, Condition::greater_equal);
         CheckReadParamCounts("cuts", 0, Condition::greater_equal);
+        CheckReadParamCounts("legacy", 0, Condition::greater_equal);
 
+        current.CreateSelections();
         ConfigEntryReaderT<MvaReaderSetup>::EndEntry();
     }
 
@@ -73,6 +77,7 @@ public:
         ParseMappedEntryList("masses", current.masses, true);
         ParseMappedEntryList("spins", current.spins, true);
         ParseMappedEntryList("cuts", current.cuts, false);
+        ParseEntry("legacy", current.legacy);
     }
 };
 

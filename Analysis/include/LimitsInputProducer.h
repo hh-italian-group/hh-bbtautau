@@ -79,8 +79,8 @@ public:
             const auto& anaData = anaDataCollection->Get(anaDataId);
             auto& hist_entry = anaData.template GetEntryEx<TH1D>(hist_name);
             auto hist = std::make_shared<TH1D>(hist_entry());
-            if(hist->Integral() == 0.)
-            if(hist_entry().Integral() == 0.) {
+            hist->Scale(sampleWP.datacard_sf);
+            if(hist->Integral() == 0.) {
                 std::cout << "Warning - Datacard histogram '" << hist_name
                           << "' has 0 events for '" << anaDataId
                           << "'. Using histogram with a tiny yield in the central bin instead.\n";
