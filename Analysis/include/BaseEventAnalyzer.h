@@ -254,21 +254,21 @@ protected:
 
         for(const EventAnalyzerDataId& metaDataId : EventAnalyzerDataId::MetaLoop(EventCategoriesToProcess(),
                 EventSubCategoriesToProcess(), sidebandRegions, ana_setup.energy_scales)) {
-            const auto qcdAnaDataId = metaDataId.Set(qcd_sample.name); //qcdanadata
+            const auto qcdAnaDataId = metaDataId.Set(qcd_sample.name);
             auto& qcdAnaData = anaDataCollection.Get(qcdAnaDataId);
-            for(const auto& sample_name : sample_descriptors) { //map correggi..sample e nn sub_sample
+            for(const auto& sample_name : sample_descriptors) {
                 SampleDescriptor& sample =  sample_name.second;
-                if(sample.sampleType == SampleType::QCD || sub_sample_name == "signals") continue;
-                for(const auto& sub_sample_wp : sub_sample.working_points) {
-                    const auto subDataId = metaDataId.Set(sub_sample_wp.full_name);
-                    auto& subAnaData = anaDataCollection.Get(subDataId);
-                    for(const auto& sub_entry : subAnaData.template GetEntriesEx<TH1D>()) {
+                if(sample.sampleType == SampleType::QCD) continue;
+                const auto iter = std::find(ana_setup.signals.begin(), ana_setup.signals.end(), "signals");
+                if(iter != ana_setup.signals.end()) continue;
+                double factor = sample.sampleType == SampleType::Data ? +1 : -1;
+                for(const auto& sample_wp : sample.working_points) {
+                    const auto anaDataId = metaDataId.Set(sample_wp.full_name);
+                    auto& AnaData = anaDataCollection.Get(anaDataId);
+                    for(const auto& sub_entry : AnaData.template GetEntriesEx<TH1D>()) {
                         auto& entry = qcdAnaData.template GetEntryEx<TH1D>(sub_entry.first);
                         for(const auto& hist : sub_entry.second->GetHistograms()) {
-                            if(hist.first == "data")
-                                entry(hist.first).Add(hist.second.get(), 1);
-                            else if(hist.first == "backgrounds")
-                                entry(hist.first).Add(hist.second.get(), -1);
+                            entry(hist.first).Add(hist.second.get(), factor);
                         }
                     }
                 }
@@ -278,7 +278,7 @@ protected:
         for(const EventAnalyzerDataId& metaDataId : EventAnalyzerDataId::MetaLoop(EventCategoriesToProcess(),
                 EventSubCategoriesToProcess(), ana_setup.energy_scales)) {
             const auto anaDataId = metaDataId.Set(qcd_sample.name);
-            anaDataId = metaDataId.Set(analysis::EventRegion::OS_Isolated());
+            OsIso_anaDataId = anaDataId.Set(analysis::EventRegion::OS_Isolated());
             auto& anaData = anaDataCollection.Get(anaDataId);
         }
     }
