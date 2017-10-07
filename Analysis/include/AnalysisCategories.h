@@ -10,9 +10,10 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 namespace analysis {
 
-enum class SampleType { Data, MC, DY, QCD };
+enum class SampleType { Data, MC, DY, QCD, TT };
 ENUM_NAMES(SampleType) = {
-    { SampleType::Data, "Data" }, { SampleType::MC, "MC" }, { SampleType::DY, "DY" }, { SampleType::QCD, "QCD" }
+    { SampleType::Data, "Data" }, { SampleType::MC, "MC" }, { SampleType::DY, "DY" }, { SampleType::QCD, "QCD" },
+    { SampleType::TT, "TT" }
 };
 
 struct EventRegion {

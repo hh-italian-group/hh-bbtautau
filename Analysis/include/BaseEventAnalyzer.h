@@ -125,7 +125,7 @@ public:
             for(const auto& subCategory : EventSubCategoriesToProcess()) {
                 std::cout << '\t' << hist_name << "/" << subCategory << std::endl;
                 limitsInputProducer.Produce(args.output(), hist_name, ana_setup.limit_categories, subCategory,
-                                            ana_setup.energy_scales);
+                                            ana_setup.energy_scales, EventRegionsToProcess());
             }
         }
 
@@ -160,8 +160,8 @@ protected:
     virtual const EventRegionSet& EventRegionsToProcess() const
     {
         static const EventRegionSet regions = {
-            EventRegion::OS_Isolated()/*, EventRegion::OS_AntiIsolated(),
-            EventRegion::SS_Isolated(), EventRegion::SS_AntiIsolated()*/
+            EventRegion::OS_Isolated(), EventRegion::OS_AntiIsolated(),
+            EventRegion::SS_Isolated(), EventRegion::SS_AntiIsolated()
         };
         return regions;
     }
@@ -306,13 +306,12 @@ protected:
     virtual void EstimateQCD(const SampleDescriptor& qcd_sample)
     {
         static const EventRegionSet sidebandRegions = {
-                EventRegion::OS_AntiIsolated(),
-                EventRegion::SS_Isolated(), EventRegion::SS_AntiIsolated()
-            };
-
+            EventRegion::OS_AntiIsolated(), EventRegion::SS_Isolated(), EventRegion::SS_AntiIsolated()
+        };
+        static const EventEnergyScaleSet qcdEnergyScales = { EventEnergyScale::Central };
 
         for(const EventAnalyzerDataId& metaDataId : EventAnalyzerDataId::MetaLoop(EventCategoriesToProcess(),
-                EventSubCategoriesToProcess(), sidebandRegions, ana_setup.energy_scales)) {
+                EventSubCategoriesToProcess(), sidebandRegions, qcdEnergyScales)) {
             const auto qcdAnaDataId = metaDataId.Set(qcd_sample.name);
             auto& qcdAnaData = anaDataCollection.Get(qcdAnaDataId);
             for(const auto& sample_name : sample_descriptors) {
@@ -335,7 +334,7 @@ protected:
         }
 
         for(const EventAnalyzerDataId& metaDataId : EventAnalyzerDataId::MetaLoop(EventCategoriesToProcess(),
-                EventSubCategoriesToProcess(), ana_setup.energy_scales)) {
+                EventSubCategoriesToProcess(), qcdEnergyScales)) {
             const auto anaDataId = metaDataId.Set(qcd_sample.name);
             auto& osIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::OS_Isolated()));
             auto& ssIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::SS_Isolated()));
@@ -436,8 +435,9 @@ protected:
             bool wp_found = false;
             for(const auto& sample_wp : sample.working_points) {
                 const size_t n_b_partons = static_cast<size_t>(sample_wp.param_values.at(b_index));
-                if(event->lhe_n_b_partons == n_b_partons ||
-                        (n_b_partons == sample.GetNWorkingPoints() - 1 && event->lhe_n_b_partons > n_b_partons)) {
+                if(event->jets_nTotal_hadronFlavour_b == n_b_partons ||
+                        (n_b_partons == sample.GetNWorkingPoints() - 1
+                         && event->jets_nTotal_hadronFlavour_b > n_b_partons)) {
                     const auto finalId = anaDataId.Set(sample_wp.full_name);
                     anaDataCollection.Fill(finalId, event, weight * sample_wp.norm_sf);
                     wp_found = true;
@@ -447,6 +447,14 @@ protected:
             if(!wp_found)
                 throw exception("Unable to find WP for DY event with lhe_n_b_partons = %1%") % event->lhe_n_b_partons;
 
+        } else if(sample.sampleType == SampleType::TT) {
+            anaDataCollection.Fill(anaDataId, event, weight / event->weight_top_pt);
+            if(anaDataId.Get<EventEnergyScale>() == EventEnergyScale::Central) {
+                const double weight_topPt = event->weight_total * sample.cross_section * ana_setup.int_lumi
+                        / event.GetSummaryInfo()->totalShapeWeight_withTopPt;
+                anaDataCollection.Fill(anaDataId.Set(EventEnergyScale::TopPtUp), event, weight_topPt);
+                anaDataCollection.Fill(anaDataId.Set(EventEnergyScale::TopPtDown), event, weight_topPt);
+            }
         } else
             throw exception("Unsupported special event type '%1%'.") % sample.sampleType;
     }
