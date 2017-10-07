@@ -387,6 +387,25 @@ private:
             event.jets_hadronFlavour.resize(2);
         }
 		
+        if(!setup.keep_genJets) {
+            event.genJets_p4.clear();
+            event.genJets_hadronFlavour.clear();
+            event.genJets_partonFlavour.clear();
+        }
+
+        if(!setup.keep_genParticles){
+            event.genParticles_p4.clear();
+            event.genParticles_pdg.clear();
+        }
+
+        if(!setup.keep_MET_cov) {
+            for(unsigned int i = 0; i < static_cast<unsigned>(event.pfMET_cov.kRows); i++) {
+                for(int j = 0; j < event.pfMET_cov.kCols; j++) {
+                    event.pfMET_cov[i][j] = 0;
+                }
+            }
+        }
+
         return true;
     }
 
