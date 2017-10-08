@@ -70,6 +70,8 @@ public:
         const std::string file_name = s_file_name.str();
         auto outputFile = root_ext::CreateRootFile(file_name);
 
+        std::set<EventAnalyzerDataId> empty_histograms;
+
         for(const EventAnalyzerDataId& metaId : EventAnalyzerDataId::MetaLoop(eventCategories, eventEnergyScales,
                                                                               sampleWorkingPoints, eventRegions))
         {
@@ -78,21 +80,34 @@ public:
                 directoryName += "_" + ToString(metaId.Get<EventRegion>());
             TDirectory* directory = root_ext::GetDirectory(*outputFile, directoryName, true);
             const SampleWP& sampleWP = sampleWorkingPoints.at(metaId.Get<std::string>());
-            const auto anaDataId = metaId.Set(eventSubCategory).Set(EventRegion::SignalRegion());
+            const auto anaDataId = metaId.Set(eventSubCategory).Set(metaId.Get<EventRegion>());
             const auto& anaData = anaDataCollection->Get(anaDataId);
             auto& hist_entry = anaData.template GetEntryEx<TH1D>(hist_name);
-            auto hist = std::make_shared<TH1D>(hist_entry());
-            hist->Scale(sampleWP.datacard_sf);
-            if(hist->Integral() == 0.) {
-                std::cout << "Warning - Datacard histogram '" << hist_name
-                          << "' has 0 events for '" << anaDataId
-                          << "'. Using histogram with a tiny yield in the central bin instead.\n";
+            std::shared_ptr<TH1D> hist;
+            if(hist_entry.GetHistograms().count(""))
+                hist = std::make_shared<TH1D>(hist_entry());
+            if(hist)
+                hist->Scale(sampleWP.datacard_sf);
+            if(!hist || hist->Integral() == 0.) {
+                bool print_warning;
+                if(CanHaveEmptyHistogram(anaDataId, print_warning)) continue;
+                if(print_warning)
+                    empty_histograms.insert(anaDataId);
+                if(!hist)
+                    hist = std::make_shared<TH1D>(hist_entry());
                 const Int_t central_bin = hist->GetNbinsX() / 2;
                 hist->SetBinContent(central_bin, tiny_value);
                 hist->SetBinError(central_bin, tiny_value_error);
             }
             const auto datacard_name = FullDataCardName(sampleWP.datacard_name, metaId.Get<EventEnergyScale>());
             root_ext::WriteObject(*hist, directory, datacard_name);
+        }
+
+        if(empty_histograms.size()) {
+            std::cout << "\t\tWarning: following datacard histograms are empty:\n";
+            for(const auto& id : empty_histograms)
+                std::cout << "\t\t\t" << id << "\n";
+            std::cout << "\t\tUsing histograms with a tiny yield in the central bin instead." << std::endl;
         }
     }
 
@@ -109,6 +124,20 @@ private:
             }
         }
         CollectWorkingPoints(std::forward<Args>(other_sample_descriptors)...);
+    }
+
+    bool CanHaveEmptyHistogram(const EventAnalyzerDataId& id, bool& print_warning) const
+    {
+        const auto& es = id.Get<EventEnergyScale>();
+        const SampleWP& sampleWP = sampleWorkingPoints.at(id.Get<std::string>());
+        print_warning = id.Get<EventRegion>() == EventRegion::SignalRegion();
+        if(es == EventEnergyScale::Central)
+            return false;
+        if(sampleWP.sampleType == SampleType::Data || sampleWP.sampleType == SampleType::QCD)
+            return true;
+        if(es == EventEnergyScale::TopPtUp || es == EventEnergyScale::TopPtDown)
+            return sampleWP.sampleType != SampleType::TT;
+        return false;
     }
 
 private:

@@ -107,6 +107,7 @@ using MvaReaderSetupCollection = std::unordered_map<std::string, MvaReaderSetup>
 struct SampleDescriptorBase {
     struct Point {
         std::string name, full_name, title, file_path, datacard_name;
+        SampleType sampleType;
         double norm_sf{1}, datacard_sf{1}, draw_sf{1};
         bool draw{false};
         root_ext::Color color{kBlack};
@@ -140,6 +141,7 @@ struct SampleDescriptorBase {
         point.title = title.size() ? title : point.full_name;
         ReplacePatternItem(point.title, "factor", draw_sf);
         point.datacard_name = datacard_name;
+        point.sampleType = sampleType;
         point.draw_sf = draw_sf;
         point.datacard_sf = datacard_sf;
         point.draw = true;
@@ -188,6 +190,7 @@ public:
             ReplacePatternItem(point.title, "factor", draw_sf);
             point.file_path = ResolvePattern(file_path, n);
             point.datacard_name = ResolvePattern(datacard_name, n);
+            point.sampleType = sampleType;
             point.norm_sf = n < norm_sf.size() ? norm_sf.at(n) : 1;
             point.draw_sf = draw_sf;
             point.datacard_sf = datacard_sf;
