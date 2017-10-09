@@ -450,10 +450,10 @@ protected:
         } else if(sample.sampleType == SampleType::TT) {
             anaDataCollection.Fill(anaDataId, event, weight / event->weight_top_pt);
             if(anaDataId.Get<EventEnergyScale>() == EventEnergyScale::Central) {
-                const double weight_topPt = event->weight_total * sample.cross_section * ana_setup.int_lumi
-                        / event.GetSummaryInfo()->totalShapeWeight_withTopPt;
-                anaDataCollection.Fill(anaDataId.Set(EventEnergyScale::TopPtUp), event, weight_topPt);
-                anaDataCollection.Fill(anaDataId.Set(EventEnergyScale::TopPtDown), event, weight_topPt);
+//                const double weight_topPt = event->weight_total * sample.cross_section * ana_setup.int_lumi
+//                        / event.GetSummaryInfo()->totalShapeWeight_withTopPt;
+                anaDataCollection.Fill(anaDataId.Set(EventEnergyScale::TopPtUp), event, weight); // FIXME
+                anaDataCollection.Fill(anaDataId.Set(EventEnergyScale::TopPtDown), event, weight); // FIXME
             }
         } else
             throw exception("Unsupported special event type '%1%'.") % sample.sampleType;
