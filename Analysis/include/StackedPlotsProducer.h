@@ -103,9 +103,7 @@ public:
                             const auto histogram = GetHistogram(anaDataMetaId, item_name, hist_name);
                             if(!histogram) continue;
 
-                            if(signals.count(sample->name) && eventCategory == EventCategory::TwoJets_Inclusive())
-                                continue;
-                            else if(signals.count(sample->name))
+                            if(signals.count(sample->name))
                                 stackDescriptor.AddSignalHistogram(*histogram, item.title, color, sample->draw_sf);
                             else if(sample->sampleType == SampleType::Data)
                                 stackDescriptor.AddDataHistogram(*histogram, item.title, isBlind,

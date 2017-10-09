@@ -22,8 +22,8 @@ protected:
 
         if(!event.GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) return EventRegion::Unknown();
 
-//        if(ana_setup.apply_iso_cut && !tau->byIsolationMVA(DiscriminatorWP::VLoose))
-//            return EventRegion::Unknown();
+        if(ana_setup.apply_iso_cut && !tau->byIsolationMVA(DiscriminatorWP::VLoose))
+            return EventRegion::Unknown();
 
         const bool os = !ana_setup.apply_os_cut || electron.GetCharge() * tau.GetCharge() == -1;
         const bool iso = !ana_setup.apply_iso_cut || tau->byIsolationMVA(DiscriminatorWP::Medium);
