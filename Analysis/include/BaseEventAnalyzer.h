@@ -11,6 +11,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Analysis/include/EventLoader.h"
 #include "StackedPlotsProducer.h"
 #include "LimitsInputProducer.h"
+#include "MvaReader.h"
 
 namespace analysis {
 
@@ -38,35 +39,6 @@ public:
 
     static constexpr Channel ChannelId() { return ChannelInfo::IdentifyChannel<FirstLeg, SecondLeg>(); }
     static const std::string& ChannelNameLatex() { return __Channel_names_latex.EnumToString(ChannelId()); }
-
-    virtual const EventCategorySet& EventCategoriesToProcess() const
-    {
-        static const EventCategorySet categories = {
-            EventCategory::TwoJets_Inclusive(), EventCategory::TwoJets_ZeroBtag(),
-            EventCategory::TwoJets_OneBtag(),/* EventCategory::TwoJets_OneLooseBtag(),*/
-            EventCategory::TwoJets_TwoBtag()/*, EventCategory::TwoJets_TwoLooseBtag()*/
-        };
-        return categories;
-    }
-
-    virtual const EventSubCategorySet& EventSubCategoriesToProcess() const
-    {
-        static const EventSubCategorySet sub_categories = {
-            EventSubCategory().SetCutResult(SelectionCut::InsideMassWindow, true)
-//                              .SetCutResult(SelectionCut::MVA, true)
-                              .SetCutResult(SelectionCut::KinematicFitConverged, true)
-        };
-        return sub_categories;
-    }
-
-    virtual const EventRegionSet& EventRegionsToProcess() const
-    {
-        static const EventRegionSet regions = {
-            EventRegion::OS_Isolated(), EventRegion::OS_AntiIsolated(),
-            EventRegion::SS_Isolated(), EventRegion::SS_AntiIsolated()
-        };
-        return regions;
-    }
 
     static EventCategorySet DetermineEventCategories(EventInfo& event)
     {
@@ -97,18 +69,6 @@ public:
         return categories;
     }
 
-    virtual EventSubCategory DetermineEventSubCategory(EventInfo& event)
-    {
-        using namespace cuts::hh_bbtautau_2016::hh_tag;
-        EventSubCategory sub_category;
-        sub_category.SetCutResult(SelectionCut::InsideMassWindow,
-                                  IsInsideEllipse(event.GetHiggsTT(true).GetMomentum().mass(),
-                                                  event.GetHiggsBB().GetMomentum().mass()));
-        sub_category.SetCutResult(SelectionCut::KinematicFitConverged,
-                                  event.GetKinFitResults().HasValidMass());
-        return sub_category;
-    }
-
     BaseEventAnalyzer(const AnalyzerArguments& _args)
         : args(_args), anaDataCollection(args.output() + "_full.root", args.saveFullOutput())
     {
@@ -122,6 +82,10 @@ public:
         AnalyzerConfigEntryReader ana_entry_reader(ana_setup_collection);
         config_reader.AddEntryReader("ANA_DESC", ana_entry_reader, false);
 
+        MvaReaderSetupCollection mva_setup_collection;
+        MvaReaderSetupEntryReader mva_entry_reader(mva_setup_collection);
+        config_reader.AddEntryReader("MVA", mva_entry_reader, false);
+
         SampleDescriptorConfigEntryReader sample_entry_reader(sample_descriptors);
         config_reader.AddEntryReader("SAMPLE", sample_entry_reader, true);
 
@@ -134,7 +98,15 @@ public:
             throw exception("Setup '%1%' not found in the configuration file '%2%'.") % args.setup() % args.sources();
         ana_setup = ana_setup_collection.at(args.setup());
 
+        if(ana_setup.mva_setup.size()) {
+            if(!mva_setup_collection.count(ana_setup.mva_setup))
+                throw exception("MVA setup '%1%' not found.") % ana_setup.mva_setup;
+            mva_setup = mva_setup_collection.at(ana_setup.mva_setup);
+        }
         RemoveUnusedSamples();
+
+        CreateEventSubCategoriesToProcess();
+        InitializeMvaReader();
     }
 
     virtual ~BaseEventAnalyzer() {}
@@ -153,7 +125,7 @@ public:
             for(const auto& subCategory : EventSubCategoriesToProcess()) {
                 std::cout << '\t' << hist_name << "/" << subCategory << std::endl;
                 limitsInputProducer.Produce(args.output(), hist_name, ana_setup.limit_categories, subCategory,
-                                            ana_setup.energy_scales);
+                                            ana_setup.energy_scales, EventRegionsToProcess());
             }
         }
 
@@ -173,6 +145,87 @@ public:
 
 protected:
     virtual EventRegion DetermineEventRegion(EventInfo& event, EventCategory eventCategory) = 0;
+    virtual const EventCategorySet& EventCategoriesToProcess() const
+    {
+        static const EventCategorySet categories = {
+            EventCategory::TwoJets_Inclusive(), EventCategory::TwoJets_ZeroBtag(),
+            EventCategory::TwoJets_OneBtag(), /*EventCategory::TwoJets_OneLooseBtag(),*/
+            EventCategory::TwoJets_TwoBtag(), /*EventCategory::TwoJets_TwoLooseBtag()*/
+        };
+        return categories;
+    }
+
+    const EventSubCategorySet& EventSubCategoriesToProcess() const { return sub_categories_to_process; }
+
+    virtual const EventRegionSet& EventRegionsToProcess() const
+    {
+        static const EventRegionSet regions = {
+            EventRegion::OS_Isolated(), EventRegion::OS_AntiIsolated(),
+            EventRegion::SS_Isolated(), EventRegion::SS_AntiIsolated()
+        };
+        return regions;
+    }
+
+    void CreateEventSubCategoriesToProcess()
+    {
+        const auto base = EventSubCategory().SetCutResult(SelectionCut::InsideMassWindow, true)
+                                            .SetCutResult(SelectionCut::KinematicFitConverged, true);
+        sub_categories_to_process.insert(base);
+        if(mva_setup.is_initialized()) {
+            for(const auto& mva_sel : mva_setup->selections) {
+                auto sub_category = EventSubCategory(base).SetCutResult(mva_sel.first, true);
+                sub_categories_to_process.insert(sub_category);
+            }
+        }
+    }
+
+    void InitializeMvaReader()
+    {
+        if(!mva_setup.is_initialized()) return;
+        for(const auto& method : mva_setup->trainings) {
+            const auto& name = method.first;
+            const auto& file = method.second;
+            const auto& vars = mva_setup->variables.at(name);
+            const auto& masses = mva_setup->masses.at(name);
+            const auto& mass_range_pair= std::minmax_element(masses.begin(), masses.end());
+            const Range<int> mass_range(static_cast<int>(*mass_range_pair.first),
+                                        static_cast<int>(*mass_range_pair.second));
+            const bool legacy = mva_setup->legacy.count(name);
+            const bool legacy_lm = legacy && mva_setup->legacy.at(name) == "lm";
+            mva_reader.AddRange(mass_range, name, file, vars, legacy, legacy_lm);
+        }
+    }
+
+    virtual EventSubCategory DetermineEventSubCategory(EventInfo& event, std::map<SelectionCut, double>& mva_scores)
+    {
+        using namespace cuts::hh_bbtautau_2016::hh_tag;
+        using MvaKey = std::tuple<std::string, int, int>;
+
+        EventSubCategory sub_category;
+        sub_category.SetCutResult(SelectionCut::InsideMassWindow,
+                                  IsInsideEllipse(event.GetHiggsTT(true).GetMomentum().mass(),
+                                                  event.GetHiggsBB().GetMomentum().mass()));
+        sub_category.SetCutResult(SelectionCut::KinematicFitConverged,
+                                  event.GetKinFitResults().HasValidMass());
+
+        if(mva_setup.is_initialized()) {
+
+            std::map<MvaKey, double> scores;
+            for(const auto& mva_sel : mva_setup->selections) {
+                const auto& params = mva_sel.second;
+                const MvaKey key{params.name, static_cast<int>(params.mass), params.spin};
+                if(!scores.count(key))
+                    scores[key] = mva_reader.Evaluate(*event, static_cast<int>(params.mass), params.name, params.spin);
+                const double score = scores.at(key);
+                const bool pass = score > params.cut;
+                sub_category.SetCutResult(mva_sel.first, pass);
+                mva_scores[mva_sel.first] = score;
+            }
+        }
+
+        return sub_category;
+    }
+
 
     void ProcessSamples(const std::vector<std::string>& sample_names, const std::string& sample_set_name)
     {
@@ -224,9 +277,15 @@ protected:
                 const EventRegion eventRegion = DetermineEventRegion(event, eventCategory);
                 if(!EventRegionsToProcess().count(eventRegion)) continue;
 
-                const auto eventSubCategory = DetermineEventSubCategory(event);
+                std::map<SelectionCut, double> mva_scores;
+                const auto eventSubCategory = DetermineEventSubCategory(event, mva_scores);
                 for(const auto& subCategory : EventSubCategoriesToProcess()) {
                     if(!eventSubCategory.Implies(subCategory)) continue;
+                    SelectionCut mva_cut;
+                    double mva_score = 0;
+                    if(subCategory.TryGetLastMvaCut(mva_cut))
+                        mva_score = mva_scores.at(mva_cut);
+                    event.SetMvaScore(mva_score);
                     const EventAnalyzerDataId anaDataId(eventCategory, subCategory, eventRegion,
                                                         event.GetEnergyScale(), sample_wp.full_name);
                     if(sample.sampleType == SampleType::Data) {
@@ -247,13 +306,12 @@ protected:
     virtual void EstimateQCD(const SampleDescriptor& qcd_sample)
     {
         static const EventRegionSet sidebandRegions = {
-                EventRegion::OS_AntiIsolated(),
-                EventRegion::SS_Isolated(), EventRegion::SS_AntiIsolated()
-            };
-
+            EventRegion::OS_AntiIsolated(), EventRegion::SS_Isolated(), EventRegion::SS_AntiIsolated()
+        };
+        static const EventEnergyScaleSet qcdEnergyScales = { EventEnergyScale::Central };
 
         for(const EventAnalyzerDataId& metaDataId : EventAnalyzerDataId::MetaLoop(EventCategoriesToProcess(),
-                EventSubCategoriesToProcess(), sidebandRegions, ana_setup.energy_scales)) {
+                EventSubCategoriesToProcess(), sidebandRegions, qcdEnergyScales)) {
             const auto qcdAnaDataId = metaDataId.Set(qcd_sample.name);
             auto& qcdAnaData = anaDataCollection.Get(qcdAnaDataId);
             for(const auto& sample_name : sample_descriptors) {
@@ -276,7 +334,7 @@ protected:
         }
 
         for(const EventAnalyzerDataId& metaDataId : EventAnalyzerDataId::MetaLoop(EventCategoriesToProcess(),
-                EventSubCategoriesToProcess(), ana_setup.energy_scales)) {
+                EventSubCategoriesToProcess(), qcdEnergyScales)) {
             const auto anaDataId = metaDataId.Set(qcd_sample.name);
             auto& osIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::OS_Isolated()));
             auto& ssIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::SS_Isolated()));
@@ -377,8 +435,9 @@ protected:
             bool wp_found = false;
             for(const auto& sample_wp : sample.working_points) {
                 const size_t n_b_partons = static_cast<size_t>(sample_wp.param_values.at(b_index));
-                if(event->lhe_n_b_partons == n_b_partons ||
-                        (n_b_partons == sample.GetNWorkingPoints() - 1 && event->lhe_n_b_partons > n_b_partons)) {
+                if(event->jets_nTotal_hadronFlavour_b == n_b_partons ||
+                        (n_b_partons == sample.GetNWorkingPoints() - 1
+                         && event->jets_nTotal_hadronFlavour_b > n_b_partons)) {
                     const auto finalId = anaDataId.Set(sample_wp.full_name);
                     anaDataCollection.Fill(finalId, event, weight * sample_wp.norm_sf);
                     wp_found = true;
@@ -388,6 +447,14 @@ protected:
             if(!wp_found)
                 throw exception("Unable to find WP for DY event with lhe_n_b_partons = %1%") % event->lhe_n_b_partons;
 
+        } else if(sample.sampleType == SampleType::TT) {
+            anaDataCollection.Fill(anaDataId, event, weight / event->weight_top_pt);
+            if(anaDataId.Get<EventEnergyScale>() == EventEnergyScale::Central) {
+//                const double weight_topPt = event->weight_total * sample.cross_section * ana_setup.int_lumi
+//                        / event.GetSummaryInfo()->totalShapeWeight_withTopPt;
+                anaDataCollection.Fill(anaDataId.Set(EventEnergyScale::TopPtUp), event, weight); // FIXME
+                anaDataCollection.Fill(anaDataId.Set(EventEnergyScale::TopPtDown), event, weight); // FIXME
+            }
         } else
             throw exception("Unsupported special event type '%1%'.") % sample.sampleType;
     }
@@ -473,8 +540,11 @@ protected:
     AnalyzerArguments args;
     AnaDataCollection anaDataCollection;
     AnalyzerSetup ana_setup;
+    boost::optional<MvaReaderSetup> mva_setup;
     SampleDescriptorCollection sample_descriptors;
     CombinedSampleDescriptorCollection cmb_sample_descriptors;
+    EventSubCategorySet sub_categories_to_process;
+    mva_study::MvaReader mva_reader;
 };
 
 } // namespace analysis
