@@ -50,6 +50,9 @@ public:
         EventCategorySet categories;
         categories.insert(EventCategory::Inclusive());
 
+        const bool is_boosted = event.SelectFatJet(cuts::hh_bbtautau_2016::fatJetID::mass,
+                                                   cuts::hh_bbtautau_2016::fatJetID::deltaR_subjet) != nullptr;
+
         if(event.HasBjetPair()) {
             categories.insert(EventCategory::TwoJets_Inclusive());
             const std::vector<const JetCandidate*> jets = {
@@ -63,8 +66,10 @@ public:
                         ++bjet_counts[btag_wp.first];
                 }
             }
-            for(const auto& wp_entry : btag_working_points)
+            for(const auto& wp_entry : btag_working_points) {
                 categories.emplace(2, bjet_counts[wp_entry.first], wp_entry.first);
+                categories.emplace(2, bjet_counts[wp_entry.first], wp_entry.first, is_boosted);
+            }
         }
         return categories;
     }
@@ -148,14 +153,15 @@ protected:
     virtual const EventCategorySet& EventCategoriesToProcess() const
     {
         static const EventCategorySet categories = {
-            EventCategory::TwoJets_Inclusive(), EventCategory::TwoJets_ZeroBtag(),
-            EventCategory::TwoJets_OneBtag(), /*EventCategory::TwoJets_OneLooseBtag(),*/
-            EventCategory::TwoJets_TwoBtag(), /*EventCategory::TwoJets_TwoLooseBtag()*/
+            EventCategory::TwoJets_Inclusive(), EventCategory::TwoJets_ZeroBtag_Resolved(),
+            EventCategory::TwoJets_OneBtag_Resolved(), /*EventCategory::TwoJets_OneLooseBtag(),*/
+            EventCategory::TwoJets_TwoBtag_Resolved(), /*EventCategory::TwoJets_TwoLooseBtag()*/
+            EventCategory::TwoJets_TwoLooseBtag_Boosted()
         };
         return categories;
     }
 
-    const EventSubCategorySet& EventSubCategoriesToProcess() const { return sub_categories_to_process; }
+    virtual const EventSubCategorySet& EventSubCategoriesToProcess() const { return sub_categories_to_process; }
 
     virtual const EventRegionSet& EventRegionsToProcess() const
     {
@@ -168,8 +174,7 @@ protected:
 
     void CreateEventSubCategoriesToProcess()
     {
-        const auto base = EventSubCategory().SetCutResult(SelectionCut::InsideMassWindow, true)
-                                            .SetCutResult(SelectionCut::KinematicFitConverged, true);
+        const auto base = EventSubCategory().SetCutResult(SelectionCut::mh, true);
         sub_categories_to_process.insert(base);
         if(mva_setup.is_initialized()) {
             for(const auto& mva_sel : mva_setup->selections) {
@@ -202,7 +207,7 @@ protected:
         using MvaKey = std::tuple<std::string, int, int>;
 
         EventSubCategory sub_category;
-        sub_category.SetCutResult(SelectionCut::InsideMassWindow,
+        sub_category.SetCutResult(SelectionCut::mh,
                                   IsInsideEllipse(event.GetHiggsTT(true).GetMomentum().mass(),
                                                   event.GetHiggsBB().GetMomentum().mass()));
         sub_category.SetCutResult(SelectionCut::KinematicFitConverged,

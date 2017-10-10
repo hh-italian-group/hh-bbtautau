@@ -32,7 +32,7 @@ protected:
     virtual const EventSubCategorySet& EventSubCategoriesToProcess() const override
     {
         static const EventSubCategorySet sub_categories = {
-            EventSubCategory().SetCutResult(SelectionCut::InsideMassWindow, true)
+            EventSubCategory().SetCutResult(SelectionCut::mh, true)
         };
         return sub_categories;
     }

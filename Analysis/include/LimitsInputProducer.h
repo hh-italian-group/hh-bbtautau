@@ -66,10 +66,8 @@ public:
         s_file_name << outputFileNamePrefix << "_" << hist_name;
         if(eventSubCategory != EventSubCategory::NoCuts())
             s_file_name << "_" << eventSubCategory;
-        s_file_name << ".root";
         const std::string file_name = s_file_name.str();
-        auto outputFile = root_ext::CreateRootFile(file_name);
-
+        auto outputFile = root_ext::CreateRootFile(file_name + ".root");
         std::set<EventAnalyzerDataId> empty_histograms;
 
         for(const EventAnalyzerDataId& metaId : EventAnalyzerDataId::MetaLoop(eventCategories, eventEnergyScales,
@@ -104,10 +102,14 @@ public:
         }
 
         if(empty_histograms.size()) {
-            std::cout << "\t\tWarning: following datacard histograms are empty:\n";
+            const std::string of_name = file_name + "_emptyShapes.txt";
+            std::ofstream of(of_name);
+            of.exceptions(std::ios::failbit);
             for(const auto& id : empty_histograms)
-                std::cout << "\t\t\t" << id << "\n";
-            std::cout << "\t\tUsing histograms with a tiny yield in the central bin instead." << std::endl;
+                of << id << "\n";
+            std::cout << "\t\tWarning: some datacard histograms are empty.\n"
+                      << "\t\tThey are replaced with histograms with a tiny yield in the central bin.\n"
+                      << "\t\tSee '" << of_name << "' for details." << std::endl;
         }
     }
 

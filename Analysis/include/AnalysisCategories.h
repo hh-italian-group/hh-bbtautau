@@ -64,26 +64,35 @@ std::ostream& operator<<(std::ostream& os, const EventRegion& eventRegion)
     return os;
 }
 
+#define DEF_ES(name, n_jets, ...) \
+    static const EventCategory& name() { static const EventCategory ec(n_jets, ##__VA_ARGS__); return ec; } \
+    /**/
+
 struct EventCategory {
     static const EventCategory& Inclusive() { static const EventCategory ec; return ec; }
-    static const EventCategory& TwoJets_Inclusive() { static const EventCategory ec(2); return ec; }
-    static const EventCategory& TwoJets_ZeroBtag()
-        { static const EventCategory ec(2, 0, DiscriminatorWP::Medium); return ec; }
-    static const EventCategory& TwoJets_OneBtag()
-        { static const EventCategory ec(2, 1, DiscriminatorWP::Medium); return ec; }
-    static const EventCategory& TwoJets_TwoBtag()
-        { static const EventCategory ec(2, 2, DiscriminatorWP::Medium); return ec; }
-    static const EventCategory& TwoJets_ZeroLooseBtag()
-        { static const EventCategory ec(2, 0, DiscriminatorWP::Loose); return ec; }
-    static const EventCategory& TwoJets_OneLooseBtag()
-        { static const EventCategory ec(2, 1, DiscriminatorWP::Loose); return ec; }
-    static const EventCategory& TwoJets_TwoLooseBtag()
-        { static const EventCategory ec(2, 2, DiscriminatorWP::Loose); return ec; }
+    DEF_ES(TwoJets_Inclusive, 2)
+    DEF_ES(TwoJets_ZeroBtag, 2, 0, DiscriminatorWP::Medium)
+    DEF_ES(TwoJets_OneBtag, 2, 1, DiscriminatorWP::Medium)
+    DEF_ES(TwoJets_TwoBtag, 2, 2, DiscriminatorWP::Medium)
+    DEF_ES(TwoJets_ZeroLooseBtag, 2, 0, DiscriminatorWP::Loose)
+    DEF_ES(TwoJets_OneLooseBtag, 2, 1, DiscriminatorWP::Loose)
+    DEF_ES(TwoJets_TwoLooseBtag, 2, 2, DiscriminatorWP::Loose)
+    DEF_ES(TwoJets_ZeroBtag_Resolved, 2, 0, DiscriminatorWP::Medium, false)
+    DEF_ES(TwoJets_OneBtag_Resolved, 2, 1, DiscriminatorWP::Medium, false)
+    DEF_ES(TwoJets_TwoBtag_Resolved, 2, 2, DiscriminatorWP::Medium, false)
+    DEF_ES(TwoJets_TwoLooseBtag_Boosted, 2, 2, DiscriminatorWP::Loose, true)
 
     EventCategory() {}
     explicit EventCategory(size_t _n_jets) : n_jets(_n_jets) {}
     EventCategory(size_t _n_jets, size_t _n_btag, DiscriminatorWP _btag_wp) :
         n_jets(_n_jets), n_btag(_n_btag), btag_wp(_btag_wp)
+    {
+        if(n_btag > n_jets)
+            throw exception("Number of btag can't be greater than number of jets");
+    }
+
+    EventCategory(size_t _n_jets, size_t _n_btag, DiscriminatorWP _btag_wp, bool _boosted) :
+        n_jets(_n_jets), n_btag(_n_btag), btag_wp(_btag_wp), boosted(_boosted)
     {
         if(n_btag > n_jets)
             throw exception("Number of btag can't be greater than number of jets");
@@ -111,16 +120,25 @@ struct EventCategory {
         return *btag_wp;
     }
 
+    bool HasBoostConstraint() const { return boosted.is_initialized(); }
+    bool IsBoosted() const
+    {
+        if(!HasBoostConstraint())
+            throw exception("Boost constraint is not defined.");
+        return *boosted;
+    }
+
     bool operator ==(const EventCategory& ec) const
     {
-        return n_jets == ec.n_jets && n_btag == ec.n_btag && btag_wp == ec.btag_wp;
+        return n_jets == ec.n_jets && n_btag == ec.n_btag && btag_wp == ec.btag_wp && boosted == ec.boosted;
     }
     bool operator !=(const EventCategory& ec) const { return !(*this == ec); }
     bool operator <(const EventCategory& ec) const
     {
         if(n_jets != ec.n_jets) return n_jets < ec.n_jets;
         if(n_btag != ec.n_btag) return n_btag < ec.n_btag;
-        return btag_wp < ec.btag_wp;
+        if(btag_wp != ec.btag_wp) return btag_wp < ec.btag_wp;
+        return boosted < ec.boosted;
     }
 
     std::string ToString() const
@@ -134,6 +152,10 @@ struct EventCategory {
                 s << *btag_wp;
             s << "btag";
         }
+        if(HasBoostConstraint()) {
+            const std::string boosted_str = IsBoosted() ? "B" : "R";
+            s << boosted_str;
+        }
         return s.str();
     }
 
@@ -141,6 +163,7 @@ struct EventCategory {
     {
         static const std::string numbers = "0123456789";
         static const std::string jets_suffix = "jets", btag_suffix = "btag";
+        static const std::map<char, bool> boosted_suffix = { { 'R', false }, { 'B', true } };
 
         if(str == "Inclusive") return Inclusive();
         try {
@@ -160,7 +183,14 @@ struct EventCategory {
                 throw exception("");
             const DiscriminatorWP btag_wp = btag_wp_pos == btag_pos ? DiscriminatorWP::Medium
                     : ::analysis::Parse<DiscriminatorWP>(str.substr(btag_wp_pos, btag_pos - btag_wp_pos));
-            return EventCategory(n_jets, n_btag, btag_wp);
+            const size_t boosted_pos = btag_pos + btag_suffix.size();
+            if(str.size() == boosted_pos)
+                return EventCategory(n_jets, n_btag, btag_wp);
+            const char boosted_flag = str.at(boosted_pos);
+            if(str.size() != boosted_pos + 1 || !boosted_suffix.count(boosted_flag))
+                throw exception("");
+            const bool is_boosted = boosted_suffix.at(boosted_flag);
+            return EventCategory(n_jets, n_btag, btag_wp, is_boosted);
         }catch(exception& e) {
             throw exception("Invalid EventCategory '%1%'. %2%") % str % e.message();
         }
@@ -169,7 +199,10 @@ struct EventCategory {
 private:
     boost::optional<size_t> n_jets, n_btag;
     boost::optional<DiscriminatorWP> btag_wp;
+    boost::optional<bool> boosted;
 };
+
+#undef DEF_ES
 
 std::ostream& operator<<(std::ostream& os, const EventCategory& eventCategory)
 {
@@ -188,7 +221,7 @@ std::istream& operator>>(std::istream& is, EventCategory& eventCategory)
 #define DECL_MVA_SEL(z, n, first) MVA##n = n + first,
 #define MVA_CUT_LIST(first, count) BOOST_PP_REPEAT(count, DECL_MVA_SEL, first)
 
-enum class SelectionCut { InsideMassWindow = 0, KinematicFitConverged = 1,
+enum class SelectionCut { mh = 0, KinematicFitConverged = 1,
                           MVA_CUT_LIST(2, 100) MVA_first = MVA0, MVA_last = MVA99 };
 
 #undef MVA_CUT_LIST
@@ -198,7 +231,7 @@ namespace detail {
 inline std::map<SelectionCut, std::string> CreateSelectionCutNames()
 {
     std::map<SelectionCut, std::string> names;
-    names[SelectionCut::InsideMassWindow] = "InsideMassWindow";
+    names[SelectionCut::mh] = "mh";
     names[SelectionCut::KinematicFitConverged] = "KinematicFitConverged";
     const size_t MVA_first_index = static_cast<size_t>(SelectionCut::MVA_first);
     const size_t MVA_last_index = static_cast<size_t>(SelectionCut::MVA_last);
