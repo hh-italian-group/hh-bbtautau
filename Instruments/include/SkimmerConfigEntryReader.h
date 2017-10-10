@@ -26,6 +26,9 @@ public:
 
         CheckReadParamCounts("apply_mass_cut", 1, Condition::less_equal);
         CheckReadParamCounts("apply_charge_cut", 1, Condition::less_equal);
+        CheckReadParamCounts("keep_genJets", 1, Condition::less_equal);
+        CheckReadParamCounts("keep_genParticles", 1, Condition::less_equal);
+        CheckReadParamCounts("keep_MET_cov",1,Condition::less_equal);
         CheckReadParamCounts("tau_iso", 1, Condition::less_equal);
 
         ConfigEntryReaderT<Setup>::EndEntry();
@@ -45,6 +48,9 @@ public:
 
         ParseEntry("apply_mass_cut", current.apply_mass_cut);
         ParseEntry("apply_charge_cut", current.apply_charge_cut);
+        ParseEntry("keep_genJets", current.keep_genJets);
+        ParseEntry("keep_genParticles", current.keep_genParticles);
+        ParseEntry("keep_MET_cov",current.keep_MET_cov);
         ParseEntry("tau_id_cut", current.tau_id_cut);
     }
 };

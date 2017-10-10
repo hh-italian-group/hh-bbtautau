@@ -23,6 +23,7 @@ public:
     TH1D_ENTRY_CUSTOM_EX(m_ttbb_kinfit, M_ttbb_Bins, "M_{H}^{kinfit} (GeV)", "dN/dm_{H}^{kinfit} (1/GeV)", false, 1.4, true, true)
     TH1D_ENTRY_CUSTOM_EX(m_sv, M_tt_Bins, "M_{#tau#tau} (GeV)", "dN/dm_{#tau#tau} (1/GeV)", false, 1.3, true, true)
     TH1D_ENTRY_CUSTOM_EX(MT2, MT2_Bins, "MT2_{H} (GeV)", "dN/dm (1/GeV)", false, 1.4, true, true)
+    TH1D_ENTRY_EX(mva_score, 40, -1, 1, "MVA score", "Events", true, 1.2, false, true)
 
     TH1D_ENTRY_CUSTOM_EX(m_tt_vis, M_tt_Bins, "M_{vis}(GeV)", "Events", false, 1.1, false, SaveAll)
     TH1D_ENTRY_EX(pt_H_tt, 20, 0, 300, "P_{T}(GeV)", "Events", false, 1.2, false, SaveAll)
@@ -49,9 +50,9 @@ public:
     TH1D_ENTRY_EX(eta_b2, 25, -2.5, 2.5, "Subleading selected jet #eta", "Events", false, 1.8, false, SaveAll)
     TH1D_ENTRY_EX(csv_b2, 25, 0, 1, "Subleading selected jet CSV", "Events", false, 1.4, false, SaveAll)
 
-    explicit BaseEventAnalyzerData(bool _fill_all) : fill_all(_fill_all) {}
-    BaseEventAnalyzerData(std::shared_ptr<TFile> outputFile, const std::string& directoryName, bool _fill_all,
-                          bool readMode)
+    BaseEventAnalyzerData(const EventCategory& /*eventCategory*/, bool _fill_all) : fill_all(_fill_all) {}
+    BaseEventAnalyzerData(std::shared_ptr<TFile> outputFile, const std::string& directoryName,
+                          const EventCategory& /*eventCategory*/, bool _fill_all, bool readMode)
         : AnalyzerData(outputFile, directoryName, readMode), fill_all(_fill_all) {}
 
     void FillBase(EventInfoBase& event, double weight)
@@ -63,6 +64,7 @@ public:
             if(kinfit.HasValidMass())
                 m_ttbb_kinfit().Fill(kinfit.mass, weight);
             MT2().Fill(event.GetMT2(), weight);
+            mva_score().Fill(event.GetMvaScore(), weight);
         }
 
         const double m_SVfit = event.GetHiggsTTMomentum(true).M();
@@ -123,5 +125,42 @@ public:
         FillBase(event, weight);
     }
 };
+
+template<>
+class EventAnalyzerData<TauCandidate, TauCandidate> : public BaseEventAnalyzerData {
+public:
+    using FirstLeg = TauCandidate;
+    using SecondLeg = TauCandidate;
+    using EventInfo = ::analysis::EventInfo<FirstLeg, SecondLeg>;
+
+    EventAnalyzerData(const EventCategory& eventCategory, bool _fill_all) :
+        BaseEventAnalyzerData(eventCategory, _fill_all)
+    {
+        Initialize(eventCategory);
+    }
+
+    EventAnalyzerData(std::shared_ptr<TFile> outputFile, const std::string& directoryName,
+                          const EventCategory& eventCategory, bool _fill_all, bool readMode) :
+        BaseEventAnalyzerData(outputFile, directoryName, eventCategory, _fill_all, readMode)
+    {
+        Initialize(eventCategory);
+    }
+
+    void Fill(EventInfo& event, double weight)
+    {
+        FillBase(event, weight);
+    }
+
+private:
+    void Initialize(const EventCategory& eventCategory)
+    {
+        static const std::vector<double> res_mva_bins = { -1, 0.4, 0.55, 0.7, 0.8, 0.85, 0.9, 0.95, 0.975, 1 };
+        static const std::vector<double> boosted_mva_bins = { -1, 1 };
+        const auto& mva_bins = eventCategory.HasBoostConstraint() && eventCategory.IsBoosted()
+                             ? boosted_mva_bins : res_mva_bins;
+        mva_score.SetMasterHist(mva_bins, "MVA score", "dN / bin width", true, 1.2, true, true);
+    }
+};
+
 
 } // namespace analysis

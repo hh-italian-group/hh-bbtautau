@@ -27,13 +27,87 @@ struct AnalyzerSetup {
     std::vector<std::string> data, signals, backgrounds, cmb_samples;
     std::vector<std::string> draw_sequence;
     std::map<EventCategory, std::string> limit_categories;
+    std::string mva_setup;
 };
 
 using AnalyzerSetupCollection = std::unordered_map<std::string, AnalyzerSetup>;
 
+struct MvaReaderSetup {
+    struct Params {
+        std::string name;
+        int spin; double mass;
+        double cut;
+    };
+
+    std::string name;
+    std::map<std::string, std::string> trainings;
+    std::map<std::string, std::unordered_set<std::string>> variables;
+    std::map<std::string, std::vector<double>> masses;
+    std::map<std::string, std::vector<int>> spins;
+    std::map<std::string, std::vector<double>> cuts;
+    std::map<std::string, std::string> legacy;
+
+    std::map<SelectionCut, Params> selections;
+
+    void CreateSelections()
+    {
+        selections.clear();
+
+        const size_t n_min = static_cast<size_t>(SelectionCut::MVA_first);
+        const size_t n_max = static_cast<size_t>(SelectionCut::MVA_last);
+        size_t n = n_min;
+        for(const auto& training : trainings) {
+            const std::string tr_name = training.first;
+            Params params;
+            params.name = tr_name;
+            if(!spins.count(tr_name))
+                throw exception("Missing spin working points for MVA training %1%.") % tr_name;
+            const auto& tr_spins = spins.at(tr_name);
+            if(!masses.count(tr_name))
+                throw exception("Missing mass working points for MVA training %1%.") % tr_name;
+            const auto& tr_masses = masses.at(tr_name);
+            if(tr_spins.size() != tr_masses.size())
+                throw exception("Inconsistend number of spin and mass working points for MVA training %1%.") % tr_name;
+            if(!cuts.count(tr_name))
+                throw exception("Missing cut working points for MVA training %1%.") % tr_name;
+            const auto& tr_cuts = cuts.at(tr_name);
+            for(size_t wp_index = 0; wp_index < tr_spins.size(); ++wp_index) {
+                params.spin = tr_spins.at(wp_index);
+                params.mass = tr_masses.at(wp_index);
+                for(double cut_wp : tr_cuts) {
+                    params.cut = cut_wp;
+                    if(n > n_max)
+                        throw exception("Exceded the maximum number (%1%) of the available MVA selection points")
+                            % (n_max - n_min + 1);
+                    SelectionCut sel = static_cast<SelectionCut>(n);
+                    selections[sel] = params;
+                    ++n;
+                }
+            }
+        }
+    }
+
+    std::string GetMvaWPSuffix(const EventSubCategory& sub_category) const
+    {
+        std::ostringstream ss;
+        for(const auto& sel : selections) {
+            if(!sub_category.HasCut(sel.first)) continue;
+            const Params& params = sel.second;
+            ss << params.name << "_spin" << params.spin << "_M" << params.mass << "_cut" << params.cut << "_";
+        }
+        std::string suffix = ss.str();
+        if(suffix.size())
+            suffix.erase(suffix.size() - 1);
+        return suffix;
+    }
+};
+
+using MvaReaderSetupCollection = std::unordered_map<std::string, MvaReaderSetup>;
+
 struct SampleDescriptorBase {
     struct Point {
         std::string name, full_name, title, file_path, datacard_name;
+        SampleType sampleType;
         double norm_sf{1}, datacard_sf{1}, draw_sf{1};
         bool draw{false};
         root_ext::Color color{kBlack};
@@ -67,6 +141,7 @@ struct SampleDescriptorBase {
         point.title = title.size() ? title : point.full_name;
         ReplacePatternItem(point.title, "factor", draw_sf);
         point.datacard_name = datacard_name;
+        point.sampleType = sampleType;
         point.draw_sf = draw_sf;
         point.datacard_sf = datacard_sf;
         point.draw = true;
@@ -115,6 +190,7 @@ public:
             ReplacePatternItem(point.title, "factor", draw_sf);
             point.file_path = ResolvePattern(file_path, n);
             point.datacard_name = ResolvePattern(datacard_name, n);
+            point.sampleType = sampleType;
             point.norm_sf = n < norm_sf.size() ? norm_sf.at(n) : 1;
             point.draw_sf = draw_sf;
             point.datacard_sf = datacard_sf;

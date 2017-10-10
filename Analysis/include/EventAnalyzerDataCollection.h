@@ -199,9 +199,9 @@ private:
             if(!id.IsComplete())
                 throw exception("EventAnalyzerDataId '%1%' is not complete.") % id;
             const std::string dir_name = id.GetName();
-            return std::make_shared<Data>(file, dir_name, fill_all, readMode);
+            return std::make_shared<Data>(file, dir_name, id.Get<EventCategory>(), fill_all, readMode);
         }
-        return std::make_shared<Data>(fill_all);
+        return std::make_shared<Data>(id.Get<EventCategory>(), fill_all);
     }
 
 private:

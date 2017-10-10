@@ -8,7 +8,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 namespace analysis {
 
-class AnalyzerConfigEntryReader : public ConfigEntryReaderT<AnalyzerSetup>, public virtual ConfigEntryReader  {
+class AnalyzerConfigEntryReader : public ConfigEntryReaderT<AnalyzerSetup> {
 public:
     using Condition = ConfigEntryReader::Condition;
     using ConfigEntryReaderT<AnalyzerSetup>::ConfigEntryReaderT;
@@ -27,6 +27,7 @@ public:
         CheckReadParamCounts("cmb_samples", 1, Condition::less_equal);
         CheckReadParamCounts("draw_sequence", 1, Condition::less_equal);
         CheckReadParamCounts("limit_category", 0, Condition::greater_equal);
+        CheckReadParamCounts("mva_setup", 1, Condition::less_equal);
 
         ConfigEntryReaderT<AnalyzerSetup>::EndEntry();
     }
@@ -46,9 +47,39 @@ public:
         ParseEntryList("cmb_samples", current.cmb_samples);
         ParseEntryList("draw_sequence", current.draw_sequence);
         ParseEntry("limit_category", current.limit_categories);
+        ParseEntry("mva_setup", current.mva_setup);
     }
 };
 
+class MvaReaderSetupEntryReader : public ConfigEntryReaderT<MvaReaderSetup>  {
+public:
+    using Condition = ConfigEntryReader::Condition;
+    using ConfigEntryReaderT<MvaReaderSetup>::ConfigEntryReaderT;
+
+    virtual void EndEntry() override
+    {
+        CheckReadParamCounts("training", 0, Condition::greater_equal);
+        CheckReadParamCounts("variables", 0, Condition::greater_equal);
+        CheckReadParamCounts("masses", 0, Condition::greater_equal);
+        CheckReadParamCounts("spins", 0, Condition::greater_equal);
+        CheckReadParamCounts("cuts", 0, Condition::greater_equal);
+        CheckReadParamCounts("legacy", 0, Condition::greater_equal);
+
+        current.CreateSelections();
+        ConfigEntryReaderT<MvaReaderSetup>::EndEntry();
+    }
+
+    virtual void ReadParameter(const std::string& /*param_name*/, const std::string& /*param_value*/,
+                               std::istringstream& /*ss*/) override
+    {
+        ParseEntry("training", current.trainings);
+        ParseMappedEntryList("variables", current.variables, false);
+        ParseMappedEntryList("masses", current.masses, true);
+        ParseMappedEntryList("spins", current.spins, true);
+        ParseMappedEntryList("cuts", current.cuts, false);
+        ParseEntry("legacy", current.legacy);
+    }
+};
 
 template<typename Descriptor>
 class SampleDescriptorBaseConfigEntryReader : public ConfigEntryReaderT<Descriptor>, public virtual ConfigEntryReader {
@@ -82,8 +113,6 @@ public:
     }
 };
 
-
-
 class SampleDescriptorConfigEntryReader : public SampleDescriptorBaseConfigEntryReader<SampleDescriptor> {
 public:
     using Base = SampleDescriptorBaseConfigEntryReader<SampleDescriptor>;
@@ -111,7 +140,7 @@ public:
                                                 [](double xs){ return xs > 0; });
         ParseMappedEntryList("points", current.points, true);
         ParseEntry("draw_ex", current.draw_ex);
-        ParseEntryList("norm_sf", current.norm_sf);
+        ParseEntryList("norm_sf", current.norm_sf, true);
 
         Base::ReadParameter(param_name,param_value,ss);
     }
