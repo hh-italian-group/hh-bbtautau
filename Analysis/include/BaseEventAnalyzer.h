@@ -155,7 +155,7 @@ protected:
         return categories;
     }
 
-    const EventSubCategorySet& EventSubCategoriesToProcess() const { return sub_categories_to_process; }
+    virtual const EventSubCategorySet& EventSubCategoriesToProcess() const { return sub_categories_to_process; }
 
     virtual const EventRegionSet& EventRegionsToProcess() const
     {

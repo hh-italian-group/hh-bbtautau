@@ -20,6 +20,8 @@ protected:
         const MuonCandidate& muon1 = event.GetFirstLeg();
         const MuonCandidate& muon2 = event.GetSecondLeg();
 
+        bool passTrigger = event.GetTriggerResults().AnyAcceptAndMatch(trigger_patterns);
+        std::cout<<"Trigger Results = "<<passTrigger<<std::endl;
         if(!event.GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) return EventRegion::Unknown();
 
         const bool os = !ana_setup.apply_os_cut || muon1.GetCharge() * muon2.GetCharge() == -1;
