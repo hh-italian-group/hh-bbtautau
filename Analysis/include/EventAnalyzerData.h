@@ -152,10 +152,13 @@ public:
     }
 
 private:
-    void Initialize(const EventCategory& /*eventCategory*/)
+    void Initialize(const EventCategory& eventCategory)
     {
-        static const std::vector<double> mva_bins = { -1, 0.4, 0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 1 };
-        mva_score.SetMasterHist(mva_bins, "MVA score", "Events", true, 1.2, true, true);
+        static const std::vector<double> res_mva_bins = { -1, 0.4, 0.55, 0.7, 0.8, 0.85, 0.9, 0.95, 0.975, 1 };
+        static const std::vector<double> boosted_mva_bins = { -1, 1 };
+        const auto& mva_bins = eventCategory.HasBoostConstraint() && eventCategory.IsBoosted()
+                             ? boosted_mva_bins : res_mva_bins;
+        mva_score.SetMasterHist(mva_bins, "MVA score", "dN / bin width", true, 1.2, true, true);
     }
 };
 
