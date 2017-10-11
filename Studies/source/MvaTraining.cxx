@@ -405,8 +405,8 @@ public:
 
     void Run()
     {
-        std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},
-                                     /*{"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin}, */
+        std::vector<ChannelSpin> set{/*{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},*/
+                                     {"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin},
                                      {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
 
         std::cout<<"Variabili iniziali: "<<enabled_vars.size()<<std::endl;
@@ -446,6 +446,12 @@ public:
                         if (!args.blind())
                             if (event.split_id < (mergesummary.n_splits/2)) continue;
                     }
+
+                    LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
+
+                    if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(), bb.mass()))
+                        continue;
+
                    tot_entries++;
                     int set = split(gen2);
                     int which_set = set == args.which_test() ? 0 : 1;
@@ -640,7 +646,7 @@ public:
             auto directory_sb_method = root_ext::GetDirectory(*directory_sb, m.first);
             std::cout<<"----"<<m.first<<"----"<<std::endl;
             std::cout<<"Kolmogorov"<<std::endl;
-            kolmogorov = KolmogorovTest(evaluation, outputBDT->bdt_out, directory_ks_method, false);
+            kolmogorov = KolmogorovTest(evaluation, outputBDT->bdt_out, directory_ks_method, true);
             for (const auto& sample : kolmogorov){
                 mva_tuple().KS_value.push_back(sample.second);
                 mva_tuple().KS_channel.push_back(sample.first.channel);
@@ -650,7 +656,7 @@ public:
             }
 
             std::cout<<"Chi"<<std::endl;
-            chi2 = ChiSquareTest(evaluation, outputBDT->bdt_out,  directory_chi_method, false);
+            chi2 = ChiSquareTest(evaluation, outputBDT->bdt_out,  directory_chi_method, true);
             for (const auto& sample : chi2){
                 mva_tuple().chi_value.push_back(sample.second);
                 mva_tuple().chi_channel.push_back(sample.first.channel);
