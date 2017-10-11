@@ -18,27 +18,116 @@ ENUM_NAMES(SampleType) = {
 
 struct EventRegion {
     static const EventRegion& Unknown() { static const EventRegion er; return er; }
-    static const EventRegion& OS_Isolated() { static const EventRegion er(true, true); return er; }
-    static const EventRegion& OS_AntiIsolated() { static const EventRegion er(true, false); return er; }
-    static const EventRegion& SS_Isolated() { static const EventRegion er(false, true); return er; }
-    static const EventRegion& SS_AntiIsolated() { static const EventRegion er(false, true); return er; }
+    static const EventRegion& OS_Isolated()
+    {
+        static const EventRegion er = EventRegion().SetTauPairCharge(true).SetLowerIso(DiscriminatorWP::Medium);
+        return er;
+    }
+
+    static const EventRegion& OS_AntiIsolated()
+    {
+        static const EventRegion er =
+                EventRegion().SetTauPairCharge(true).SetLowerIso(DiscriminatorWP::VLoose).SetUpperIso(DiscriminatorWP::Medium);
+        return er;
+    }
+
+    static const EventRegion& SS_Isolated()
+    {
+        static const EventRegion er = EventRegion().SetTauPairCharge(false).SetLowerIso(DiscriminatorWP::Medium);
+        return er;
+    }
+
+    static const EventRegion& SS_LooseIsolated()
+    {
+        static const EventRegion er = EventRegion().SetTauPairCharge(false).SetLowerIso(DiscriminatorWP::Loose);
+        return er;
+    }
+
+    static const EventRegion& SS_AntiIsolated()
+    {
+        static const EventRegion er =
+                EventRegion().SetTauPairCharge(false).SetLowerIso(DiscriminatorWP::VLoose).SetUpperIso(DiscriminatorWP::Medium);
+        return er;
+    }
+
     static const EventRegion& SignalRegion() { return OS_Isolated(); }
 
     EventRegion() {}
-    EventRegion(bool _os) : os(_os) {}
-    EventRegion(bool _os, bool _iso) : os(_os), iso(_iso) {}
+    EventRegion(bool _os, DiscriminatorWP _iso_lower) : os(_os), iso_lower(_iso_lower) {}
+    EventRegion(bool _os, DiscriminatorWP _iso_lower, DiscriminatorWP _iso_upper) :
+        os(_os), iso_lower(_iso_lower), iso_upper(_iso_upper) {}
 
-    bool OS() const { return os.is_initialized() && *os; }
-    bool SS() const { return os.is_initialized() && !*os; }
-    bool Iso() const { return iso.is_initialized() && *iso; }
-    bool AntiIso() const { return iso.is_initialized() && !*iso; }
+    EventRegion& SetTauPairCharge(bool _os)
+    {
+        os = _os;
+        return *this;
+    }
 
-    bool operator ==(const EventRegion& er) const { return os == er.os && iso == er.iso; }
+    EventRegion& SetLowerIso(DiscriminatorWP wp)
+    {
+        iso_lower = wp;
+        return *this;
+    }
+
+    EventRegion& SetUpperIso(DiscriminatorWP wp)
+    {
+        iso_upper = wp;
+        return *this;
+    }
+
+    bool HasCharge()
+    {
+        return os.is_initialized();
+    }
+
+    bool HasLowerIso()
+    {
+        return iso_lower.is_initialized();
+    }
+
+    bool HasUpperIso()
+    {
+        return iso_upper.is_initialized();
+    }
+
+    DiscriminatorWP& GetLowIso() const
+    {
+        if(!HasLowerIso()) return false;
+        return  *iso_lower;
+    }
+
+    DiscriminatorWP& GetUpperIso() const
+    {
+        if(!HasUpperIso()) return false;
+        return  *iso_upper;
+    }
+
+    bool GetCharge() const
+    {
+        if(!HasCharge()) return false;
+        return *os;
+    }
+
+
+    bool Implies(const EventRegion& other) const
+    {
+        if(!other.HasCharge()) return false;
+        if(other.HasCharge() && !HasCharge()) return false;
+        if((!GetCharge() && other.GetCharge()) || (GetCharge() && !other.GetCharge())) return false;
+        if((HasLowerIso() && !other.HasLowerIso()) || (!HasLowerIso() && other.HasLowerIso())) return false;
+        if(GetLowIso() > other.GetLowIso()) return false;
+        if((HasUpperIso() && !other.HasUpperIso()) || (!HasUpperIso() && other.HasUpperIso())) return false;
+        if(GetUpperIso() > other.GetUpperIso()) return false;
+        return true;
+    }
+
+    bool operator ==(const EventRegion& er) const { return os == er.os && iso_lower == er.iso_lower && iso_upper == er.iso_upper; }
     bool operator !=(const EventRegion& er) const { return !(*this == er); }
     bool operator <(const EventRegion& er) const
     {
         if(os != er.os) return os < er.os;
-        return iso < er.iso;
+        if(iso_lower != er.iso_lower) return iso_lower < er.iso_lower;
+        return iso_upper < er.iso_upper;
     }
 
     std::string ToString() const
@@ -52,7 +141,8 @@ struct EventRegion {
     }
 
 private:
-    boost::optional<bool> os, iso;
+    boost::optional<bool> os;
+    boost::optional<DiscriminatorWP> iso_lower, iso_upper;
 
     static std::string SignPairStr(bool sign_pair) { return sign_pair ? "OS" : "SS"; }
     static std::string IsoStr(bool iso) { return iso ? "Isolated" : "AntiIsolated"; }
