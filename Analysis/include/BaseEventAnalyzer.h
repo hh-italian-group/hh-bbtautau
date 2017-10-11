@@ -167,7 +167,8 @@ protected:
     {
         static const EventRegionSet regions = {
             EventRegion::OS_Isolated(), EventRegion::OS_AntiIsolated(),
-            EventRegion::SS_Isolated(), EventRegion::SS_AntiIsolated()
+            EventRegion::SS_Isolated(), EventRegion::SS_AntiIsolated(),
+            EventRegion::SS_LooseIsolated()
         };
         return regions;
     }
@@ -282,28 +283,30 @@ protected:
             for(auto eventCategory : eventCategories) {
                 if (!EventCategoriesToProcess().count(eventCategory)) continue;
                 const EventRegion eventRegion = DetermineEventRegion(event, eventCategory);
-                if(!EventRegionsToProcess().count(eventRegion)) continue;
+                for(const auto& region : EventRegionsToProcess()){
+                    if(!eventRegion.Implies(region)) continue;
 
-                std::map<SelectionCut, double> mva_scores;
-                const auto eventSubCategory = DetermineEventSubCategory(event, eventCategory, mva_scores);
-                for(const auto& subCategory : EventSubCategoriesToProcess()) {
-                    if(!eventSubCategory.Implies(subCategory)) continue;
-                    SelectionCut mva_cut;
-                    double mva_score = 0;
-                    if(subCategory.TryGetLastMvaCut(mva_cut))
-                        mva_score = mva_scores.at(mva_cut);
-                    event.SetMvaScore(mva_score);
-                    const EventAnalyzerDataId anaDataId(eventCategory, subCategory, eventRegion,
-                                                        event.GetEnergyScale(), sample_wp.full_name);
-                    if(sample.sampleType == SampleType::Data) {
-                        ProcessDataEvent(anaDataId, event);
-                    } else {
-                        const double weight = event->weight_total * sample.cross_section * ana_setup.int_lumi
-                                            / summary->totalShapeWeight;
-                        if(sample.sampleType == SampleType::MC)
-                            anaDataCollection.Fill(anaDataId, event, weight);
-                        else
-                            ProcessSpecialEvent(sample, sample_wp, anaDataId, event, weight);
+                    std::map<SelectionCut, double> mva_scores;
+                    const auto eventSubCategory = DetermineEventSubCategory(event, eventCategory, mva_scores);
+                    for(const auto& subCategory : EventSubCategoriesToProcess()) {
+                        if(!eventSubCategory.Implies(subCategory)) continue;
+                        SelectionCut mva_cut;
+                        double mva_score = 0;
+                        if(subCategory.TryGetLastMvaCut(mva_cut))
+                            mva_score = mva_scores.at(mva_cut);
+                        event.SetMvaScore(mva_score);
+                        const EventAnalyzerDataId anaDataId(eventCategory, subCategory, eventRegion,
+                                                            event.GetEnergyScale(), sample_wp.full_name);
+                        if(sample.sampleType == SampleType::Data) {
+                            ProcessDataEvent(anaDataId, event);
+                        } else {
+                            const double weight = event->weight_total * sample.cross_section * ana_setup.int_lumi
+                                                / summary->totalShapeWeight;
+                            if(sample.sampleType == SampleType::MC)
+                                anaDataCollection.Fill(anaDataId, event, weight);
+                            else
+                                ProcessSpecialEvent(sample, sample_wp, anaDataId, event, weight);
+                        }
                     }
                 }
             }

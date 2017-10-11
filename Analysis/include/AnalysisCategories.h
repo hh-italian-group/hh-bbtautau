@@ -61,28 +61,28 @@ struct EventRegion {
     EventRegion& SetLowerIso(DiscriminatorWP wp) { iso_lower = wp; return *this; }
     EventRegion& SetUpperIso(DiscriminatorWP wp) { iso_upper = wp; return *this; }
 
-    bool HasCharge(){ return os.is_initialized(); }
-    bool HasLowerIso() { return iso_lower.is_initialized(); }
-    bool HasUpperIso() { return iso_upper.is_initialized(); }
+    bool HasCharge() const { return os.is_initialized(); }
+    bool HasLowerIso() const { return iso_lower.is_initialized(); }
+    bool HasUpperIso() const { return iso_upper.is_initialized(); }
 
     DiscriminatorWP GetLowIso() const
     {
         if(!HasLowerIso())
-            throw analysis::exception("Lower isolation bound not set.");
-        return  iso_lower;
+            throw exception("Lower isolation bound not set.");
+        return *iso_lower;
     }
 
     DiscriminatorWP GetUpperIso() const
     {
         if(!HasUpperIso())
-            throw analysis::exception("Upper isolation bound not set.");
-        return  iso_upper;
+            throw exception("Upper isolation bound not set.");
+        return *iso_upper;
     }
 
     bool GetCharge() const
     {
         if(!HasCharge())
-            throw analysis::exception("Charge info not set.");
+            throw exception("Charge info not set.");
         return *os;
     }
 
@@ -90,9 +90,9 @@ struct EventRegion {
     bool Implies(const EventRegion& other) const
     {
         if(HasCharge() && (!other.HasCharge() || GetCharge() != other.GetCharge()) ) return false;
-        if((HasLowerIso() && !other.HasLowerIso()) || (!HasLowerIso() && other.HasLowerIso())) return false;
+        if(HasLowerIso() && !other.HasLowerIso()) return false;
         if(other.GetLowIso() > GetLowIso()) return false;
-        if((HasUpperIso() && !other.HasUpperIso()) || (!HasUpperIso() && other.HasUpperIso())) return false;
+        if(HasUpperIso() && !other.HasUpperIso()) return false;
         if(other.GetUpperIso() > GetUpperIso()) return false;
         return true;
     }
