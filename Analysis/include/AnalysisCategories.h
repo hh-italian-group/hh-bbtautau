@@ -57,67 +57,43 @@ struct EventRegion {
     EventRegion(bool _os, DiscriminatorWP _iso_lower, DiscriminatorWP _iso_upper) :
         os(_os), iso_lower(_iso_lower), iso_upper(_iso_upper) {}
 
-    EventRegion& SetTauPairCharge(bool _os)
+    EventRegion& SetTauPairCharge(bool _os) { os = _os; return *this; }
+    EventRegion& SetLowerIso(DiscriminatorWP wp) { iso_lower = wp; return *this; }
+    EventRegion& SetUpperIso(DiscriminatorWP wp) { iso_upper = wp; return *this; }
+
+    bool HasCharge(){ return os.is_initialized(); }
+    bool HasLowerIso() { return iso_lower.is_initialized(); }
+    bool HasUpperIso() { return iso_upper.is_initialized(); }
+
+    DiscriminatorWP GetLowIso() const
     {
-        os = _os;
-        return *this;
+        if(!HasLowerIso())
+            throw analysis::exception("Lower isolation bound not set.");
+        return  iso_lower;
     }
 
-    EventRegion& SetLowerIso(DiscriminatorWP wp)
+    DiscriminatorWP GetUpperIso() const
     {
-        iso_lower = wp;
-        return *this;
-    }
-
-    EventRegion& SetUpperIso(DiscriminatorWP wp)
-    {
-        iso_upper = wp;
-        return *this;
-    }
-
-    bool HasCharge()
-    {
-        return os.is_initialized();
-    }
-
-    bool HasLowerIso()
-    {
-        return iso_lower.is_initialized();
-    }
-
-    bool HasUpperIso()
-    {
-        return iso_upper.is_initialized();
-    }
-
-    DiscriminatorWP& GetLowIso() const
-    {
-        if(!HasLowerIso()) return false;
-        return  *iso_lower;
-    }
-
-    DiscriminatorWP& GetUpperIso() const
-    {
-        if(!HasUpperIso()) return false;
-        return  *iso_upper;
+        if(!HasUpperIso())
+            throw analysis::exception("Upper isolation bound not set.");
+        return  iso_upper;
     }
 
     bool GetCharge() const
     {
-        if(!HasCharge()) return false;
+        if(!HasCharge())
+            throw analysis::exception("Charge info not set.");
         return *os;
     }
 
 
     bool Implies(const EventRegion& other) const
     {
-        if(!other.HasCharge()) return false;
-        if(other.HasCharge() && !HasCharge()) return false;
-        if((!GetCharge() && other.GetCharge()) || (GetCharge() && !other.GetCharge())) return false;
+        if(HasCharge() && (!other.HasCharge() || GetCharge() != other.GetCharge()) ) return false;
         if((HasLowerIso() && !other.HasLowerIso()) || (!HasLowerIso() && other.HasLowerIso())) return false;
-        if(GetLowIso() > other.GetLowIso()) return false;
+        if(other.GetLowIso() > GetLowIso()) return false;
         if((HasUpperIso() && !other.HasUpperIso()) || (!HasUpperIso() && other.HasUpperIso())) return false;
-        if(GetUpperIso() > other.GetUpperIso()) return false;
+        if(other.GetUpperIso() > GetUpperIso()) return false;
         return true;
     }
 
@@ -135,9 +111,30 @@ struct EventRegion {
         if(*this == Unknown()) return "Unknown";
         std::ostringstream s;
         s << SignPairStr(*os);
-        if(iso.is_initialized())
-            s << "_" << IsoStr(*iso);
+        if(iso_lower.is_initialized())
+            s << "_" << IsoStr(*iso_lower);
         return s.str();
+    }
+
+    static EventRegion Parse(const std::string& str)
+    {
+        static const std::map<std::string, EventRegion> predefined_regions = {
+            { "Unknown", Unknown() }, { "OS_Isolated", OS_Isolated() }, { "OS_AntiIsolated", OS_AntiIsolated() },
+            { "SS_LooseIsolated", SS_LooseIsolated() }, { "SS_Isolated", SS_Isolated() },
+            { "SS_AntiIsolated", SS_AntiIsolated() }, { "SignalRegion", SignalRegion() }
+        };
+        if(!predefined_regions.count(str))
+            throw exception("Unknown EventRegion = '%1%'.") % str;
+        return predefined_regions.at(str);
+    }
+
+
+    inline std::istream& operator>>(std::istream& s, EventRegion& eventRegion)
+    {
+        std::string str;
+        s >> str;
+        eventRegion = EventRegion::Parse(str);
+        return s;
     }
 
 private:
@@ -145,7 +142,18 @@ private:
     boost::optional<DiscriminatorWP> iso_lower, iso_upper;
 
     static std::string SignPairStr(bool sign_pair) { return sign_pair ? "OS" : "SS"; }
-    static std::string IsoStr(bool iso) { return iso ? "Isolated" : "AntiIsolated"; }
+    static std::string IsoStr(const DiscriminatorWP& iso_lower)
+    {
+
+        static const std::map<DiscriminatorWP, std::string> predefined_iso = {
+            { DiscriminatorWP::VLoose, "AntiIsolated" }, { DiscriminatorWP::Loose, "LooseIsolated" },
+            { DiscriminatorWP::Medium, "Isolated" }
+        };
+        if(!predefined_iso.count(iso_lower))
+            throw exception("Unknown Isolation Lower Bound.");
+        return predefined_iso.at(iso_lower);
+    }
+
 };
 
 std::ostream& operator<<(std::ostream& os, const EventRegion& eventRegion)
