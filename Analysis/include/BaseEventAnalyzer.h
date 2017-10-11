@@ -201,15 +201,17 @@ protected:
         }
     }
 
-    virtual EventSubCategory DetermineEventSubCategory(EventInfo& event, std::map<SelectionCut, double>& mva_scores)
+    virtual EventSubCategory DetermineEventSubCategory(EventInfo& event, const EventCategory& category,
+                                                       std::map<SelectionCut, double>& mva_scores)
     {
         using namespace cuts::hh_bbtautau_2016::hh_tag;
         using MvaKey = std::tuple<std::string, int, int>;
 
         EventSubCategory sub_category;
         sub_category.SetCutResult(SelectionCut::mh,
-                                  IsInsideEllipse(event.GetHiggsTT(true).GetMomentum().mass(),
-                                                  event.GetHiggsBB().GetMomentum().mass()));
+                                  IsInsideMassWindow(event.GetHiggsTT(true).GetMomentum().mass(),
+                                                     event.GetHiggsBB().GetMomentum().mass(),
+                                                     category.HasBoostConstraint() && category.IsBoosted()));
         sub_category.SetCutResult(SelectionCut::KinematicFitConverged,
                                   event.GetKinFitResults().HasValidMass());
 
@@ -274,7 +276,7 @@ protected:
                 prevFullEvent = tupleEvent;
                 prevFullEventPtr = &prevFullEvent;
             }
-            EventInfo event(tupleEvent, ntuple::JetPair{0, 1}, summary);
+            EventInfo event(tupleEvent, ntuple::JetPair{0, 1}, &summary);
             if(!ana_setup.energy_scales.count(event.GetEnergyScale())) continue;
             const auto eventCategories = DetermineEventCategories(event);
             for(auto eventCategory : eventCategories) {
@@ -283,7 +285,7 @@ protected:
                 if(!EventRegionsToProcess().count(eventRegion)) continue;
 
                 std::map<SelectionCut, double> mva_scores;
-                const auto eventSubCategory = DetermineEventSubCategory(event, mva_scores);
+                const auto eventSubCategory = DetermineEventSubCategory(event, eventCategory, mva_scores);
                 for(const auto& subCategory : EventSubCategoriesToProcess()) {
                     if(!eventSubCategory.Implies(subCategory)) continue;
                     SelectionCut mva_cut;
