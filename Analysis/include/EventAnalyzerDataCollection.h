@@ -64,6 +64,21 @@ public:
         return result;
     }
 
+    static EventAnalyzerDataId Parse(const std::string& str)
+    {
+        static const std::string separator = "/";
+        try {
+            std::vector<std::string> item_strings = SplitValueList(str, true, separator, false);
+            if(item_strings.size() != std::tuple_size<Tuple>::value)
+                throw exception("Number of elements != %1%.") % std::tuple_size<Tuple>::value;
+            EventAnalyzerDataId id;
+            id.ParseAllItems(item_strings, std::make_index_sequence<TupleSize>{});
+            return id;
+        } catch(std::exception& e) {
+            throw exception("Invalid EventAnalyzerDataId = '%1%'. %2%") % str % e.what();
+        }
+    }
+
 private:
     void Initialize() {}
 
@@ -94,6 +109,24 @@ private:
         if(sub_name.size())
             sub_name.erase(sub_name.size() - 1);
         return sub_name;
+    }
+
+    template<size_t n>
+    bool ParseItem(const std::vector<std::string>& item_strings)
+    {
+        using TupleElement = typename std::tuple_element<n, Tuple>::type;
+        using ValueType = typename TupleElement::value_type;
+        static const std::string wildcard = "*";
+        const std::string& str = item_strings.at(n);
+        if(str != wildcard)
+            std::get<n>(id_tuple) = ::analysis::Parse<ValueType>(str);
+        return true;
+    }
+
+    template<size_t ...n>
+    void ParseAllItems(const std::vector<std::string>& item_strings, std::index_sequence<n...>)
+    {
+        const std::vector<bool> res = { ParseItem<n>(item_strings)... };
     }
 
     template<size_t ...n>
@@ -142,9 +175,17 @@ private:
     Tuple id_tuple;
 };
 
-std::ostream& operator<< (std::ostream& s, const EventAnalyzerDataId& id)
+std::ostream& operator<<(std::ostream& s, const EventAnalyzerDataId& id)
 {
     s << id.GetName();
+    return s;
+}
+
+std::istream& operator>>(std::istream& s, EventAnalyzerDataId& id)
+{
+    std::string str;
+    s >> str;
+    id = EventAnalyzerDataId::Parse(str);
     return s;
 }
 
