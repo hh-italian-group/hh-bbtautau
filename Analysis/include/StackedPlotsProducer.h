@@ -61,12 +61,15 @@ public:
     }
 
     StackedPlotsProducer(AnaDataCollection& _anaDataCollection, const SampleCollection& _samples,
-                         bool _isBlind, bool _drawRatio) :
-        anaDataCollection(&_anaDataCollection), samples(_samples), isBlind(_isBlind), drawRatio(_drawRatio)
+                         bool _isBlind, bool _drawRatio, const std::set<std::string>& _histogramNames = {}) :
+        anaDataCollection(&_anaDataCollection), samples(_samples), histogramNames(_histogramNames), isBlind(_isBlind),
+        drawRatio(_drawRatio)
     {
-        for(const auto& anaData : anaDataCollection->GetAll()) {
-            for(const auto& item : anaData.second->template GetHistogramsEx<TH1D>()) {
-                histogramNames.insert(item.first);
+        if(!histogramNames.size()) {
+            for(const auto& anaData : anaDataCollection->GetAll()) {
+                for(const auto& item : anaData.second->template GetHistogramsEx<TH1D>()) {
+                    histogramNames.insert(item.first);
+                }
             }
         }
     }
@@ -101,7 +104,7 @@ public:
                             const std::string& item_name = item.full_name;
                             const root_ext::Color& color = item.color;
                             const auto histogram = GetHistogram(anaDataMetaId, item_name, hist_name);
-                            if(!histogram) continue;
+                            if(!histogram || histogram->Integral() == 0.) continue;
 
                             if(signals.count(sample->name))
                                 stackDescriptor.AddSignalHistogram(*histogram, item.title, color, sample->draw_sf);
@@ -125,6 +128,10 @@ private:
     {
         const EventAnalyzerDataId dataId = metaId.Set(sample_name);
         const auto& anaData = anaDataCollection->Get(dataId);
+        if(anaData.ReadMode()) {
+            auto& entry = anaData.template GetEntryEx<Hist>(hist_name);
+            entry.Read();
+        }
         return anaData.template TryGetHistogramEx<Hist>(hist_name);
     }
 
