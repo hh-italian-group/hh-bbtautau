@@ -17,17 +17,30 @@ protected:
             "HLT_IsoMu22_eta2p1_v", "HLT_IsoTkMu22_eta2p1_v", "HLT_IsoMu22_v", "HLT_IsoTkMu22_v"
         };
 
+        static const std::vector<DiscriminatorWP> working_points = {
+            DiscriminatorWP::VLoose, DiscriminatorWP::Loose, DiscriminatorWP::Medium
+        };
+
         const MuonCandidate& muon = event.GetFirstLeg();
         const TauCandidate& tau = event.GetSecondLeg();
 
-        if(!event.GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) return EventRegion::Unknown();
+        EventRegion region;
 
-        if(ana_setup.apply_iso_cut && !tau->byIsolationMVA(DiscriminatorWP::VLoose))
-            return EventRegion::Unknown();
+        if(!event.GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) return region;
 
         const bool os = !ana_setup.apply_os_cut || muon.GetCharge() * tau.GetCharge() == -1;
-        const bool iso = !ana_setup.apply_iso_cut || tau->byIsolationMVA(DiscriminatorWP::Medium);
-        return EventRegion(os, iso);
+        region.SetCharge(os);
+
+        for(auto wp = working_points.rbegin(); wp != working_points.rend(); ++wp) {
+            if(tau->byIsolationMVA(*wp)) {
+                region.SetLowerIso(*wp);
+                if(wp != working_points.rbegin())
+                    region.SetUpperIso(*(--wp));
+                break;
+            }
+        }
+
+        return region;
     }
 };
 

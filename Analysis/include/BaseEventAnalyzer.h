@@ -348,10 +348,12 @@ protected:
             const auto anaDataId = metaDataId.Set(qcd_sample.name);
             auto& osIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::OS_Isolated()));
             auto& ssIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::SS_Isolated()));
+            auto& ssLooseIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::SS_LooseIsolated()));
             auto& osAntiIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::OS_AntiIsolated()));
             auto& ssAntiIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::OS_AntiIsolated()));
             for(const auto& sub_entry : ssIsoData.template GetEntriesEx<TH1D>()) {
                 auto& entry_osIso = osIsoData.template GetEntryEx<TH1D>(sub_entry.first);
+                auto& entry_ss_looseIso = ssLooseIsoData.template GetEntryEx<TH1D>(sub_entry.first);
                 auto& entry_osAntiIso = osAntiIsoData.template GetEntryEx<TH1D>(sub_entry.first);
                 auto& entry_ssAntiIso = ssAntiIsoData.template GetEntryEx<TH1D>(sub_entry.first);
                 for(const auto& hist : sub_entry.second->GetHistograms()) {
@@ -369,8 +371,15 @@ protected:
                         continue;
                     }
                     const double k_factor = osAntiIso_integral.GetValue()/ssAntiIso_integral.GetValue();
-                    entry_osIso(hist.first).CopyContent(*hist.second.get());
-                    entry_osIso(hist.first).Scale(k_factor);
+                    const auto ssIso_integral = analysis::Integral(*hist.second, true);
+                    if (ssIso_integral.GetValue() < 0){
+                        std::cout << "Warning: SS Iso integral less than 0 for " << hist.first << std::endl;
+                        continue;
+                    }
+                    const double total_yield = ssIso_integral.GetValue() * k_factor;
+                    analysis::RenormalizeHistogram(entry_ss_looseIso(hist.first),total_yield,true);
+                    entry_osIso(hist.first).CopyContent(entry_ss_looseIso(hist.first));
+
                 }
             }
         }
