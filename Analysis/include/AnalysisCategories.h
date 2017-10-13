@@ -8,6 +8,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
 #include "AnalysisTools/Core/include/Tools.h"
 #include "AnalysisTools/Core/include/TextIO.h"
+#include <boost/multiprecision/cpp_int.hpp>
 
 namespace analysis {
 
@@ -355,7 +356,7 @@ inline std::map<SelectionCut, std::string> CreateSelectionCutNames()
 ENUM_NAMES(SelectionCut) = detail::CreateSelectionCutNames();
 
 struct EventSubCategory {
-    using BitsContainer = unsigned long long;
+    using BitsContainer = boost::multiprecision::uint128_t;
     static constexpr size_t MaxNumberOfCuts = std::numeric_limits<BitsContainer>::digits;
     using Bits = std::bitset<MaxNumberOfCuts>;
 

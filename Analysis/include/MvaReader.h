@@ -86,7 +86,7 @@ public:
     virtual void AddEvent(const ntuple::Event& event, const SampleId& /*mass*/ , int /* spin*/, std::string /*channel*/, double /*sample_weight*/, int /*which_test*/) override
     {
         auto bb = event.jets_p4[0] + event.jets_p4[1];
-        dphi_mumet = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.p4_1, event.pfMET_p4));;
+        dphi_mumet = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.p4_1, event.pfMET_p4));
         dphi_metsv = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.SVfit_p4, event.pfMET_p4));
         dR_bb = std::abs(ROOT::Math::VectorUtil::DeltaR(event.jets_p4[0], event.jets_p4[1]));
         dR_bbbb = ROOT::Math::VectorUtil::DeltaR(event.jets_p4[0], event.jets_p4[1])*bb.Pt();
