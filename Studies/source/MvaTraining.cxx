@@ -405,8 +405,8 @@ public:
 
     void Run()
     {
-        std::vector<ChannelSpin> set{/*{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},*/
-                                     {"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin},
+        std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},
+//                                     {"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin},
                                      {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
 
         std::cout<<"Variabili iniziali: "<<enabled_vars.size()<<std::endl;

@@ -63,6 +63,15 @@ public:
     TH1D_ENTRY_EX(csv_b2, 40, 0, 1, "Subleading selected jet CSV", "Events", false, 1.4, false, SaveAll)
     TH1D_ENTRY_EX(costheta_METhbb, 20, -1, 1, "#cos #theta(jj, miss)", "Events", false, 1.4, false, SaveAll)
 
+    TH1D_ENTRY_EX(dR_b1b2, 25, 0, 5, "#DeltaR_{jj}", "Events", false, 1.4, false, SaveAll)
+    TH1D_ENTRY_EX(dR_b1b2_boosted, 25, 3, 8, "Boosted #Delta R_{jj} ", "Events", false, 1.4, false, SaveAll)
+    TH1D_ENTRY_CUSTOM_EX(HT_otherjets, M_tt_Bins, "HT other jets (GeV)", "Events", false, 1.4, false, SaveAll)
+
+    TH1D_ENTRY_CUSTOM_EX(mass_top1, M_tt_Bins, "mass top_1 (GeV)", "Events", false, 1.4, false, SaveAll)
+    TH1D_ENTRY_CUSTOM_EX(mass_top2, M_tt_Bins, "mass top_2 (GeV)", "Events", false, 1.4, false, SaveAll)
+    TH1D_ENTRY_EX(p_zeta, 30,-50, 250, "p_{#zeta}", "Events", false, 1.4, false, SaveAll)
+    TH1D_ENTRY_EX(p_zetavisible, 25, 0, 200, "p_{#zeta}^{vis}", "Events", false, 1.4, false, SaveAll)
+
     BaseEventAnalyzerData(const EventCategory& eventCategory, bool _fill_all) :
         fill_all(_fill_all)
     {
