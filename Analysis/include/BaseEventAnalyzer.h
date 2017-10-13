@@ -441,21 +441,6 @@ protected:
         for(const auto& es : ana_setup.energy_scales) {
             anaDataCollection.Fill(anaDataId.Set<EventEnergyScale>(es), event, 1);
         }
-
-        if(anaDataId.Get<EventCategory>() == EventCategory::TwoJets_TwoBtag_Resolved()
-                && anaDataId.Get<EventSubCategory>().Implies(EventSubCategory()
-                                                             .SetCutResult(SelectionCut::MVA0, true))
-                && event.GetMvaScore() > 0.7) {
-            auto& hist = anaDataCollection.Get(anaDataId).mva_score();
-            int bin = hist.FindBin(event.GetMvaScore());
-            double bin_content = hist.GetBinContent(bin);
-            std::cout << anaDataId << " " << event.GetMvaScore() << " " << bin << " " << bin_content << std::endl;
-            std::cout << event.GetFirstLeg().GetCharge() << " "
-                      << event.GetFirstLeg()->byIsolationMVA(DiscriminatorWP::Medium) << " "
-                      << event.GetSecondLeg().GetCharge() << " "
-                      << event.GetSecondLeg()->byIsolationMVA(DiscriminatorWP::Medium) << std::endl;
-
-        }
     }
 
     virtual void ProcessSpecialEvent(const SampleDescriptor& sample, const SampleDescriptor::Point& /*sample_wp*/,

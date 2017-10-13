@@ -308,12 +308,11 @@ private:
     {
         static const BinVector res1b_mva_bins = { -1, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0,
                                                             0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1 };
-        static const BinVector res2b_mva_bins = { -1, -0.8, -0.7, -0.6, -0.5, -0.4, -0.2, 0.6, 0.7, 0.8, 0.9,
-                                                            1 };
-        static const BinVector boosted_mva_bins = { -1, 0.6, 0.8, 1 };
+        static const BinVector res2b_mva_bins = { -1, -0.8, -0.6, -0.3, 0.1, 0.4, 0.7, 0.85, 1 };
+        static const BinVector boosted_mva_bins = { -1, 0, 0.6, 0.8, 1 };
 
         auto mva_bins = &res1b_mva_bins;
-        auto mva_draw_sf = 1.2;
+        auto mva_draw_sf = 1.4;
         if(eventCategory.HasBoostConstraint() && eventCategory.IsBoosted()) {
             mva_bins = &boosted_mva_bins;
             mva_draw_sf = 2;
