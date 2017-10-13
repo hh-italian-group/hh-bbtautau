@@ -178,8 +178,12 @@ protected:
         sub_categories_to_process.insert(base);
         if(mva_setup.is_initialized()) {
             for(const auto& mva_sel : mva_setup->selections) {
+                auto param = mva_sel.second;
+                std::cout<<"Selection cut: "<<mva_sel.first<<" - name: "<<param.name
+                        <<" spin: "<<param.spin<<" mass: "<<param.mass<<" cut: "<<param.cut<<std::endl;
                 auto sub_category = EventSubCategory(base).SetCutResult(mva_sel.first, true);
                 sub_categories_to_process.insert(sub_category);
+
             }
         }
     }
