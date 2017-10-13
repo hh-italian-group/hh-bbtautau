@@ -295,7 +295,7 @@ protected:
                         if(subCategory.TryGetLastMvaCut(mva_cut))
                             mva_score = mva_scores.at(mva_cut);
                         event.SetMvaScore(mva_score);
-                        const EventAnalyzerDataId anaDataId(eventCategory, subCategory, eventRegion,
+                        const EventAnalyzerDataId anaDataId(eventCategory, subCategory, region,
                                                             event.GetEnergyScale(), sample_wp.full_name);
                         if(sample.sampleType == SampleType::Data) {
                             ProcessDataEvent(anaDataId, event);

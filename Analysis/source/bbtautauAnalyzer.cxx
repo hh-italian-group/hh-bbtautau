@@ -33,12 +33,13 @@ protected:
 
         EventRegion region_tau1, region_tau2;
 
-        if(!event.GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) return EventRegion::Unknown();
+        if(!event.GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) return EventRegion::Unknown();        
 
         CorrectIdWeight(event);
         const bool os = !ana_setup.apply_os_cut || tau_1.GetCharge() * tau_2.GetCharge() == -1;
         region_tau1.SetCharge(os);
         region_tau2.SetCharge(os);
+
 
         for(auto wp_1 = working_points.rbegin(); wp_1 != working_points.rend(); ++wp_1) {
             if(tau_1->byIsolationMVA(*wp_1)) {
@@ -58,7 +59,7 @@ protected:
             }
         }
 
-        if(!region_tau1.HasLowerIso() && !region_tau2.HasLowerIso()) return EventRegion::Unknown();
+        if(!region_tau1.HasLowerIso() || !region_tau2.HasLowerIso()) return EventRegion::Unknown();
         if(region_tau1.GetLowerIso() >= DiscriminatorWP::Medium) return region_tau2;
         if(region_tau2.GetLowerIso() >= DiscriminatorWP::Medium) return region_tau1;
         return EventRegion::Unknown();

@@ -60,15 +60,15 @@ struct EventRegion {
     EventRegion& SetCharge(bool _os) { os = _os; return *this; }
     EventRegion& SetLowerIso(DiscriminatorWP wp)
     {
-        if(HasUpperIso() && iso_upper <= iso_lower)
-            throw exception("Iso Upper limit is not greater than Iso lower limit");
+        if(HasUpperIso() && iso_upper <= wp)
+            throw exception("HasUpperIso - Iso Upper limit is not greater than Iso lower limit");
         iso_lower = wp;
         return *this;
     }
     EventRegion& SetUpperIso(DiscriminatorWP wp)
     {
-        if(HasLowerIso() && iso_upper <= iso_lower)
-            throw exception("Iso Upper limit is not greater than Iso lower limit");
+        if(HasLowerIso() && wp <= iso_lower)
+            throw exception("HasLowerIso - Iso Upper limit is not greater than Iso lower limit");
         iso_upper = wp;
         return *this;
     }
