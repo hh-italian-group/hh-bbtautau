@@ -248,7 +248,6 @@ protected:
             SampleDescriptor& sample = sample_descriptors.at(sample_name);
             if(sample.channels.size() && !sample.channels.count(ChannelId())) continue;
             std::cout << '\t' << sample.name << std::endl;
-            sample.CreateWorkingPoints();
             if(sample.sampleType == SampleType::QCD) {
                 if(sample_index != sample_names.size() - 1)
                     throw exception("QCD sample should be the last in the background list.");
@@ -479,7 +478,6 @@ protected:
             CombinedSampleDescriptor& sample = cmb_sample_descriptors.at(sample_name);
             if(sample.channels.size() && !sample.channels.count(ChannelId())) continue;
             std::cout << sample.name << std::endl;
-            sample.CreateWorkingPoints();
             for(const std::string& sub_sample_name : sample.sample_descriptors) {
                 if(!sample_descriptors.count(sub_sample_name))
                     throw exception("Unable to create '%1%': sub-sample '%2%' not found.")

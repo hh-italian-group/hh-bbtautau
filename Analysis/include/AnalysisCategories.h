@@ -51,6 +51,18 @@ struct EventRegion {
         return s.str();
     }
 
+    static EventRegion Parse(const std::string& str)
+    {
+        static const std::map<std::string, EventRegion> predefined_regions = {
+            { "Unknown", Unknown() }, { "OS_Isolated", OS_Isolated() }, { "OS_AntiIsolated", OS_AntiIsolated() },
+            { "SS_Isolated", SS_Isolated() }, { "SS_AntiIsolated", SS_AntiIsolated() },
+            { "SignalRegion", SignalRegion() }
+        };
+        if(!predefined_regions.count(str))
+            throw exception("Unknown EventRegion = '%1%'.") % str;
+        return predefined_regions.at(str);
+    }
+
 private:
     boost::optional<bool> os, iso;
 
@@ -58,10 +70,18 @@ private:
     static std::string IsoStr(bool iso) { return iso ? "Isolated" : "AntiIsolated"; }
 };
 
-std::ostream& operator<<(std::ostream& os, const EventRegion& eventRegion)
+inline std::ostream& operator<<(std::ostream& s, const EventRegion& eventRegion)
 {
-    os << eventRegion.ToString();
-    return os;
+    s << eventRegion.ToString();
+    return s;
+}
+
+inline std::istream& operator>>(std::istream& s, EventRegion& eventRegion)
+{
+    std::string str;
+    s >> str;
+    eventRegion = EventRegion::Parse(str);
+    return s;
 }
 
 #define DEF_ES(name, n_jets, ...) \

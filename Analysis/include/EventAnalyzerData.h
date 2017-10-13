@@ -63,19 +63,18 @@ public:
     TH1D_ENTRY_EX(csv_b2, 40, 0, 1, "Subleading selected jet CSV", "Events", false, 1.4, false, SaveAll)
     TH1D_ENTRY_EX(costheta_METhbb, 20, -1, 1, "#cos #theta(jj, miss)", "Events", false, 1.4, false, SaveAll)
 
-    TH1D_ENTRY_EX(dR_b1b2, 25, 0, 5, "#DeltaR_{jj}", "Events", false, 1.4, false, SaveAll)
-    TH1D_ENTRY_EX(dR_b1b2_boosted, 25, 3, 8, "Boosted #Delta R_{jj} ", "Events", false, 1.4, false, SaveAll)
-    TH1D_ENTRY_CUSTOM_EX(HT_otherjets, M_tt_Bins, "HT other jets (GeV)", "Events", false, 1.4, false, SaveAll)
+    BaseEventAnalyzerData(const EventCategory& eventCategory, bool _fill_all) :
+        fill_all(_fill_all)
+    {
+        Initialize(eventCategory);
+    }
 
-    TH1D_ENTRY_CUSTOM_EX(mass_top1, M_tt_Bins, "mass top_1 (GeV)", "Events", false, 1.4, false, SaveAll)
-    TH1D_ENTRY_CUSTOM_EX(mass_top2, M_tt_Bins, "mass top_2 (GeV)", "Events", false, 1.4, false, SaveAll)
-    TH1D_ENTRY_EX(p_zeta, 30,-50, 250, "p_{#zeta}", "Events", false, 1.4, false, SaveAll)
-    TH1D_ENTRY_EX(p_zetavisible, 25, 0, 200, "p_{#zeta}^{vis}", "Events", false, 1.4, false, SaveAll)
-
-    BaseEventAnalyzerData(const EventCategory& /*eventCategory*/, bool _fill_all) : fill_all(_fill_all) {}
     BaseEventAnalyzerData(std::shared_ptr<TFile> outputFile, const std::string& directoryName,
-                          const EventCategory& /*eventCategory*/, bool _fill_all, bool readMode)
-        : AnalyzerData(outputFile, directoryName, readMode), fill_all(_fill_all) {}
+                          const EventCategory& eventCategory, bool _fill_all, bool readMode) :
+        AnalyzerData(outputFile, directoryName, readMode), fill_all(_fill_all)
+    {
+        Initialize(eventCategory);
+    }
 
     void FillBase(EventInfoBase& event, double weight)
     {
@@ -156,6 +155,18 @@ public:
 
     }
 
+private:
+    void Initialize(const EventCategory& eventCategory)
+    {
+        static const std::vector<double> boosted_mva_bins = { -1, 0.4, 0.6, 0.7, 0.8, 0.9, 1 };
+
+        if(eventCategory.HasBoostConstraint() && eventCategory.IsBoosted()) {
+            auto mva_bins = &boosted_mva_bins;
+            double mva_draw_sf = 2;
+            mva_score.SetMasterHist(*mva_bins, "MVA score", "dN / bin width", false, mva_draw_sf, true, true);
+        }
+    }
+
 protected:
     bool fill_all;
 };
@@ -203,11 +214,22 @@ public:
 private:
     void Initialize(const EventCategory& eventCategory)
     {
-        static const std::vector<double> res_mva_bins = { -1, 0.4, 0.55, 0.7, 0.8, 0.85, 0.9, 0.95, 0.975, 1 };
-        static const std::vector<double> boosted_mva_bins = { -1, 1 };
-        const auto& mva_bins = eventCategory.HasBoostConstraint() && eventCategory.IsBoosted()
-                             ? boosted_mva_bins : res_mva_bins;
-        mva_score.SetMasterHist(mva_bins, "MVA score", "dN / bin width", true, 1.2, true, true);
+        static const std::vector<double> res1b_mva_bins = { -1, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0,
+                                                            0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1 };
+        static const std::vector<double> res2b_mva_bins = { -1, -0.8, -0.7, -0.6, -0.5, -0.4, -0.2, 0.6, 0.7, 0.8, 0.9,
+                                                            1 };
+        static const std::vector<double> boosted_mva_bins = { -1, 0.6, 0.8, 1 };
+
+        auto mva_bins = &res1b_mva_bins;
+        auto mva_draw_sf = 1.2;
+        if(eventCategory.HasBoostConstraint() && eventCategory.IsBoosted()) {
+            mva_bins = &boosted_mva_bins;
+            mva_draw_sf = 2;
+        } else if(eventCategory.HasBtagConstraint() && eventCategory.N_btag() > 1) {
+            mva_bins = &res2b_mva_bins;
+        }
+
+        mva_score.SetMasterHist(*mva_bins, "MVA score", "dN / bin width", false, mva_draw_sf, true, true);
     }
 };
 
