@@ -106,7 +106,6 @@ public:
         const auto& t1 = event.GetLeg(1);
         const auto& t2 = event.GetLeg(2);
 
-
         m_tt_vis().Fill(Htt.M(), weight);
         pt_H_tt().Fill(Htt.Pt(), weight);
         pt_H_tt_MET().Fill((Htt + event.GetMET().GetMomentum()).Pt(), weight);

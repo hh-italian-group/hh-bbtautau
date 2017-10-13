@@ -270,7 +270,7 @@ inline std::map<SelectionCut, std::string> CreateSelectionCutNames()
 ENUM_NAMES(SelectionCut) = detail::CreateSelectionCutNames();
 
 struct EventSubCategory {
-    using BitsContainer = boost::uint128_type;
+    using BitsContainer = boost::multiprecision::uint128_t;
     static constexpr size_t MaxNumberOfCuts = std::numeric_limits<BitsContainer>::digits;
     using Bits = std::bitset<MaxNumberOfCuts>;
 
