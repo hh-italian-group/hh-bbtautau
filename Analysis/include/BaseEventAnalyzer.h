@@ -365,18 +365,18 @@ protected:
                     if(!HasNegativeContribution(*hist.second,debug_info, negative_bins_info)) continue;
                     const auto osAntiIso_integral = analysis::Integral(entry_osAntiIso(hist.first), true);
                     const auto ssAntiIso_integral = analysis::Integral(entry_ssAntiIso(hist.first), true);
-                    if (osAntiIso_integral.GetValue() < 0){
+                    if (osAntiIso_integral.GetValue() <= 0){
                         std::cout << "Warning: OS Anti Iso integral less than 0 for " << hist.first << std::endl;
                         continue;
                     }
 
-                    if (ssAntiIso_integral.GetValue() < 0){
+                    if (ssAntiIso_integral.GetValue() <= 0){
                         std::cout << "Warning: SS Anti Iso integral less than 0 for " << hist.first << std::endl;
                         continue;
                     }
                     const double k_factor = osAntiIso_integral.GetValue()/ssAntiIso_integral.GetValue();
                     const auto ssIso_integral = analysis::Integral(*hist.second, true);
-                    if (ssIso_integral.GetValue() < 0){
+                    if (ssIso_integral.GetValue() <= 0){
                         std::cout << "Warning: SS Iso integral less than 0 for " << hist.first << std::endl;
                         continue;
                     }
