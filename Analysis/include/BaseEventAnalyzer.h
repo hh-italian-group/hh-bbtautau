@@ -366,23 +366,24 @@ protected:
                     const auto osAntiIso_integral = analysis::Integral(entry_osAntiIso(hist.first), true);
                     const auto ssAntiIso_integral = analysis::Integral(entry_ssAntiIso(hist.first), true);
                     if (osAntiIso_integral.GetValue() <= 0){
-                        std::cout << "Warning: OS Anti Iso integral less than 0 for " << hist.first << std::endl;
+                        std::cout << "Warning: OS Anti Iso integral less or equal 0 for " << hist.first << std::endl;
                         continue;
                     }
 
                     if (ssAntiIso_integral.GetValue() <= 0){
-                        std::cout << "Warning: SS Anti Iso integral less than 0 for " << hist.first << std::endl;
+                        std::cout << "Warning: SS Anti Iso integral less or equal 0 for " << hist.first << std::endl;
                         continue;
                     }
                     const double k_factor = osAntiIso_integral.GetValue()/ssAntiIso_integral.GetValue();
                     const auto ssIso_integral = analysis::Integral(*hist.second, true);
                     if (ssIso_integral.GetValue() <= 0){
-                        std::cout << "Warning: SS Iso integral less than 0 for " << hist.first << std::endl;
+                        std::cout << "Warning: SS Iso integral less or equal 0 for " << hist.first << std::endl;
                         continue;
                     }
                     const double total_yield = ssIso_integral.GetValue() * k_factor;
-                    analysis::RenormalizeHistogram(entry_ss_looseIso(hist.first),total_yield,true);
                     entry_osIso(hist.first).CopyContent(entry_ss_looseIso(hist.first));
+                    analysis::RenormalizeHistogram(entry_osIso(hist.first),total_yield,true);
+
 
                 }
             }
