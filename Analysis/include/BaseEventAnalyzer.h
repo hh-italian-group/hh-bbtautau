@@ -315,7 +315,8 @@ protected:
     virtual void EstimateQCD(const SampleDescriptor& qcd_sample)
     {
         static const EventRegionSet sidebandRegions = {
-            EventRegion::OS_AntiIsolated(), EventRegion::SS_Isolated(), EventRegion::SS_AntiIsolated()
+            EventRegion::OS_AntiIsolated(), EventRegion::SS_Isolated(), EventRegion::SS_AntiIsolated(),
+            EventRegion::SS_LooseIsolated()
         };
         static const EventEnergyScaleSet qcdEnergyScales = { EventEnergyScale::Central };
 
