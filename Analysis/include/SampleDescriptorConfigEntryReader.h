@@ -96,6 +96,7 @@ public:
         CheckReadParamCounts("sample_type", 1, Condition::less_equal);
         CheckReadParamCounts("datacard_name", 1, Condition::less_equal);
 
+        this->current.CreateWorkingPoints();
         ConfigEntryReaderT<Descriptor>::EndEntry();
     }
 
@@ -160,9 +161,7 @@ public:
     virtual void EndEntry() override
     {
         CheckReadParamCounts("sample_descriptors", 1, Condition::equal_to);
-
         Base::EndEntry();
-
     }
 
     virtual void ReadParameter(const std::string& param_name, const std::string& param_value,
