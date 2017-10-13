@@ -4,6 +4,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #pragma once
 
 #include <boost/optional/optional.hpp>
+#include <boost/bimap.hpp>
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
 #include "AnalysisTools/Core/include/Tools.h"
 #include "AnalysisTools/Core/include/TextIO.h"
@@ -18,64 +19,143 @@ ENUM_NAMES(SampleType) = {
 };
 
 struct EventRegion {
+    using EventRegionMapString = boost::bimap<std::string, EventRegion>;
+
     static const EventRegion& Unknown() { static const EventRegion er; return er; }
-    static const EventRegion& OS_Isolated() { static const EventRegion er(true, true); return er; }
-    static const EventRegion& OS_AntiIsolated() { static const EventRegion er(true, false); return er; }
-    static const EventRegion& SS_Isolated() { static const EventRegion er(false, true); return er; }
-    static const EventRegion& SS_AntiIsolated() { static const EventRegion er(false, true); return er; }
+    static const EventRegion& OS_Isolated()
+    {
+        static const EventRegion er = EventRegion().SetCharge(true).SetLowerIso(DiscriminatorWP::Medium);
+        return er;
+    }
+
+    static const EventRegion& OS_AntiIsolated()
+    {
+        static const EventRegion er =
+                EventRegion().SetCharge(true).SetLowerIso(DiscriminatorWP::VLoose).SetUpperIso(DiscriminatorWP::Medium);
+        return er;
+    }
+
+    static const EventRegion& SS_Isolated()
+    {
+        static const EventRegion er = EventRegion().SetCharge(false).SetLowerIso(DiscriminatorWP::Medium);
+        return er;
+    }
+
+    static const EventRegion& SS_LooseIsolated()
+    {
+        static const EventRegion er = EventRegion().SetCharge(false).SetLowerIso(DiscriminatorWP::Loose);
+        return er;
+    }
+
+    static const EventRegion& SS_AntiIsolated()
+    {
+        static const EventRegion er =
+                EventRegion().SetCharge(false).SetLowerIso(DiscriminatorWP::VLoose).SetUpperIso(DiscriminatorWP::Medium);
+        return er;
+    }
+
     static const EventRegion& SignalRegion() { return OS_Isolated(); }
 
     EventRegion() {}
-    EventRegion(bool _os) : os(_os) {}
-    EventRegion(bool _os, bool _iso) : os(_os), iso(_iso) {}
 
-    bool OS() const { return os.is_initialized() && *os; }
-    bool SS() const { return os.is_initialized() && !*os; }
-    bool Iso() const { return iso.is_initialized() && *iso; }
-    bool AntiIso() const { return iso.is_initialized() && !*iso; }
+    EventRegion& SetCharge(bool _os) { os = _os; return *this; }
+    EventRegion& SetLowerIso(DiscriminatorWP wp)
+    {
+        if(HasUpperIso() && iso_upper <= wp)
+            throw exception("HasUpperIso - Iso Upper limit is not greater than Iso lower limit");
+        iso_lower = wp;
+        return *this;
+    }
+    EventRegion& SetUpperIso(DiscriminatorWP wp)
+    {
+        if(HasLowerIso() && wp <= iso_lower)
+            throw exception("HasLowerIso - Iso Upper limit is not greater than Iso lower limit");
+        iso_upper = wp;
+        return *this;
+    }
 
-    bool operator ==(const EventRegion& er) const { return os == er.os && iso == er.iso; }
+    bool HasCharge() const { return os.is_initialized(); }
+    bool HasLowerIso() const { return iso_lower.is_initialized(); }
+    bool HasUpperIso() const { return iso_upper.is_initialized(); }
+
+    DiscriminatorWP GetLowerIso() const
+    {
+        if(!HasLowerIso())
+            throw exception("Lower isolation bound not set.");
+        return *iso_lower;
+    }
+
+    DiscriminatorWP GetUpperIso() const
+    {
+        if(!HasUpperIso())
+            throw exception("Upper isolation bound not set.");
+        return *iso_upper;
+    }
+
+    bool GetCharge() const
+    {
+        if(!HasCharge())
+            throw exception("Charge info not set.");
+        return *os;
+    }
+
+
+    bool Implies(const EventRegion& other) const
+    {
+        if(other.HasCharge() && (!HasCharge() || GetCharge() != other.GetCharge())) return false;
+        if(other.HasLowerIso() && (!HasLowerIso() || GetLowerIso() < other.GetLowerIso())) return false;
+        return !other.HasUpperIso() || (HasUpperIso() && GetUpperIso() <= other.GetUpperIso());
+    }
+
+    bool operator ==(const EventRegion& er) const { return os == er.os && iso_lower == er.iso_lower && iso_upper == er.iso_upper; }
     bool operator !=(const EventRegion& er) const { return !(*this == er); }
     bool operator <(const EventRegion& er) const
     {
         if(os != er.os) return os < er.os;
-        return iso < er.iso;
+        if(iso_lower != er.iso_lower) return iso_lower < er.iso_lower;
+        return iso_upper < er.iso_upper;
     }
+
+
 
     std::string ToString() const
     {
         if(*this == Unknown()) return "Unknown";
-        std::ostringstream s;
-        s << SignPairStr(*os);
-        if(iso.is_initialized())
-            s << "_" << IsoStr(*iso);
-        return s.str();
+        if(!EventRegionMapToString().right.count(*this))
+            throw exception("Unknown EventRegion. No conversion to String");
+        return EventRegionMapToString().right.at(*this);
     }
 
     static EventRegion Parse(const std::string& str)
     {
-        static const std::map<std::string, EventRegion> predefined_regions = {
-            { "Unknown", Unknown() }, { "OS_Isolated", OS_Isolated() }, { "OS_AntiIsolated", OS_AntiIsolated() },
-            { "SS_Isolated", SS_Isolated() }, { "SS_AntiIsolated", SS_AntiIsolated() },
-            { "SignalRegion", SignalRegion() }
-        };
-        if(!predefined_regions.count(str))
+        if(!EventRegionMapToString().left.count(str))
             throw exception("Unknown EventRegion = '%1%'.") % str;
-        return predefined_regions.at(str);
+        return EventRegionMapToString().left.at(str);
     }
 
+
+
 private:
-    boost::optional<bool> os, iso;
+    boost::optional<bool> os;
+    boost::optional<DiscriminatorWP> iso_lower, iso_upper;
 
-    static std::string SignPairStr(bool sign_pair) { return sign_pair ? "OS" : "SS"; }
-    static std::string IsoStr(bool iso) { return iso ? "Isolated" : "AntiIsolated"; }
+    static const EventRegionMapString& EventRegionMapToString()
+    {
+        static EventRegionMapString predefined_regions;
+        if(!predefined_regions.left.size()){
+            predefined_regions.insert({ "Unknown", Unknown() });
+            predefined_regions.insert({ "OS_Isolated", OS_Isolated() });
+            predefined_regions.insert({ "OS_AntiIsolated", OS_AntiIsolated() });
+            predefined_regions.insert({ "SS_LooseIsolated", SS_LooseIsolated() });
+            predefined_regions.insert({ "SS_Isolated", SS_Isolated() });
+            predefined_regions.insert({ "SS_AntiIsolated", SS_AntiIsolated() });
+            predefined_regions.insert({ "SignalRegion", SignalRegion() });
+        }
+        return predefined_regions;
+    }
+
+
 };
-
-inline std::ostream& operator<<(std::ostream& s, const EventRegion& eventRegion)
-{
-    s << eventRegion.ToString();
-    return s;
-}
 
 inline std::istream& operator>>(std::istream& s, EventRegion& eventRegion)
 {
@@ -83,6 +163,12 @@ inline std::istream& operator>>(std::istream& s, EventRegion& eventRegion)
     s >> str;
     eventRegion = EventRegion::Parse(str);
     return s;
+}
+
+inline std::ostream& operator<<(std::ostream& os, const EventRegion& eventRegion)
+{
+    os << eventRegion.ToString();
+    return os;
 }
 
 #define DEF_ES(name, n_jets, ...) \

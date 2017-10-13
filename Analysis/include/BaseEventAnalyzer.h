@@ -167,7 +167,8 @@ protected:
     {
         static const EventRegionSet regions = {
             EventRegion::OS_Isolated(), EventRegion::OS_AntiIsolated(),
-            EventRegion::SS_Isolated(), EventRegion::SS_AntiIsolated()
+            EventRegion::SS_Isolated(), EventRegion::SS_AntiIsolated(),
+            EventRegion::SS_LooseIsolated()
         };
         return regions;
     }
@@ -285,28 +286,30 @@ protected:
             for(auto eventCategory : eventCategories) {
                 if (!EventCategoriesToProcess().count(eventCategory)) continue;
                 const EventRegion eventRegion = DetermineEventRegion(event, eventCategory);
-                if(!EventRegionsToProcess().count(eventRegion)) continue;
+                for(const auto& region : EventRegionsToProcess()){
+                    if(!eventRegion.Implies(region)) continue;
 
-                std::map<SelectionCut, double> mva_scores;
-                const auto eventSubCategory = DetermineEventSubCategory(event, eventCategory, mva_scores);
-                for(const auto& subCategory : EventSubCategoriesToProcess()) {
-                    if(!eventSubCategory.Implies(subCategory)) continue;
-                    SelectionCut mva_cut;
-                    double mva_score = 0;
-                    if(subCategory.TryGetLastMvaCut(mva_cut))
-                        mva_score = mva_scores.at(mva_cut);
-                    event.SetMvaScore(mva_score);
-                    const EventAnalyzerDataId anaDataId(eventCategory, subCategory, eventRegion,
-                                                        event.GetEnergyScale(), sample_wp.full_name);
-                    if(sample.sampleType == SampleType::Data) {
-                        ProcessDataEvent(anaDataId, event);
-                    } else {
-                        const double weight = event->weight_total * sample.cross_section * ana_setup.int_lumi
-                                            / summary->totalShapeWeight;
-                        if(sample.sampleType == SampleType::MC)
-                            anaDataCollection.Fill(anaDataId, event, weight);
-                        else
-                            ProcessSpecialEvent(sample, sample_wp, anaDataId, event, weight);
+                    std::map<SelectionCut, double> mva_scores;
+                    const auto eventSubCategory = DetermineEventSubCategory(event, eventCategory, mva_scores);
+                    for(const auto& subCategory : EventSubCategoriesToProcess()) {
+                        if(!eventSubCategory.Implies(subCategory)) continue;
+                        SelectionCut mva_cut;
+                        double mva_score = 0;
+                        if(subCategory.TryGetLastMvaCut(mva_cut))
+                            mva_score = mva_scores.at(mva_cut);
+                        event.SetMvaScore(mva_score);
+                        const EventAnalyzerDataId anaDataId(eventCategory, subCategory, region,
+                                                            event.GetEnergyScale(), sample_wp.full_name);
+                        if(sample.sampleType == SampleType::Data) {
+                            ProcessDataEvent(anaDataId, event);
+                        } else {
+                            const double weight = event->weight_total * sample.cross_section * ana_setup.int_lumi
+                                                / summary->totalShapeWeight;
+                            if(sample.sampleType == SampleType::MC)
+                                anaDataCollection.Fill(anaDataId, event, weight);
+                            else
+                                ProcessSpecialEvent(sample, sample_wp, anaDataId, event, weight);
+                        }
                     }
                 }
             }
@@ -316,7 +319,8 @@ protected:
     virtual void EstimateQCD(const SampleDescriptor& qcd_sample)
     {
         static const EventRegionSet sidebandRegions = {
-            EventRegion::OS_AntiIsolated(), EventRegion::SS_Isolated(), EventRegion::SS_AntiIsolated()
+            EventRegion::OS_AntiIsolated(), EventRegion::SS_Isolated(), EventRegion::SS_AntiIsolated(),
+            EventRegion::SS_LooseIsolated()
         };
         static const EventEnergyScaleSet qcdEnergyScales = { EventEnergyScale::Central };
 
@@ -348,10 +352,12 @@ protected:
             const auto anaDataId = metaDataId.Set(qcd_sample.name);
             auto& osIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::OS_Isolated()));
             auto& ssIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::SS_Isolated()));
+            auto& ssLooseIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::SS_LooseIsolated()));
             auto& osAntiIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::OS_AntiIsolated()));
             auto& ssAntiIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::OS_AntiIsolated()));
             for(const auto& sub_entry : ssIsoData.template GetEntriesEx<TH1D>()) {
                 auto& entry_osIso = osIsoData.template GetEntryEx<TH1D>(sub_entry.first);
+                auto& entry_ss_looseIso = ssLooseIsoData.template GetEntryEx<TH1D>(sub_entry.first);
                 auto& entry_osAntiIso = osAntiIsoData.template GetEntryEx<TH1D>(sub_entry.first);
                 auto& entry_ssAntiIso = ssAntiIsoData.template GetEntryEx<TH1D>(sub_entry.first);
                 for(const auto& hist : sub_entry.second->GetHistograms()) {
@@ -359,18 +365,26 @@ protected:
                     if(!HasNegativeContribution(*hist.second,debug_info, negative_bins_info)) continue;
                     const auto osAntiIso_integral = analysis::Integral(entry_osAntiIso(hist.first), true);
                     const auto ssAntiIso_integral = analysis::Integral(entry_ssAntiIso(hist.first), true);
-                    if (osAntiIso_integral.GetValue() < 0){
-                        std::cout << "Warning: OS Anti Iso integral less than 0 for " << hist.first << std::endl;
+                    if (osAntiIso_integral.GetValue() <= 0){
+                        std::cout << "Warning: OS Anti Iso integral less or equal 0 for " << hist.first << std::endl;
                         continue;
                     }
 
-                    if (ssAntiIso_integral.GetValue() < 0){
-                        std::cout << "Warning: SS Anti Iso integral less than 0 for " << hist.first << std::endl;
+                    if (ssAntiIso_integral.GetValue() <= 0){
+                        std::cout << "Warning: SS Anti Iso integral less or equal 0 for " << hist.first << std::endl;
                         continue;
                     }
                     const double k_factor = osAntiIso_integral.GetValue()/ssAntiIso_integral.GetValue();
-                    entry_osIso(hist.first).CopyContent(*hist.second.get());
-                    entry_osIso(hist.first).Scale(k_factor);
+                    const auto ssIso_integral = analysis::Integral(*hist.second, true);
+                    if (ssIso_integral.GetValue() <= 0){
+                        std::cout << "Warning: SS Iso integral less or equal 0 for " << hist.first << std::endl;
+                        continue;
+                    }
+                    const double total_yield = ssIso_integral.GetValue() * k_factor;
+                    entry_osIso(hist.first).CopyContent(entry_ss_looseIso(hist.first));
+                    analysis::RenormalizeHistogram(entry_osIso(hist.first),total_yield,true);
+
+
                 }
             }
         }
