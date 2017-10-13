@@ -14,32 +14,32 @@ public:
     using BinVector = std::vector<double>;
     const bool SaveAll = true;
 
-    const BinVector M_tt_Bins = { 10, 30, 50, 75, 90, 105, 120, 135, 150, 175, 210, 250, 300, 350, 400, 500 }; /*????*/
+    const BinVector M_tt_Bins = { 10, 30, 50, 75, 90, 105, 120, 135, 150, 175, 210, 250, 300, 350, 400, 500 };
     const BinVector M_ttbb_Bins = { 250, 260, 270, 280, 290, 300, 325, 350, 375, 400, 425, 450, 475, 500, 550,
                                     600, 650, 700, 850, 1000 };
     const BinVector MT2_Bins = { 0, 25, 50, 75, 100, 125, 150, 175, 200, 250, 300, 500 };
     const BinVector Pt_Bins = { 0, 20, 40, 60, 80, 100, 125, 150, 175, 200, 250, 300};
 
-    TH1D_ENTRY_CUSTOM_EX(m_ttbb, M_ttbb_Bins, "M_{#tau#tau+jj} (GeV)", "dN/dm_{#tau#tau+jj} (1/GeV)", false, 1.5, true, SaveAll) //ratio per 2j1tR_tau
-    TH1D_ENTRY_CUSTOM_EX(m_ttbb_kinfit, M_ttbb_Bins, "M_{H}^{kinfit} (GeV)", "dN/dm_{H}^{kinfit} (1/GeV)", false, 1.4, true, true) //ratio per 2j1tR_tau
-    TH1D_ENTRY_CUSTOM_EX(m_sv, M_tt_Bins, "M_{#tau#tau} (GeV)", "dN/dm_{#tau#tau} (1/GeV)", false, 1.6, true, true) //Perchè questo binnaggio?
+    TH1D_ENTRY_CUSTOM_EX(m_ttbb, M_ttbb_Bins, "M_{#tau#tau+jj} (GeV)", "dN/dm_{#tau#tau+jj} (1/GeV)", false, 1.5, true, SaveAll)
+    TH1D_ENTRY_CUSTOM_EX(m_ttbb_kinfit, M_ttbb_Bins, "M_{H}^{kinfit} (GeV)", "dN/dm_{H}^{kinfit} (1/GeV)", false, 1.4, true, true)
+    TH1D_ENTRY_CUSTOM_EX(m_sv, M_tt_Bins, "M_{#tau#tau} (GeV)", "dN/dm_{#tau#tau} (1/GeV)", false, 1.6, true, true)
     TH1D_ENTRY_CUSTOM_EX(MT2, MT2_Bins, "MT2_{H} (GeV)", "dN/dm (1/GeV)", false, 1.4, true, true)
     TH1D_ENTRY_EX(mva_score, 40, -1, 1, "MVA score", "Events", true, 1.8, false, true)
-    TH1D_ENTRY_EX(mt_tot, 25, 0, 500, "M_{T}^{TOT}(GeV)", "Events", false, 1.5, false, SaveAll) //???
+    TH1D_ENTRY_EX(mt_tot, 25, 0, 500, "M_{T}^{TOT}(GeV)", "Events", false, 1.5, false, SaveAll)
     TH1D_ENTRY_EX(deta_hbbhtautau, 25, -5, 5, "#Delta#eta_{#tau#tau, jj}", "Events", false, 1.8, false, SaveAll)
     TH1D_ENTRY_EX(dphi_hbbhtautau, 25, -4, 4, "#Delta#phi(#tau#tau, jj)", "Events", false, 1.4, false, SaveAll)
 
-    TH1D_ENTRY_CUSTOM_EX(m_tt_vis, M_tt_Bins, "M_{vis}(GeV)", "Events", false, 1.6, false, SaveAll) //Perchè questo binnaggio?
-    TH1D_ENTRY_CUSTOM_EX(pt_H_tt, Pt_Bins, "P_{T}(GeV)", "Events", false, 1.4, false, SaveAll) //nome?
-    TH1D_ENTRY_CUSTOM_EX(pt_H_tt_MET, Pt_Bins, "P_{T}(GeV)", "Events", false, 1.5, false, SaveAll) //nome?
+    TH1D_ENTRY_CUSTOM_EX(m_tt_vis, M_tt_Bins, "M_{vis}(GeV)", "Events", false, 1.6, false, SaveAll)
+    TH1D_ENTRY_CUSTOM_EX(pt_H_tt, Pt_Bins, "P_{T}(GeV)", "Events", false, 1.4, false, SaveAll)
+    TH1D_ENTRY_CUSTOM_EX(pt_H_tt_MET, Pt_Bins, "P_{T}(GeV)", "Events", false, 1.5, false, SaveAll)
     TH1D_ENTRY_CUSTOM_EX(pt_1, Pt_Bins, "P_{T}(leading#tau_{h})(GeV)", "Events", false, 1.6, false, SaveAll)
-    TH1D_ENTRY_EX(eta_1, 20, -2.5, 2.5, "#eta(leading#tau_{h})", "Events", false, 1.6, false, SaveAll) //ratio per 2j1tR_tau
+    TH1D_ENTRY_EX(eta_1, 20, -2.5, 2.5, "#eta(leading#tau_{h})", "Events", false, 1.6, false, SaveAll)
     TH1D_ENTRY_EX(iso_1, 100, 0, 10, "Iso#tau_{1}", "Events", false, 1, false, SaveAll)
-    TH1D_ENTRY_EX(mt_1, 20, 0, 200, "M_{T}1(GeV)", "Events", false, 1.3, false, SaveAll) //ratio per 2j1tR_tau //nome?
+    TH1D_ENTRY_EX(mt_1, 20, 0, 200, "M_{T}1(GeV)", "Events", false, 1.3, false, SaveAll)
     TH1D_ENTRY_CUSTOM_EX(pt_2, Pt_Bins, "P_{T}(subleading#tau_{h})(GeV)", "Events", false, 1.6, false, SaveAll)
-    TH1D_ENTRY_EX(eta_2, 20, -2.5, 2.5, "#eta(subleading#tau_{h})", "Events", false, 1.6, false, SaveAll) //ratio per 2j1tR_tau e mu
+    TH1D_ENTRY_EX(eta_2, 20, -2.5, 2.5, "#eta(subleading#tau_{h})", "Events", false, 1.6, false, SaveAll)
     TH1D_ENTRY_EX(iso_2, 100, 0, 10, "Iso#tau_{2}", "Events", false, 1, false, SaveAll)
-    TH1D_ENTRY_EX(mt_2, 20, 0, 200, "M_{T}2(GeV)", "Events", false, 1.3, false, SaveAll) //nome?
+    TH1D_ENTRY_EX(mt_2, 20, 0, 200, "M_{T}2(GeV)", "Events", false, 1.3, false, SaveAll)
     TH1D_ENTRY_EX(dR_l1l2, 20, 0, 4, "#DeltaR(#tau#tau)", "Events", false, 1.4, false, SaveAll)
     TH1D_ENTRY_EX(abs_dphi_l1MET, 40, 0, 3.2, "|#Delta#phi(leading#tau_{h}, miss)|", "Events", false, 1.4, false, SaveAll)
     TH1D_ENTRY_EX(dphi_htautauMET, 25, -4, 4, "#Delta#phi(#tau#tau, miss)", "Events", false, 1.4, false, SaveAll)
@@ -49,17 +49,17 @@ public:
     TH1D_ENTRY_CUSTOM_EX(pt_l1l2MET, Pt_Bins, "P_{T}(leading#tau_{h}+subleading#tau_{h}+miss) (GeV)", "Events", false, 1.4, false, SaveAll)
 
     TH1D_ENTRY_EX(npv, 40, 0, 40,  "Number of Primary Vertex", "Events", false, 1.4, false, SaveAll)
-    TH1D_ENTRY_EX(MET, 25, 0, 200, "E_{T}^{miss}(GeV)", "Events", false, 1.4, false, SaveAll) //ratio per 2j1tR_tau
+    TH1D_ENTRY_EX(MET, 25, 0, 200, "E_{T}^{miss}(GeV)", "Events", false, 1.4, false, SaveAll)
     TH1D_ENTRY_EX(phiMET, 20, 0, 3.2, "#phi_{E_{T}^{miss}}", "Events", false, 1.5, false, SaveAll)
     TH1D_ENTRY_CUSTOM_EX(pt_MET, Pt_Bins, "P_{T}^{miss} (GeV)", "Events", false, 1.6, false, SaveAll)
 
-    TH1D_ENTRY_CUSTOM_EX(m_bb, M_tt_Bins, "M_{jj} (GeV)", "Events/ 20 GeV", false, 1.6, true, SaveAll) //Perchè questo binnaggio?
+    TH1D_ENTRY_CUSTOM_EX(m_bb, M_tt_Bins, "M_{jj} (GeV)", "Events/ 20 GeV", false, 1.6, true, SaveAll)
     TH1D_ENTRY_CUSTOM_EX(pt_H_bb, Pt_Bins, "P_{T}(GeV)", "Events", false, 1.4, false, SaveAll)
     TH1D_ENTRY_CUSTOM_EX(pt_b1, Pt_Bins, "Leading selected jet p_{T} (GeV)", "Events", false, 1.4, false, SaveAll)
-    TH1D_ENTRY_EX(eta_b1, 20, -2.5, 2.5, "Leading selected jet #eta", "Events", false, 1.6, false, SaveAll) //ratio per 2j1tR_tau (mu)
+    TH1D_ENTRY_EX(eta_b1, 20, -2.5, 2.5, "Leading selected jet #eta", "Events", false, 1.6, false, SaveAll)
     TH1D_ENTRY_EX(csv_b1, 20, 0.8, 1, "Leading selected jet CSV", "Events", false, 1.4, false, SaveAll)
     TH1D_ENTRY_CUSTOM_EX(pt_b2, Pt_Bins, "Subleading selected jet p_{T} (GeV)", "Events", false, 1.4, false, SaveAll)
-    TH1D_ENTRY_EX(eta_b2, 20, -2.5, 2.5, "Subleading selected jet #eta", "Events", false, 1.6, false, SaveAll) //ratio per 2j1tR_tau
+    TH1D_ENTRY_EX(eta_b2, 20, -2.5, 2.5, "Subleading selected jet #eta", "Events", false, 1.6, false, SaveAll)
     TH1D_ENTRY_EX(csv_b2, 40, 0, 1, "Subleading selected jet CSV", "Events", false, 1.4, false, SaveAll)
     TH1D_ENTRY_EX(costheta_METhbb, 20, -1, 1, "#cos #theta(jj, miss)", "Events", false, 1.4, false, SaveAll)
 
@@ -69,8 +69,8 @@ public:
 
     TH1D_ENTRY_CUSTOM_EX(mass_top1, M_tt_Bins, "mass top_1 (GeV)", "Events", false, 1.4, false, SaveAll)
     TH1D_ENTRY_CUSTOM_EX(mass_top2, M_tt_Bins, "mass top_2 (GeV)", "Events", false, 1.4, false, SaveAll)
-    TH1D_ENTRY_EX(p_zeta, 50,-50, 250, "p_{#zeta}", "Events", false, 1.4, false, SaveAll)
-    TH1D_ENTRY_EX(p_zetavisible, 40, 0, 200, "p_{#zeta}^{vis}", "Events", false, 1.4, false, SaveAll)
+    TH1D_ENTRY_EX(p_zeta, 30,-50, 250, "p_{#zeta}", "Events", false, 1.4, false, SaveAll)
+    TH1D_ENTRY_EX(p_zetavisible, 25, 0, 200, "p_{#zeta}^{vis}", "Events", false, 1.4, false, SaveAll)
 
     BaseEventAnalyzerData(const EventCategory& /*eventCategory*/, bool _fill_all) : fill_all(_fill_all) {}
     BaseEventAnalyzerData(std::shared_ptr<TFile> outputFile, const std::string& directoryName,
