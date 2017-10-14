@@ -27,7 +27,8 @@ public:
     TH1D_ENTRY_EX(mva_score, 40, -1, 1, "MVA score", "Events", true, 1.8, false, true)
     TH1D_ENTRY_EX(mt_tot, 25, 0, 500, "M_{T}^{TOT}(GeV)", "Events", false, 1.5, false, SaveAll)
     TH1D_ENTRY_EX(deta_hbbhtautau, 25, -5, 5, "#Delta#eta_{#tau#tau, jj}", "Events", false, 1.8, false, SaveAll)
-    TH1D_ENTRY_EX(dphi_hbbhtautau, 25, -4, 4, "#Delta#phi(#tau#tau, jj)", "Events", false, 1.4, false, SaveAll)
+    TH1D_ENTRY_EX(dphi_hbbhtautau, 20, -4, 4, "#Delta#phi(#tau#tau, jj)", "Events", false, 1.4, false, SaveAll)
+    TH1D_ENTRY_EX(MT_htautau, 12, 0, 250, "M_{T}^{#tau#tau}(GeV)", "Events", false, 1.4, false, SaveAll)
 
     TH1D_ENTRY_CUSTOM_EX(m_tt_vis, M_tt_Bins, "M_{vis}(GeV)", "Events", false, 1.6, false, SaveAll)
     TH1D_ENTRY_CUSTOM_EX(pt_H_tt, Pt_Bins, "P_{T}(GeV)", "Events", false, 1.4, false, SaveAll)
@@ -40,11 +41,11 @@ public:
     TH1D_ENTRY_EX(eta_2, 20, -2.5, 2.5, "#eta(subleading#tau_{h})", "Events", false, 1.6, false, SaveAll)
     TH1D_ENTRY_EX(iso_2, 100, 0, 10, "Iso#tau_{2}", "Events", false, 1, false, SaveAll)
     TH1D_ENTRY_EX(mt_2, 20, 0, 200, "M_{T}2(GeV)", "Events", false, 1.3, false, SaveAll)
-    TH1D_ENTRY_EX(dR_l1l2, 20, 0, 4, "#DeltaR(#tau#tau)", "Events", false, 1.4, false, SaveAll)
+    TH1D_ENTRY_EX(dR_l1l2, 20, 0, 4, "#DeltaR(#tau#tau)", "Events", false, 1.6, false, SaveAll)
     TH1D_ENTRY_EX(abs_dphi_l1MET, 20, 0, 3.2, "|#Delta#phi(leading#tau_{h}, miss)|", "Events", false, 1.4, false, SaveAll)
     TH1D_ENTRY_EX(dphi_htautauMET, 25, -4, 4, "#Delta#phi(#tau#tau, miss)", "Events", false, 1.4, false, SaveAll)
-    TH1D_ENTRY_EX(dR_l1l2MET, 30, 0, 6, "#Delta R(leading#tau_{h}+subleading#tau_{h}, miss)", "Events", false, 1.4, false, SaveAll)
-    TH1D_ENTRY_EX(dR_l1l2Pt_htautau, 25, 0, 500, "#DeltaR (leading#tau_{h},subleading#tau_{h}) P_{T}(#tau#tau) (GeV)", "Events", false, 1.4, false, SaveAll)
+    TH1D_ENTRY_EX(dR_l1l2MET, 20, 0, 6, "#Delta R(leading#tau_{h}+subleading#tau_{h}, miss)", "Events", false, 1.4, false, SaveAll)
+    TH1D_ENTRY_EX(dR_l1l2Pt_htautau, 20, 0, 500, "#DeltaR (leading#tau_{h},subleading#tau_{h}) P_{T}(#tau#tau) (GeV)", "Events", false, 1.4, false, SaveAll)
     TH1D_ENTRY_CUSTOM_EX(mass_l1l2MET, M_tt_Bins, "M_{leading#tau_{h}+subleading#tau_{h}+miss}", "Events", false, 1.4, false, SaveAll)
     TH1D_ENTRY_CUSTOM_EX(pt_l1l2MET, Pt_Bins, "P_{T}(leading#tau_{h}+subleading#tau_{h}+miss) (GeV)", "Events", false, 1.4, false, SaveAll)
 
@@ -63,7 +64,7 @@ public:
     TH1D_ENTRY_EX(csv_b2, 40, 0, 1, "Subleading selected jet CSV", "Events", false, 1.4, false, SaveAll)
     TH1D_ENTRY_EX(costheta_METhbb, 20, -1, 1, "#cos #theta(jj, miss)", "Events", false, 1.4, false, SaveAll)
 
-    TH1D_ENTRY_EX(dR_b1b2, 25, 0, 5, "#DeltaR_{jj}", "Events", false, 1.4, false, SaveAll)
+    TH1D_ENTRY_EX(dR_b1b2, 25, 0, 5, "#DeltaR_{jj}", "Events", false, 1.5, false, SaveAll)
     TH1D_ENTRY_EX(dR_b1b2_boosted, 25, 3, 8, "Boosted #Delta R_{jj} ", "Events", false, 1.4, false, SaveAll)
     TH1D_ENTRY_CUSTOM_EX(HT_otherjets, M_tt_Bins, "HT other jets (GeV)", "Events", false, 1.4, false, SaveAll)
 
@@ -125,6 +126,7 @@ public:
         dR_l1l2Pt_htautau().Fill(ROOT::Math::VectorUtil::DeltaR(t1.GetMomentum(),t2.GetMomentum())*event.GetHiggsTTMomentum(true).pt(), weight);
         mass_l1l2MET().Fill((event.GetHiggsTTMomentum(false)+event.GetMET().GetMomentum()).M(), weight);
         pt_l1l2MET().Fill((event.GetHiggsTTMomentum(false)+event.GetMET().GetMomentum()).pt(), weight);
+        MT_htautau().Fill(Calculate_MT(event.GetHiggsTTMomentum(true), event.GetMET().GetMomentum()), weight);
 
         npv().Fill(event->npv,weight);
         MET().Fill(event.GetMET().GetMomentum().Pt(), weight);
