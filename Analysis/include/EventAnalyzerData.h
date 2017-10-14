@@ -18,7 +18,7 @@ public:
     const BinVector M_ttbb_Bins = { 250, 260, 270, 280, 290, 300, 325, 350, 375, 400, 425, 450, 475, 500, 550,
                                     600, 650, 700, 850, 1000 };
     const BinVector MT2_Bins = { 0, 25, 50, 75, 100, 125, 150, 175, 200, 250, 300, 500 };
-    const BinVector Pt_Bins = { 0, 20, 40, 60, 80, 100, 125, 150, 175, 200, 250, 300};
+    const BinVector Pt_Bins = { 0, 10, 20, 30, 40, 50, 60, 70, 80, 100, 125, 150, 175, 200, 250, 300};
 
     TH1D_ENTRY_CUSTOM_EX(m_ttbb, M_ttbb_Bins, "M_{#tau#tau+jj} (GeV)", "dN/dm_{#tau#tau+jj} (1/GeV)", false, 1.5, true, SaveAll)
     TH1D_ENTRY_CUSTOM_EX(m_ttbb_kinfit, M_ttbb_Bins, "M_{H}^{kinfit} (GeV)", "dN/dm_{H}^{kinfit} (1/GeV)", false, 1.4, true, true)
