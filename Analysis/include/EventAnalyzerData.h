@@ -18,7 +18,7 @@ public:
     const BinVector M_ttbb_Bins = { 250, 260, 270, 280, 290, 300, 325, 350, 375, 400, 425, 450, 475, 500, 550,
                                     600, 650, 700, 850, 1000 };
     const BinVector MT2_Bins = { 0, 25, 50, 75, 100, 125, 150, 175, 200, 250, 300, 500 };
-    const BinVector Pt_Bins = { 0, 10, 20, 30, 40, 50, 60, 70, 80, 100, 125, 150, 175, 200, 250, 300};
+    const BinVector Pt_Bins = { 0, 20, 40, 60, 80, 100, 125, 150, 175, 200, 250, 300};
 
     TH1D_ENTRY_CUSTOM_EX(m_ttbb, M_ttbb_Bins, "M_{#tau#tau+jj} (GeV)", "dN/dm_{#tau#tau+jj} (1/GeV)", false, 1.5, true, SaveAll)
     TH1D_ENTRY_CUSTOM_EX(m_ttbb_kinfit, M_ttbb_Bins, "M_{H}^{kinfit} (GeV)", "dN/dm_{H}^{kinfit} (1/GeV)", false, 1.4, true, true)
@@ -41,7 +41,7 @@ public:
     TH1D_ENTRY_EX(iso_2, 100, 0, 10, "Iso#tau_{2}", "Events", false, 1, false, SaveAll)
     TH1D_ENTRY_EX(mt_2, 20, 0, 200, "M_{T}2(GeV)", "Events", false, 1.3, false, SaveAll)
     TH1D_ENTRY_EX(dR_l1l2, 20, 0, 4, "#DeltaR(#tau#tau)", "Events", false, 1.4, false, SaveAll)
-    TH1D_ENTRY_EX(abs_dphi_l1MET, 40, 0, 3.2, "|#Delta#phi(leading#tau_{h}, miss)|", "Events", false, 1.4, false, SaveAll)
+    TH1D_ENTRY_EX(abs_dphi_l1MET, 20, 0, 3.2, "|#Delta#phi(leading#tau_{h}, miss)|", "Events", false, 1.4, false, SaveAll)
     TH1D_ENTRY_EX(dphi_htautauMET, 25, -4, 4, "#Delta#phi(#tau#tau, miss)", "Events", false, 1.4, false, SaveAll)
     TH1D_ENTRY_EX(dR_l1l2MET, 30, 0, 6, "#Delta R(leading#tau_{h}+subleading#tau_{h}, miss)", "Events", false, 1.4, false, SaveAll)
     TH1D_ENTRY_EX(dR_l1l2Pt_htautau, 25, 0, 500, "#DeltaR (leading#tau_{h},subleading#tau_{h}) P_{T}(#tau#tau) (GeV)", "Events", false, 1.4, false, SaveAll)
