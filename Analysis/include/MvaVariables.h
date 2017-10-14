@@ -196,7 +196,7 @@ public:
         VAR("MT_l1l2", Calculate_MT(leptons, event.pfMET_p4));
         VAR("MT_tot", Calculate_TotalMT(event.p4_1,event.p4_2,event.pfMET_p4)); //Total transverse mass
         VAR("MT2", std::min(Calculate_MT2(event.p4_1, event.p4_2, event.jets_p4[0], event.jets_p4[1], event.pfMET_p4), Calculate_MT2(event.p4_1, event.p4_2, event.jets_p4[1], event.jets_p4[0], event.pfMET_p4))); //Stransverse mass
-        VAR("mass_htautau", ROOT::Math::VectorUtil::InvariantMass(bb,event.SVfit_p4));
+        VAR("mass_H", ROOT::Math::VectorUtil::InvariantMass(bb,event.SVfit_p4));
         VAR("mass_top1", four_bodies::Calculate_topPairMasses(event.p4_1, event.p4_2, event.jets_p4[0], event.jets_p4[1], event.pfMET_p4).first);
         VAR("mass_top2", four_bodies::Calculate_topPairMasses(event.p4_1, event.p4_2, event.jets_p4[0], event.jets_p4[1], event.pfMET_p4).second);
         VAR("MX", four_bodies::Calculate_MX(event.p4_1, event.p4_2, event.jets_p4[0], event.jets_p4[1], event.pfMET_p4));

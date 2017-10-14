@@ -358,33 +358,41 @@ ENUM_NAMES(SelectionCut) = detail::CreateSelectionCutNames();
 struct EventSubCategory {
     using BitsContainer = boost::multiprecision::uint128_t;
     static constexpr size_t MaxNumberOfCuts = std::numeric_limits<BitsContainer>::digits;
-    using Bits = std::bitset<MaxNumberOfCuts>;
 
     static const EventSubCategory& NoCuts() { static const EventSubCategory esc; return esc; }
 
-    EventSubCategory() {}
+    EventSubCategory() : presence(0), results(0) {}
 
-    bool HasCut(SelectionCut cut) const { return presence[GetIndex(cut)]; }
+    bool HasCut(SelectionCut cut) const
+    {
+        const BitsContainer mask = BitsContainer(1) << GetIndex(cut);
+        return (presence & mask) != BitsContainer(0);
+    }
+
     bool Passed(SelectionCut cut) const
     {
         if(!HasCut(cut))
             throw exception("Cut '%1%' is not defined.") % cut;
-        return results[GetIndex(cut)];
+        const BitsContainer mask = BitsContainer(1) << GetIndex(cut);
+        return (results & mask) != BitsContainer(0);
     }
     bool Failed(SelectionCut cut) const { return !Passed(cut); }
+
     EventSubCategory& SetCutResult(SelectionCut cut, bool result)
     {
         if(HasCut(cut))
             throw exception("Cut '%1%' is aready defined.") % cut;
-        results[GetIndex(cut)] = result;
-        presence[GetIndex(cut)] = true;
+        const size_t index = GetIndex(cut);
+        const BitsContainer mask = BitsContainer(1) << index;
+        results = (results & ~mask) | (BitsContainer(result) << index);
+        presence |= mask;
         if(cut >= SelectionCut::MVA_first && cut <= SelectionCut::MVA_last)
             last_mva_cut = cut;
         return *this;
     }
 
-    BitsContainer GetPresenceBits() const { return presence.to_ulong(); }
-    BitsContainer GetResultBits() const { return results.to_ulong(); }
+    BitsContainer GetPresenceBits() const { return presence; }
+    BitsContainer GetResultBits() const { return results; }
 
     bool operator ==(const EventSubCategory& sc) const
     {
@@ -400,7 +408,7 @@ struct EventSubCategory {
     bool Implies(const EventSubCategory& sc) const
     {
         const BitsContainer pres_a = GetPresenceBits(), pres_b = sc.GetPresenceBits();
-        if((pres_a ^ pres_b) & pres_b) return false;
+        if(((pres_a ^ pres_b) & pres_b) != BitsContainer(0)) return false;
         const BitsContainer res_a = GetResultBits(), res_b = sc.GetResultBits();
         return (res_a & pres_b) == res_b;
     }
@@ -416,8 +424,9 @@ struct EventSubCategory {
     {
         std::ostringstream s;
         for(size_t n = 0; n < MaxNumberOfCuts; ++n) {
-            if(!presence[n]) continue;
-            if(!results[n]) s << "not";
+            const BitsContainer mask = BitsContainer(1) << n;
+            if((presence & mask) == BitsContainer(0)) continue;
+            if((results & mask) == BitsContainer(0)) s << "not";
             s << static_cast<SelectionCut>(n) << "_";
         }
         std::string str = s.str();
@@ -457,7 +466,7 @@ private:
     }
 
 private:
-    Bits presence, results;
+    BitsContainer presence, results;
     boost::optional<SelectionCut> last_mva_cut;
 };
 
