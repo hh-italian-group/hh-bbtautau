@@ -28,7 +28,7 @@ public:
     TH1D_ENTRY_EX(mt_tot, 25, 0, 500, "M_{T}^{TOT}(GeV)", "Events", false, 1.5, false, SaveAll)
     TH1D_ENTRY_EX(deta_hbbhtautau, 25, -5, 5, "#Delta#eta_{#tau#tau, jj}", "Events", false, 1.8, false, SaveAll)
     TH1D_ENTRY_EX(dphi_hbbhtautau, 20, -4, 4, "#Delta#phi(#tau#tau, jj)", "Events", false, 1.4, false, SaveAll)
-    TH1D_ENTRY_EX(MT_htautau, 12, 0, 250, "M_{T}^{#tau#tau}(GeV)", "Events", false, 1.4, false, SaveAll)
+    TH1D_ENTRY_EX(MT_htautau, 20, 0, 250, "M_{T}^{#tau#tau}(GeV)", "Events", false, 1.4, false, SaveAll)
 
     TH1D_ENTRY_CUSTOM_EX(m_tt_vis, M_tt_Bins, "M_{vis}(GeV)", "Events", false, 1.6, false, SaveAll)
     TH1D_ENTRY_CUSTOM_EX(pt_H_tt, Pt_Bins, "P_{T}(GeV)", "Events", false, 1.4, false, SaveAll)
