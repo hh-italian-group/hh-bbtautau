@@ -12,6 +12,7 @@ struct Arguments {
     REQ_ARG(std::string, output);
     REQ_ARG(analysis::Channel, channel);
     REQ_ARG(std::string, hists);
+    OPT_ARG(std::string, mva_setup, "");
 };
 
 namespace analysis {
@@ -66,10 +67,10 @@ public:
             throw exception("Setup '%1%' not found in the configuration file '%2%'.") % args.setup() % args.sources();
         ana_setup = ana_setup_collection.at(args.setup());
 
-        if(ana_setup.mva_setup.size()) {
-            if(!mva_setup_collection.count(ana_setup.mva_setup))
-                throw exception("MVA setup '%1%' not found.") % ana_setup.mva_setup;
-            mva_setup = mva_setup_collection.at(ana_setup.mva_setup);
+        if(args.mva_setup().size()) {
+            if(!mva_setup_collection.count(args.mva_setup()))
+                throw exception("MVA setup '%1%' not found.") % args.mva_setup();
+            mva_setup = mva_setup_collection.at(args.mva_setup());
         }
 
         CreateEventSubCategoriesToProcess();

@@ -20,8 +20,10 @@ struct AnalyzerArguments {
     REQ_ARG(std::string, sources);
     REQ_ARG(std::string, input);
     REQ_ARG(std::string, output);
+    OPT_ARG(std::string, mva_setup, "");
     OPT_ARG(bool, draw, true);
     OPT_ARG(bool, saveFullOutput, false);
+    OPT_ARG(unsigned, event_set, 0);
     OPT_ARG(unsigned, n_threads, 1);
 };
 
@@ -103,10 +105,10 @@ public:
             throw exception("Setup '%1%' not found in the configuration file '%2%'.") % args.setup() % args.sources();
         ana_setup = ana_setup_collection.at(args.setup());
 
-        if(ana_setup.mva_setup.size()) {
-            if(!mva_setup_collection.count(ana_setup.mva_setup))
-                throw exception("MVA setup '%1%' not found.") % ana_setup.mva_setup;
-            mva_setup = mva_setup_collection.at(ana_setup.mva_setup);
+        if(args.mva_setup().size()) {
+            if(!mva_setup_collection.count(args.mva_setup()))
+                throw exception("MVA setup '%1%' not found.") % args.mva_setup();
+            mva_setup = mva_setup_collection.at(args.mva_setup());
         }
         RemoveUnusedSamples();
 
@@ -273,6 +275,9 @@ protected:
     void ProcessDataSource(const SampleDescriptor& sample, const SampleDescriptor::Point& sample_wp,
                            std::shared_ptr<ntuple::EventTuple> tuple, const ntuple::ProdSummary& prod_summary)
     {
+        const bool is_signal = ana_setup.IsSignal(sample.name);
+        const bool need_to_blind = args.event_set() && (sample.sampleType == SampleType::TT || is_signal);
+        const unsigned event_set = args.event_set(), half_split = prod_summary.n_splits / 2;
         const SummaryInfo summary(prod_summary);
         Event prevFullEvent, *prevFullEventPtr = nullptr;
         for(auto tupleEvent : *tuple) {
@@ -280,8 +285,14 @@ protected:
                 prevFullEvent = tupleEvent;
                 prevFullEventPtr = &prevFullEvent;
             }
+            if(need_to_blind){
+                if((event_set == 1 && tupleEvent.split_id >= half_split) || tupleEvent.split_id < half_split)
+                    continue;
+                tupleEvent.weight_total *= 2;
+            }
             EventInfo event(tupleEvent, ntuple::JetPair{0, 1}, &summary);
             if(!ana_setup.energy_scales.count(event.GetEnergyScale())) continue;
+
             const auto eventCategories = DetermineEventCategories(event);
             for(auto eventCategory : eventCategories) {
                 if (!EventCategoriesToProcess().count(eventCategory)) continue;
@@ -331,8 +342,7 @@ protected:
             for(const auto& sample_name : sample_descriptors) {
                 const SampleDescriptor& sample =  sample_name.second;
                 if(sample.sampleType == SampleType::QCD) continue;
-                const auto iter = std::find(ana_setup.signals.begin(), ana_setup.signals.end(), sample.name);
-                if(iter != ana_setup.signals.end()) continue;
+                if(ana_setup.IsSignal(sample.name)) continue;
                 double factor = sample.sampleType == SampleType::Data ? +1 : -1;
                 for(const auto& sample_wp : sample.working_points) {
                     const auto anaDataId = metaDataId.Set(sample_wp.full_name);
