@@ -4,9 +4,11 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #pragma once
 
 #include <boost/optional/optional.hpp>
+#include <boost/bimap.hpp>
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
 #include "AnalysisTools/Core/include/Tools.h"
 #include "AnalysisTools/Core/include/TextIO.h"
+#include <boost/multiprecision/cpp_int.hpp>
 
 namespace analysis {
 
@@ -17,73 +19,187 @@ ENUM_NAMES(SampleType) = {
 };
 
 struct EventRegion {
+    using EventRegionMapString = boost::bimap<std::string, EventRegion>;
+
     static const EventRegion& Unknown() { static const EventRegion er; return er; }
-    static const EventRegion& OS_Isolated() { static const EventRegion er(true, true); return er; }
-    static const EventRegion& OS_AntiIsolated() { static const EventRegion er(true, false); return er; }
-    static const EventRegion& SS_Isolated() { static const EventRegion er(false, true); return er; }
-    static const EventRegion& SS_AntiIsolated() { static const EventRegion er(false, true); return er; }
+    static const EventRegion& OS_Isolated()
+    {
+        static const EventRegion er = EventRegion().SetCharge(true).SetLowerIso(DiscriminatorWP::Medium);
+        return er;
+    }
+
+    static const EventRegion& OS_AntiIsolated()
+    {
+        static const EventRegion er =
+                EventRegion().SetCharge(true).SetLowerIso(DiscriminatorWP::VLoose).SetUpperIso(DiscriminatorWP::Medium);
+        return er;
+    }
+
+    static const EventRegion& SS_Isolated()
+    {
+        static const EventRegion er = EventRegion().SetCharge(false).SetLowerIso(DiscriminatorWP::Medium);
+        return er;
+    }
+
+    static const EventRegion& SS_LooseIsolated()
+    {
+        static const EventRegion er = EventRegion().SetCharge(false).SetLowerIso(DiscriminatorWP::Loose);
+        return er;
+    }
+
+    static const EventRegion& SS_AntiIsolated()
+    {
+        static const EventRegion er =
+                EventRegion().SetCharge(false).SetLowerIso(DiscriminatorWP::VLoose).SetUpperIso(DiscriminatorWP::Medium);
+        return er;
+    }
+
     static const EventRegion& SignalRegion() { return OS_Isolated(); }
 
     EventRegion() {}
-    EventRegion(bool _os) : os(_os) {}
-    EventRegion(bool _os, bool _iso) : os(_os), iso(_iso) {}
 
-    bool OS() const { return os.is_initialized() && *os; }
-    bool SS() const { return os.is_initialized() && !*os; }
-    bool Iso() const { return iso.is_initialized() && *iso; }
-    bool AntiIso() const { return iso.is_initialized() && !*iso; }
+    EventRegion& SetCharge(bool _os) { os = _os; return *this; }
+    EventRegion& SetLowerIso(DiscriminatorWP wp)
+    {
+        if(HasUpperIso() && iso_upper <= wp)
+            throw exception("HasUpperIso - Iso Upper limit is not greater than Iso lower limit");
+        iso_lower = wp;
+        return *this;
+    }
+    EventRegion& SetUpperIso(DiscriminatorWP wp)
+    {
+        if(HasLowerIso() && wp <= iso_lower)
+            throw exception("HasLowerIso - Iso Upper limit is not greater than Iso lower limit");
+        iso_upper = wp;
+        return *this;
+    }
 
-    bool operator ==(const EventRegion& er) const { return os == er.os && iso == er.iso; }
+    bool HasCharge() const { return os.is_initialized(); }
+    bool HasLowerIso() const { return iso_lower.is_initialized(); }
+    bool HasUpperIso() const { return iso_upper.is_initialized(); }
+
+    DiscriminatorWP GetLowerIso() const
+    {
+        if(!HasLowerIso())
+            throw exception("Lower isolation bound not set.");
+        return *iso_lower;
+    }
+
+    DiscriminatorWP GetUpperIso() const
+    {
+        if(!HasUpperIso())
+            throw exception("Upper isolation bound not set.");
+        return *iso_upper;
+    }
+
+    bool GetCharge() const
+    {
+        if(!HasCharge())
+            throw exception("Charge info not set.");
+        return *os;
+    }
+
+
+    bool Implies(const EventRegion& other) const
+    {
+        if(other.HasCharge() && (!HasCharge() || GetCharge() != other.GetCharge())) return false;
+        if(other.HasLowerIso() && (!HasLowerIso() || GetLowerIso() < other.GetLowerIso())) return false;
+        return !other.HasUpperIso() || (HasUpperIso() && GetUpperIso() <= other.GetUpperIso());
+    }
+
+    bool operator ==(const EventRegion& er) const { return os == er.os && iso_lower == er.iso_lower && iso_upper == er.iso_upper; }
     bool operator !=(const EventRegion& er) const { return !(*this == er); }
     bool operator <(const EventRegion& er) const
     {
         if(os != er.os) return os < er.os;
-        return iso < er.iso;
+        if(iso_lower != er.iso_lower) return iso_lower < er.iso_lower;
+        return iso_upper < er.iso_upper;
     }
+
+
 
     std::string ToString() const
     {
         if(*this == Unknown()) return "Unknown";
-        std::ostringstream s;
-        s << SignPairStr(*os);
-        if(iso.is_initialized())
-            s << "_" << IsoStr(*iso);
-        return s.str();
+        if(!EventRegionMapToString().right.count(*this))
+            throw exception("Unknown EventRegion. No conversion to String");
+        return EventRegionMapToString().right.at(*this);
     }
 
-private:
-    boost::optional<bool> os, iso;
+    static EventRegion Parse(const std::string& str)
+    {
+        if(!EventRegionMapToString().left.count(str))
+            throw exception("Unknown EventRegion = '%1%'.") % str;
+        return EventRegionMapToString().left.at(str);
+    }
 
-    static std::string SignPairStr(bool sign_pair) { return sign_pair ? "OS" : "SS"; }
-    static std::string IsoStr(bool iso) { return iso ? "Isolated" : "AntiIsolated"; }
+
+
+private:
+    boost::optional<bool> os;
+    boost::optional<DiscriminatorWP> iso_lower, iso_upper;
+
+    static const EventRegionMapString& EventRegionMapToString()
+    {
+        static EventRegionMapString predefined_regions;
+        if(!predefined_regions.left.size()){
+            predefined_regions.insert({ "Unknown", Unknown() });
+            predefined_regions.insert({ "OS_Isolated", OS_Isolated() });
+            predefined_regions.insert({ "OS_AntiIsolated", OS_AntiIsolated() });
+            predefined_regions.insert({ "SS_LooseIsolated", SS_LooseIsolated() });
+            predefined_regions.insert({ "SS_Isolated", SS_Isolated() });
+            predefined_regions.insert({ "SS_AntiIsolated", SS_AntiIsolated() });
+            predefined_regions.insert({ "SignalRegion", SignalRegion() });
+        }
+        return predefined_regions;
+    }
+
+
 };
 
-std::ostream& operator<<(std::ostream& os, const EventRegion& eventRegion)
+inline std::istream& operator>>(std::istream& s, EventRegion& eventRegion)
+{
+    std::string str;
+    s >> str;
+    eventRegion = EventRegion::Parse(str);
+    return s;
+}
+
+inline std::ostream& operator<<(std::ostream& os, const EventRegion& eventRegion)
 {
     os << eventRegion.ToString();
     return os;
 }
 
+#define DEF_ES(name, n_jets, ...) \
+    static const EventCategory& name() { static const EventCategory ec(n_jets, ##__VA_ARGS__); return ec; } \
+    /**/
+
 struct EventCategory {
     static const EventCategory& Inclusive() { static const EventCategory ec; return ec; }
-    static const EventCategory& TwoJets_Inclusive() { static const EventCategory ec(2); return ec; }
-    static const EventCategory& TwoJets_ZeroBtag()
-        { static const EventCategory ec(2, 0, DiscriminatorWP::Medium); return ec; }
-    static const EventCategory& TwoJets_OneBtag()
-        { static const EventCategory ec(2, 1, DiscriminatorWP::Medium); return ec; }
-    static const EventCategory& TwoJets_TwoBtag()
-        { static const EventCategory ec(2, 2, DiscriminatorWP::Medium); return ec; }
-    static const EventCategory& TwoJets_ZeroLooseBtag()
-        { static const EventCategory ec(2, 0, DiscriminatorWP::Loose); return ec; }
-    static const EventCategory& TwoJets_OneLooseBtag()
-        { static const EventCategory ec(2, 1, DiscriminatorWP::Loose); return ec; }
-    static const EventCategory& TwoJets_TwoLooseBtag()
-        { static const EventCategory ec(2, 2, DiscriminatorWP::Loose); return ec; }
+    DEF_ES(TwoJets_Inclusive, 2)
+    DEF_ES(TwoJets_ZeroBtag, 2, 0, DiscriminatorWP::Medium)
+    DEF_ES(TwoJets_OneBtag, 2, 1, DiscriminatorWP::Medium)
+    DEF_ES(TwoJets_TwoBtag, 2, 2, DiscriminatorWP::Medium)
+    DEF_ES(TwoJets_ZeroLooseBtag, 2, 0, DiscriminatorWP::Loose)
+    DEF_ES(TwoJets_OneLooseBtag, 2, 1, DiscriminatorWP::Loose)
+    DEF_ES(TwoJets_TwoLooseBtag, 2, 2, DiscriminatorWP::Loose)
+    DEF_ES(TwoJets_ZeroBtag_Resolved, 2, 0, DiscriminatorWP::Medium, false)
+    DEF_ES(TwoJets_OneBtag_Resolved, 2, 1, DiscriminatorWP::Medium, false)
+    DEF_ES(TwoJets_TwoBtag_Resolved, 2, 2, DiscriminatorWP::Medium, false)
+    DEF_ES(TwoJets_TwoLooseBtag_Boosted, 2, 2, DiscriminatorWP::Loose, true)
 
     EventCategory() {}
     explicit EventCategory(size_t _n_jets) : n_jets(_n_jets) {}
     EventCategory(size_t _n_jets, size_t _n_btag, DiscriminatorWP _btag_wp) :
         n_jets(_n_jets), n_btag(_n_btag), btag_wp(_btag_wp)
+    {
+        if(n_btag > n_jets)
+            throw exception("Number of btag can't be greater than number of jets");
+    }
+
+    EventCategory(size_t _n_jets, size_t _n_btag, DiscriminatorWP _btag_wp, bool _boosted) :
+        n_jets(_n_jets), n_btag(_n_btag), btag_wp(_btag_wp), boosted(_boosted)
     {
         if(n_btag > n_jets)
             throw exception("Number of btag can't be greater than number of jets");
@@ -111,16 +227,25 @@ struct EventCategory {
         return *btag_wp;
     }
 
+    bool HasBoostConstraint() const { return boosted.is_initialized(); }
+    bool IsBoosted() const
+    {
+        if(!HasBoostConstraint())
+            throw exception("Boost constraint is not defined.");
+        return *boosted;
+    }
+
     bool operator ==(const EventCategory& ec) const
     {
-        return n_jets == ec.n_jets && n_btag == ec.n_btag && btag_wp == ec.btag_wp;
+        return n_jets == ec.n_jets && n_btag == ec.n_btag && btag_wp == ec.btag_wp && boosted == ec.boosted;
     }
     bool operator !=(const EventCategory& ec) const { return !(*this == ec); }
     bool operator <(const EventCategory& ec) const
     {
         if(n_jets != ec.n_jets) return n_jets < ec.n_jets;
         if(n_btag != ec.n_btag) return n_btag < ec.n_btag;
-        return btag_wp < ec.btag_wp;
+        if(btag_wp != ec.btag_wp) return btag_wp < ec.btag_wp;
+        return boosted < ec.boosted;
     }
 
     std::string ToString() const
@@ -134,6 +259,10 @@ struct EventCategory {
                 s << *btag_wp;
             s << "btag";
         }
+        if(HasBoostConstraint()) {
+            const std::string boosted_str = IsBoosted() ? "B" : "R";
+            s << boosted_str;
+        }
         return s.str();
     }
 
@@ -141,6 +270,7 @@ struct EventCategory {
     {
         static const std::string numbers = "0123456789";
         static const std::string jets_suffix = "jets", btag_suffix = "btag";
+        static const std::map<char, bool> boosted_suffix = { { 'R', false }, { 'B', true } };
 
         if(str == "Inclusive") return Inclusive();
         try {
@@ -160,7 +290,14 @@ struct EventCategory {
                 throw exception("");
             const DiscriminatorWP btag_wp = btag_wp_pos == btag_pos ? DiscriminatorWP::Medium
                     : ::analysis::Parse<DiscriminatorWP>(str.substr(btag_wp_pos, btag_pos - btag_wp_pos));
-            return EventCategory(n_jets, n_btag, btag_wp);
+            const size_t boosted_pos = btag_pos + btag_suffix.size();
+            if(str.size() == boosted_pos)
+                return EventCategory(n_jets, n_btag, btag_wp);
+            const char boosted_flag = str.at(boosted_pos);
+            if(str.size() != boosted_pos + 1 || !boosted_suffix.count(boosted_flag))
+                throw exception("");
+            const bool is_boosted = boosted_suffix.at(boosted_flag);
+            return EventCategory(n_jets, n_btag, btag_wp, is_boosted);
         }catch(exception& e) {
             throw exception("Invalid EventCategory '%1%'. %2%") % str % e.message();
         }
@@ -169,7 +306,10 @@ struct EventCategory {
 private:
     boost::optional<size_t> n_jets, n_btag;
     boost::optional<DiscriminatorWP> btag_wp;
+    boost::optional<bool> boosted;
 };
+
+#undef DEF_ES
 
 std::ostream& operator<<(std::ostream& os, const EventCategory& eventCategory)
 {
@@ -188,7 +328,7 @@ std::istream& operator>>(std::istream& is, EventCategory& eventCategory)
 #define DECL_MVA_SEL(z, n, first) MVA##n = n + first,
 #define MVA_CUT_LIST(first, count) BOOST_PP_REPEAT(count, DECL_MVA_SEL, first)
 
-enum class SelectionCut { InsideMassWindow = 0, KinematicFitConverged = 1,
+enum class SelectionCut { mh = 0, KinematicFitConverged = 1,
                           MVA_CUT_LIST(2, 100) MVA_first = MVA0, MVA_last = MVA99 };
 
 #undef MVA_CUT_LIST
@@ -198,7 +338,7 @@ namespace detail {
 inline std::map<SelectionCut, std::string> CreateSelectionCutNames()
 {
     std::map<SelectionCut, std::string> names;
-    names[SelectionCut::InsideMassWindow] = "InsideMassWindow";
+    names[SelectionCut::mh] = "mh";
     names[SelectionCut::KinematicFitConverged] = "KinematicFitConverged";
     const size_t MVA_first_index = static_cast<size_t>(SelectionCut::MVA_first);
     const size_t MVA_last_index = static_cast<size_t>(SelectionCut::MVA_last);
@@ -216,35 +356,43 @@ inline std::map<SelectionCut, std::string> CreateSelectionCutNames()
 ENUM_NAMES(SelectionCut) = detail::CreateSelectionCutNames();
 
 struct EventSubCategory {
-    using BitsContainer = unsigned long long;
+    using BitsContainer = boost::multiprecision::uint128_t;
     static constexpr size_t MaxNumberOfCuts = std::numeric_limits<BitsContainer>::digits;
-    using Bits = std::bitset<MaxNumberOfCuts>;
 
     static const EventSubCategory& NoCuts() { static const EventSubCategory esc; return esc; }
 
-    EventSubCategory() {}
+    EventSubCategory() : presence(0), results(0) {}
 
-    bool HasCut(SelectionCut cut) const { return presence[GetIndex(cut)]; }
+    bool HasCut(SelectionCut cut) const
+    {
+        const BitsContainer mask = BitsContainer(1) << GetIndex(cut);
+        return (presence & mask) != BitsContainer(0);
+    }
+
     bool Passed(SelectionCut cut) const
     {
         if(!HasCut(cut))
             throw exception("Cut '%1%' is not defined.") % cut;
-        return results[GetIndex(cut)];
+        const BitsContainer mask = BitsContainer(1) << GetIndex(cut);
+        return (results & mask) != BitsContainer(0);
     }
     bool Failed(SelectionCut cut) const { return !Passed(cut); }
+
     EventSubCategory& SetCutResult(SelectionCut cut, bool result)
     {
         if(HasCut(cut))
             throw exception("Cut '%1%' is aready defined.") % cut;
-        results[GetIndex(cut)] = result;
-        presence[GetIndex(cut)] = true;
+        const size_t index = GetIndex(cut);
+        const BitsContainer mask = BitsContainer(1) << index;
+        results = (results & ~mask) | (BitsContainer(result) << index);
+        presence |= mask;
         if(cut >= SelectionCut::MVA_first && cut <= SelectionCut::MVA_last)
             last_mva_cut = cut;
         return *this;
     }
 
-    BitsContainer GetPresenceBits() const { return presence.to_ulong(); }
-    BitsContainer GetResultBits() const { return results.to_ulong(); }
+    BitsContainer GetPresenceBits() const { return presence; }
+    BitsContainer GetResultBits() const { return results; }
 
     bool operator ==(const EventSubCategory& sc) const
     {
@@ -260,7 +408,7 @@ struct EventSubCategory {
     bool Implies(const EventSubCategory& sc) const
     {
         const BitsContainer pres_a = GetPresenceBits(), pres_b = sc.GetPresenceBits();
-        if((pres_a ^ pres_b) & pres_b) return false;
+        if(((pres_a ^ pres_b) & pres_b) != BitsContainer(0)) return false;
         const BitsContainer res_a = GetResultBits(), res_b = sc.GetResultBits();
         return (res_a & pres_b) == res_b;
     }
@@ -276,8 +424,9 @@ struct EventSubCategory {
     {
         std::ostringstream s;
         for(size_t n = 0; n < MaxNumberOfCuts; ++n) {
-            if(!presence[n]) continue;
-            if(!results[n]) s << "not";
+            const BitsContainer mask = BitsContainer(1) << n;
+            if((presence & mask) == BitsContainer(0)) continue;
+            if((results & mask) == BitsContainer(0)) s << "not";
             s << static_cast<SelectionCut>(n) << "_";
         }
         std::string str = s.str();
@@ -317,7 +466,7 @@ private:
     }
 
 private:
-    Bits presence, results;
+    BitsContainer presence, results;
     boost::optional<SelectionCut> last_mva_cut;
 };
 

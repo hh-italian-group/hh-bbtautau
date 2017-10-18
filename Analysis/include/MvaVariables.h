@@ -200,6 +200,7 @@ public:
         VAR("mass_top1", four_bodies::Calculate_topPairMasses(event.p4_1, event.p4_2, event.jets_p4[0], event.jets_p4[1], event.pfMET_p4).first);
         VAR("mass_top2", four_bodies::Calculate_topPairMasses(event.p4_1, event.p4_2, event.jets_p4[0], event.jets_p4[1], event.pfMET_p4).second);
         VAR("MX", four_bodies::Calculate_MX(event.p4_1, event.p4_2, event.jets_p4[0], event.jets_p4[1], event.pfMET_p4));
+//        VAR("MX_kinfit", event.kinFit_m.at(0));
         VAR("dR_l1l2_boosted", four_bodies::Calculate_dR_boosted(event.p4_1, event.p4_2, event.SVfit_p4));
         VAR("dR_b1b2_boosted", four_bodies::Calculate_dR_boosted(event.jets_p4[0], event.jets_p4[1], bb));
         VAR("phi", four_bodies::Calculate_phi(event.p4_1,event.p4_2,event.jets_p4[0], event.jets_p4[1], event.SVfit_p4, bb));

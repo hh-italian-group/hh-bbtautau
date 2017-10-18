@@ -60,7 +60,7 @@ public:
     std::map<ChannelSpin,SampleIdVarData> samples_range;
 
     VariableDistribution(const Arguments& _args): args(_args),
-        outfile(root_ext::CreateRootFile(args.output_file())), vars(args.number_sets(), args.seed(),{}, {"channel", "mass", "spin", "mass_H", "MX"}),
+        outfile(root_ext::CreateRootFile(args.output_file())), vars(args.number_sets(), args.seed(),{}, {"channel", "mass", "spin", "mass_H"}),
               reporter(std::make_shared<TimeReporter>())
     {
         MvaSetupCollection setups;

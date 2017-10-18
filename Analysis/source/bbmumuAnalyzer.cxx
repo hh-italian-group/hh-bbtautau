@@ -23,15 +23,18 @@ protected:
 
         if(!event.GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) return EventRegion::Unknown();
 
+        EventRegion region;
         const bool os = !ana_setup.apply_os_cut || muon1.GetCharge() * muon2.GetCharge() == -1;
-        const bool iso = true;
+        region.SetCharge(os);
+        region.SetLowerIso(DiscriminatorWP::Medium);
+     	return region;
+  
         double mass_muMu = (muon1.GetMomentum()+muon2.GetMomentum()).M();
         double mass_jj = jets.GetMomentum().M();
         const bool jetMass = (mass_jj > 80 && mass_jj < 160);
         const bool muonMass= (mass_muMu > 60);
         if(!jetMass || !muonMass) return EventRegion::Unknown();
         if(event.GetMET().GetMomentum().Pt() > 45 ) return EventRegion::Unknown();
-        return EventRegion(os, iso);
     }
 
     virtual const EventRegionSet& EventRegionsToProcess() const override
@@ -45,7 +48,7 @@ protected:
     virtual const EventSubCategorySet& EventSubCategoriesToProcess() const override
     {
         static const EventSubCategorySet sub_categories = {
-            EventSubCategory().SetCutResult(SelectionCut::InsideMassWindow, true)
+            EventSubCategory().SetCutResult(SelectionCut::mh, true)
         };
         return sub_categories;
     }

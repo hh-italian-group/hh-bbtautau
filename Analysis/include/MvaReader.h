@@ -86,7 +86,7 @@ public:
     virtual void AddEvent(const ntuple::Event& event, const SampleId& /*mass*/ , int /* spin*/, std::string /*channel*/, double /*sample_weight*/, int /*which_test*/) override
     {
         auto bb = event.jets_p4[0] + event.jets_p4[1];
-        dphi_mumet = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.p4_1, event.pfMET_p4));;
+        dphi_mumet = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.p4_1, event.pfMET_p4));
         dphi_metsv = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.SVfit_p4, event.pfMET_p4));
         dR_bb = std::abs(ROOT::Math::VectorUtil::DeltaR(event.jets_p4[0], event.jets_p4[1]));
         dR_bbbb = ROOT::Math::VectorUtil::DeltaR(event.jets_p4[0], event.jets_p4[1])*bb.Pt();
@@ -109,12 +109,17 @@ public:
     using VarsPtr = std::shared_ptr<Vars>;
     using Range = ::analysis::Range<int>;
 
-    struct VarRange { Range range; std::map<std::string, VarsPtr> method_vars; };
-    using VarsRangeMap = std::map<int, VarRange>;
+    struct VarRange { Range range; VarsPtr vars; };
+    using VarRangeMap = std::map<int, VarRange>;
+    using MethodRanges = std::map<std::string, VarRangeMap>;
 
     VarsPtr AddRange(const Range& mass_range, const std::string& method_name, const std::string& bdt_weights,
                   const std::unordered_set<std::string>& enabled_vars, bool is_legacy = false, bool is_Low = true)
     {
+        if(method_vars.count(method_name))
+            throw exception("MVA method with name '%1%' already exists.") % method_name;
+
+        auto& vars = method_vars[method_name];
         auto bound = vars.lower_bound(mass_range.min());
         for(size_t n = 0; n < 2 && bound != vars.end() && bound->second.range != mass_range; ++n, ++bound) {
             if(bound->second.range.Overlaps(mass_range, false))
@@ -122,33 +127,28 @@ public:
         }
 
         vars[mass_range.max()].range = mass_range;
-        if(vars[mass_range.max()].method_vars.count(method_name))
-            throw exception("Method name '%1%' already defined for range '%2%'.") % method_name % mass_range;
-        return vars[mass_range.max()].method_vars[method_name] = CreateMvaVariables(method_name, bdt_weights, enabled_vars, is_legacy, is_Low);
+        return vars[mass_range.max()].vars = CreateMvaVariables(method_name, bdt_weights, enabled_vars, is_legacy,
+                                                                is_Low);
     }
 
-    double Evaluate(const ntuple::Event& event, int mass, const std::string& method_name = "", const int spin = 0, const std::string channel = "")
+    double Evaluate(const ntuple::Event& event, int mass, const std::string& method_name = "", const int spin = 0,
+                    const std::string channel = "")
     {
-        auto& method_vars = FindMvaVariables(mass, method_name);
-        method_vars.AddEvent(event, SampleId(SampleType::Sgn_Res, mass), spin, channel);
-        return method_vars.Evaluate();
+        auto& vars = FindMvaVariables(mass, method_name);
+        vars.AddEvent(event, SampleId(SampleType::Sgn_Res, mass), spin, channel);
+        return vars.Evaluate();
     }
 
     Vars& FindMvaVariables(int mass, const std::string& method_name = "")
     {
+        if(!method_vars.count(method_name))
+            throw exception("Method '%1%' not found.") % method_name;
+        const auto& vars = method_vars.at(method_name);
         auto low_bound = vars.lower_bound(mass);
         if(low_bound == vars.end() || !low_bound->second.range.Contains(mass))
-            throw exception("Range not found for mass = %1%.") % mass;
-        if(!method_name.size()) {
-            if(!low_bound->second.method_vars.size())
-                throw exception("Default method not found for range %1%.") % low_bound->second.range;
-            return *low_bound->second.method_vars.begin()->second;
-        }
-        if(!low_bound->second.method_vars.count(method_name))
-            throw exception("Method '%1%' not found for range %2%.") % method_name % low_bound->second.range;
-        return *low_bound->second.method_vars.at(method_name);
+            throw exception("Range not found for method = '%1%' for mass = %2%.") % method_name % mass;
+        return *low_bound->second.vars;
     }
-
 
 private:
     VarsPtr CreateMvaVariables(const std::string& method_name, const std::string&  bdt_weights,
@@ -159,7 +159,7 @@ private:
     }
 
 private:
-    VarsRangeMap vars;
+    MethodRanges method_vars;
 };
 
 }

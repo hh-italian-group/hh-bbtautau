@@ -7,9 +7,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include "AnalysisTools/Core/include/RootExt.h"
 #include "AnalysisTools/Run/include/program_main.h"
-#include "h-tautau/Analysis/include/EventTuple.h"
-#include "h-tautau/Analysis/include/SummaryTuple.h"
-#include "h-tautau/Analysis/include/AnalysisTypes.h"
+#include "h-tautau/Analysis/include/EventInfo.h"
 #include "AnalysisTools/Run/include/EntryQueue.h"
 #include "AnalysisTools/Core/include/ProgressReporter.h"
 #include "h-tautau/McCorrections/include/EventWeights.h"
@@ -156,10 +154,20 @@ private:
                                       << desc_iter->inputs.at(n) << "'." << std::endl;
                         }
                         if(!tuple) continue;
+                        EventIdentifier prev_event_id = EventIdentifier::Undef_event();
+                        unsigned split_id = 0;
                         for(const Event& event : *tuple) {
                             auto event_ptr = std::make_shared<Event>(event);
                             event_ptr->weight_xs = desc_iter->GetCrossSectionWeight();
                             event_ptr->file_desc_id = desc_id;
+                            event_ptr->split_id = 0;
+                            if(split_distr) {
+                                const EventIdentifier event_id(event);
+                                event_ptr->split_id = event_id == prev_event_id
+                                                    ? split_id : (*split_distr)(gen_map.at(channel));
+                                prev_event_id = event_id;
+                                split_id = event_ptr->split_id;
+                            }
                             event_ptr->split_id = split_distr ? (*split_distr)(gen_map.at(channel)) : 0;
                             processQueue.Push(event_ptr);
                         }
@@ -327,9 +335,12 @@ private:
                 || std::abs(full_event.jets_p4.at(0).eta()) >= cuts::btag_2016::eta
                 || std::abs(full_event.jets_p4.at(1).eta()) >= cuts::btag_2016::eta) return false;
 
-        auto bb = full_event.jets_p4.at(0) + full_event.jets_p4.at(1);
+        const double m_bb = (full_event.jets_p4.at(0) + full_event.jets_p4.at(1)).mass();
+        const double m_tautau = full_event.SVfit_p4.mass();
         if (setup.apply_mass_cut
-                && !cuts::hh_bbtautau_2016::hh_tag::IsInsideEllipse(full_event.SVfit_p4.mass(),bb.mass())) return false;
+                && !(cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(m_tautau, m_bb, true) ||
+                     cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(m_tautau, m_bb, false)))
+            return false;
 
         if (setup.apply_charge_cut && (full_event.q_1+full_event.q_2) != 0) return false;
 

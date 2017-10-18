@@ -96,7 +96,7 @@ public:
                             || std::abs(event.jets_p4.at(1).eta()) >= cuts::btag_2016::eta) continue;
 
                     auto bb = event.jets_p4.at(0) + event.jets_p4.at(1);
-                    if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideEllipse(event.SVfit_p4.mass(),bb.mass())) continue;
+                    if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(),bb.mass())) continue;
 
                     std::string tau_sign = (event.q_1+event.q_2) == 0 ? "OS" : "SS";
 
