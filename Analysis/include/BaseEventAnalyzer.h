@@ -4,6 +4,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #pragma once
 
 #include "AnalysisTools/Run/include/program_main.h"
+#include "AnalysisTools/Core/include/AnalysisMath.h"
 #include "EventAnalyzerDataCollection.h"
 #include "SampleDescriptorConfigEntryReader.h"
 #include "h-tautau/Cuts/include/Btag_2016.h"
@@ -433,11 +434,23 @@ protected:
             static const size_t b_index = find_b_index();
 
             bool wp_found = false;
+            static constexpr double pt_cut =18, b_Flavour = 5;
+
             for(const auto& sample_wp : sample.working_points) {
                 const size_t n_b_partons = static_cast<size_t>(sample_wp.param_values.at(b_index));
-                if(event->jets_nTotal_hadronFlavour_b == n_b_partons ||
+                size_t n_genJets = 0;
+                for(const auto& b_Candidates : event.GetHiggsBB().GetDaughterMomentums()) {
+                    for(size_t i=0; i<event->genJets_p4.size(); i++){
+                        const auto& jet_p4 = event->genJets_p4.at(i);
+                        const auto& jet_hadronFlavour = event->genJets_hadronFlavour.at(i);
+                        double deltaR = ROOT::Math::VectorUtil::DeltaR(b_Candidates, jet_p4);
+                        if (jet_p4.Pt() <= pt_cut || jet_hadronFlavour != b_Flavour || deltaR >= 0.3) continue;
+                        n_genJets++;
+                    }
+                }
+                if(n_genJets == n_b_partons ||
                         (n_b_partons == sample.GetNWorkingPoints() - 1
-                         && event->jets_nTotal_hadronFlavour_b > n_b_partons)) {
+                         && n_genJets > n_b_partons)) {
                     const auto finalId = anaDataId.Set(sample_wp.full_name);
                     anaDataCollection.Fill(finalId, event, weight * sample_wp.norm_sf);
                     wp_found = true;
