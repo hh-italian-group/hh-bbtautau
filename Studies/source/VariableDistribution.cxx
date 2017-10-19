@@ -59,6 +59,7 @@ public:
             for(const auto& entry : var.second ){
                     histo_var->Fill(entry);
             }
+            histo_var->Scale(1/histo_var->Integral());
             root_ext::WriteObject(*histo_var, directory);
         }
     }

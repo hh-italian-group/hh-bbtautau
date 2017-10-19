@@ -51,7 +51,7 @@ public:
     using EventTuple = ntuple::EventTuple;
     using SummaryTuple = ntuple::SummaryTuple;
 
-    std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},{"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin}, {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
+    std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},/*{"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin},*/ {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
 
     std::map<ChannelSpin, SampleIdVarData> samples_mass;
     std::map<ChannelSpin, SampleIdNameElement> bandwidth, mutual_matrix, correlation_matrix, JSDivergenceSB, JSDvars_range_sb;
@@ -213,6 +213,7 @@ public:
             std::cout.flush();
             for (const auto& name : range_selected[SampleId{SampleType::Sgn_Res, range.min()}]){
                 list_variables << name << std::endl;
+
             }
             list_variables << std::endl;
         }

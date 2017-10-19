@@ -615,8 +615,9 @@ public:
 
             auto directory_roc_method = root_ext::GetDirectory(*directory_roc, m.first);
             std::vector<float> mvaS, mvaB;
-            ChannelSampleIdSpin id_sgn{all_channel, mass_tot, spin_tot};
-            ChannelSampleIdSpin id_bkg{all_channel, bkg, spin_tot};
+            int spin = args.range() == "SM" ? 1 : spin_tot;
+            ChannelSampleIdSpin id_sgn{all_channel, mass_tot, spin};
+            ChannelSampleIdSpin id_bkg{all_channel, bkg, spin};
             for (auto& eval : evaluation[id_sgn][0])
                 mvaS.push_back(static_cast<float>(eval));
             for (auto& eval : evaluation[id_bkg][0])
@@ -682,6 +683,13 @@ public:
                 mva_tuple().significance_spin.push_back(entry.first.spin);
             }
             mva_tuple.Fill();
+            outputBDT->bdt_out("all_channel","TT",bkg_spin,1).Scale(1/outputBDT->bdt_out("all_channel","TT",bkg_spin,1).Integral());
+            outputBDT->bdt_out("all_channel","TT",bkg_spin,0).Scale(1/outputBDT->bdt_out("all_channel","TT",bkg_spin,0).Integral());
+            outputBDT->bdt_out("all_channel","TT",bkg_spin,tot).Scale(1/outputBDT->bdt_out("all_channel","TT",bkg_spin,tot).Integral());
+
+            outputBDT->bdt_out("all_channel","Mtot",3,1).Scale(1/outputBDT->bdt_out("all_channel","Mtot",3,1).Integral());
+            outputBDT->bdt_out("all_channel","Mtot",3,0).Scale(1/outputBDT->bdt_out("all_channel","Mtot",3,0).Integral());
+            outputBDT->bdt_out("all_channel","Mtot",3,tot).Scale(1/outputBDT->bdt_out("all_channel","Mtot",3,tot).Integral());
         }
 
         auto directory_ranking = root_ext::GetDirectory(*outfile.get(), "Ranking");
@@ -692,6 +700,8 @@ public:
             root_ext::WriteObject(*var.second, directory_ranking);
 
         mva_tuple.Write();
+
+
     }
 private:
     Arguments args;

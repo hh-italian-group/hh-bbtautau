@@ -82,7 +82,7 @@ public:
 
         if(!samples_list.count("Samples"))
             throw exception("Samples don't found");
-        samples = samples_list.at("Sample").files;
+        samples = samples_list.at("Samples").files;
         std::cout<<"SAMPLES: "<<samples.size()<<std::endl;
 
 

@@ -327,6 +327,7 @@ inline std::map<ChannelSampleIdSpin,double> DistributionCompatibilityTest(const 
         if (ver)
             std::cout<<id.first.channel<<"  "<<id.first.sample_id.sampleType<<id.first.sample_id.mass<<"  "<<id.first.spin<<"   "<<test[id.first]<<std::endl;
     }
+    histo->Scale(1/histo->Integral());
     root_ext::WriteObject(*histo, directory);
     return test;
 }
