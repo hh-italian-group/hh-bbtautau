@@ -218,7 +218,6 @@ public:
         VAR("costheta_htautauhh", four_bodies::Calculate_cosTheta_2bodies(event.SVfit_p4, bb+event.SVfit_p4));
         VAR("costheta_l1l2METhh", four_bodies::Calculate_cosTheta_2bodies(leptonsMET, bb+event.SVfit_p4));
         VAR("costheta_l1l2METhhMET", four_bodies::Calculate_cosTheta_2bodies(leptonsMET, bb+leptonsMET));
-
         VAR("mass", mass.mass);
         VAR_INT("channel", event.channelId);
         VAR_INT("spin", spin);
