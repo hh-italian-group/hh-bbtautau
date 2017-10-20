@@ -227,13 +227,13 @@ private:
         static const std::vector<double> boosted_mva_bins = { -1, 0.6, 0.8, 1 };
 
         auto mva_bins = &res_mva_bins;
-        auto mva_draw_sf = 1.2;
+        auto mva_draw_sf = 40;
         if(eventCategory.HasBoostConstraint() && eventCategory.IsBoosted()) {
             mva_bins = &boosted_mva_bins;
-            mva_draw_sf = 2;
+            mva_draw_sf = 20;
         }
 
-        mva_score.SetMasterHist(*mva_bins, "MVA score", "dN / bin width", false, mva_draw_sf, true, true);
+        mva_score.SetMasterHist(*mva_bins, "MVA score", "dN / bin width", true, mva_draw_sf, true, true);
     }
 };
 
@@ -270,13 +270,13 @@ private:
         static const std::vector<double> boosted_mva_bins = { -1, 0.6, 0.8, 0.9, 1 };
 
         auto mva_bins = &res_mva_bins;
-        auto mva_draw_sf = 1.2;
+        auto mva_draw_sf = 40;
         if(eventCategory.HasBoostConstraint() && eventCategory.IsBoosted()) {
             mva_bins = &boosted_mva_bins;
-            mva_draw_sf = 2;
+            mva_draw_sf = 20;
         }
 
-        mva_score.SetMasterHist(*mva_bins, "MVA score", "dN / bin width", false, mva_draw_sf, true, true);
+        mva_score.SetMasterHist(*mva_bins, "MVA score", "dN / bin width", true, mva_draw_sf, true, true);
     }
 };
 
@@ -314,15 +314,15 @@ private:
         static const BinVector boosted_mva_bins = { -1, 0, 0.6, 0.8, 1 };
 
         auto mva_bins = &res1b_mva_bins;
-        auto mva_draw_sf = 1.4;
+        auto mva_draw_sf = 20;
         if(eventCategory.HasBoostConstraint() && eventCategory.IsBoosted()) {
             mva_bins = &boosted_mva_bins;
-            mva_draw_sf = 2;
+            mva_draw_sf = 20;
         } else if(eventCategory.HasBtagConstraint() && eventCategory.N_btag() > 1) {
             mva_bins = &res2b_mva_bins;
         }
 
-        mva_score.SetMasterHist(*mva_bins, "MVA score", "dN / bin width", false, mva_draw_sf, true, true);
+        mva_score.SetMasterHist(*mva_bins, "MVA score", "dN / bin width", true, mva_draw_sf, true, true);
     }
 };
 
