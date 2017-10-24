@@ -3,3 +3,4 @@ CMakeLists.txt.user*
 __init__.py
 *.swp
 .DS_Store
+*.h.pch
