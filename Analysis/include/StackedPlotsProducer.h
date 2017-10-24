@@ -9,27 +9,20 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 namespace analysis {
 
-template<typename _FirstLeg, typename _SecondLeg>
 class StackedPlotsProducer {
 public:
-    using FirstLeg = _FirstLeg;
-    using SecondLeg = _SecondLeg;
-    using EventInfo = ::analysis::EventInfo<FirstLeg, SecondLeg>;
-    using AnaData = ::analysis::EventAnalyzerData<FirstLeg, SecondLeg>;
-    using AnaDataCollection = ::analysis::EventAnalyzerDataCollection<AnaData>;
+    using AnaData = ::analysis::EventAnalyzerData;
+    using AnaDataCollection = ::analysis::EventAnalyzerDataCollection;
     using Sample = ::analysis::SampleDescriptorBase;
     using SampleCollection = std::vector<const Sample*>;
     using Hist = TH1D;
     using HistPtr = std::shared_ptr<root_ext::SmartHistogram<Hist>>;
 
-    static constexpr Channel ChannelId() { return ChannelInfo::IdentifyChannel<FirstLeg, SecondLeg>(); }
-    static const std::string& ChannelNameLatex() { return __Channel_names_latex.EnumToString(ChannelId()); }
-
     static SampleCollection CreateOrderedSampleCollection(const std::vector<std::string>& draw_sequence,
                                                           const SampleDescriptorCollection& samples,
                                                           const CombinedSampleDescriptorCollection& combined_samples,
                                                           const std::vector<std::string>& signals,
-                                                          const std::vector<std::string>& data)
+                                                          const std::vector<std::string>& data, Channel channel)
     {
         SampleCollection selected_samples;
         for(const auto& name : draw_sequence) {
@@ -54,11 +47,12 @@ public:
         }
         SampleCollection result;
         for(const Sample* sample : selected_samples) {
-            if(!sample->channels.size() || sample->channels.count(ChannelId()))
+            if(!sample->channels.size() || sample->channels.count(channel))
                 result.push_back(sample);
         }
         return result;
     }
+
 
     StackedPlotsProducer(AnaDataCollection& _anaDataCollection, const SampleCollection& _samples,
                          bool _isBlind, bool _drawRatio, const std::set<std::string>& _histogramNames = {}) :
@@ -73,6 +67,9 @@ public:
             }
         }
     }
+
+    Channel ChannelId() const { return anaDataCollection->ChannelId(); }
+    const std::string& ChannelNameLatex() const { return __Channel_names_latex.EnumToString(ChannelId()); }
 
     void PrintStackedPlots(const std::string& outputFileNamePrefix, const EventRegion& eventRegion,
                            const EventCategorySet& eventCategories,
