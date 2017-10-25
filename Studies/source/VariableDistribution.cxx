@@ -53,7 +53,7 @@ public:
     void Histo1D(const VarData& sample, TDirectory* directory)
     {
         for (const auto & var : sample){
-            auto histo_var = std::make_shared<TH1D>((var.first).c_str(), (var.first).c_str(), 50,0,0);
+            auto histo_var = std::make_shared<TH1D>((var.first).c_str(), (var.first).c_str(), 25,0,200);
             histo_var->SetCanExtend(TH1::kAllAxes);
             histo_var->SetXTitle((var.first).c_str());
             for(const auto& entry : var.second ){
@@ -68,7 +68,7 @@ public:
     {
         for(auto var_1 = sample.begin(); var_1 != sample.end(); ++var_1){
             for(auto var_2 = var_1; var_2 != sample.end(); ++var_2) {
-                auto histo_pair = std::make_shared<TH2D>((var_1->first+"_"+var_2->first).c_str(), (var_1->first+"_"+var_2->first).c_str(), 50,0,0,50,0,0);
+                auto histo_pair = std::make_shared<TH2D>((var_1->first+"_"+var_2->first).c_str(), (var_1->first+"_"+var_2->first).c_str(), 25,0,200,25,0,200);
                 histo_pair->SetCanExtend(TH1::kAllAxes);
                 histo_pair->SetXTitle((var_1->first).c_str());
                 histo_pair->SetYTitle((var_2->first).c_str());

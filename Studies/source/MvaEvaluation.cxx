@@ -98,10 +98,8 @@ public:
 
     void CreateOutputHistos(std::map<ChannelSampleIdSpin, std::map<size_t, std::vector<double>>> data, BDTData::Entry& outputBDT)
     {
-        for(const auto& sample : data){
-            std::cout<<sample.first.channel<<"    "<<sample.first.sample_id.sampleType<<"    "<<sample.first.sample_id.mass<<"    "<<sample.first.spin<<std::endl;
+        for(const auto& sample : data){           
             for(const auto& entry : sample.second){
-
                 std::vector<BDTData::Hist*> outs = { &outputBDT(sample.first.channel, sample.first.sample_id, sample.first.spin, entry.first)};
                 for (const auto& value : entry.second){
                     for(auto out : outs)
@@ -132,7 +130,7 @@ public:
         ::analysis::Range<int> range(args.min(), args.max());
         auto vars = reader.AddRange(range, args.method_name(), args.file_xml(), enabled_vars, args.isLegacy(), args.isLow());
 
-        std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},
+        std::vector<ChannelSpin> set{/*{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},*/
                                      {"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin},
                                      {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
 
@@ -153,6 +151,8 @@ public:
                 Long64_t tot_entries = 0;
                 for(const Event& event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
+                    if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
+                    if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
                     if (!args.all_data() && args.blind()!=(event.split_id >= mergesummary.n_splits/2)) continue;
                     tot_entries++;
                     size_t test_split = test_vs_training(gen);
@@ -204,13 +204,20 @@ public:
         auto method = dynamic_cast<TMVA::MethodBase*>(reader_method->FindMVA(args.method_name()));
         int i = 0;
         auto directory_roc = root_ext::GetDirectory(*outfile.get(), "ROCCurve");
+
         for (const auto& mass : mass_range){
             std::cout<<mass<<std::endl;
-            SampleId sample_sgn(SampleType::Sgn_Res, mass);
+
+            SampleId sample_R(SampleType::Sgn_Res, mass);
+            SampleId sample_SM(SampleType::Sgn_NonRes, mass);
+            SampleId sample_sgn = args.range() == "SM20" ? sample_SM  : sample_R;
+
+
             SampleId sample_bkg(SampleType::Bkg_TTbar, mass);
+
             ChannelSampleIdSpin id_sgn(args.channel(), sample_sgn, args.spin());
             ChannelSampleIdSpin id_bkg(args.channel(), sample_bkg, args.spin());
-            roc[mass] = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), sample_sgn, args.spin(), test_train), &outputBDT.bdt_out(args.channel(),sample_bkg,args.spin(), test_train));
+            roc[mass] = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), sample_sgn, args.spin(), test_train), &outputBDT.bdt_out(args.channel(),sample_bkg, args.spin(), test_train));
             roc_testing[mass] = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), sample_sgn, args.spin(), 0), &outputBDT.bdt_out(args.channel(),sample_bkg,args.spin(),0));
             roc_training[mass] = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), sample_sgn, args.spin(), 1), &outputBDT.bdt_out(args.channel(),sample_bkg,args.spin(),1));
             histo_roc->SetPoint(i, mass, roc[mass]);

@@ -26,6 +26,7 @@ struct Arguments { // list of all program arguments
     REQ_ARG(bool, range);
     OPT_ARG(int, which_range, 0);
     OPT_ARG(Long64_t, number_events, 5000);
+    OPT_ARG(bool, is_SM, false);
 };
 
 namespace analysis {
@@ -38,9 +39,12 @@ public:
     using Event = ntuple::Event;
     using EventTuple = ntuple::EventTuple;
 
-    std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},
-                                 {"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin},
+    std::vector<ChannelSpin> set_SM{{"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin},
                                  {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
+    std::vector<ChannelSpin> set_R{{"tauTau",0}, {"muTau",0},{"eTau",0},
+                                   {"tauTau",2}, {"muTau",2},{"eTau",2},
+                                 {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
+    std::vector<ChannelSpin> set;
 
     FindJSD(const Arguments& _args): args(_args), vars(1, 12345678,{}, {"channel", "mass", "spin"}), reporter(std::make_shared<TimeReporter>())
     {
@@ -54,6 +58,7 @@ public:
         configReader.AddEntryReader("FILES", sampleReader, false);
         configReader.ReadConfig(args.cfg_file());
 
+        set = args.is_SM() ? set_SM : set_R;
         samples = samples_list.at("Samples").files;
     }
 
@@ -122,7 +127,7 @@ public:
         }
 
         for (const auto& s: set){
-            std::cout<<s.channel<< "  " << s.spin<<std::endl;
+            std::cout<<"MID "<<s.channel<< "  " << s.spin<<std::endl;
             for (const auto& sample: samples_range[s]){
                 std::cout<<"----"<<ToString(sample.first)<<"----"<<" entries: "<<sample.second.at("pt_l1").size()<<std::endl;
                 std::stringstream ss;

@@ -52,6 +52,7 @@ struct Arguments { // list of all program arguments
     OPT_ARG(std::string, save, "");
     OPT_ARG(bool, all_data, 1);
     OPT_ARG(bool, blind, 1);
+    OPT_ARG(bool, is_SM, false);
 };
 
 namespace analysis {
@@ -189,6 +190,13 @@ public:
     using EventTuple = ::ntuple::EventTuple;
     using SummaryTuple = ntuple::SummaryTuple;
 
+    std::vector<ChannelSpin> set_SM{{"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin},
+                                 {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
+    std::vector<ChannelSpin> set_R{{"tauTau",0}, {"muTau",0},{"eTau",0},
+                                   {"tauTau",2}, {"muTau",2},{"eTau",2},
+                                 {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
+    std::vector<ChannelSpin> set;
+
     MVATraining(const Arguments& _args): args(_args),
         outfile(root_ext::CreateRootFile(args.output_file()+"_"+std::to_string(args.which_test())+".root"))
     {
@@ -225,6 +233,8 @@ public:
         gen.seed(seed_distr(seed_gen));
         gen2.seed(seed_distr(seed_gen));
         vars = std::make_shared<MvaVariablesTMVA>(args.number_sets(), seed, enabled_vars);
+
+        set = args.is_SM() ? set_SM : set_R;
     }
 
     void TrainAllMethods(const TMVA::Factory& factory)
@@ -405,10 +415,6 @@ public:
 
     void Run()
     {
-        std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},
-//                                     {"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin},
-                                     {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
-
         std::cout<<"Variabili iniziali: "<<enabled_vars.size()<<std::endl;
         const auto range = mva_setup.mass_range;
         auto mass_range = CreateMassRange();
@@ -439,6 +445,8 @@ public:
                 Long64_t tot_entries = 0;
                 for(const Event& event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
+                    if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
+                    if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
 //                    if (event.p4_1.pt()<40 || event.p4_2.pt()<40) continue;
                     if(!args.all_data()){
                         if (args.blind())
