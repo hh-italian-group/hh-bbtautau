@@ -13,7 +13,7 @@ public:
 
     bbtautauAnalyzer(const AnalyzerArguments& _args) :
         Base(_args), gen(174296), dm_prob_distr(0, 1),
-        id_weight_calc("h-tautau/McCorrections/data/fitresults_tt_moriond2017.json", DiscriminatorWP::Medium)
+        id_weight_calc("h-tautau/McCorrections/data/Tau/fitresults_tt_moriond2017.json", DiscriminatorWP::Medium)
     {
     }
 
