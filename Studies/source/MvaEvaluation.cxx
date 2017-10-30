@@ -42,15 +42,16 @@ struct Arguments { // list of all program arguments
     REQ_ARG(std::string, file_xml);
     REQ_ARG(std::string, method_name);
     REQ_ARG(Long64_t, number_events);
-    REQ_ARG(int, min);
-    REQ_ARG(int, max);
     REQ_ARG(size_t, number_sets);
     REQ_ARG(uint_fast32_t, seed);
+    REQ_ARG(int, min);
+    REQ_ARG(int, max);
+    REQ_ARG(std::string, channel);
+    REQ_ARG(int, spin);
     REQ_ARG(bool, isLegacy);
     REQ_ARG(bool, isLow);
     REQ_ARG(std::string, range);
-    REQ_ARG(std::string, channel);
-    REQ_ARG(int, spin);
+    OPT_ARG(bool, is_SM, false);
     OPT_ARG(std::string, error_file, "");
     OPT_ARG(bool, all_data, 1);
     OPT_ARG(bool, blind, 1);
@@ -127,12 +128,16 @@ public:
         std::cout<<"Variabili iniziali: "<<enabled_vars.size()<<std::endl;
         const auto mass_range = CreateMassRange(args.min(), args.max());
         std::cout<<"SAMPLES nel RANGE:"<<mass_range.size() <<std::endl;
+
         ::analysis::Range<int> range(args.min(), args.max());
         auto vars = reader.AddRange(range, args.method_name(), args.file_xml(), enabled_vars, args.isLegacy(), args.isLow());
 
-        std::vector<ChannelSpin> set{/*{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},*/
-                                     {"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin},
+        std::vector<ChannelSpin> set_SM{{"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin},
                                      {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
+        std::vector<ChannelSpin> set_R{{"tauTau",0}, {"muTau",0},{"eTau",0},
+                                       {"tauTau",2}, {"muTau",2},{"eTau",2},
+                                     {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
+        std::vector<ChannelSpin> set = args.is_SM() ? set_SM : set_R;
 
         for (const auto& s : set){
             std::cout << s.channel << s.spin <<std::endl;
@@ -151,8 +156,12 @@ public:
                 Long64_t tot_entries = 0;
                 for(const Event& event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
+                    LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
+                    if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(), bb.mass()))
+                        continue;
                     if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
                     if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
+
                     if (!args.all_data() && args.blind()!=(event.split_id >= mergesummary.n_splits/2)) continue;
                     tot_entries++;
                     size_t test_split = test_vs_training(gen);

@@ -49,9 +49,10 @@ public:
     std::map<ChannelSpin,SampleIdVarData> samples_mass;
     std::map<ChannelSpin,SampleIdNameElement> bandwidth, mutual_matrix, correlation_matrix, JSDivergenceSB;
 
-    std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},
-                                 {"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin},
-                                 {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
+    std::vector<ChannelSpin> set{{"muTau",0}, {"eTau",0}, {"tauTau",0},
+                                 {"muTau",2}, {"eTau",2}, {"tauTau",2},
+                                 {"muTau",SM_spin}, {"eTau",SM_spin}, {"tauTau",SM_spin},
+                                 {"muTau",bkg_spin}, {"eTau",bkg_spin}, {"tauTau",bkg_spin}};
 
     MvaClassification(const Arguments& _args): args(_args),
         outfile(root_ext::CreateRootFile(args.output_file())), vars(args.number_sets(), args.seed(),{}, {"channel", "mass", "spin"}),
@@ -336,6 +337,9 @@ public:
             Long64_t tot_entries = 0;
             for(const Event& event : *tuple) {
                 if(tot_entries >= args.number_events()) break;
+                LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
+                if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(), bb.mass()))
+                    continue;
                 if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
                 if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
                 vars.AddEvent(event, entry.id, entry.spin, set.channel, entry.weight);

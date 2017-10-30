@@ -40,19 +40,20 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 
 struct Arguments { // list of all program arguments
-    REQ_ARG(std::string, input_path);
-    REQ_ARG(std::string, output_file);
-    REQ_ARG(std::string, cfg_file);
-    REQ_ARG(Long64_t, number_events);
-    REQ_ARG(std::string, range);
-    REQ_ARG(Long64_t, number_variables);
-    REQ_ARG(int, which_test);
-    OPT_ARG(size_t, number_sets, 2);
-    OPT_ARG(uint_fast32_t, seed, std::numeric_limits<uint_fast32_t>::max());
-    OPT_ARG(std::string, save, "");
-    OPT_ARG(bool, all_data, 1);
-    OPT_ARG(bool, blind, 1);
-    OPT_ARG(bool, is_SM, false);
+        REQ_ARG(std::string, input_path);
+        REQ_ARG(std::string, output_file);
+        REQ_ARG(std::string, cfg_file);
+        REQ_ARG(Long64_t, number_events);
+        REQ_ARG(std::string, range);
+        REQ_ARG(Long64_t, number_variables);
+        REQ_ARG(int, which_test);
+        OPT_ARG(size_t, number_sets, 2);
+        OPT_ARG(uint_fast32_t, seed, std::numeric_limits<uint_fast32_t>::max());
+        OPT_ARG(std::string, save, "");
+        OPT_ARG(bool, all_data, 1);
+        OPT_ARG(bool, blind, 1);
+        OPT_ARG(int, subdivisions, 2);
+        OPT_ARG(bool, is_SM, false);
 };
 
 namespace analysis {
@@ -167,7 +168,8 @@ public:
         return reader->EvaluateMVA(method_name);
     }
 
-    std::vector<std::pair<double,double>> EvaluateForAllEvents(const std::string& method_name, size_t istraining, const std::string channel, const int& spin, const SampleId& sample)
+    std::vector<std::pair<double,double>> EvaluateForAllEvents(const std::string& method_name, size_t istraining, const std::string channel, const int& spin,
+                                                               const SampleId& sample)
     {
         ChannelSampleIdSpin id{channel, sample, spin};
         if(!data_pair.count(istraining) || !data_pair.at(istraining).count(id))
@@ -220,6 +222,7 @@ public:
         std::cout<<args.range()+std::to_string(args.number_variables())<<std::endl;
         enabled_vars.insert(mva_setup.variables.begin(), mva_setup.variables.end());
         std::cout<<enabled_vars.size()<<std::endl;
+
         if(mva_setup.use_mass_var) {
             enabled_vars.insert("mass");
             enabled_vars.insert("channel");
@@ -423,7 +426,6 @@ public:
         std::cout<< "quante coppie massa-spin? "<<mass_spin.size() <<std::endl;
 
         std::uniform_int_distribution<size_t> it(0, mass_spin.size() - 1);
-        std::uniform_int_distribution<int> split(0, 3);
         std::cout<<bkg<<std::endl;
 
         for (const auto& s : set){
@@ -445,24 +447,36 @@ public:
                 Long64_t tot_entries = 0;
                 for(const Event& event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
+                    LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
+                    if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(), bb.mass()))
+                        continue;
                     if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
                     if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
 //                    if (event.p4_1.pt()<40 || event.p4_2.pt()<40) continue;
+                    int which_set=0;
                     if(!args.all_data()){
-                        if (args.blind())
+                        if (args.blind()){
                             if (event.split_id >= (mergesummary.n_splits/2)) continue;
-                        if (!args.blind())
+                            auto step = (mergesummary.n_splits/2)/args.subdivisions();
+                            if (event.split_id >= step*args.which_test() && event.split_id < (step*(args.which_test()+1))) {
+                                which_set = 0;
+                            }
+                            else which_set = 1;
+                        }
+                        if (!args.blind()){
                             if (event.split_id < (mergesummary.n_splits/2)) continue;
+                            auto step = (mergesummary.n_splits/2)/args.subdivisions();
+                            if (event.split_id >= (mergesummary.n_splits/2+step*args.which_test()) && event.split_id < (mergesummary.n_splits/2+(step*(args.which_test()+1))) ) {
+                                which_set = 0;
+                            }
+                            else which_set = 1;
+                        }
                     }
-
-                    LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
-
-                    if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(), bb.mass()))
-                        continue;
-
-                   tot_entries++;
-                    int set = split(gen2);
-                    int which_set = set == args.which_test() ? 0 : 1;
+                    else {
+                        if (event.split_id >= (mergesummary.n_splits/2)) which_set = 0;
+                        else which_set = 1;
+                    }
+                    tot_entries++;
                     if (entry.id.IsBackground()) {
                         const auto pair_mass_spin = mass_spin.at(it(gen));
                         const SampleId sample_bkg(SampleType::Bkg_TTbar, pair_mass_spin.first);

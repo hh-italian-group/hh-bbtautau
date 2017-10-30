@@ -212,14 +212,13 @@ public:
             if (args.cross_validation())
                 if(method.second < (n_seeds-1)) continue;
             const std::string method_name = method.first;
-//            std::cout<<method_name<<std::endl;
 
             mva_tuple().name = method_name;
 
             for (const auto& value: vec_roc_training[method_name]){
                 roc_training_value[method_name][value.first] = std::accumulate(value.second.begin(), value.second.end(), 0.) / value.second.size();
-//                roc_training_err[method_name][value.first] = std::sqrt(stat_estimators::Variance(value.second));
-//                std::cout<<roc_training_value[method_name][value.first]<<"pm"<<roc_training_err[method_name][value.first]<<std::endl;
+                roc_training_err[method_name][value.first] = std::sqrt(stat_estimators::Variance(value.second));
+                std::cout<<roc_training_value[method_name][value.first]<<"pm"<<roc_training_err[method_name][value.first]<<std::endl;
                 mva_tuple().err_roc_training.push_back(roc_training_err[method_name][value.first]);
                 mva_tuple().roc_training_channel.push_back(value.first.channel);
                 mva_tuple().roc_training_mass.push_back(value.first.sample_id.mass);
@@ -230,7 +229,7 @@ public:
 
             for (const auto& value: vec_roc_testing[method_name]){
                 roc_testing_value[method_name][value.first] = std::accumulate(value.second.begin(), value.second.end(), 0.) / value.second.size();
-//                roc_testing_err[method_name][value.first] = stat_estimators::Variance(value.second);
+                roc_testing_err[method_name][value.first] = stat_estimators::Variance(value.second);
                 mva_tuple().err_roc_testing.push_back(roc_testing_err[method_name][value.first]);
                 mva_tuple().roc_testing_channel.push_back(value.first.channel);
                 mva_tuple().roc_testing_mass.push_back(value.first.sample_id.mass);

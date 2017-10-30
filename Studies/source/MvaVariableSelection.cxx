@@ -67,7 +67,7 @@ public:
     std::map<ChannelSpin,SampleIdVarData> samples_range;
 
     VariableDistribution(const Arguments& _args): args(_args),
-        outfile(root_ext::CreateRootFile(args.output_file())), vars(args.number_sets(), args.seed(),{}, {"channel", "mass", "spin", }),
+        outfile(root_ext::CreateRootFile(args.output_file())), vars(args.number_sets(), args.seed(),{}, {"channel", "mass", "spin", "HT_otherjets"}),
               reporter(std::make_shared<TimeReporter>())
     {
         MvaSetupCollection setups;
@@ -174,7 +174,7 @@ public:
                             if (!mutual_matrix.at(se).at(entry.first).count(names) || !mutual_matrix.at(chsp_bkg).at(SampleType::Bkg_TTbar).count(names)) continue;
                             if(mutual_matrix.at(se).at(entry.first).at(names) < threashold_mi && mutual_matrix.at(chsp_bkg).at(SampleType::Bkg_TTbar).at(names) < threashold_mi){
                                 not_corrected.insert(other_entry.first);
-                                best_entries_file << name<<"-"<<other_entry.first << "," <<"MID(sgn) "<<mutual_matrix.at(se).at(entry.first).at(names) << "," <<"MID(bkg) "<<  mutual_matrix.at(chsp_bkg).at(SampleType::Bkg_TTbar).at(names) << ",";
+                                best_entries_file << "," <<name<<"-"<<other_entry.first << "," <<"MID(sgn) "<<mutual_matrix.at(se).at(entry.first).at(names) << "," <<"MID(bkg) "<<  mutual_matrix.at(chsp_bkg).at(SampleType::Bkg_TTbar).at(names) << ",";
                             }
                         }
                     }
@@ -222,9 +222,7 @@ public:
         std::map<ChannelSpin,std::map<SampleId, VectorName_ND>> JSDivergence_vector;
         std::map<ChannelSpin, std::map<SampleId, double>> max_distance;
         for (const auto& s: set){
-            std::cout<<s.channel<<"   "<<s.spin<<"  ";
             for (const auto& entry: JSDivergenceSB.at(s)){
-                std::cout<<entry.first<<std::endl;
                 VectorName_ND  vector(entry.second.begin(), entry.second.end());
                 JSDivergence_vector[s][entry.first] = vector;
                 std::sort(JSDivergence_vector.at(s).at(entry.first).begin(), JSDivergence_vector.at(s).at(entry.first).end(),
@@ -232,7 +230,6 @@ public:
                     return el1.second > el2.second;
                 });
                 max_distance[s][entry.first] = JSDivergence_vector.at(s).at(entry.first).front().second;
-                std::cout<<max_distance[s][entry.first]<<std::endl;;
             }
         }
 
@@ -240,8 +237,7 @@ public:
             for (const auto& range: mva_study::ranges){
                 std::ofstream list_variables(("Selected_range"+std::to_string(range.min())+"_"+std::to_string(range.max())+"_"+std::to_string(args.set())+"_"+std::to_string(args.number_sets())+".txt").c_str(), std::ofstream::out);
                 range_selected[SampleId{SampleType::Sgn_Res, range.min()}] = FindBestRangeVariables(range.min(), range.max(), max_distance, JSDivergence_vector);
-                std::cout<<"range: "<<range.min()<<"-"<<range.max();
-                std::cout.flush();
+                std::cout<<"range: "<<range.min()<<"-"<<range.max()<<std::endl;
                 for (const auto& name : range_selected[SampleId{SampleType::Sgn_Res, range.min()}]){
                     list_variables << name << std::endl;
                 }
@@ -253,7 +249,6 @@ public:
         else{
             std::ofstream list_variables(("Selected_SM_"+std::to_string(args.set())+"_"+std::to_string(args.number_sets())+".txt").c_str(), std::ofstream::out);
             range_selected[SampleId{SampleType::Sgn_NonRes, 0}] = FindBestRangeVariables(0, 0,  max_distance, JSDivergence_vector);
-            std::cout.flush();
             for (const auto& name : range_selected[SampleId{SampleType::Sgn_NonRes, 0}]){
                 list_variables << name << std::endl;
             }
@@ -305,6 +300,9 @@ public:
                 Long64_t tot_entries = 0;
                 for(const Event& event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
+                    LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
+                    if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(), bb.mass()))
+                        continue;
                     if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
                     if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
                     vars.AddEvent(event, entry.id, entry.spin, s.channel, entry.weight);
@@ -392,6 +390,7 @@ public:
             auto directory_ks = root_ext::GetDirectory(*directory_set,"Kolmogorov");
             auto directory_jenshan_ss = root_ext::GetDirectory(*directory_jensenshannon, "Range_SignalSignal");
             auto directory_plotselected = root_ext::GetDirectory(*directory_jenshan_ss, "Plot_RangeSelected");
+
             for (const auto& range : mva_study::ranges){
                 KolmogorovSignalPlotSelected(range_selected.at(SampleId{SampleType::Sgn_Res, range.min()}), range, directory_ks, s);
 
@@ -401,7 +400,7 @@ public:
                     std::stringstream ss;
                     ss << std::fixed << std::setprecision(0) << s.spin;
                     std::string spin = ss.str();
-                    JSDvars_range_ss[mass_pair] = Read_csvfile(args.jsd_folder()+"/JensenShannonDivergenceSSM"+ToString(range.min())+"_"+ToString(sample_mass.first)+"_"+s.channel+"_spin"+spin+".csv");
+                    JSDvars_range_ss[mass_pair] = Read_csvfile(args.jsd_folder()+"/JensenShannonDivergenceSSRangeM"+ToString(range.min())+"_"+ToString(sample_mass.first)+"_"+s.channel+"_spin"+spin+".csv");
                     histo_distribution[mass_pair] = std::make_shared<TH1D>(("JSDrange_"+std::to_string(range.min())+"_"+std::to_string(sample_mass.first.mass)).c_str(), ("JSDrange_"+std::to_string(range.min())+"_"+std::to_string(sample_mass.first.mass)).c_str(), 50,0,1);
                     histo_distribution[mass_pair]->SetXTitle("JSD");
 
@@ -418,7 +417,6 @@ public:
                     }
                 }
             }
-
 
             if (s.spin == bkg_spin) continue;
             int k = 0;

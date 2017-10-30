@@ -88,7 +88,6 @@ public:
         {
             if ( entry.id.IsSignal() && entry.spin != args.spin()) continue;
             auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
-            std::cout<<args.input_path()+"/"+entry.filename<<std::endl;
             auto tuple = ntuple::CreateEventTuple(args.tree_name(), input_file.get(), true, ntuple::TreeState::Skimmed);
             for(const Event& event : *tuple) {
                 vars.AddEvent(event, entry.id, entry.spin, args.tree_name(), entry.weight);
@@ -96,7 +95,6 @@ public:
             std::cout << entry << " number of events: " << tuple->size() << std::endl;
         }
         sample_vars = vars.GetSampleVariables(args.tree_name(), args.spin());
-        std::cout<<"dimensione:"<<sample_vars.size()<<std::endl;
         TimeReport();
     }
 
@@ -115,7 +113,6 @@ public:
                     continue;
 
                 LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
-
                 if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(), bb.mass()))
                     continue;
                 if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
@@ -173,5 +170,3 @@ private:
 }
 
 PROGRAM_MAIN(analysis::mva_study::VariablesDistribution, Arguments) // definition of the main program function
-
-//./run.sh VariableDistribution --input_path ~/Desktop/tuples --output_file VariableDistribution_muTau.root --cfg_file hh-bbtautau/Studies/config/mva_config.cfg --tree_name muTau
