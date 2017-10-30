@@ -51,7 +51,8 @@ public:
         return reader->EvaluateMVA(method_name);
     }
 
-     virtual std::shared_ptr<TMVA::Reader> GetReader() override { return reader;}
+    virtual std::shared_ptr<TMVA::Reader> GetReader() override { return reader;}
+
 };
 
 class LegacyMvaVariables : public MvaVariablesBase {
