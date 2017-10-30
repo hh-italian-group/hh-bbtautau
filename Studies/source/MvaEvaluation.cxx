@@ -55,6 +55,10 @@ struct Arguments { // list of all program arguments
     OPT_ARG(std::string, error_file, "");
     OPT_ARG(bool, all_data, 1);
     OPT_ARG(bool, blind, 1);
+    OPT_ARG(uint_fast32_t, subdivisions, 2);
+    OPT_ARG(uint_fast32_t, which_test, 1);
+    OPT_ARG(bool, train_primary, true);
+
 };
 
 namespace analysis {
@@ -161,18 +165,44 @@ public:
                         continue;
                     if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
                     if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
+                    auto step = (mergesummary.n_splits/2)/args.subdivisions();
 
-                    if (!args.all_data() && args.blind()!=(event.split_id >= mergesummary.n_splits/2)) continue;
+                    if(!args.all_data()){
+                        if (args.blind()){
+                            if (event.split_id >= (mergesummary.n_splits/2)) continue;
+                            if (event.split_id >= step*args.which_test() && event.split_id < (step*(args.which_test()+1)))
+                                which_set = 0;
+                            else which_set = 1;
+                        }
+                        if (!args.blind()){
+                            if (event.split_id < (mergesummary.n_splits/2)) continue;
+                            if (event.split_id >= (mergesummary.n_splits/2+step*args.which_test()) && event.split_id < (mergesummary.n_splits/2+(step*(args.which_test()+1))) )
+                                which_set = 0;
+
+                            else which_set = 1;
+                        }
+                    }
+                    else {
+                        if (event.split_id < (mergesummary.n_splits/2))
+                        {
+                            if (event.split_id >= step*args.which_test() && event.split_id < (step*(args.which_test()+1)))
+                                which_set = args.train_primary() ? 1 : 0;
+                        }
+                        else
+                        {
+                            if (event.split_id >= (mergesummary.n_splits/2+step*args.which_test()) && event.split_id < (mergesummary.n_splits/2+(step*(args.which_test()+1))) )
+                                which_set = args.train_primary() ? 0 : 1;
+                        }
+                    }
                     tot_entries++;
-                    size_t test_split = test_vs_training(gen);
                     if (entry.id.IsBackground()) {
                         for (const auto mass : mass_range){
                             SampleId sample_bkg(SampleType::Bkg_TTbar, mass);
                             ChannelSampleIdSpin id_ch_sample_spin{args.channel(), sample_bkg, args.spin()};
                             ChannelSampleIdSpin id_ch_bkg_spin{args.channel(), bkg, args.spin()};
                             double eval = reader.Evaluate(event, mass, args.method_name(), args.spin(), args.channel());
-                            data[id_ch_sample_spin][test_split].push_back(eval);
-                            data[id_ch_bkg_spin][test_split].push_back(eval);
+                            data[id_ch_sample_spin][which_set].push_back(eval);
+                            data[id_ch_bkg_spin][which_set].push_back(eval);
                             data[id_ch_sample_spin][test_train].push_back(eval);
                             data[id_ch_bkg_spin][test_train].push_back(eval);
                         }
@@ -181,8 +211,8 @@ public:
                         double eval = reader.Evaluate(event, entry.id.mass, args.method_name(), args.spin(), args.channel());
                         ChannelSampleIdSpin id_ch_sample_spin{args.channel(), entry.id, args.spin()};
                         ChannelSampleIdSpin id_ch_tot_spin{args.channel(), mass_tot, args.spin()};
-                        data[id_ch_sample_spin][test_split].push_back(eval);
-                        data[id_ch_tot_spin][test_split].push_back(eval);
+                        data[id_ch_sample_spin][which_set].push_back(eval);
+                        data[id_ch_tot_spin][which_set].push_back(eval);
                         data[id_ch_sample_spin][test_train].push_back(eval);
                         data[id_ch_tot_spin][test_train].push_back(eval);
                     }
