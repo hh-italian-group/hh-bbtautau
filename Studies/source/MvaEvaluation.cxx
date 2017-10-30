@@ -163,10 +163,9 @@ public:
                     LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
                     if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(), bb.mass()))
                         continue;
-                    if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
-                    if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
                     auto step = (mergesummary.n_splits/2)/args.subdivisions();
 
+                    int which_set=0;
                     if(!args.all_data()){
                         if (args.blind()){
                             if (event.split_id >= (mergesummary.n_splits/2)) continue;
