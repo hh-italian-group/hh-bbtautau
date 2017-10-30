@@ -27,7 +27,13 @@ struct AnalyzerSetup {
     std::vector<std::string> data, signals, backgrounds, cmb_samples;
     std::vector<std::string> draw_sequence;
     std::map<EventCategory, std::string> limit_categories;
-    std::string mva_setup;
+    std::string mva_setup, hist_cfg;
+
+    bool IsSignal(const std::string& sample_name) const
+    {
+        const auto iter = std::find(signals.begin(), signals.end(), sample_name);
+        return iter != signals.end();
+    }
 };
 
 using AnalyzerSetupCollection = std::unordered_map<std::string, AnalyzerSetup>;

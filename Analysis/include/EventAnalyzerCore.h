@@ -1,0 +1,191 @@
+/*! Definition of core functionality for event analyzers.
+This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
+
+#pragma once
+
+#include "AnalysisTools/Run/include/program_main.h"
+#include "h-tautau/Analysis/include/EventInfo.h"
+#include "SampleDescriptorConfigEntryReader.h"
+
+namespace analysis {
+
+struct CoreAnalyzerArguments {
+    REQ_ARG(std::string, sources);
+    REQ_ARG(std::string, setup);
+    OPT_ARG(std::string, mva_setup, "");
+    OPT_ARG(unsigned, n_threads, 1);
+
+    virtual ~CoreAnalyzerArguments() {}
+};
+
+class EventAnalyzerCore {
+public:
+    EventAnalyzerCore(const CoreAnalyzerArguments& args, Channel _channel) :
+        channelId(_channel)
+    {
+        ROOT::EnableThreadSafety();
+        if(args.n_threads() > 1)
+            ROOT::EnableImplicitMT(args.n_threads());
+
+        ConfigReader config_reader;
+
+        AnalyzerSetupCollection ana_setup_collection;
+        AnalyzerConfigEntryReader ana_entry_reader(ana_setup_collection);
+        config_reader.AddEntryReader("ANA_DESC", ana_entry_reader, false);
+
+        MvaReaderSetupCollection mva_setup_collection;
+        MvaReaderSetupEntryReader mva_entry_reader(mva_setup_collection);
+        config_reader.AddEntryReader("MVA", mva_entry_reader, false);
+
+        SampleDescriptorConfigEntryReader sample_entry_reader(sample_descriptors);
+        config_reader.AddEntryReader("SAMPLE", sample_entry_reader, true);
+
+        CombinedSampleDescriptorConfigEntryReader combined_entry_reader(cmb_sample_descriptors, sample_descriptors);
+        config_reader.AddEntryReader("SAMPLE_CMB", combined_entry_reader, false);
+
+        config_reader.ReadConfig(args.sources());
+
+        if(!ana_setup_collection.count(args.setup()))
+            throw exception("Setup '%1%' not found in the configuration file '%2%'.") % args.setup() % args.sources();
+        ana_setup = ana_setup_collection.at(args.setup());
+
+        if(args.mva_setup().size()) {
+            if(!mva_setup_collection.count(args.mva_setup()))
+                throw exception("MVA setup '%1%' not found.") % args.mva_setup();
+            mva_setup = mva_setup_collection.at(args.mva_setup());
+        }
+        RemoveUnusedSamples();
+
+        CreateEventSubCategoriesToProcess();
+    }
+
+    virtual ~EventAnalyzerCore() {}
+
+    const std::string& ChannelNameLatex() const { return __Channel_names_latex.EnumToString(channelId); }
+
+    static bool FixNegativeContributions(TH1D& histogram, std::string& debug_info, std::string& negative_bins_info)
+    {
+        static const double correction_factor = 0.0000001;
+
+        std::ostringstream ss_debug;
+
+        const PhysicalValue original_Integral = Integral(histogram, true);
+        ss_debug << "\nSubtracted hist for '" << histogram.GetName() << ".\n";
+        ss_debug << "Integral after bkg subtraction: " << original_Integral << ".\n";
+        debug_info = ss_debug.str();
+        if (original_Integral.GetValue() < 0) {
+            std::cout << debug_info << std::endl;
+            std::cout << "Integral after bkg subtraction is negative for histogram '"
+                      << histogram.GetName() << std::endl;
+            return false;
+        }
+
+        std::ostringstream ss_negative;
+
+        for (Int_t n = 1; n <= histogram.GetNbinsX(); ++n) {
+            if (histogram.GetBinContent(n) >= 0) continue;
+            const std::string prefix = histogram.GetBinContent(n) + histogram.GetBinError(n) >= 0 ? "WARNING" : "ERROR";
+
+            ss_negative << prefix << ": " << histogram.GetName() << " Bin " << n << ", content = "
+                        << histogram.GetBinContent(n) << ", error = " << histogram.GetBinError(n)
+                        << ", bin limits=[" << histogram.GetBinLowEdge(n) << "," << histogram.GetBinLowEdge(n+1)
+                        << "].\n";
+            const double error = correction_factor - histogram.GetBinContent(n);
+            const double new_error = std::sqrt(std::pow(error,2) + std::pow(histogram.GetBinError(n),2));
+            histogram.SetBinContent(n, correction_factor);
+            histogram.SetBinError(n, new_error);
+        }
+        analysis::RenormalizeHistogram(histogram, original_Integral.GetValue(), true);
+        negative_bins_info = ss_negative.str();
+        return true;
+    }
+
+protected:
+    virtual const EventCategorySet& EventCategoriesToProcess() const
+    {
+        static const EventCategorySet categories = {
+            EventCategory::TwoJets_Inclusive(), EventCategory::TwoJets_ZeroBtag_Resolved(),
+            EventCategory::TwoJets_OneBtag_Resolved(), /*EventCategory::TwoJets_OneLooseBtag(),*/
+            EventCategory::TwoJets_TwoBtag_Resolved(), /*EventCategory::TwoJets_TwoLooseBtag()*/
+            EventCategory::TwoJets_TwoLooseBtag_Boosted()
+        };
+        return categories;
+    }
+
+    virtual const EventSubCategorySet& EventSubCategoriesToProcess() const { return sub_categories_to_process; }
+
+    virtual const EventRegionSet& EventRegionsToProcess() const
+    {
+        static const EventRegionSet regions = {
+            EventRegion::OS_Isolated(), EventRegion::OS_AntiIsolated(),
+            EventRegion::SS_Isolated(), EventRegion::SS_AntiIsolated(),
+            EventRegion::SS_LooseIsolated()
+        };
+        return regions;
+    }
+
+private:
+    void CreateEventSubCategoriesToProcess()
+    {
+        const auto base = EventSubCategory().SetCutResult(SelectionCut::mh, true);
+        sub_categories_to_process.insert(base);
+        if(mva_setup.is_initialized()) {
+            for(const auto& mva_sel : mva_setup->selections) {
+                auto param = mva_sel.second;
+                std::cout<<"Selection cut: "<<mva_sel.first<<" - name: "<<param.name
+                        <<" spin: "<<param.spin<<" mass: "<<param.mass<<" cut: "<<param.cut<<std::endl;
+                auto sub_category = EventSubCategory(base).SetCutResult(mva_sel.first, true);
+                sub_categories_to_process.insert(sub_category);
+
+            }
+        }
+    }
+
+    template<typename SampleCollection>
+    std::vector<std::string> FilterInactiveSamples(const SampleCollection& samples,
+                                                   const std::vector<std::string>& sample_names) const
+    {
+        std::vector<std::string> filtered;
+        for(const auto& name : sample_names) {
+            if(!samples.count(name))
+                throw exception("Sample '%1%' not found.") % name;
+            const auto& sample = samples.at(name);
+            if(sample.channels.size() && !sample.channels.count(channelId)) continue;
+            filtered.push_back(name);
+        }
+        return filtered;
+    }
+
+    void RemoveUnusedSamples()
+    {
+        RemoveUnusedSamples(sample_descriptors, { &ana_setup.signals, &ana_setup.backgrounds, &ana_setup.data });
+        RemoveUnusedSamples(cmb_sample_descriptors, { &ana_setup.cmb_samples });
+    }
+
+    template<typename SampleCollection>
+    void RemoveUnusedSamples(SampleCollection& samples,
+                             const std::vector< std::vector<std::string>*> selected_sample_names) const
+    {
+        std::set<std::string> used_samples;
+        for(auto selected_collection : selected_sample_names) {
+            *selected_collection = FilterInactiveSamples(samples, *selected_collection);
+            used_samples.insert(selected_collection->begin(), selected_collection->end());
+        }
+
+        const std::set<std::string> all_sample_names = tools::collect_map_keys(samples);
+        for(const auto& sample_name : all_sample_names) {
+            if(!used_samples.count(sample_name))
+                samples.erase(sample_name);
+        }
+    }
+
+protected:
+    AnalyzerSetup ana_setup;
+    boost::optional<MvaReaderSetup> mva_setup;
+    SampleDescriptorCollection sample_descriptors;
+    CombinedSampleDescriptorCollection cmb_sample_descriptors;
+    EventSubCategorySet sub_categories_to_process;
+    Channel channelId;
+};
+
+} // namespace analysis

@@ -8,21 +8,15 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 namespace analysis {
 
-template<typename _FirstLeg, typename _SecondLeg>
 class LimitsInputProducer {
 public:
-    using FirstLeg = _FirstLeg;
-    using SecondLeg = _SecondLeg;
-    using EventInfo = ::analysis::EventInfo<FirstLeg, SecondLeg>;
-    using AnaData = ::analysis::EventAnalyzerData<FirstLeg, SecondLeg>;
-    using AnaDataCollection = ::analysis::EventAnalyzerDataCollection<AnaData>;
+    using AnaData = ::analysis::EventAnalyzerData;
+    using AnaDataCollection = ::analysis::EventAnalyzerDataCollection;
     using Sample = ::analysis::SampleDescriptorBase;
     using SampleWP = Sample::Point;
     using SampleWPCollection = std::map<std::string, SampleWP>;
     using Hist = TH1D;
     using HistPtr = std::shared_ptr<root_ext::SmartHistogram<Hist>>;
-
-    static constexpr Channel ChannelId() { return ChannelInfo::IdentifyChannel<FirstLeg, SecondLeg>(); }
 
     static std::string FullDataCardName(const std::string& datacard_name, EventEnergyScale es)
     {
@@ -60,7 +54,7 @@ public:
     {
         static constexpr double tiny_value = 1e-9;
         static constexpr double tiny_value_error = tiny_value;
-        static const std::string dirNamePrefix = ToString(ChannelId()) + "_";
+        static const std::string dirNamePrefix = ToString(anaDataCollection->ChannelId()) + "_";
 
         std::ostringstream s_file_name;
         s_file_name << outputFileNamePrefix << "_" << hist_name;
@@ -80,7 +74,7 @@ public:
             const SampleWP& sampleWP = sampleWorkingPoints.at(metaId.Get<std::string>());
             const auto anaDataId = metaId.Set(eventSubCategory).Set(metaId.Get<EventRegion>());
             const auto& anaData = anaDataCollection->Get(anaDataId);
-            auto& hist_entry = anaData.template GetEntryEx<TH1D>(hist_name);
+            auto& hist_entry = anaData.GetEntryEx<TH1D>(hist_name);
             std::shared_ptr<TH1D> hist;
             if(hist_entry.GetHistograms().count(""))
                 hist = std::make_shared<TH1D>(hist_entry());
