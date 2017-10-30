@@ -46,13 +46,13 @@ struct Arguments { // list of all program arguments
         REQ_ARG(Long64_t, number_events);
         REQ_ARG(std::string, range);
         REQ_ARG(Long64_t, number_variables);
-        REQ_ARG(int, which_test);
+        REQ_ARG(uint_fast32_t, which_test);
         OPT_ARG(size_t, number_sets, 2);
         OPT_ARG(uint_fast32_t, seed, std::numeric_limits<uint_fast32_t>::max());
         OPT_ARG(std::string, save, "");
         OPT_ARG(bool, all_data, 1);
         OPT_ARG(bool, blind, 1);
-        OPT_ARG(int, subdivisions, 2);
+        OPT_ARG(uint_fast32_t, subdivisions, 2);
         OPT_ARG(bool, is_SM, false);
 };
 
