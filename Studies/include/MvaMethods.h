@@ -144,7 +144,6 @@ inline void CreateMatrixHistos(const SampleIdVarData& samples_mass, const Sample
             matrix->GetXaxis()->SetBinLabel(i, (var_1->first).c_str());
             matrix->GetYaxis()->SetBinLabel(i, (var_1->first).c_str());
             for(auto var_2 = std::next(var_1, !draw_diagonal); var_2 != mass_entry.second.end(); ++var_2) {
-                if (!element.at(mass_entry.first).count(var_2->first)) continue;
                 Name_ND var_12{var_1->first, var_2->first};
                 matrix->SetBinContent(i, j, element.at(mass_entry.first).at(var_12));
                 matrix->SetBinContent(j, i, element.at(mass_entry.first).at(var_12));

@@ -77,7 +77,6 @@ inline GridPoint GetGridPoint(const MvaResults& results)
     const size_t N = results.param_names.size();
     if(results.param_positions.size() != N || results.param_values.size() != N)
         throw exception("Incompatible grid point info in mva tuple.");
-
     for(size_t n = 0; n < N; ++n)
         params[results.param_names[n]] = GridParam{results.param_positions[n], results.param_values[n]};
     return params;

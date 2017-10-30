@@ -7,45 +7,45 @@
 
 ### FindOptimalBandwidth: for single resonant samples
 ```
-./run.sh FindOptimalBandwidth --input_path /gpfs/ddn/cms/user/androsov/store/cms-it-hh-bbtautau/Tuples2016_v3/Skimmed_light --cfg_file /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/hh-bbtautau/Studies/config/mva_config.cfg  --number_threads 4 --range false --which_range 0 --number_events 10000 --is_SM false
+./run.sh FindOptimalBandwidth --input_path /gpfs/ddn/cms/user/androsov/store/cms-it-hh-bbtautau/Tuples2016_v3/Skimmed_light --cfg_file /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/hh-bbtautau/Studies/config/mva_config.cfg  --number_threads 4 --range false --which_range 0 --number_events 15000 --is_SM false
 ```
 ### FindOptimalBandwidth: for resonant samples joined together in a given range(--which_range)
 ```
-./run.sh FindOptimalBandwidth --input_path /gpfs/ddn/cms/user/androsov/store/cms-it-hh-bbtautau/Tuples2016_v3/Skimmed_light --cfg_file /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/hh-bbtautau/Studies/config/mva_config.cfg  --number_threads 4 --range true --which_range 250 --number_events 10000 --is_SM false
+./run.sh FindOptimalBandwidth --input_path /gpfs/ddn/cms/user/androsov/store/cms-it-hh-bbtautau/Tuples2016_v3/Skimmed_light --cfg_file /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/hh-bbtautau/Studies/config/mva_config.cfg  --number_threads 4 --range true --which_range 250 --number_events 15000 --is_SM false
 ```
 ### FindOptimalBandwidth: for non resonant sample(--is_SM)
 ```
-./run.sh FindOptimalBandwidth --input_path /gpfs/ddn/cms/user/androsov/store/cms-it-hh-bbtautau/Tuples2016_v3/Skimmed_light --cfg_file /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/hh-bbtautau/Studies/config/mva_config.cfg  --number_threads 4 --range false --which_range 0 --number_events 10000 --is_SM true
+./run.sh FindOptimalBandwidth --input_path /gpfs/ddn/cms/user/androsov/store/cms-it-hh-bbtautau/Tuples2016_v3/Skimmed_light --cfg_file /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/hh-bbtautau/Studies/config/mva_config.cfg  --number_threads 4 --range false --which_range 0 --number_events 15000 --is_SM true
 ```
 
 ### FindMutual: for single resonant samples
 ```
-./run.sh FindMutual --input_path /gpfs/ddn/cms/user/androsov/store/cms-it-hh-bbtautau/Tuples2016_v3/Skimmed_light --cfg_file /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/hh-bbtautau/Studies/config/mva_config.cfg --optband_folder /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/OptBand  --number_threads 4 --range false --which_range 0 --number_events 10000 --is_SM false
+./run.sh FindMutual --input_path /gpfs/ddn/cms/user/androsov/store/cms-it-hh-bbtautau/Tuples2016_v3/Skimmed_light --cfg_file /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/hh-bbtautau/Studies/config/mva_config.cfg --optband_folder /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/OptBand  --number_threads 4 --range false --which_range 0 --number_events 15000 --is_SM false
 ```
 ### FindMutual: for resonant samples joined together in a given range(--which_range)
 ```
-./run.sh FindMutual --input_path /gpfs/ddn/cms/user/androsov/store/cms-it-hh-bbtautau/Tuples2016_v3/Skimmed_light --cfg_file /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/hh-bbtautau/Studies/config/mva_config.cfg --optband_folder /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/OptBand  --number_threads 4 --range true --which_range 250 --number_events 10000 --is_SM false
+./run.sh FindMutual --input_path /gpfs/ddn/cms/user/androsov/store/cms-it-hh-bbtautau/Tuples2016_v3/Skimmed_light --cfg_file /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/hh-bbtautau/Studies/config/mva_config.cfg --optband_folder /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/OptBand  --number_threads 4 --range true --which_range 250 --number_events 15000 --is_SM false
 ```
 ### FindMutual: for non resonant sample(--is_SM)
 ```
-./run.sh FindMutual --input_path /gpfs/ddn/cms/user/androsov/store/cms-it-hh-bbtautau/Tuples2016_v3/Skimmed_light --cfg_file /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/hh-bbtautau/Studies/config/mva_config.cfg --optband_folder /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/OptBand  --number_threads 4 --range false --which_range 0 --number_events 10000 --is_SM true
+./run.sh FindMutual --input_path /gpfs/ddn/cms/user/androsov/store/cms-it-hh-bbtautau/Tuples2016_v3/Skimmed_light --cfg_file /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/hh-bbtautau/Studies/config/mva_config.cfg --optband_folder /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/OptBand  --number_threads 4 --range false --which_range 0 --number_events 15000 --is_SM true
 ```
 
 ### FindJSD: for single resonant samples for sgn vs bkg(--bkg_vs_sgn)
 ```
-./run.sh FindJSD --input_path /gpfs/ddn/cms/user/androsov/store/cms-it-hh-bbtautau/Tuples2016_v3/Skimmed_light --cfg_file /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/hh-bbtautau/Studies/config/mva_config.cfg --optband_folder /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/OptBand  --number_threads 4 --range false --which_range 0 --number_events 10000 --is_SM false --bkg_vs_sgn true
+./run.sh FindJSD --input_path /gpfs/ddn/cms/user/androsov/store/cms-it-hh-bbtautau/Tuples2016_v3/Skimmed_light --cfg_file /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/hh-bbtautau/Studies/config/mva_config.cfg --optband_folder /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/OptBand  --number_threads 4 --range false --which_range 0 --number_events 15000 --is_SM false --bkg_vs_sgn true
 ```
 ### FindJSD: for resonant samples joined together in a given range(--which_range) for sgn vs bkg(--bkg_vs_sgn)
 ```
-./run.sh FindJSD --input_path /gpfs/ddn/cms/user/androsov/store/cms-it-hh-bbtautau/Tuples2016_v3/Skimmed_light --cfg_file /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/hh-bbtautau/Studies/config/mva_config.cfg --optband_folder /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/OptBand  --number_threads 4 --range true --which_range 250 --number_events 10000 --is_SM false --bkg_vs_sgn true
+./run.sh FindJSD --input_path /gpfs/ddn/cms/user/androsov/store/cms-it-hh-bbtautau/Tuples2016_v3/Skimmed_light --cfg_file /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/hh-bbtautau/Studies/config/mva_config.cfg --optband_folder /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/OptBand  --number_threads 4 --range true --which_range 250 --number_events 15000 --is_SM false --bkg_vs_sgn true
 ```
 ### FindJSD: for non resonant sample(--is_SM) for sgn vs bkg(--bkg_vs_sgn)
 ```
-./run.sh FindJSD --input_path /gpfs/ddn/cms/user/androsov/store/cms-it-hh-bbtautau/Tuples2016_v3/Skimmed_light --cfg_file /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/hh-bbtautau/Studies/config/mva_config.cfg --optband_folder /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/OptBand  --number_threads 4 --range false --which_range 0 --number_events 10000 --is_SM true --bkg_vs_sgn true
+./run.sh FindJSD --input_path /gpfs/ddn/cms/user/androsov/store/cms-it-hh-bbtautau/Tuples2016_v3/Skimmed_light --cfg_file /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/hh-bbtautau/Studies/config/mva_config.cfg --optband_folder /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/OptBand  --number_threads 4 --range false --which_range 0 --number_events 15000 --is_SM true --bkg_vs_sgn true
 ```
 ### FindJSD: for resonant samples joined together in a given range(--which_range) for sgn vs sgn(--bkg_vs_sgn)
 ```
-./run.sh FindJSD --input_path /gpfs/ddn/cms/user/androsov/store/cms-it-hh-bbtautau/Tuples2016_v3/Skimmed_light --cfg_file /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/hh-bbtautau/Studies/config/mva_config.cfg --optband_folder /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/OptBand  --number_threads 4 --range true --which_range 250 --number_events 10000 --is_SM false --bkg_vs_sgn false
+./run.sh FindJSD --input_path /gpfs/ddn/cms/user/androsov/store/cms-it-hh-bbtautau/Tuples2016_v3/Skimmed_light --cfg_file /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/hh-bbtautau/Studies/config/mva_config.cfg --optband_folder /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/OptBand  --number_threads 4 --range true --which_range 250 --number_events 15000 --is_SM false --bkg_vs_sgn false
 ```
 
 ### MvaRangesCompatibility

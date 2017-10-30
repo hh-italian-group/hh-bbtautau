@@ -98,9 +98,7 @@ public:
         dphi_bbmet = std::abs(ROOT::Math::VectorUtil::DeltaPhi(bb, event.pfMET_p4));
         dphi_bbsv = std::abs(ROOT::Math::VectorUtil::DeltaPhi(bb, event.SVfit_p4));
     }
-    virtual double Evaluate() override {
-        return reader->EvaluateMVA(method_name);
-    }
+    virtual double Evaluate() override { return reader->EvaluateMVA(method_name); }
 
     virtual std::shared_ptr<TMVA::Reader> GetReader() override { return reader;}
 

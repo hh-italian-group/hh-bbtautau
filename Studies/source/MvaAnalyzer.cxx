@@ -160,7 +160,7 @@ public:
                     if(KS_results.at(AllSgn) <= cut || KS_results.at(AllBkg) <= cut) continue;
 
                 if (args.which_test() == "chi")
-                    if(chi_results.at(AllSgn) <= cut /*|| chi_results.at(AllBkg) <= cut*/) continue;
+                    if(chi_results.at(AllSgn) <= cut || chi_results.at(AllBkg) <= cut) continue;
                 method_params[method_name] = grid_point;
                 ++method_seed_count[method_name];
 
@@ -200,7 +200,7 @@ public:
 
         }
 
-        std::cout<<"Quanti metodi?"<<method_seed_count.size()<<" "<<method_params.size()<<std::endl;
+        std::cout<<"Quanti metodi?"<<method_seed_count.size()<<std::endl;
         int i = 0;
 
         std::map<std::string, std::map<ChannelSampleIdSpin, double>> roc_training_value, roc_testing_value;

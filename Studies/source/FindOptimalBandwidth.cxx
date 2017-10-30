@@ -24,7 +24,7 @@ struct Arguments { // list of all program arguments
     REQ_ARG(unsigned, number_threads);
     REQ_ARG(bool, range);
     REQ_ARG(int, which_range);
-    OPT_ARG(Long64_t, number_events, 10000);
+    OPT_ARG(Long64_t, number_events, 15000);
     OPT_ARG(bool, is_SM, false);
 
 };
