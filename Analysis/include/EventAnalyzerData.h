@@ -19,6 +19,7 @@ public:
                                     600, 650, 700, 850, 1000 };
     const BinVector MT2_Bins = { 0, 25, 50, 75, 100, 125, 150, 175, 200, 250, 300, 500 };
     const BinVector Pt_Bins = { 0, 20, 40, 60, 80, 100, 125, 150, 175, 200, 250, 300};
+    const BinVector Pt2_Bins = { 0, 20, 40, 60, 80, 100, 125, 150, 175, 200, 250, 300, 350, 400, 450, 500, 550, 600};
 
     TH1D_ENTRY_CUSTOM_EX(m_ttbb, M_ttbb_Bins, "M_{#tau#tau+jj} (GeV)", "dN/dm_{#tau#tau+jj} (1/GeV)", false, 1.5, true, SaveAll)
     TH1D_ENTRY_CUSTOM_EX(m_ttbb_kinfit, M_ttbb_Bins, "M_{H}^{kinfit} (GeV)", "dN/dm_{H}^{kinfit} (1/GeV)", false, 1.4, true, true)
@@ -31,7 +32,7 @@ public:
     TH1D_ENTRY_EX(MT_htautau, 20, 0, 250, "M_{T}^{#tau#tau}(GeV)", "Events", false, 1.4, false, SaveAll)
 
     TH1D_ENTRY_CUSTOM_EX(m_tt_vis, M_tt_Bins, "M_{vis}(GeV)", "Events", false, 1.6, false, SaveAll)
-    TH1D_ENTRY_CUSTOM_EX(pt_H_tt, Pt_Bins, "P_{T}(GeV)", "Events", false, 1.4, false, SaveAll)
+    TH1D_ENTRY_CUSTOM_EX(pt_H_tt, Pt_Bins, "P_{T}(GeV)", "Events", true, 1.4, false, SaveAll)
     TH1D_ENTRY_CUSTOM_EX(pt_H_tt_MET, Pt_Bins, "P_{T}(GeV)", "Events", false, 1.5, false, SaveAll)
     TH1D_ENTRY_CUSTOM_EX(pt_1, Pt_Bins, "P_{T}(leading#tau_{h})(GeV)", "Events", false, 1.6, false, SaveAll)
     TH1D_ENTRY_EX(eta_1, 20, -2.5, 2.5, "#eta(leading#tau_{h})", "Events", false, 1.6, false, SaveAll)

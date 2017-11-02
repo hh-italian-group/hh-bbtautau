@@ -482,9 +482,9 @@ protected:
                         n_genJets++;
                     }
                 }
-                if(n_genJets == n_b_partons ||
+                if(event->lhe_n_b_partons == n_b_partons ||
                         (n_b_partons == sample.GetNWorkingPoints() - 1
-                         && n_genJets > n_b_partons)) {
+                         && event->lhe_n_b_partons > n_b_partons)) {
                     const auto finalId = anaDataId.Set(sample_wp.full_name);
                     anaDataCollection.Fill(finalId, event, weight * sample_wp.norm_sf);
                     wp_found = true;
