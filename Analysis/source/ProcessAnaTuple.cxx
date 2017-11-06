@@ -29,7 +29,6 @@ public:
         tupleReader(args.input(), args.channel(), activeVariables),
         outputFile(root_ext::CreateRootFile(args.output() + "_full.root"))
     {
-
         histConfig.Parse(ana_setup.hist_cfg);
     }
 
@@ -54,9 +53,6 @@ public:
                     EstimateQCD(anaDataCollection, subCategory, sample.second);
                     break;
                 }
-//                std::cout << "\t\t\t" << hist.first << " -> " << entry.Name() << ", "
-//                          << subDataId << ", " << anaDataId << std::endl;
-
             }
 
             if(args.shapes()) {
