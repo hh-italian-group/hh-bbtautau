@@ -23,6 +23,7 @@ struct Arguments {
     REQ_ARG(std::string, outputPath);
     REQ_ARG(std::string, jobs);
     REQ_ARG(std::string, setup_name);
+    REQ_ARG(bool, use_LLR_weights);
     OPT_ARG(unsigned, n_threads, 1);
 };
 
@@ -65,7 +66,7 @@ public:
         setup.UpdateTauIdHashes();
 
         std::cout << "done.\nLoading weights... " << std::flush;
-        eventWeights_HH = std::make_shared<mc_corrections::EventWeights_HH>(setup.period, setup.btag_wp);
+        eventWeights_HH = std::make_shared<mc_corrections::EventWeights_HH>(setup.period, setup.btag_wp, args.use_LLR_weights());
         std::cout << "done." << std::endl;
 
         if(args.jobs() == "all") {
