@@ -66,6 +66,8 @@ public:
         CheckReadParamCounts("spins", 0, Condition::greater_equal);
         CheckReadParamCounts("cuts", 0, Condition::greater_equal);
         CheckReadParamCounts("legacy", 0, Condition::greater_equal);
+        CheckReadParamCounts("training_range", 0, Condition::greater_equal);
+        CheckReadParamCounts("samples", 0, Condition::greater_equal);
 
         current.CreateSelections();
         ConfigEntryReaderT<MvaReaderSetup>::EndEntry();
@@ -79,6 +81,8 @@ public:
         ParseMappedEntryList("masses", current.masses, true);
         ParseMappedEntryList("spins", current.spins, true);
         ParseMappedEntryList("cuts", current.cuts, false);
+        ParseEntry("training_range", current.training_ranges);
+        ParseMappedEntryList("samples", current.samples, false);
         ParseEntry("legacy", current.legacy);
     }
 };

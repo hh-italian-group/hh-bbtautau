@@ -3,7 +3,6 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #pragma once
 
-#include "AnalysisTools/Run/include/program_main.h"
 #include "EventAnalyzerDataCollection.h"
 #include "SampleDescriptorConfigEntryReader.h"
 #include "h-tautau/Cuts/include/Btag_2016.h"
@@ -19,7 +18,6 @@ namespace analysis {
 struct AnalyzerArguments : CoreAnalyzerArguments {
     REQ_ARG(std::string, input);
     REQ_ARG(std::string, output);
-    OPT_ARG(unsigned, event_set, 0);
 };
 
 template<typename _FirstLeg, typename _SecondLeg>
@@ -164,20 +162,12 @@ protected:
     void ProcessDataSource(const SampleDescriptor& sample, const SampleDescriptor::Point& sample_wp,
                            std::shared_ptr<ntuple::EventTuple> tuple, const ntuple::ProdSummary& prod_summary)
     {
-        const bool is_signal = ana_setup.IsSignal(sample.name);
-        const bool need_to_blind = args.event_set() && (sample.sampleType == SampleType::TT || is_signal);
-        const unsigned event_set = args.event_set(), half_split = prod_summary.n_splits / 2;
         const SummaryInfo summary(prod_summary);
         Event prevFullEvent, *prevFullEventPtr = nullptr;
         for(auto tupleEvent : *tuple) {
             if(ntuple::EventLoader::Load(tupleEvent, prevFullEventPtr).IsFull()) {
                 prevFullEvent = tupleEvent;
                 prevFullEventPtr = &prevFullEvent;
-            }
-            if(need_to_blind){
-                if((event_set == 1 && tupleEvent.split_id >= half_split) || tupleEvent.split_id < half_split)
-                    continue;
-                tupleEvent.weight_total *= 2;
             }
             EventInfo event(tupleEvent, ntuple::JetPair{0, 1}, &summary);
             if(!ana_setup.energy_scales.count(event.GetEnergyScale())) continue;
@@ -195,9 +185,16 @@ protected:
                     for(const auto& subCategory : EventSubCategoriesToProcess()) {
                         if(!eventSubCategory.Implies(subCategory)) continue;
                         SelectionCut mva_cut;
-                        double mva_score = 0;
-                        if(subCategory.TryGetLastMvaCut(mva_cut))
+                        double mva_score = 0, mva_weight_scale = 1.;
+                        if(subCategory.TryGetLastMvaCut(mva_cut)) {
                             mva_score = mva_scores.at(mva_cut);
+                            const auto& mva_params = mva_setup->selections.at(mva_cut);
+                            if(mva_params.training_range.is_initialized() && mva_params.samples.count(sample.name)) {
+                                if(!mva_params.training_range->Contains(event->split_id)) continue;
+                                mva_weight_scale = double(summary->n_splits)
+                                        / (summary->n_splits - mva_params.training_range->size());
+                            }
+                        }
                         event.SetMvaScore(mva_score);
                         const EventAnalyzerDataId anaDataId(eventCategory, subCategory, region,
                                                             event.GetEnergyScale(), sample_wp.full_name);
@@ -205,7 +202,7 @@ protected:
                             dataIds[anaDataId] = std::make_tuple(1., mva_score);
                         } else {
                             const double weight = event->weight_total * sample.cross_section * ana_setup.int_lumi
-                                                / summary->totalShapeWeight;
+                                                / summary->totalShapeWeight * mva_weight_scale;
                             if(sample.sampleType == SampleType::MC) {
                                 dataIds[anaDataId] = std::make_tuple(weight, mva_score);
                             } else
