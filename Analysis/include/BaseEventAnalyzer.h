@@ -208,10 +208,10 @@ protected:
                             } else
                                 ProcessSpecialEvent(sample, sample_wp, anaDataId, event, weight, dataIds);
                         }
-                        anaTupleWriter.AddEvent(event, dataIds);
                     }
                 }
             }
+            anaTupleWriter.AddEvent(event, dataIds);
         }
     }
 
