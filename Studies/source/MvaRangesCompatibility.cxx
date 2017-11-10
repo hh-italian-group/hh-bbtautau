@@ -49,9 +49,10 @@ public:
     std::map<ChannelSpin,SampleIdVarData> samples_mass;
     std::map<ChannelSpin,SampleIdNameElement> bandwidth, mutual_matrix, correlation_matrix, JSDivergenceSB;
 
-    std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},
-                                 /*{"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin}, */
-                                 {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
+    std::vector<ChannelSpin> set{{"muTau",0}, {"eTau",0}, {"tauTau",0},
+                                 {"muTau",2}, {"eTau",2}, {"tauTau",2},
+                                 {"muTau",SM_spin}, {"eTau",SM_spin}, {"tauTau",SM_spin},
+                                 {"muTau",bkg_spin}, {"eTau",bkg_spin}, {"tauTau",bkg_spin}};
 
     MvaClassification(const Arguments& _args): args(_args),
         outfile(root_ext::CreateRootFile(args.output_file())), vars(args.number_sets(), args.seed(),{}, {"channel", "mass", "spin"}),
@@ -273,8 +274,9 @@ public:
         else if (set.spin == SM_spin) spin = "SM";
         else if (set.spin == bkg_spin) spin = "Bkg";
         auto directory_set = root_ext::GetDirectory(*outfile, set.channel+spin);
-        std::cout << std::endl << "Intersection" << std::endl;
+        std::cout<< "Intersection" << std::endl;
         int bin = static_cast<int>(mass_selected.size());
+        std::cout<<set.channel << " " << spin<< " "<< bin << std::endl;
         auto matrix_intersection = std::make_shared<TH2D>("Intersection", "Intersection of variables", bin, 0, bin, bin, 0, bin);
         matrix_intersection->SetXTitle("mass");
         matrix_intersection->SetYTitle("mass");
@@ -312,6 +314,7 @@ public:
             ofs << ToString(mass_entry.first) << std::endl;
             std::cout << ToString(mass_entry.first) << " " << std::flush;
             std::map<std::string, std::string> eliminated;
+
             mass_selected[mass_entry.first] =  FindBestVariables(mass_entry.first, eliminated, set);
             for(auto& entry_selected: mass_selected[mass_entry.first]){
                     ofs << entry_selected<<",";
@@ -334,6 +337,9 @@ public:
             Long64_t tot_entries = 0;
             for(const Event& event : *tuple) {
                 if(tot_entries >= args.number_events()) break;
+                LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
+                if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(), bb.mass()))
+                    continue;
                 if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
                 if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
                 vars.AddEvent(event, entry.id, entry.spin, set.channel, entry.weight);
@@ -401,9 +407,6 @@ public:
                 TimeReport();
             }
 
-
-
-
             std::cout <<"Mutual histos" << std::endl;
             auto directory_mutinf_matrix = root_ext::GetDirectory(*directory_mutinf, "Matrix");
             CreateMatrixHistos(samples_mass.at(s), mutual_matrix.at(s), "MI", directory_mutinf_matrix);
@@ -440,10 +443,9 @@ public:
                 auto directory_ks = root_ext::GetDirectory(*directory_set, "Kolmogorov");
                 KolmogorovSignalCompatibility(directory_ks,s);
                 TimeReport();
+                std::cout<<"Selection variables"<<std::endl;
+                VariablesSelection(s);
             }
-            if (s.spin == SM_spin) continue;
-            std::cout<<"Selection variables"<<std::endl;
-            VariablesSelection(s);
         }
         TimeReport(true);
     }

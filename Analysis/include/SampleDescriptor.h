@@ -27,7 +27,7 @@ struct AnalyzerSetup {
     std::vector<std::string> data, signals, backgrounds, cmb_samples;
     std::vector<std::string> draw_sequence;
     std::map<EventCategory, std::string> limit_categories;
-    std::string mva_setup;
+    std::string mva_setup, hist_cfg;
 
     bool IsSignal(const std::string& sample_name) const
     {
@@ -39,19 +39,26 @@ struct AnalyzerSetup {
 using AnalyzerSetupCollection = std::unordered_map<std::string, AnalyzerSetup>;
 
 struct MvaReaderSetup {
+    using Range = ::analysis::Range<unsigned>;
+    using StrSet = std::unordered_set<std::string>;
+
     struct Params {
         std::string name;
         int spin; double mass;
         double cut;
+        boost::optional<Range> training_range;
+        StrSet samples;
     };
 
     std::string name;
     std::map<std::string, std::string> trainings;
-    std::map<std::string, std::unordered_set<std::string>> variables;
+    std::map<std::string, StrSet> variables;
     std::map<std::string, std::vector<double>> masses;
     std::map<std::string, std::vector<int>> spins;
     std::map<std::string, std::vector<double>> cuts;
     std::map<std::string, std::string> legacy;
+    std::map<std::string, Range> training_ranges;
+    std::map<std::string, StrSet> samples;
 
     std::map<SelectionCut, Params> selections;
 
@@ -77,6 +84,13 @@ struct MvaReaderSetup {
             if(!cuts.count(tr_name))
                 throw exception("Missing cut working points for MVA training %1%.") % tr_name;
             const auto& tr_cuts = cuts.at(tr_name);
+            if(training_ranges.count(tr_name)) {
+                params.training_range = training_ranges.at(tr_name);
+                if(!samples.count(tr_name))
+                    throw exception("Used samples not specified for MVA training %1%.") % tr_name;
+                params.samples = samples.at(tr_name);
+            }
+
             for(size_t wp_index = 0; wp_index < tr_spins.size(); ++wp_index) {
                 params.spin = tr_spins.at(wp_index);
                 params.mass = tr_masses.at(wp_index);

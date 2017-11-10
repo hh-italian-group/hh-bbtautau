@@ -208,6 +208,10 @@ sample_type: QCD
 datacard_name: QCD
 
 [SAMPLE_CMB other_bkg]
+<<<<<<< HEAD
 sample_descriptors: WW WZ Wjets tW EWK ZH ZZ TT
+=======
+sample_descriptors: WW WZ ZZ Wjets tW EWK
+>>>>>>> ana_v3
 color: kCyan
 title: Other backgrounds

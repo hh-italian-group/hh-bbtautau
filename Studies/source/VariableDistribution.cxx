@@ -53,12 +53,13 @@ public:
     void Histo1D(const VarData& sample, TDirectory* directory)
     {
         for (const auto & var : sample){
-            auto histo_var = std::make_shared<TH1D>((var.first).c_str(), (var.first).c_str(), 50,0,0);
+            auto histo_var = std::make_shared<TH1D>((var.first).c_str(), (var.first).c_str(), 25,0,200);
             histo_var->SetCanExtend(TH1::kAllAxes);
             histo_var->SetXTitle((var.first).c_str());
             for(const auto& entry : var.second ){
                     histo_var->Fill(entry);
             }
+            histo_var->Scale(1/histo_var->Integral());
             root_ext::WriteObject(*histo_var, directory);
         }
     }
@@ -67,7 +68,7 @@ public:
     {
         for(auto var_1 = sample.begin(); var_1 != sample.end(); ++var_1){
             for(auto var_2 = var_1; var_2 != sample.end(); ++var_2) {
-                auto histo_pair = std::make_shared<TH2D>((var_1->first+"_"+var_2->first).c_str(), (var_1->first+"_"+var_2->first).c_str(), 50,0,0,50,0,0);
+                auto histo_pair = std::make_shared<TH2D>((var_1->first+"_"+var_2->first).c_str(), (var_1->first+"_"+var_2->first).c_str(), 25,0,200,25,0,200);
                 histo_pair->SetCanExtend(TH1::kAllAxes);
                 histo_pair->SetXTitle((var_1->first).c_str());
                 histo_pair->SetYTitle((var_2->first).c_str());
@@ -87,7 +88,6 @@ public:
         {
             if ( entry.id.IsSignal() && entry.spin != args.spin()) continue;
             auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
-            std::cout<<args.input_path()+"/"+entry.filename<<std::endl;
             auto tuple = ntuple::CreateEventTuple(args.tree_name(), input_file.get(), true, ntuple::TreeState::Skimmed);
             for(const Event& event : *tuple) {
                 vars.AddEvent(event, entry.id, entry.spin, args.tree_name(), entry.weight);
@@ -95,7 +95,6 @@ public:
             std::cout << entry << " number of events: " << tuple->size() << std::endl;
         }
         sample_vars = vars.GetSampleVariables(args.tree_name(), args.spin());
-        std::cout<<"dimensione:"<<sample_vars.size()<<std::endl;
         TimeReport();
     }
 
@@ -114,7 +113,6 @@ public:
                     continue;
 
                 LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
-
                 if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(), bb.mass()))
                     continue;
                 if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
@@ -172,5 +170,3 @@ private:
 }
 
 PROGRAM_MAIN(analysis::mva_study::VariablesDistribution, Arguments) // definition of the main program function
-
-//./run.sh VariableDistribution --input_path ~/Desktop/tuples --output_file VariableDistribution_muTau.root --cfg_file hh-bbtautau/Studies/config/mva_config.cfg --tree_name muTau

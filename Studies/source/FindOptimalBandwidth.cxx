@@ -24,7 +24,9 @@ struct Arguments { // list of all program arguments
     REQ_ARG(unsigned, number_threads);
     REQ_ARG(bool, range);
     REQ_ARG(int, which_range);
-    OPT_ARG(Long64_t, number_events, 5000);
+    OPT_ARG(Long64_t, number_events, 15000);
+    OPT_ARG(bool, is_SM, false);
+
 };
 
 namespace analysis {
@@ -37,9 +39,12 @@ public:
     using Event = ntuple::Event;
     using EventTuple = ntuple::EventTuple;
 
-    std::vector<ChannelSpin> set{{"muTau",0},{"eTau",0}, {"tauTau",0},{"muTau",2},{"eTau",2}, {"tauTau",2},
-                                 {"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin},
+    std::vector<ChannelSpin> set_SM{{"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin},
                                  {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
+    std::vector<ChannelSpin> set_R{{"tauTau",0}, {"muTau",0},{"eTau",0},
+                                   {"tauTau",2}, {"muTau",2},{"eTau",2},
+                                 {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
+    std::vector<ChannelSpin> set;
 
     FindOptimalBandwidth(const Arguments& _args): args(_args), vars(1, 12345678,{}, {"channel", "mass", "spin"}),
         reporter(std::make_shared<TimeReporter>())
@@ -54,6 +59,7 @@ public:
         configReader.AddEntryReader("FILES", sampleReader, false);
         configReader.ReadConfig(args.cfg_file());
 
+        set = args.is_SM() ? set_SM : set_R;
         samples = samples_list.at("Samples").files;
     }
 
@@ -69,6 +75,9 @@ public:
                 Long64_t tot_entries = 0;
                 for(const Event& event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
+                    LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
+                    if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(), bb.mass()))
+                        continue;
                     if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
                     if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
                     vars.AddEvent(event, entry.id, entry.spin, s.channel, entry.weight);
