@@ -44,7 +44,7 @@ public:
         // analyzer code
         std::cout << boost::format("Processing input file '%1%' into output file '%2%' wiht flag = %3%.\n")
                      % args.input_file() % args.output_file() % args.flag();
-        RooRealVar mass("mass","mass",0,500,"GeV");
+        RooRealVar mass("mass","mass",0,500);
         TH1D* dataHisto0b = getTH1D("2jets0btagR/mh/OS_Isolated/Central/Data_SingleMuon");
         //RooDataHist data0b("data0b","data for 0b category",mass,Import(*dataHisto0b));
     }
