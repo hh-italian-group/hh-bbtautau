@@ -31,11 +31,23 @@ struct Arguments { // list of all program arguments
     REQ_ARG(std::string, output_file); // required argument "output_file"
     OPT_ARG(bool, flag, false); // optional argument "flag" with the default value = false
 };
+
 using namespace RooFit;
+struct Contributions{ // list of Variables to create an extended pdf
+    TH1D* hitogram;
+    RooDataHist rooHistogram;
+    RooHistPdf pdf;
+    RooExtendPdf expdf;
+    RooRealVar norm;
+    RooRealVar fraction;
+};
+
+
+
 namespace analysis {
-class DY_estimation { // simple analyzer definition
+class Dy_estimation { // simple analyzer definition
 public:
-    DY_estimation(const Arguments& _args) : args(_args),
+    Dy_estimation(const Arguments& _args) : args(_args),
     input_file(root_ext::OpenRootFile(args.input_file())),
     output_file(root_ext::CreateRootFile(args.output_file()))
     {
@@ -76,11 +88,6 @@ public:
         //<<<<<<<<<<<<<<<<<<< For 0b Category >>>>>>>>>>>>>>>>>>>>>>>>>>>>
         // 0b contribution
         TH1D* mchist_0b_0b = dynamic_cast<TH1D*>(input_file->Get("2jets0btagR/mh/OS_Isolated/Central/DY_0b/m_tt_vis"));
-        //RooRealVar norm_0b_0b("norm_0b_0b","norm_0b_0b",mchist_0b_0b->Integral());
-        //RooFormulaVar frac_0b_0b("frac_0b_0b","frac_0b_0b","@0*@1",RooArgList(sf_0b,norm_0b_0b));
-        //mchist_0b_0b->Scale(1./mchist_0b_0b->Integral());
-        //RooDataHist DY_0b_0b("DY_0b_0b","DY_0b_0b",mass,Import(*mchist_0b_0b)) ;
-        //RooHistPdf DY_0b_0b_pdf("DY_0b_0b_pdf","DY_0b_0b_pdf",mass,DY_0b_0b);
         RooHistPdf DY_0b_0b_pdf = getPdf("DY_0b_0b","for 0b contribution in 0b category",
                                                     mchist_0b_0b,mass,sf_0b);
         /*// 1b contribution
@@ -219,5 +226,5 @@ private:
 };
 
 } // namesapce analysis
-PROGRAM_MAIN(analysis::DY_estimation, Arguments) // definition of the main program function
+PROGRAM_MAIN(analysis::Dy_estimation, Arguments) // definition of the main program function
 
