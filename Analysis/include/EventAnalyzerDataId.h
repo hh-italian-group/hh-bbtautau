@@ -31,6 +31,11 @@ public:
     static constexpr size_t TupleSize = std::tuple_size<Tuple>::value;
 
     EventAnalyzerDataId() {}
+    EventAnalyzerDataId(const EventAnalyzerDataId& other) = default;
+    EventAnalyzerDataId(EventAnalyzerDataId&& other) = default;
+    EventAnalyzerDataId& operator=(const EventAnalyzerDataId&) = default;
+    EventAnalyzerDataId(EventAnalyzerDataId& other) { *this = other; }
+
     template<typename ...Args>
     EventAnalyzerDataId(Args&&... args) { Initialize(std::forward<Args>(args)...); }
 

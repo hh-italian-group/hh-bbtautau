@@ -8,6 +8,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Cuts/include/Btag_2016.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
 #include "h-tautau/Analysis/include/EventLoader.h"
+#include "h-tautau/Analysis/include/SyncTupleHTT.h"
 #include "MvaReader.h"
 #include "EventAnalyzerData.h"
 #include "AnaTuple.h"
@@ -70,6 +71,14 @@ public:
         EventAnalyzerCore(_args, ChannelId()), args(_args), anaTupleWriter(args.output(), ChannelId())
     {
         InitializeMvaReader();
+        if(ana_setup.syncDataIds.size()){
+            for(unsigned n = 0; n < ana_setup.syncDataIds.size(); ++n){
+                const EventAnalyzerDataId dataId = ana_setup.syncDataIds.at(n);
+                outputFile_sync = root_ext::CreateRootFile(dataId.GetName() + "_sync");
+                syncTuple_map[dataId] = std::make_shared<htt_sync::SyncTuple>(ToString(ChannelId()),outputFile_sync.get(),false);
+            }
+
+        }
     }
 
     void Run()
@@ -78,6 +87,10 @@ public:
         ProcessSamples(ana_setup.data, "data");
         ProcessSamples(ana_setup.backgrounds, "background");
         std::cout << "Saving output file..." << std::endl;
+        for (auto sync_iter : syncTuple_map){
+            std::shared_ptr<htt_sync::SyncTuple> syncTuple = sync_iter.second;
+            syncTuple->Write();
+        }
     }
 
 protected:
@@ -212,6 +225,10 @@ protected:
                 }
             }
             anaTupleWriter.AddEvent(event, dataIds);
+            for (auto sync_iter : syncTuple_map){
+                if(!dataIds.count(sync_iter.first)) continue;
+                FillSyncTuple(event,*sync_iter.second);
+            }
         }
     }
 
@@ -261,6 +278,8 @@ protected:
     AnalyzerArguments args;
     bbtautau::AnaTupleWriter anaTupleWriter;
     mva_study::MvaReader mva_reader;
+    std::map<EventAnalyzerDataId, std::shared_ptr<htt_sync::SyncTuple>> syncTuple_map;
+    std::shared_ptr<TFile> outputFile_sync;
 };
 
 } // namespace analysis
