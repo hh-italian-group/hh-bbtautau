@@ -25,31 +25,39 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "TROOT.h"
 #include "TFile.h"
 #include "TH1D.h"
-
+using namespace RooFit;
+namespace analysis {
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, input_file); // required argument "input_file"
     REQ_ARG(std::string, output_file); // required argument "output_file"
-    OPT_ARG(bool, flag, false); // optional argument "flag" with the default value = false
+    OPT_VAR(root_ext::Range<double>, fit_range, root_ext::Range<double>(0, 500));
+    OPT_VAR(std::string, var_name, "mass");
+
 };
 
-using namespace RooFit;
-struct Contributions{ // list of Variables to create an extended pdf
+struct Contribution{ // list of Variables to create an extended pdf for a contribution
     TH1D* hitogram;
-    RooDataHist rooHistogram;
-    RooHistPdf pdf;
-    RooExtendPdf expdf;
-    RooRealVar norm;
-    RooRealVar fraction;
+    RooDataHist* rooHistogram;
+    RooHistPdf* pdf;
+    RooExtendPdf* expdf;
+    RooRealVar* norm;
+    RooFormulaVar* fraction;
 };
 
+struct CategoryModel{
+    Contribution cont_0b;
+    Contribution cont_1b;
+    Contribution cont_2b;
+    Contribution cont_ob;
+    RooAddPdf* sum_pdf;
+};
 
-
-namespace analysis {
 class Dy_estimation { // simple analyzer definition
 public:
-    Dy_estimation(const Arguments& _args) : args(_args),
-    input_file(root_ext::OpenRootFile(args.input_file())),
-    output_file(root_ext::CreateRootFile(args.output_file()))
+    Dy_estimation(const Arguments& _args) : //args(_args),
+    x(_args.var_name().c_str(), _args.var_name().c_str(), _args.fit_range().min(), _args.fit_range().max()),
+    input_file(root_ext::OpenRootFile(_args.input_file())),
+    output_file(root_ext::CreateRootFile(_args.output_file()))
     {
         // Analyzer initialization (e.g. open input/output files, parse configs...)
     }
@@ -58,97 +66,39 @@ public:
         // analyzer code
         std::cout << boost::format("Processing input file '%1%' into output file '%2%' wiht flag = %3%.\n")
                      % args.input_file() % args.output_file() % args.flag();
-        //Initialize the x axis
-        RooRealVar mass("mass","x axis for the fits",0,500);
-        //mass.setRange(0,500);
-        std::cout<<"x axis is initialized"<<std::endl;
-
-        //Initialize the scale factors
-        RooRealVar sf_0b("sf_0b","Scale factor for 0b contibution",1,0.1,10);
-        RooRealVar sf_1b("sf_1b","Scale factor for 1b contibution",1,0.1,10);
-        RooRealVar sf_2b("sf_2b","Scale factor for 2b contibution",1,0.1,10);
-        RooRealVar sf_ob("sf_ob","Scale factor for other bkg contibution",1,0.1,10);
-        std::cout<<"Variables are initialized"<<std::endl;
-
 
         //Data Histograms
         // For 0b category
-        TH1D* dataHisto0b = dynamic_cast<TH1D*>(input_file->Get("2jets0btagR/mh/OS_Isolated/Central/Data_SingleMuon"));
-        RooDataHist data0b("data0b","data for 0b category",mass,Import(*dataHisto0b));
+        TH1D* dataHisto0b = dynamic_cast<TH1D*>(input_file->Get("2jets0btagR/mh/OS_Isolated/Central/Data_SingleMuon/m_tt_vis"));
+        RooDataHist data0b("data0b","data for 0b category",x,Import(*dataHisto0b));
         // For 1b Category
-        TH1D* dataHisto1b = dynamic_cast<TH1D*>(input_file->Get("2jets1btagR/mh/OS_Isolated/Central/Data_SingleMuon"));
-        RooDataHist data1b("data1b","data for 1b category",mass,Import(*dataHisto1b));
+        TH1D* dataHisto1b = dynamic_cast<TH1D*>(input_file->Get("2jets1btagR/mh/OS_Isolated/Central/Data_SingleMuon/m_tt_vis"));
+        RooDataHist data1b("data1b","data for 1b category",x,Import(*dataHisto1b));
         // For 2b Category
-        TH1D* dataHisto2b = dynamic_cast<TH1D*>(input_file->Get("2jets2btagR/mh/OS_Isolated/Central/Data_SingleMuon"));
-        RooDataHist data2b("data1b","data for 2b category",mass,Import(*dataHisto2b));
+        TH1D* dataHisto2b = dynamic_cast<TH1D*>(input_file->Get("2jets2btagR/mh/OS_Isolated/Central/Data_SingleMuon/m_tt_vis"));
+        RooDataHist data2b("data1b","data for 2b category",x,Import(*dataHisto2b));
 
-
-        //Create the Monte-Carlo Pdfs
-
-        //<<<<<<<<<<<<<<<<<<< For 0b Category >>>>>>>>>>>>>>>>>>>>>>>>>>>>
-        // 0b contribution
+        //Create the Categories
+        //For 0b Category
         TH1D* mchist_0b_0b = dynamic_cast<TH1D*>(input_file->Get("2jets0btagR/mh/OS_Isolated/Central/DY_0b/m_tt_vis"));
-        RooHistPdf DY_0b_0b_pdf = getPdf("DY_0b_0b","for 0b contribution in 0b category",
-                                                    mchist_0b_0b,mass,sf_0b);
-        /*// 1b contribution
         TH1D* mchist_1b_0b = dynamic_cast<TH1D*>(input_file->Get("2jets0btagR/mh/OS_Isolated/Central/DY_1b/m_tt_vis"));
-        RooHistPdf DY_1b_0b_pdf = getPdf("DY_1b_0b","for 1b contribution in 0b category",
-                                                     mchist_1b_0b,mass,sf_1b);
-        // 2b contribution
         TH1D* mchist_2b_0b = dynamic_cast<TH1D*>(input_file->Get("2jets0btagR/mh/OS_Isolated/Central/DY_2b/m_tt_vis"));
-        RooHistPdf DY_2b_0b_pdf = getPdf("DY_2b_0b","for 2b contribution in 0b category",
-                                                     mchist_2b_0b,mass,sf_2b);
-        // Other Background contribution
         TH1D* mchist_ob_0b = dynamic_cast<TH1D*>(input_file->Get("2jets0btagR/mh/OS_Isolated/Central/other_bkg/m_tt_vis"));
-        RooHistPdf DY_ob_0b_pdf = getPdf("DY_ob_0b","for other bkg contibution in 0b category",
-                                                     mchist_ob_0b,mass,sf_ob);
+        createCategory("0b",mchist_0b_0b,mchist_1b_0b,mchist_2b_0b,mchist_ob_0b);
 
-        // Adding all contributions and create the total pdf
-        RooAddPdf mcpdf_0b("mcpdf_0b","0b+1b+2b+other_bkg for 0 btag category",
-                           RooArgList(DY_0b_0b_pdf,DY_1b_0b_pdf,DY_2b_0b_pdf,DY_ob_0b_pdf));
-
-        //<<<<<<<<<<<<<<<< For 1b Category >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-        // 0b contribution
+        //For 1b Category
         TH1D* mchist_0b_1b = dynamic_cast<TH1D*>(input_file->Get("2jets1btagR/mh/OS_Isolated/Central/DY_0b/m_tt_vis"));
-        RooHistPdf DY_0b_1b_pdf = getPdf("DY_0b_1b","for 0b contribution in 1b category",
-                                                     mchist_0b_1b,mass,sf_0b);
-        // 1b contribution
         TH1D* mchist_1b_1b = dynamic_cast<TH1D*>(input_file->Get("2jets1btagR/mh/OS_Isolated/Central/DY_1b/m_tt_vis"));
-        RooHistPdf DY_1b_1b_pdf = getPdf("DY_1b_1b","for 1b contribution in 1b category",
-                                                     mchist_1b_1b,mass,sf_1b);
-        // 2b contribution
         TH1D* mchist_2b_1b = dynamic_cast<TH1D*>(input_file->Get("2jets1btagR/mh/OS_Isolated/Central/DY_2b/m_tt_vis"));
-        RooHistPdf DY_2b_1b_pdf = getPdf("DY_2b_1b","for 2b contribution in 1b category",
-                                                     mchist_2b_1b,mass,sf_2b);
-        // Other Background contribution
         TH1D* mchist_ob_1b = dynamic_cast<TH1D*>(input_file->Get("2jets1btagR/mh/OS_Isolated/Central/other_bkg/m_tt_vis"));
-        RooHistPdf DY_ob_1b_pdf = getPdf("DY_ob_1b","for other bkg contribution in 1b category",
-                                                     mchist_ob_1b,mass,sf_ob);
-        // Adding all contributions and create the total pdf
-        RooAddPdf mcpdf_1b("mcpdf_1b","0b+1b+2b+other_bkg for 1 btag category",
-                           RooArgList(DY_0b_1b_pdf,DY_1b_1b_pdf,DY_2b_1b_pdf,DY_ob_1b_pdf));
+        createCategory("1b",mchist_0b_1b,mchist_1b_1b,mchist_2b_1b,mchist_ob_1b);
 
-        //<<<<<<<<<<<<<<<< For 2b Category >>>>>>>>>>>>>>>>>>>
-        // 0b contribution
+        //For 2b Category
         TH1D* mchist_0b_2b = dynamic_cast<TH1D*>(input_file->Get("2jets2btagR/mh/OS_Isolated/Central/DY_0b/m_tt_vis"));
-        RooHistPdf DY_0b_2b_pdf = getPdf("DY_0b_2b","for 0b contribution in 2b category",
-                                                     mchist_0b_2b,mass,sf_0b);
-        // 1b contribution
         TH1D* mchist_1b_2b = dynamic_cast<TH1D*>(input_file->Get("2jets2btagR/mh/OS_Isolated/Central/DY_1b/m_tt_vis"));
-        RooHistPdf DY_1b_2b_pdf = getPdf("DY_1b_2b","for 1b contribution in 2b category",
-                                                     mchist_1b_2b,mass,sf_1b);
-        // 2b contribution
         TH1D* mchist_2b_2b = dynamic_cast<TH1D*>(input_file->Get("2jets2btagR/mh/OS_Isolated/Central/DY_2b/m_tt_vis"));
-        RooHistPdf DY_2b_2b_pdf = getPdf("DY_2b_2b","for 2b contribution in 2b category",
-                                                     mchist_2b_2b,mass,sf_2b);
-        // Other Background contribution
         TH1D* mchist_ob_2b = dynamic_cast<TH1D*>(input_file->Get("2jets2btagR/mh/OS_Isolated/Central/other_bkg/m_tt_vis"));
-        RooHistPdf DY_ob_2b_pdf = getPdf("DY_ob_2b","for other bkg contribuion in 2b category",
-                                                     mchist_ob_2b,mass,sf_ob);
-        // Adding all contributions and create the total pdf
-        RooAddPdf mcpdf_2b("mcpdf_2b","0b+1b+2b+other_bkg for 2 btag category",
-                           RooArgList(DY_0b_2b_pdf,DY_1b_2b_pdf,DY_2b_2b_pdf,DY_ob_2b_pdf));
-        std::cout<<"Monte carlo histograms are created"<<std::endl;
+        createCategory("2b",mchist_0b_2b,mchist_1b_2b,mchist_2b_2b,mchist_ob_2b);
 
         //Define Category
         RooCategory categories("categories","categories") ;
@@ -167,26 +117,30 @@ public:
         RooSimultaneous simPdf("simPdf","simultaneous pdf",categories) ;
 
         // Associate pdfs with the categories
-        simPdf.addPdf(mcpdf_0b,"0b_tag") ;
-        simPdf.addPdf(mcpdf_1b,"1b_tag") ;
-        simPdf.addPdf(mcpdf_2b,"2b_tag") ;
+        CategoryModel cat_0b = Category_Map["0b"];
+        CategoryModel cat_1b = Category_Map["1b"];
+        CategoryModel cat_2b = Category_Map["2b"];
+
+        simPdf.addPdf(*(cat_0b.sum_pdf),"0b_tag") ;
+        simPdf.addPdf(*(cat_1b.sum_pdf),"1b_tag") ;
+        simPdf.addPdf(*(cat_2b.sum_pdf),"2b_tag") ;
 
         // Perform simultaneous fit
-        //simPdf.fitTo(combData,Extended(kTRUE)) ;
+        simPdf.fitTo(combData,Extended(kTRUE)) ;
 
         //Plotting
-        RooPlot* frame0 = mass.frame() ;
+        RooPlot* frame0 = x.frame() ;
         combData.plotOn(frame0,Cut("categories==categories::0b_tag")) ;
         simPdf.plotOn(frame0,Slice(categories,"0b_tag"),ProjWData(categories,combData)) ;
         simPdf.plotOn(frame0,Slice(categories,"0b_tag"),Components("DY_ob_0b_pdf"),ProjWData(categories,combData),LineStyle(kDashed)) ;
 
 
-        RooPlot* frame1 = mass.frame() ;
+        RooPlot* frame1 = x.frame() ;
         combData.plotOn(frame1,Cut("categories==categories::1b_tag")) ;
         simPdf.plotOn(frame1,Slice(categories,"1b_tag"),ProjWData(categories,combData)) ;
         simPdf.plotOn(frame1,Slice(categories,"1b_tag"),Components("DY_ob_1b_pdf"),ProjWData(categories,combData),LineStyle(kDashed)) ;
 
-        RooPlot* frame2 = mass.frame() ;
+        RooPlot* frame2 = x.frame() ;
         combData.plotOn(frame2,Cut("categories==categories::2b_tag")) ;
         simPdf.plotOn(frame2,Slice(categories,"2b_tag"),ProjWData(categories,combData)) ;
         simPdf.plotOn(frame2,Slice(categories,"2b_tag"),Components("DY_ob_2b_pdf"),ProjWData(categories,combData),LineStyle(kDashed)) ;
@@ -198,29 +152,95 @@ public:
         c->cd(3) ; gPad->SetLeftMargin(0.15) ; frame2->GetYaxis()->SetTitleOffset(1.4) ; frame2->Draw() ;
 
         output_file->cd();
-        c->Write();*/
-
-        TCanvas* c = new TCanvas("rf501_simultaneouspdf","rf403_simultaneouspdf",800,400) ;
-        RooPlot* fram0 = mass.frame();
-        DY_0b_0b_pdf.plotOn(fram0);
-        fram0->Draw();
-        output_file->cd();
         c->Write();
+  }
 
-    }
 private:
     Arguments args;
     std::shared_ptr<TFile> input_file, output_file;
 
-    RooHistPdf getPdf(std::string name, std::string title, TH1D* h, RooAbsReal& mass,
-                                RooAbsReal& scale_factor){
-        RooRealVar norm("norm","norm",h->Integral());
-        RooFormulaVar frac("frac","frac","@0*@1",RooArgList(scale_factor,norm));
+    enum scale_factors {_0b, _1b, _2b, _ob};
+    //X axis
+    RooRealVar x;
+
+    //Scale Factors
+    RooRealVar sf_0b{"sf_0b","Scale factor for 0b contibution",1,0.1,10};
+    RooRealVar sf_1b{"sf_1b","Scale factor for 1b contibution",1,0.1,10};
+    RooRealVar sf_2b{"sf_2b","Scale factor for 2b contibution",1,0.1,10};
+    RooRealVar sf_ob{"sf_ob","Scale factor for other bkg contibution",1,0.1,10};
+
+    std::map<std::string,CategoryModel> Category_Map;
+
+    Contribution setPdf(std::string name, std::string title,TH1D* h, scale_factors sf){
+        Contribution temp ;
+        RooRealVar* scale_factor;
+        switch(sf) {
+            case _0b :
+                scale_factor = &sf_0b;
+                break;
+            case  _1b:
+                scale_factor = &sf_1b;
+                break;
+            case _2b:
+                scale_factor = &sf_2b;
+                break;
+            case _ob:
+                scale_factor = &sf_ob;
+                break;
+        }
+        temp.hitogram = h;
+        RooRealVar* norm = new RooRealVar(("norm_"+name).c_str(),("norm for "+title).c_str(),h->Integral());
+        temp.norm = norm;
+        RooFormulaVar* frac = new RooFormulaVar(("frac_"+name).c_str(),("fraction of "+title).c_str(),
+                                                "@0*@1",RooArgList(*scale_factor,*norm));
+        temp.fraction = frac;
         h->Scale(1./h->Integral());
-        RooDataHist dataHist(name.c_str(),("Histogram for "+title).c_str(),mass,Import(*h)) ;
-        RooHistPdf histpdf((name+"_pdf").c_str(),("Pdf for "+title).c_str(),mass,dataHist);
-        //RooExtendPdf expdf((name+"_expdf").c_str(),("Extended pdf "+title).c_str(),histpdf,frac);
-        return histpdf;
+        RooDataHist* dataHist= new RooDataHist(("dataHist_"+name).c_str(),("RooHistogram for "+title).c_str(),
+                                               x,Import(*h)) ;
+        temp.rooHistogram = dataHist;
+        RooHistPdf* histpdf = new RooHistPdf(("DY_"+name+"_pdf").c_str(),("Pdf for "+title).c_str(),
+                                             x,*dataHist);
+        temp.pdf = histpdf;
+        RooExtendPdf* expdf = new RooExtendPdf(("DY_"+name+"_expdf").c_str(),("Extended pdf "+title).c_str(),
+                                               *histpdf,*frac);
+        temp.expdf = expdf;
+
+        return temp;
+
+    }
+
+    void createCategory(std::string cat_name, TH1D* histo_0b, TH1D* histo_1b, TH1D* histo_2b, TH1D* histo_ob){
+        // 0b contribution
+        scale_factors sf = _0b;
+        Contribution DY_0b = setPdf("0b_"+cat_name,"for 0b contribution in "+ cat_name +" category",histo_0b,sf);
+
+        // 1b contribution
+        sf = _1b;
+        Contribution DY_1b = setPdf("1b_"+cat_name,"for 1b contribution in "+ cat_name +" category",histo_1b,sf);
+
+        // 2b contribution
+        sf = _2b;
+        Contribution DY_2b = setPdf("2b_"+cat_name,"for 2b contribution in "+ cat_name + " category",histo_2b,sf);
+
+        // Other Background contribution
+        sf = _ob;
+        Contribution DY_ob = setPdf("ob_"+cat_name,"for other bbkg contribution in " + cat_name + " category",
+                                    histo_ob,sf);
+
+        // Adding all contributions and create the total pdf
+        RooAddPdf* sumpdf = new RooAddPdf(("sumpdf_"+cat_name).c_str(),
+                                          ("0b+1b+2b+other_bkg for " + cat_name + " category").c_str(),
+                                            RooArgList(*(DY_0b.expdf),*(DY_1b.expdf),*(DY_2b.expdf),*(DY_ob.expdf)));
+
+        CategoryModel category;
+        category.cont_0b = DY_0b;
+        category.cont_1b = DY_1b;
+        category.cont_2b = DY_2b;
+        category.cont_ob = DY_ob;
+        category.sum_pdf = sumpdf;
+
+        Category_Map[cat_name] = category;
+
     }
 
 };
