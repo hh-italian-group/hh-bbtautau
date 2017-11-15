@@ -31,25 +31,34 @@ struct Arguments { // list of all program arguments
     REQ_ARG(std::string, output_file); // required argument "output_file"
     OPT_ARG(analysis::Range<double>, fit_range, analysis::Range<double>(0, 500));
     OPT_ARG(std::string, var_name, "mass");
+    OPT_ARG(std::string, histo_name, "m_tt_vis");
 
 };
 
 using namespace RooFit;
 namespace analysis {
 struct Contribution{ // list of Variables to create an extended pdf for a contribution
-    TH1D* hitogram;
-    RooDataHist* rooHistogram;
-    RooHistPdf* pdf;
-    RooExtendPdf* expdf;
-    RooRealVar* norm;
-    RooFormulaVar* fraction;
+    std::shared_ptr<TH1D> histogram;
+    std::shared_ptr<RooDataHist> rooHistogram;
+    std::shared_ptr<RooHistPdf> pdf;
+    std::shared_ptr<RooExtendPdf> expdf;
+    std::shared_ptr<RooRealVar> norm;
+    std::shared_ptr<RooFormulaVar> fraction;
+
+    Contribution() :
+    histogram(nullptr),
+    rooHistogram(nullptr),
+    pdf(nullptr),
+    expdf(nullptr),
+    norm(nullptr),
+    fraction(nullptr)
+    {
+
+    }
 };
 
 struct CategoryModel{
-    Contribution cont_0b;
-    Contribution cont_1b;
-    Contribution cont_2b;
-    Contribution cont_ob;
+    std::map<std::string,Contribution> mc_contributions,
     RooAddPdf* sum_pdf;
 };
 
@@ -57,6 +66,7 @@ class Dy_estimation { // simple analyzer definition
 public:
     Dy_estimation(const Arguments& _args) : args(_args),
     x(args.var_name().c_str(), args.var_name().c_str(), args.fit_range().min(), args.fit_range().max()),
+    _histo_name(args.histo_name()),
     input_file(root_ext::OpenRootFile(args.input_file())),
     output_file(root_ext::CreateRootFile(args.output_file()))
     {
@@ -64,41 +74,52 @@ public:
     }
     void Run()
     {
-        // analyzer code
-        std::cout << boost::format("Processing input file '%1%' into output file '%2%' wiht flag = %3%.\n")
-                     % args.input_file() % args.output_file();
-
         //Data Histograms
         // For 0b category
-        TH1D* dataHisto0b = dynamic_cast<TH1D*>(input_file->Get("2jets0btagR/mh/OS_Isolated/Central/Data_SingleMuon/m_tt_vis"));
+        std::shared_ptr<TH1D> dataHisto0b(input_file->Get(("2jets0btagR/mh/OS_Isolated/Central/Data_SingleMuon/"
+                                                                + _histo_name).c_str()));
         RooDataHist data0b("data0b","data for 0b category",x,Import(*dataHisto0b));
         // For 1b Category
-        TH1D* dataHisto1b = dynamic_cast<TH1D*>(input_file->Get("2jets1btagR/mh/OS_Isolated/Central/Data_SingleMuon/m_tt_vis"));
+        std::shared_ptr<TH1D> dataHisto1b(input_file->Get(("2jets1btagR/mh/OS_Isolated/Central/Data_SingleMuon/"
+                                                                + _histo_name).c_str()));
         RooDataHist data1b("data1b","data for 1b category",x,Import(*dataHisto1b));
         // For 2b Category
-        TH1D* dataHisto2b = dynamic_cast<TH1D*>(input_file->Get("2jets2btagR/mh/OS_Isolated/Central/Data_SingleMuon/m_tt_vis"));
+        std::shared_ptr<TH1D> dataHisto2b(input_file->Get(("2jets2btagR/mh/OS_Isolated/Central/Data_SingleMuon/"
+                                                                + _histo_name).c_str()));
         RooDataHist data2b("data1b","data for 2b category",x,Import(*dataHisto2b));
 
         //Create the Categories
         //For 0b Category
-        TH1D* mchist_0b_0b = dynamic_cast<TH1D*>(input_file->Get("2jets0btagR/mh/OS_Isolated/Central/DY_0b/m_tt_vis"));
-        TH1D* mchist_1b_0b = dynamic_cast<TH1D*>(input_file->Get("2jets0btagR/mh/OS_Isolated/Central/DY_1b/m_tt_vis"));
-        TH1D* mchist_2b_0b = dynamic_cast<TH1D*>(input_file->Get("2jets0btagR/mh/OS_Isolated/Central/DY_2b/m_tt_vis"));
-        TH1D* mchist_ob_0b = dynamic_cast<TH1D*>(input_file->Get("2jets0btagR/mh/OS_Isolated/Central/other_bkg/m_tt_vis"));
+        std::shared_ptr<TH1D> mchist_0b_0b(input_file->Get(("2jets0btagR/mh/OS_Isolated/Central/DY_0b/"
+                                                                 + _histo_name).c_str()));
+        std::shared_ptr<TH1D> mchist_1b_0b(input_file->Get(("2jets0btagR/mh/OS_Isolated/Central/DY_1b/"
+                                                                  + _histo_name).c_str()));
+        std::shared_ptr<TH1D> mchist_2b_0b(input_file->Get(("2jets0btagR/mh/OS_Isolated/Central/DY_2b/"
+                                                                  + _histo_name).c_str()));
+        std::shared_ptr<TH1D> mchist_ob_0b(input_file->Get(("2jets0btagR/mh/OS_Isolated/Central/other_bkg/"
+                                                                 + _histo_name).c_str()));
         createCategory("0b",mchist_0b_0b,mchist_1b_0b,mchist_2b_0b,mchist_ob_0b);
 
         //For 1b Category
-        TH1D* mchist_0b_1b = dynamic_cast<TH1D*>(input_file->Get("2jets1btagR/mh/OS_Isolated/Central/DY_0b/m_tt_vis"));
-        TH1D* mchist_1b_1b = dynamic_cast<TH1D*>(input_file->Get("2jets1btagR/mh/OS_Isolated/Central/DY_1b/m_tt_vis"));
-        TH1D* mchist_2b_1b = dynamic_cast<TH1D*>(input_file->Get("2jets1btagR/mh/OS_Isolated/Central/DY_2b/m_tt_vis"));
-        TH1D* mchist_ob_1b = dynamic_cast<TH1D*>(input_file->Get("2jets1btagR/mh/OS_Isolated/Central/other_bkg/m_tt_vis"));
+        std::shared_ptr<TH1D> mchist_0b_1b(input_file->Get(("2jets1btagR/mh/OS_Isolated/Central/DY_0b/"
+                                                                 + _histo_name).c_str()));
+        std::shared_ptr<TH1D> mchist_1b_1b(input_file->Get(("2jets1btagR/mh/OS_Isolated/Central/DY_1b/"
+                                                                 + _histo_name).c_str()));
+        std::shared_ptr<TH1D> mchist_2b_1b(input_file->Get(("2jets1btagR/mh/OS_Isolated/Central/DY_2b/"
+                                                                  + _histo_name).c_str()));
+        std::shared_ptr<TH1D> mchist_ob_1b(input_file->Get(("2jets1btagR/mh/OS_Isolated/Central/other_bkg/"
+                                                                  +_histo_name).c_str()));
         createCategory("1b",mchist_0b_1b,mchist_1b_1b,mchist_2b_1b,mchist_ob_1b);
 
         //For 2b Category
-        TH1D* mchist_0b_2b = dynamic_cast<TH1D*>(input_file->Get("2jets2btagR/mh/OS_Isolated/Central/DY_0b/m_tt_vis"));
-        TH1D* mchist_1b_2b = dynamic_cast<TH1D*>(input_file->Get("2jets2btagR/mh/OS_Isolated/Central/DY_1b/m_tt_vis"));
-        TH1D* mchist_2b_2b = dynamic_cast<TH1D*>(input_file->Get("2jets2btagR/mh/OS_Isolated/Central/DY_2b/m_tt_vis"));
-        TH1D* mchist_ob_2b = dynamic_cast<TH1D*>(input_file->Get("2jets2btagR/mh/OS_Isolated/Central/other_bkg/m_tt_vis"));
+        std::shared_ptr<TH1D> mchist_0b_2b(input_file->Get(("2jets2btagR/mh/OS_Isolated/Central/DY_0b/"
+                                                                  + _histo_name).c_str()));
+        std::shared_ptr<TH1D> mchist_1b_2b(input_file->Get(("2jets2btagR/mh/OS_Isolated/Central/DY_1b/"
+                                                                  + _histo_name).c_str()));
+        std::shared_ptr<TH1D> mchist_2b_2b(input_file->Get(("2jets2btagR/mh/OS_Isolated/Central/DY_2b/"
+                                                                  + _histo_name).c_str()));
+        std::shared_ptr<TH1D> mchist_ob_2b(input_file->Get(("2jets2btagR/mh/OS_Isolated/Central/other_bkg/"
+                                                                  + _histo_name).c_str()));
         createCategory("2b",mchist_0b_2b,mchist_1b_2b,mchist_2b_2b,mchist_ob_2b);
 
         //Define Category
@@ -159,7 +180,7 @@ public:
 private:
     Arguments args;
     std::shared_ptr<TFile> input_file, output_file;
-
+    std::string _histo_name;
     enum scale_factors {_0b, _1b, _2b, _ob};
     //X axis
     RooRealVar x;
@@ -172,7 +193,7 @@ private:
 
     std::map<std::string,CategoryModel> Category_Map;
 
-    Contribution setPdf(std::string name, std::string title,TH1D* h, scale_factors sf){
+    Contribution setPdf(std::string name, std::string title,std::shared_ptr<TH1D> h, scale_factors sf){
         Contribution temp ;
         RooRealVar* scale_factor;
         switch(sf) {
@@ -189,20 +210,20 @@ private:
                 scale_factor = &sf_ob;
                 break;
         }
-        temp.hitogram = h;
-        RooRealVar* norm = new RooRealVar(("norm_"+name).c_str(),("norm for "+title).c_str(),h->Integral());
+        temp.histogram = h;
+        std::shared_ptr<RooRealVar> norm(("norm_"+name).c_str(),("norm for "+title).c_str(),h->Integral());
         temp.norm = norm;
-        RooFormulaVar* frac = new RooFormulaVar(("frac_"+name).c_str(),("fraction of "+title).c_str(),
+        std::shared_ptr<RooFormulaVar> frac(("frac_"+name).c_str(),("fraction of "+title).c_str(),
                                                 "@0*@1",RooArgList(*scale_factor,*norm));
         temp.fraction = frac;
         h->Scale(1./h->Integral());
-        RooDataHist* dataHist= new RooDataHist(("dataHist_"+name).c_str(),("RooHistogram for "+title).c_str(),
+        std::shared_ptr<RooDataHist> dataHist(("dataHist_"+name).c_str(),("RooHistogram for "+title).c_str(),
                                                x,Import(*h)) ;
         temp.rooHistogram = dataHist;
-        RooHistPdf* histpdf = new RooHistPdf(("DY_"+name+"_pdf").c_str(),("Pdf for "+title).c_str(),
+        std::shared_ptr<RooHistPdf> histpdf(("DY_"+name+"_pdf").c_str(),("Pdf for "+title).c_str(),
                                              x,*dataHist);
         temp.pdf = histpdf;
-        RooExtendPdf* expdf = new RooExtendPdf(("DY_"+name+"_expdf").c_str(),("Extended pdf "+title).c_str(),
+        std::shared_ptr<RooExtendPdf> expdf(("DY_"+name+"_expdf").c_str(),("Extended pdf "+title).c_str(),
                                                *histpdf,*frac);
         temp.expdf = expdf;
 
@@ -210,7 +231,8 @@ private:
 
     }
 
-    void createCategory(std::string cat_name, TH1D* histo_0b, TH1D* histo_1b, TH1D* histo_2b, TH1D* histo_ob){
+    void createCategory(std::string cat_name, std::shared_ptr<TH1D> histo_0b, std::shared_ptr<TH1D> histo_1b,
+                        std::shared_ptr<TH1D> histo_2b, std::shared_ptr<TH1D> histo_ob){
         // 0b contribution
         scale_factors sf = _0b;
         Contribution DY_0b = setPdf("0b_"+cat_name,"for 0b contribution in "+ cat_name +" category",histo_0b,sf);
