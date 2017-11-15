@@ -25,16 +25,17 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "TROOT.h"
 #include "TFile.h"
 #include "TH1D.h"
-using namespace RooFit;
-namespace analysis {
+
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, input_file); // required argument "input_file"
     REQ_ARG(std::string, output_file); // required argument "output_file"
-    OPT_VAR(root_ext::Range<double>, fit_range, root_ext::Range<double>(0, 500));
-    OPT_VAR(std::string, var_name, "mass");
+    OPT_ARG(analysis::Range<double>, fit_range, analysis::Range<double>(0, 500));
+    OPT_ARG(std::string, var_name, "mass");
 
 };
 
+using namespace RooFit;
+namespace analysis {
 struct Contribution{ // list of Variables to create an extended pdf for a contribution
     TH1D* hitogram;
     RooDataHist* rooHistogram;
@@ -54,10 +55,10 @@ struct CategoryModel{
 
 class Dy_estimation { // simple analyzer definition
 public:
-    Dy_estimation(const Arguments& _args) : //args(_args),
-    x(_args.var_name().c_str(), _args.var_name().c_str(), _args.fit_range().min(), _args.fit_range().max()),
-    input_file(root_ext::OpenRootFile(_args.input_file())),
-    output_file(root_ext::CreateRootFile(_args.output_file()))
+    Dy_estimation(const Arguments& _args) : args(_args),
+    x(args.var_name().c_str(), args.var_name().c_str(), args.fit_range().min(), args.fit_range().max()),
+    input_file(root_ext::OpenRootFile(args.input_file())),
+    output_file(root_ext::CreateRootFile(args.output_file()))
     {
         // Analyzer initialization (e.g. open input/output files, parse configs...)
     }
@@ -65,7 +66,7 @@ public:
     {
         // analyzer code
         std::cout << boost::format("Processing input file '%1%' into output file '%2%' wiht flag = %3%.\n")
-                     % args.input_file() % args.output_file() % args.flag();
+                     % args.input_file() % args.output_file();
 
         //Data Histograms
         // For 0b category
@@ -108,7 +109,7 @@ public:
         std::cout<<"Categories are created"<<std::endl;
 
         // Construct combined dataset in (mass,category)
-        RooDataHist combData("combData","combined data",mass,Index(categories),Import("0b_tag",data0b),
+        RooDataHist combData("combData","combined data",x,Index(categories),Import("0b_tag",data0b),
                              Import("1b_tag",data1b),Import("2b_tag",data2b));
         std::cout<<"combdata is created"<<std::endl;
         // Construct a simultaneous pdf in (mass,categories)
