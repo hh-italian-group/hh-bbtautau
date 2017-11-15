@@ -228,6 +228,7 @@ protected:
             for (auto sync_iter : syncTuple_map){
                 if(!dataIds.count(sync_iter.first)) continue;
                 FillSyncTuple(event,*sync_iter.second);
+                std::cout << "Filled sync!" << std::endl;
             }
         }
     }
