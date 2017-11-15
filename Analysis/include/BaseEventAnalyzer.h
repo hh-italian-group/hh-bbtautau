@@ -72,10 +72,10 @@ public:
     {
         InitializeMvaReader();
         if(ana_setup.syncDataIds.size()){
+            outputFile_sync = root_ext::CreateRootFile("output/ana_sync/output_sync_"+ToString(ChannelId()) + ".root");
             for(unsigned n = 0; n < ana_setup.syncDataIds.size(); ++n){
-                const EventAnalyzerDataId dataId = ana_setup.syncDataIds.at(n);
-                outputFile_sync = root_ext::CreateRootFile(dataId.GetName() + "_sync");
-                syncTuple_map[dataId] = std::make_shared<htt_sync::SyncTuple>(ToString(ChannelId()),outputFile_sync.get(),false);
+                const EventAnalyzerDataId dataId = ana_setup.syncDataIds.at(n);                
+                syncTuple_map[dataId] = std::make_shared<htt_sync::SyncTuple>(dataId.GetName("_"),outputFile_sync.get(),false);
             }
 
         }
@@ -278,8 +278,9 @@ protected:
     AnalyzerArguments args;
     bbtautau::AnaTupleWriter anaTupleWriter;
     mva_study::MvaReader mva_reader;
-    std::map<EventAnalyzerDataId, std::shared_ptr<htt_sync::SyncTuple>> syncTuple_map;
     std::shared_ptr<TFile> outputFile_sync;
+    std::map<EventAnalyzerDataId, std::shared_ptr<htt_sync::SyncTuple>> syncTuple_map;
+
 };
 
 } // namespace analysis

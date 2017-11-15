@@ -45,7 +45,7 @@ private:
     {
         if(!id.IsComplete())
             throw exception("EventAnalyzerDataId '%1%' is not complete.") % id;
-        const std::string dir_name = id.GetName();
+        const std::string dir_name = id.GetName("/");
         return std::make_shared<Data>(file, dir_name, channel, id, tuple, histNames, histDescs);
     }
 
