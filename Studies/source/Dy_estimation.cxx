@@ -1,9 +1,10 @@
-/*! This code is to estimate scale factor for DY normalization using the muMu channel in the HH->bbtautau analysis.
-This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
+
 #include <boost/format.hpp>
 #include "AnalysisTools/Run/include/program_main.h"
 #include "AnalysisTools/Core/include/AnalyzerData.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
+#include "Analysis/include/EventAnalyzerDataId.h"
+#include "Analysis/include/AnalysisCategories.h"
 
 //Root and Roofit Headers
 #ifndef __CINT__
@@ -39,29 +40,45 @@ using namespace RooFit;
 namespace analysis {
 struct Contribution{ // list of Variables to create an extended pdf for a contribution
     std::shared_ptr<TH1D> histogram;
-    std::shared_ptr<RooDataHist> rooHistogram;
-    std::shared_ptr<RooHistPdf> pdf;
-    std::shared_ptr<RooExtendPdf> expdf;
-    std::shared_ptr<RooRealVar> norm;
-    std::shared_ptr<RooFormulaVar> fraction;
+    RooDataHist rooHistogram;
+    RooHistPdf pdf;
+    RooExtendPdf expdf;
+    RooRealVar norm;
+    RooFormulaVar fraction;
+    std::string name;
 
-    Contribution() :
-    histogram(nullptr),
-    rooHistogram(nullptr),
-    pdf(nullptr),
-    expdf(nullptr),
-    norm(nullptr),
-    fraction(nullptr)
+    Contribution(std::shared_ptr<TFile> input_file, const EventAnalyzerDataId& dataId, const std::string& hist_name,
+                 const RooRealVar& x, const RooRealVar& scale_factor) :
+    name(boost::str(boost::format("%1%_%2%") % dataId.Get<EventCategory>() % dataId.Get<std::string>())),
+    histogram(root_ext::ReadObject<TH1D>(*input_file, dataId.GetName()+ "/" + hist_name)),
+    norm(("norm_"+name).c_str(),("norm for "+name).c_str(),histogram->Integral()),
+    fraction(("frac_"+name).c_str(),("fraction of "+name).c_str(),"@0*@1",RooArgList(scale_factor,norm)),
+    rooHistogram(("rooHistogram_"+name).c_str(),("RooHistogram for "+name).c_str(),x,Import(*histogram)),
+    pdf(("pdf_"+name).c_str(),("Pdf for "+name).c_str(),x,rooHistogram),
+    expdf(("expdf_"+name).c_str(),("Extended pdf for "+name).c_str(),pdf,fraction)
     {
-
     }
 };
 
 struct CategoryModel{
-    std::map<std::string,Contribution> mc_contributions,
+    std::map<std::string,Contribution> mc_contributions;
+    std::string name;
     RooAddPdf* sum_pdf;
+    CategoryModel(std::shared_ptr<TFile> input_file, const EventAnalyzerDataId& catId,
+                  const std::set<std::string>& contribution_names,const std::string& hist_name, const RooRealVar& x,
+                  const std::map<std::string,std::shared_ptr<RooRealVar>>& scale_factor_map) :
+    name(boost::str(boost::format("%1%") % catId.Get<EventCategory>()))
+    {
+        for(const std::string& contrib_name : contribution_names){
+            EventAnalyzerDataId dataId = catId.Set(contrib_name);
+            Contribution temp(input_file,dataId,hist_name,x,*(scale_factor_map[contrib_name]));
+            mc_contributions[contrib_name] = temp;
+        }
+        sum_pdf = new RooAddPdf(("sumpdf_"+name).c_str(),("Total Pdf for "+name).c_str(),
+               RooArgList(mc_contributions["DY_0b"].expdf,mc_contributions["DY_1b"].expdf,
+                mc_contributions["DY_2b"].expdf,mc_contributions["other_bkg"].expdf));
+    }
 };
-
 class Dy_estimation { // simple analyzer definition
 public:
     Dy_estimation(const Arguments& _args) : args(_args),
@@ -74,9 +91,19 @@ public:
     }
     void Run()
     {
+        std::map<std::string, std::shared_ptr<RooRealVar>> scale_factor_map;
+        scale_factor_map["DY_0b"] = std::make_shared<RooRealVar>(sf_0b);
+        scale_factor_map["DY_1b"] = std::make_shared<RooRealVar>(sf_1b);
+        scale_factor_map["DY_2b"] = std::make_shared<RooRealVar>(sf_2b);
+        scale_factor_map["other_bkg"] = std::make_shared<RooRealVar>(sf_ob);
+
+        for(const EventCategory& cat : eventCategories ){
+            EventAnalyzerDataId catId = metaId.Set(cat);
+        }
+
         //Data Histograms
         // For 0b category
-        std::shared_ptr<TH1D> dataHisto0b(input_file->Get(("2jets0btagR/mh/OS_Isolated/Central/Data_SingleMuon/"
+  /*      std::shared_ptr<TH1D> dataHisto0b(input_file->Get(("2jets0btagR/mh/OS_Isolated/Central/Data_SingleMuon/"
                                                                 + _histo_name).c_str()));
         RooDataHist data0b("data0b","data for 0b category",x,Import(*dataHisto0b));
         // For 1b Category
@@ -175,6 +202,7 @@ public:
 
         output_file->cd();
         c->Write();
+        */
   }
 
 private:
@@ -191,6 +219,16 @@ private:
     RooRealVar sf_2b{"sf_2b","Scale factor for 2b contibution",1,0.1,10};
     RooRealVar sf_ob{"sf_ob","Scale factor for other bkg contibution",1,0.1,10};
 
+    EventSubCategory subCategory = EventSubCategory().SetCutResult(SelectionCut::mh, true);
+    EventAnalyzerDataId metaId{subCategory,EventRegion::SignalRegion(),EventEnergyScale::Central};
+
+    EventCategorySet eventCategories{EventCategory::TwoJets_ZeroBtag(),EventCategory::TwoJets_OneBtag(),
+                EventCategory::TwoJets_TwoBtag()};
+
+    std::set<std::string> contribution_names{"DY_0b","DY_1b","DY_2b","other_bkg"};
+
+
+/*
     std::map<std::string,CategoryModel> Category_Map;
 
     Contribution setPdf(std::string name, std::string title,std::shared_ptr<TH1D> h, scale_factors sf){
@@ -265,7 +303,7 @@ private:
         Category_Map[cat_name] = category;
 
     }
-
+*/
 };
 
 } // namesapce analysis
