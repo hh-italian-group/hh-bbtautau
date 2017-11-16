@@ -39,13 +39,13 @@ struct Arguments { // list of all program arguments
 using namespace RooFit;
 namespace analysis {
 struct Contribution{ // list of Variables to create an extended pdf for a contribution
+    std::string name;
     std::shared_ptr<TH1D> histogram;
+    RooRealVar norm;
+    RooFormulaVar fraction;
     RooDataHist rooHistogram;
     RooHistPdf pdf;
     RooExtendPdf expdf;
-    RooRealVar norm;
-    RooFormulaVar fraction;
-    std::string name;
 
     Contribution(std::shared_ptr<TFile> input_file, const EventAnalyzerDataId& dataId, const std::string& hist_name,
                  const RooRealVar& x, const RooRealVar& scale_factor) :
@@ -61,22 +61,22 @@ struct Contribution{ // list of Variables to create an extended pdf for a contri
 };
 
 struct CategoryModel{
-    std::map<std::string,Contribution> mc_contributions;
+    std::map<std::string,std::shared_ptr<Contribution>> mc_contributions;
     std::string name;
-    RooAddPdf* sum_pdf;
+    std::shared_ptr<RooAddPdf> sum_pdf;
     CategoryModel(std::shared_ptr<TFile> input_file, const EventAnalyzerDataId& catId,
                   const std::set<std::string>& contribution_names,const std::string& hist_name, const RooRealVar& x,
                   const std::map<std::string,std::shared_ptr<RooRealVar>>& scale_factor_map) :
     name(boost::str(boost::format("%1%") % catId.Get<EventCategory>()))
     {
+        RooArgSet pdf_set;
         for(const std::string& contrib_name : contribution_names){
             EventAnalyzerDataId dataId = catId.Set(contrib_name);
-            Contribution temp(input_file,dataId,hist_name,x,*(scale_factor_map[contrib_name]));
-            mc_contributions[contrib_name] = temp;
+             mc_contributions[contrib_name] = std::make_shared<Contribution>(input_file,dataId,hist_name,x,
+                                                                             *(scale_factor_map.at(contrib_name)));
+             pdf_set.add(mc_contributions[contrib_name]->expdf);
         }
-        sum_pdf = new RooAddPdf(("sumpdf_"+name).c_str(),("Total Pdf for "+name).c_str(),
-               RooArgList(mc_contributions["DY_0b"].expdf,mc_contributions["DY_1b"].expdf,
-                mc_contributions["DY_2b"].expdf,mc_contributions["other_bkg"].expdf));
+        sum_pdf = std::make_shared<RooAddPdf>(("sumpdf_"+name).c_str(),("Total Pdf for "+name).c_str(),pdf_set);
     }
 };
 class Dy_estimation { // simple analyzer definition
@@ -97,13 +97,17 @@ public:
         scale_factor_map["DY_2b"] = std::make_shared<RooRealVar>(sf_2b);
         scale_factor_map["other_bkg"] = std::make_shared<RooRealVar>(sf_ob);
 
+        std::map<std::string,std::shared_ptr<CategoryModel>> categories;
         for(const EventCategory& cat : eventCategories ){
             EventAnalyzerDataId catId = metaId.Set(cat);
+            std::string category = boost::str(boost::format("%1%") % catId.Get<EventCategory>());
+            categories[category] = std::make_shared<CategoryModel>(input_file,catId,contribution_names,_histo_name,x,
+                                                                  scale_factor_map);
         }
 
         //Data Histograms
         // For 0b category
-  /*      std::shared_ptr<TH1D> dataHisto0b(input_file->Get(("2jets0btagR/mh/OS_Isolated/Central/Data_SingleMuon/"
+        /*std::shared_ptr<TH1D> dataHisto0b(input_file->Get(("2jets0btagR/mh/OS_Isolated/Central/Data_SingleMuon/"
                                                                 + _histo_name).c_str()));
         RooDataHist data0b("data0b","data for 0b category",x,Import(*dataHisto0b));
         // For 1b Category
@@ -114,50 +118,15 @@ public:
         std::shared_ptr<TH1D> dataHisto2b(input_file->Get(("2jets2btagR/mh/OS_Isolated/Central/Data_SingleMuon/"
                                                                 + _histo_name).c_str()));
         RooDataHist data2b("data1b","data for 2b category",x,Import(*dataHisto2b));
-
-        //Create the Categories
-        //For 0b Category
-        std::shared_ptr<TH1D> mchist_0b_0b(input_file->Get(("2jets0btagR/mh/OS_Isolated/Central/DY_0b/"
-                                                                 + _histo_name).c_str()));
-        std::shared_ptr<TH1D> mchist_1b_0b(input_file->Get(("2jets0btagR/mh/OS_Isolated/Central/DY_1b/"
-                                                                  + _histo_name).c_str()));
-        std::shared_ptr<TH1D> mchist_2b_0b(input_file->Get(("2jets0btagR/mh/OS_Isolated/Central/DY_2b/"
-                                                                  + _histo_name).c_str()));
-        std::shared_ptr<TH1D> mchist_ob_0b(input_file->Get(("2jets0btagR/mh/OS_Isolated/Central/other_bkg/"
-                                                                 + _histo_name).c_str()));
-        createCategory("0b",mchist_0b_0b,mchist_1b_0b,mchist_2b_0b,mchist_ob_0b);
-
-        //For 1b Category
-        std::shared_ptr<TH1D> mchist_0b_1b(input_file->Get(("2jets1btagR/mh/OS_Isolated/Central/DY_0b/"
-                                                                 + _histo_name).c_str()));
-        std::shared_ptr<TH1D> mchist_1b_1b(input_file->Get(("2jets1btagR/mh/OS_Isolated/Central/DY_1b/"
-                                                                 + _histo_name).c_str()));
-        std::shared_ptr<TH1D> mchist_2b_1b(input_file->Get(("2jets1btagR/mh/OS_Isolated/Central/DY_2b/"
-                                                                  + _histo_name).c_str()));
-        std::shared_ptr<TH1D> mchist_ob_1b(input_file->Get(("2jets1btagR/mh/OS_Isolated/Central/other_bkg/"
-                                                                  +_histo_name).c_str()));
-        createCategory("1b",mchist_0b_1b,mchist_1b_1b,mchist_2b_1b,mchist_ob_1b);
-
-        //For 2b Category
-        std::shared_ptr<TH1D> mchist_0b_2b(input_file->Get(("2jets2btagR/mh/OS_Isolated/Central/DY_0b/"
-                                                                  + _histo_name).c_str()));
-        std::shared_ptr<TH1D> mchist_1b_2b(input_file->Get(("2jets2btagR/mh/OS_Isolated/Central/DY_1b/"
-                                                                  + _histo_name).c_str()));
-        std::shared_ptr<TH1D> mchist_2b_2b(input_file->Get(("2jets2btagR/mh/OS_Isolated/Central/DY_2b/"
-                                                                  + _histo_name).c_str()));
-        std::shared_ptr<TH1D> mchist_ob_2b(input_file->Get(("2jets2btagR/mh/OS_Isolated/Central/other_bkg/"
-                                                                  + _histo_name).c_str()));
-        createCategory("2b",mchist_0b_2b,mchist_1b_2b,mchist_2b_2b,mchist_ob_2b);
-
+*/
         //Define Category
-        RooCategory categories("categories","categories") ;
-        categories.defineType("0b_tag") ;
-        categories.defineType("1b_tag") ;
-        categories.defineType("2b_tag") ;
-        std::cout<<"Categories are created"<<std::endl;
+        /*RooCategory rooCategories("rooCategories","rooCategories") ;
+        for(const EventCategory& cat : eventCategories ){
+            categories.defineType(boost::str(boost::format("%1%") % cat)) ;
+        }
 
         // Construct combined dataset in (mass,category)
-        RooDataHist combData("combData","combined data",x,Index(categories),Import("0b_tag",data0b),
+        RooDataHist combData("combData","combined data",x,Index(categories),Import(,data0b),
                              Import("1b_tag",data1b),Import("2b_tag",data2b));
         std::cout<<"combdata is created"<<std::endl;
         // Construct a simultaneous pdf in (mass,categories)
