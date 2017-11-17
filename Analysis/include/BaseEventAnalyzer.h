@@ -19,7 +19,7 @@ namespace analysis {
 struct AnalyzerArguments : CoreAnalyzerArguments {
     REQ_ARG(std::string, input);
     REQ_ARG(std::string, output);
-    REQ_ARG(std::string, output_sync);
+    OPT_ARG(std::string, output_sync,"sync.root");
 };
 
 template<typename _FirstLeg, typename _SecondLeg>
