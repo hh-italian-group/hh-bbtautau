@@ -1,5 +1,4 @@
 
-#include <boost/format.hpp>
 #include "AnalysisTools/Run/include/program_main.h"
 #include "AnalysisTools/Core/include/AnalyzerData.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
@@ -7,9 +6,6 @@
 #include "Analysis/include/AnalysisCategories.h"
 
 //Root and Roofit Headers
-#ifndef __CINT__
-#include "RooGlobalFunc.h"
-#endif
 #include "RooRealVar.h"
 #include "RooDataHist.h"
 #include "RooHistPdf.h"
@@ -23,9 +19,6 @@
 #include "TCanvas.h"
 #include "TAxis.h"
 #include "RooPlot.h"
-#include "TROOT.h"
-#include "TFile.h"
-#include "TH1D.h"
 
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, input_file); // required argument "input_file"
@@ -33,7 +26,7 @@ struct Arguments { // list of all program arguments
     OPT_ARG(analysis::Range<double>, fit_range, analysis::Range<double>(0, 500));
     OPT_ARG(std::string, var_name, "mass");
     OPT_ARG(std::string, histo_name, "m_tt_vis");
-
+    OPT_ARG(analysis::Range<double>, scale_factor_range, analysis::Range<double>(0.1, 2));
 };
 
 using namespace RooFit;
@@ -67,23 +60,22 @@ struct CategoryModel{
     CategoryModel(std::shared_ptr<TFile> input_file, const EventAnalyzerDataId& catId,
                   const std::set<std::string>& contribution_names,const std::string& hist_name, const RooRealVar& x,
                   const std::map<std::string,std::shared_ptr<RooRealVar>>& scale_factor_map) :
-    name(boost::str(boost::format("%1%") % catId.Get<EventCategory>()))
+    name(ToString(catId.Get<EventCategory>()))
     {
-        RooArgSet pdf_set;
+        RooArgList pdf_list;
         for(const std::string& contrib_name : contribution_names){
             EventAnalyzerDataId dataId = catId.Set(contrib_name);
              mc_contributions[contrib_name] = std::make_shared<Contribution>(input_file,dataId,hist_name,x,
                                                                              *(scale_factor_map.at(contrib_name)));
-             pdf_set.add(mc_contributions[contrib_name]->expdf);
+             pdf_list.add(mc_contributions[contrib_name]->expdf);
         }
-        sum_pdf = std::make_shared<RooAddPdf>(("sumpdf_"+name).c_str(),("Total Pdf for "+name).c_str(),pdf_set);
+        sum_pdf = std::make_shared<RooAddPdf>(("sumpdf_"+name).c_str(),("Total Pdf for "+name).c_str(),pdf_list);
     }
 };
 class Dy_estimation { // simple analyzer definition
 public:
     Dy_estimation(const Arguments& _args) : args(_args),
     x(args.var_name().c_str(), args.var_name().c_str(), args.fit_range().min(), args.fit_range().max()),
-    _histo_name(args.histo_name()),
     input_file(root_ext::OpenRootFile(args.input_file())),
     output_file(root_ext::CreateRootFile(args.output_file()))
     {
@@ -92,43 +84,38 @@ public:
     void Run()
     {
         std::map<std::string, std::shared_ptr<RooRealVar>> scale_factor_map;
-        scale_factor_map["DY_0b"] = std::make_shared<RooRealVar>(sf_0b);
-        scale_factor_map["DY_1b"] = std::make_shared<RooRealVar>(sf_1b);
-        scale_factor_map["DY_2b"] = std::make_shared<RooRealVar>(sf_2b);
-        scale_factor_map["other_bkg"] = std::make_shared<RooRealVar>(sf_ob);
-
+        for (const std::string& contrib_name: contribution_names){
+            scale_factor_map[contrib_name] = std::make_shared<RooRealVar>
+                    (("sf_"+contrib_name).c_str(),("Scale Factor for contribution "+contrib_name).c_str(),1,
+                     args.scale_factor_range().min(),args.scale_factor_range().max());
+        }
+        std::string data_folder = "Data_SingleMuon";
+        //std::map<std::string,std::shared_ptr<RooDataHist>> dataCategories;
+        std::map<std::string,TH1*> dataCategories;
         std::map<std::string,std::shared_ptr<CategoryModel>> categories;
         for(const EventCategory& cat : eventCategories ){
             EventAnalyzerDataId catId = metaId.Set(cat);
-            std::string category = boost::str(boost::format("%1%") % catId.Get<EventCategory>());
-            categories[category] = std::make_shared<CategoryModel>(input_file,catId,contribution_names,_histo_name,x,
-                                                                  scale_factor_map);
+            std::string category = ToString(catId.Get<EventCategory>());
+            categories[category] = std::make_shared<CategoryModel>(input_file,catId,contribution_names,args.histo_name()
+                                                                   ,x,scale_factor_map);
+            EventAnalyzerDataId dataId = catId.Set(data_folder);
+            //std::shared_ptr<TH1D> dataHisto = std::make_shared<TH1D>(*(root_ext::ReadObject<TH1D>(*input_file,
+            //                                                            dataId.GetName()+ "/" + args.histo_name())));
+            //dataCategories[category] = std::make_shared<RooDataHist>(("data_"+category).c_str(),
+            //                                    ("RooHistogram for data for "+category).c_str(),x,Import(*dataHisto));
+            dataCategories[category] = root_ext::ReadObject<TH1>(*input_file,dataId.GetName()+ "R/" + args.histo_name());
         }
 
-        //Data Histograms
-        // For 0b category
-        /*std::shared_ptr<TH1D> dataHisto0b(input_file->Get(("2jets0btagR/mh/OS_Isolated/Central/Data_SingleMuon/"
-                                                                + _histo_name).c_str()));
-        RooDataHist data0b("data0b","data for 0b category",x,Import(*dataHisto0b));
-        // For 1b Category
-        std::shared_ptr<TH1D> dataHisto1b(input_file->Get(("2jets1btagR/mh/OS_Isolated/Central/Data_SingleMuon/"
-                                                                + _histo_name).c_str()));
-        RooDataHist data1b("data1b","data for 1b category",x,Import(*dataHisto1b));
-        // For 2b Category
-        std::shared_ptr<TH1D> dataHisto2b(input_file->Get(("2jets2btagR/mh/OS_Isolated/Central/Data_SingleMuon/"
-                                                                + _histo_name).c_str()));
-        RooDataHist data2b("data1b","data for 2b category",x,Import(*dataHisto2b));
-*/
-        //Define Category
-        /*RooCategory rooCategories("rooCategories","rooCategories") ;
+        RooCategory rooCategories("rooCategories","rooCategories") ;
         for(const EventCategory& cat : eventCategories ){
-            categories.defineType(boost::str(boost::format("%1%") % cat)) ;
+            rooCategories.defineType(ToString(cat).c_str()) ;
         }
 
         // Construct combined dataset in (mass,category)
-        RooDataHist combData("combData","combined data",x,Index(categories),Import(,data0b),
-                             Import("1b_tag",data1b),Import("2b_tag",data2b));
-        std::cout<<"combdata is created"<<std::endl;
+        RooDataHist combData("combData","combined data",x,rooCategories,dataCategories);
+        //RooDataHist combData("combData","combined data",x,Index(categories),Import(,data0b),
+        //                     Import("1b_tag",data1b),Import("2b_tag",data2b));
+/*        std::cout<<"combdata is created"<<std::endl;
         // Construct a simultaneous pdf in (mass,categories)
 
         // Construct a simultaneous pdf using category "categories" as index
@@ -145,14 +132,15 @@ public:
 
         // Perform simultaneous fit
         simPdf.fitTo(combData,Extended(kTRUE)) ;
-
+*/
         //Plotting
         RooPlot* frame0 = x.frame() ;
-        combData.plotOn(frame0,Cut("categories==categories::0b_tag")) ;
-        simPdf.plotOn(frame0,Slice(categories,"0b_tag"),ProjWData(categories,combData)) ;
-        simPdf.plotOn(frame0,Slice(categories,"0b_tag"),Components("DY_ob_0b_pdf"),ProjWData(categories,combData),LineStyle(kDashed)) ;
+        combData.plotOn(frame0,Cut(((std::string)("rooCategories==rooCategories::")+
+                                    ToString(EventCategory::TwoJets_ZeroBtag())).c_str())) ;
+        //simPdf.plotOn(frame0,Slice(categories,"0b_tag"),ProjWData(categories,combData)) ;
+        //simPdf.plotOn(frame0,Slice(categories,"0b_tag"),Components("DY_ob_0b_pdf"),ProjWData(categories,combData),LineStyle(kDashed)) ;
 
-
+/*
         RooPlot* frame1 = x.frame() ;
         combData.plotOn(frame1,Cut("categories==categories::1b_tag")) ;
         simPdf.plotOn(frame1,Slice(categories,"1b_tag"),ProjWData(categories,combData)) ;
@@ -162,31 +150,23 @@ public:
         combData.plotOn(frame2,Cut("categories==categories::2b_tag")) ;
         simPdf.plotOn(frame2,Slice(categories,"2b_tag"),ProjWData(categories,combData)) ;
         simPdf.plotOn(frame2,Slice(categories,"2b_tag"),Components("DY_ob_2b_pdf"),ProjWData(categories,combData),LineStyle(kDashed)) ;
-
+*/
         TCanvas* c = new TCanvas("rf501_simultaneouspdf","rf403_simultaneouspdf",800,400) ;
         c->Divide(4) ;
         c->cd(1) ; gPad->SetLeftMargin(0.15) ; frame0->GetYaxis()->SetTitleOffset(1.4) ; frame0->Draw() ;
-        c->cd(2) ; gPad->SetLeftMargin(0.15) ; frame1->GetYaxis()->SetTitleOffset(1.4) ; frame1->Draw() ;
-        c->cd(3) ; gPad->SetLeftMargin(0.15) ; frame2->GetYaxis()->SetTitleOffset(1.4) ; frame2->Draw() ;
+        //c->cd(2) ; gPad->SetLeftMargin(0.15) ; frame1->GetYaxis()->SetTitleOffset(1.4) ; frame1->Draw() ;
+        //c->cd(3) ; gPad->SetLeftMargin(0.15) ; frame2->GetYaxis()->SetTitleOffset(1.4) ; frame2->Draw() ;
 
         output_file->cd();
         c->Write();
-        */
   }
 
 private:
     Arguments args;
     std::shared_ptr<TFile> input_file, output_file;
-    std::string _histo_name;
     enum scale_factors {_0b, _1b, _2b, _ob};
     //X axis
     RooRealVar x;
-
-    //Scale Factors
-    RooRealVar sf_0b{"sf_0b","Scale factor for 0b contibution",1,0.1,10};
-    RooRealVar sf_1b{"sf_1b","Scale factor for 1b contibution",1,0.1,10};
-    RooRealVar sf_2b{"sf_2b","Scale factor for 2b contibution",1,0.1,10};
-    RooRealVar sf_ob{"sf_ob","Scale factor for other bkg contibution",1,0.1,10};
 
     EventSubCategory subCategory = EventSubCategory().SetCutResult(SelectionCut::mh, true);
     EventAnalyzerDataId metaId{subCategory,EventRegion::SignalRegion(),EventEnergyScale::Central};
