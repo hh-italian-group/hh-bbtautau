@@ -84,7 +84,7 @@ public:
         if(!dataIds.size()) return;
         for(const auto& entry : dataIds) {
             if(!known_data_ids.left.count(entry.first)) {
-                const uint32_t hash = tools::hash(entry.first.GetName("/"));
+                const uint32_t hash = tools::hash(entry.first.GetName());
                 if(known_data_ids.right.count(hash))
                     throw exception("Duplicated hash for event id '%1%' and '%2%'.") % entry.first
                         %  known_data_ids.right.at(hash);
