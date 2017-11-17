@@ -103,7 +103,7 @@ public:
             //                                                            dataId.GetName()+ "/" + args.histo_name())));
             //dataCategories[category] = std::make_shared<RooDataHist>(("data_"+category).c_str(),
             //                                    ("RooHistogram for data for "+category).c_str(),x,Import(*dataHisto));
-            dataCategories[category] = root_ext::ReadObject<TH1>(*input_file,dataId.GetName()+ "R/" + args.histo_name());
+            dataCategories[category] = root_ext::ReadObject<TH1>(*input_file,dataId.GetName()+ "/" + args.histo_name());
         }
 
         RooCategory rooCategories("rooCategories","rooCategories") ;
@@ -136,7 +136,7 @@ public:
         //Plotting
         RooPlot* frame0 = x.frame() ;
         combData.plotOn(frame0,Cut(((std::string)("rooCategories==rooCategories::")+
-                                    ToString(EventCategory::TwoJets_ZeroBtag())).c_str())) ;
+                                    ToString(EventCategory::TwoJets_ZeroBtag_Resolved())).c_str())) ;
         //simPdf.plotOn(frame0,Slice(categories,"0b_tag"),ProjWData(categories,combData)) ;
         //simPdf.plotOn(frame0,Slice(categories,"0b_tag"),Components("DY_ob_0b_pdf"),ProjWData(categories,combData),LineStyle(kDashed)) ;
 
@@ -171,8 +171,8 @@ private:
     EventSubCategory subCategory = EventSubCategory().SetCutResult(SelectionCut::mh, true);
     EventAnalyzerDataId metaId{subCategory,EventRegion::SignalRegion(),EventEnergyScale::Central};
 
-    EventCategorySet eventCategories{EventCategory::TwoJets_ZeroBtag(),EventCategory::TwoJets_OneBtag(),
-                EventCategory::TwoJets_TwoBtag()};
+    EventCategorySet eventCategories{EventCategory::TwoJets_ZeroBtag_Resolved(),
+                EventCategory::TwoJets_OneBtag_Resolved(),EventCategory::TwoJets_TwoBtag_Resolved()};
 
     std::set<std::string> contribution_names{"DY_0b","DY_1b","DY_2b","other_bkg"};
 
