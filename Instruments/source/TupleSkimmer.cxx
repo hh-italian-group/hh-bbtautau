@@ -213,6 +213,14 @@ private:
                     for(size_t n = 0; n < desc_iter->inputs.size(); ++n) {
                         auto file = inputFiles.at(n);
                         std::cout << "\t\t" << desc_iter->inputs.at(n) << ":" << treeName << std::endl;
+
+                        if(channel == Channel::TauTau && (n == 0 || !desc_iter->first_input_is_ref)) {
+                            std::cout << "\t\t\t" << "Loading tau decay modes... ";
+                            dm_collection = std::make_shared<DecayModeCollection>(args.inputPath() + "/../Full_dm",
+                                                                                  desc_iter->inputs.at(n), "tauTau");
+                            std::cout << "done." << std::endl;
+                        }
+
                         std::shared_ptr<EventTuple> tuple;
                         try {
                             tuple = ntuple::CreateEventTuple(treeName, file.get(), true, ntuple::TreeState::Full);
@@ -221,12 +229,6 @@ private:
                                       << desc_iter->inputs.at(n) << "'." << std::endl;
                         }
                         if(!tuple) continue;
-                        if(channel == Channel::TauTau && (n == 0 || !desc_iter->first_input_is_ref)) {
-                            std::cout << "\t\t\t" << "Loading tau decay modes... ";
-                            dm_collection = std::make_shared<DecayModeCollection>(args.inputPath() + "/../Full_dm",
-                                                                                  desc_iter->inputs.at(n), "tauTau");
-                            std::cout << "done." << std::endl;
-                        }
                         EventIdentifier prev_event_id = EventIdentifier::Undef_event();
                         unsigned split_id = 0;
                         for(const Event& event : *tuple) {
