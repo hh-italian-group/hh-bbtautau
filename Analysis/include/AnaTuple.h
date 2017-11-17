@@ -68,7 +68,7 @@ public:
     {
         for(const auto& id : known_data_ids.left) {
             aux_tuple().dataIds.push_back(id.second);
-            aux_tuple().dataId_names.push_back(id.first.GetName("/"));
+            aux_tuple().dataId_names.push_back(id.first.GetName());
         }
         aux_tuple.Fill();
         aux_tuple.Write();

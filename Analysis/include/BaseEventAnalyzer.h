@@ -19,6 +19,7 @@ namespace analysis {
 struct AnalyzerArguments : CoreAnalyzerArguments {
     REQ_ARG(std::string, input);
     REQ_ARG(std::string, output);
+    REQ_ARG(std::string, output_sync);
 };
 
 template<typename _FirstLeg, typename _SecondLeg>
@@ -72,7 +73,7 @@ public:
     {
         InitializeMvaReader();
         if(ana_setup.syncDataIds.size()){
-            outputFile_sync = root_ext::CreateRootFile("output/ana_sync/output_sync_"+ToString(ChannelId()) + ".root");
+            outputFile_sync = root_ext::CreateRootFile(args.output_sync());
             for(unsigned n = 0; n < ana_setup.syncDataIds.size(); ++n){
                 const EventAnalyzerDataId dataId = ana_setup.syncDataIds.at(n);                
                 syncTuple_map[dataId] = std::make_shared<htt_sync::SyncTuple>(dataId.GetName("_"),outputFile_sync.get(),false);
@@ -87,9 +88,8 @@ public:
         ProcessSamples(ana_setup.data, "data");
         ProcessSamples(ana_setup.backgrounds, "background");
         std::cout << "Saving output file..." << std::endl;
-        for (auto sync_iter : syncTuple_map){
-            std::shared_ptr<htt_sync::SyncTuple> syncTuple = sync_iter.second;
-            syncTuple->Write();
+        for (auto& sync_iter : syncTuple_map){
+            sync_iter.second->Write();
         }
     }
 
@@ -225,10 +225,9 @@ protected:
                 }
             }
             anaTupleWriter.AddEvent(event, dataIds);
-            for (auto sync_iter : syncTuple_map){
+            for (auto& sync_iter : syncTuple_map){
                 if(!dataIds.count(sync_iter.first)) continue;
-                FillSyncTuple(event,*sync_iter.second);
-                std::cout << "Filled sync!" << std::endl;
+                htt_sync::FillSyncTuple(event,*sync_iter.second);
             }
         }
     }

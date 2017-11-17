@@ -57,7 +57,7 @@ public:
     }
 
     bool operator< (const EventAnalyzerDataId& other) const { return id_tuple < other.id_tuple; }
-    std::string GetName(const std::string separator) const { return GetSubName(std::make_index_sequence<TupleSize>{},separator); }
+    std::string GetName(const std::string& separator = "/") const { return GetSubName(std::make_index_sequence<TupleSize>{},separator); }
     bool IsComplete() const { return ItemsAreInitialized(std::make_index_sequence<TupleSize>{}); }
 
     template<typename ...Collections>
@@ -103,9 +103,8 @@ private:
     }
 
     template<size_t ...n>
-    std::string GetSubName(std::index_sequence<n...>, const std::string separator) const
+    std::string GetSubName(std::index_sequence<n...>, const std::string& separator) const
     {
-        //static const std::string separator = "/";
         const std::vector<std::string> item_names = { ItemToString<n>()... };
         std::string sub_name;
         for(const auto& name : item_names)
@@ -181,7 +180,7 @@ private:
 
 inline std::ostream& operator<<(std::ostream& s, const EventAnalyzerDataId& id)
 {
-    s << id.GetName("/");
+    s << id.GetName();
     return s;
 }
 
