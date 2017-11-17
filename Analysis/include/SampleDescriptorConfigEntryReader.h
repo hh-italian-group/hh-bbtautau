@@ -29,6 +29,7 @@ public:
         CheckReadParamCounts("limit_category", 0, Condition::greater_equal);
         CheckReadParamCounts("mva_setup", 1, Condition::less_equal);
         CheckReadParamCounts("hist_cfg", 1, Condition::less_equal);
+        CheckReadParamCounts("syncDataIds", 1, Condition::less_equal);
 
         ConfigEntryReaderT<AnalyzerSetup>::EndEntry();
     }
@@ -50,6 +51,7 @@ public:
         ParseEntry("limit_category", current.limit_categories);
         ParseEntry("mva_setup", current.mva_setup);
         ParseEntry("hist_cfg", current.hist_cfg);
+        ParseEntry("syncDataIds", current.syncDataIds);
     }
 };
 

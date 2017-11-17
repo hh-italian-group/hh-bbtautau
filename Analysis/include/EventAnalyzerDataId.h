@@ -31,6 +31,11 @@ public:
     static constexpr size_t TupleSize = std::tuple_size<Tuple>::value;
 
     EventAnalyzerDataId() {}
+    EventAnalyzerDataId(const EventAnalyzerDataId& other) = default;
+    EventAnalyzerDataId(EventAnalyzerDataId&& other) = default;
+    EventAnalyzerDataId& operator=(const EventAnalyzerDataId&) = default;
+    EventAnalyzerDataId(EventAnalyzerDataId& other) { *this = other; }
+
     template<typename ...Args>
     EventAnalyzerDataId(Args&&... args) { Initialize(std::forward<Args>(args)...); }
 
@@ -52,7 +57,7 @@ public:
     }
 
     bool operator< (const EventAnalyzerDataId& other) const { return id_tuple < other.id_tuple; }
-    std::string GetName() const { return GetSubName(std::make_index_sequence<TupleSize>{}); }
+    std::string GetName(const std::string& separator = "/") const { return GetSubName(std::make_index_sequence<TupleSize>{},separator); }
     bool IsComplete() const { return ItemsAreInitialized(std::make_index_sequence<TupleSize>{}); }
 
     template<typename ...Collections>
@@ -98,9 +103,8 @@ private:
     }
 
     template<size_t ...n>
-    std::string GetSubName(std::index_sequence<n...>) const
+    std::string GetSubName(std::index_sequence<n...>, const std::string& separator) const
     {
-        static const std::string separator = "/";
         const std::vector<std::string> item_names = { ItemToString<n>()... };
         std::string sub_name;
         for(const auto& name : item_names)
