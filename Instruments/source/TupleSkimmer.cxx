@@ -67,9 +67,9 @@ public:
         for(const ntuple::Event& event : tuple) {
             const EventIdentifier eventId(event);
             const Key key{eventId, event.eventEnergyScale};
-            if(data.count(key))
-                throw exception("Duplicated event %1% with ES = %2% in %3%.") % eventId % event.eventEnergyScale
-                    % fileName;
+//            if(data.count(key))
+//                throw exception("Duplicated event %1% with ES = %2% in %3%.") % eventId % event.eventEnergyScale
+//                    % fileName;
             data[key] = Value{event.decayMode_1, event.decayMode_2};
         }
     }
@@ -173,6 +173,7 @@ private:
 
         try {
             weighting_mode = job.apply_common_weights ? job.weights | setup.common_weights : job.weights;
+            std::shared_ptr<DecayModeCollection> dm_collection;
             for(auto desc_iter = job.files.begin(); desc_iter != job.files.end(); ++desc_iter, ++desc_id) {
                 if(desc_iter == job.files.begin() || !job.ProduceMergedOutput()) {
                     for (Channel channel : setup.channels){
@@ -221,7 +222,7 @@ private:
                         }
                         if(!tuple) continue;
                         std::shared_ptr<DecayModeCollection> dm_collection;
-                        if(channel == Channel::TauTau) {
+                        if(channel == Channel::TauTau && (n == 0 || !desc_iter->first_input_is_ref)) {
                             std::cout << "\t\t\t" << "Loading tau decay modes... ";
                             dm_collection = std::make_shared<DecayModeCollection>(args.inputPath() + "/../Full_dm",
                                                                                   desc_iter->inputs.at(n), "tauTau");
@@ -243,7 +244,7 @@ private:
                                 split_id = event_ptr->split_id;
                             }
                             event_ptr->split_id = split_distr ? (*split_distr)(gen_map.at(channel)) : 0;
-                            if(dm_collection)
+                            if(channel == Channel::TauTau)
                                 dm_collection->UpdateEvent(*event_ptr);
                             processQueue.Push(event_ptr);
                         }
