@@ -8,6 +8,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Cuts/include/Btag_2016.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
 #include "h-tautau/Analysis/include/EventLoader.h"
+#include "h-tautau/Analysis/include/SyncTupleHTT.h"
 #include "MvaReader.h"
 #include "EventAnalyzerData.h"
 #include "AnaTuple.h"
@@ -18,6 +19,7 @@ namespace analysis {
 struct AnalyzerArguments : CoreAnalyzerArguments {
     REQ_ARG(std::string, input);
     REQ_ARG(std::string, output);
+    OPT_ARG(std::string, output_sync,"sync.root");
 };
 
 template<typename _FirstLeg, typename _SecondLeg>
@@ -70,6 +72,14 @@ public:
         EventAnalyzerCore(_args, ChannelId()), args(_args), anaTupleWriter(args.output(), ChannelId())
     {
         InitializeMvaReader();
+        if(ana_setup.syncDataIds.size()){
+            outputFile_sync = root_ext::CreateRootFile(args.output_sync());
+            for(unsigned n = 0; n < ana_setup.syncDataIds.size(); ++n){
+                const EventAnalyzerDataId dataId = ana_setup.syncDataIds.at(n);                
+                syncTuple_map[dataId] = std::make_shared<htt_sync::SyncTuple>(dataId.GetName("_"),outputFile_sync.get(),false);
+            }
+
+        }
     }
 
     void Run()
@@ -78,6 +88,9 @@ public:
         ProcessSamples(ana_setup.data, "data");
         ProcessSamples(ana_setup.backgrounds, "background");
         std::cout << "Saving output file..." << std::endl;
+        for (auto& sync_iter : syncTuple_map){
+            sync_iter.second->Write();
+        }
     }
 
 protected:
@@ -212,6 +225,10 @@ protected:
                 }
             }
             anaTupleWriter.AddEvent(event, dataIds);
+            for (auto& sync_iter : syncTuple_map){
+                if(!dataIds.count(sync_iter.first)) continue;
+                htt_sync::FillSyncTuple(event,*sync_iter.second);
+            }
         }
     }
 
@@ -261,6 +278,9 @@ protected:
     AnalyzerArguments args;
     bbtautau::AnaTupleWriter anaTupleWriter;
     mva_study::MvaReader mva_reader;
+    std::shared_ptr<TFile> outputFile_sync;
+    std::map<EventAnalyzerDataId, std::shared_ptr<htt_sync::SyncTuple>> syncTuple_map;
+
 };
 
 } // namespace analysis

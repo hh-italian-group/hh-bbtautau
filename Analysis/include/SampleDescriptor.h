@@ -15,6 +15,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include <boost/algorithm/string.hpp>
 #include "AnalysisCategories.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
+#include "EventAnalyzerDataId.h"
 
 namespace analysis {
 
@@ -28,6 +29,7 @@ struct AnalyzerSetup {
     std::vector<std::string> draw_sequence;
     std::map<EventCategory, std::string> limit_categories;
     std::string mva_setup, hist_cfg;
+    std::vector<EventAnalyzerDataId> syncDataIds;
 
     bool IsSignal(const std::string& sample_name) const
     {
