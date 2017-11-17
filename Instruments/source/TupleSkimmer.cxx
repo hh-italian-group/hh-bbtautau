@@ -221,7 +221,6 @@ private:
                                       << desc_iter->inputs.at(n) << "'." << std::endl;
                         }
                         if(!tuple) continue;
-                        std::shared_ptr<DecayModeCollection> dm_collection;
                         if(channel == Channel::TauTau && (n == 0 || !desc_iter->first_input_is_ref)) {
                             std::cout << "\t\t\t" << "Loading tau decay modes... ";
                             dm_collection = std::make_shared<DecayModeCollection>(args.inputPath() + "/../Full_dm",
