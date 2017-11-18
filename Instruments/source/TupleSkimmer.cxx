@@ -365,10 +365,15 @@ private:
             }
         }
 
-        weight_xs = desc.GetCrossSectionWeight() / summary.totalShapeWeight;
-        summary.totalShapeWeight = desc.GetCrossSectionWeight();
-        weight_xs_withTopPt = desc.GetCrossSectionWeight() / summary.totalShapeWeight_withTopPt;
-        summary.totalShapeWeight_withTopPt = desc.GetCrossSectionWeight();
+        if(desc.HasCrossSection()) {
+            weight_xs = desc.GetCrossSectionWeight() / summary.totalShapeWeight;
+            summary.totalShapeWeight = desc.GetCrossSectionWeight();
+            weight_xs_withTopPt = desc.GetCrossSectionWeight() / summary.totalShapeWeight_withTopPt;
+            summary.totalShapeWeight_withTopPt = desc.GetCrossSectionWeight();
+        } else {
+            weight_xs = 1;
+            weight_xs_withTopPt = 1;
+        }
         return summary;
     }
 
