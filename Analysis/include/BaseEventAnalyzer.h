@@ -275,13 +275,15 @@ protected:
                 throw exception("Unable to find WP for DY event with lhe_n_b_partons = %1%") % event->lhe_n_b_partons;
 
         } else if(sample.sampleType == SampleType::TT) {
-            dataIds[anaDataId] = std::make_tuple(weight / event->weight_top_pt, event.GetMvaScore());
+            dataIds[anaDataId] = std::make_tuple(weight, event.GetMvaScore());
             if(anaDataId.Get<EventEnergyScale>() == EventEnergyScale::Central) {
 //                const double weight_topPt = event->weight_total * sample.cross_section * ana_setup.int_lumi
 //                        / event.GetSummaryInfo()->totalShapeWeight_withTopPt;
                 // FIXME
-                dataIds[anaDataId.Set(EventEnergyScale::TopPtUp)] = std::make_tuple(weight, event.GetMvaScore());
-                dataIds[anaDataId.Set(EventEnergyScale::TopPtDown)] = std::make_tuple(weight, event.GetMvaScore());
+                dataIds[anaDataId.Set(EventEnergyScale::TopPtUp)] = std::make_tuple(weight * event->weight_top_pt,
+                                                                                    event.GetMvaScore());
+                dataIds[anaDataId.Set(EventEnergyScale::TopPtDown)] = std::make_tuple(weight * event->weight_top_pt,
+                                                                                      event.GetMvaScore());
             }
         } else
             throw exception("Unsupported special event type '%1%'.") % sample.sampleType;

@@ -23,12 +23,74 @@ struct Arguments {
     REQ_ARG(std::string, outputPath);
     REQ_ARG(std::string, jobs);
     REQ_ARG(std::string, setup_name);
-    REQ_ARG(bool, use_LLR_weights);
+    OPT_ARG(bool, use_LLR_weights, false);
     OPT_ARG(unsigned, n_threads, 1);
 };
 
 namespace analysis {
 namespace tuple_skimmer {
+
+class DecayModeCollection {
+public:
+    struct Value { int decayMode_1, decayMode_2; };
+
+    struct Key {
+        EventIdentifier eventId;
+        int eventEnergyScale;
+        bool operator ==(const Key& other) const
+        {
+            return eventId == other.eventId && eventEnergyScale == other.eventEnergyScale;
+        }
+    };
+
+    struct Hash {
+        size_t operator()(const Key& key) const
+        {
+            size_t seed = 0;
+            boost::hash_combine(seed, key.eventId.runId);
+            boost::hash_combine(seed, key.eventId.lumiBlock);
+            boost::hash_combine(seed, key.eventId.eventId);
+            boost::hash_combine(seed, key.eventEnergyScale);
+            return seed;
+        }
+    };
+
+    using Map = std::unordered_map<Key, Value, Hash>;
+
+    DecayModeCollection(const std::string& inputPath, const std::string& fileName, const std::string& tupleName)
+    {
+        static const std::set<std::string> enabled_branches = {
+            "run", "lumi", "evt", "eventEnergyScale", "decayMode_1", "decayMode_2"
+        };
+        auto file = root_ext::OpenRootFile(inputPath + "/" + fileName);
+        ntuple::EventTuple tuple(tupleName, file.get(), true, {}, enabled_branches);
+        for(const ntuple::Event& event : tuple) {
+            const EventIdentifier eventId(event);
+            const Key key{eventId, event.eventEnergyScale};
+//            if(data.count(key))
+//                throw exception("Duplicated event %1% with ES = %2% in %3%.") % eventId % event.eventEnergyScale
+//                    % fileName;
+            data[key] = Value{event.decayMode_1, event.decayMode_2};
+        }
+    }
+
+    void UpdateEvent(ntuple::Event& event) const
+    {
+        const EventIdentifier eventId(event);
+        const Key key{eventId, event.eventEnergyScale};
+        auto iter = data.find(key);
+        if(iter == data.end())
+            throw exception("DM information not found for event %1% with ES = %2%.") % eventId
+                % event.eventEnergyScale;
+        const Value& v = iter->second;
+        event.decayMode_1 = v.decayMode_1;
+        event.decayMode_2 = v.decayMode_2;
+    }
+
+private:
+    Map data;
+};
+
 class TupleSkimmer {
 public:
     using Event = ntuple::Event;
@@ -66,7 +128,8 @@ public:
         setup.UpdateTauIdHashes();
 
         std::cout << "done.\nLoading weights... " << std::flush;
-        eventWeights_HH = std::make_shared<mc_corrections::EventWeights_HH>(setup.period, setup.btag_wp, args.use_LLR_weights());
+        eventWeights_HH = std::make_shared<mc_corrections::EventWeights_HH>(setup.period, setup.btag_wp,
+                                                                            args.use_LLR_weights());
         std::cout << "done." << std::endl;
 
         if(args.jobs() == "all") {
@@ -110,6 +173,7 @@ private:
 
         try {
             weighting_mode = job.apply_common_weights ? job.weights | setup.common_weights : job.weights;
+            std::shared_ptr<DecayModeCollection> dm_collection;
             for(auto desc_iter = job.files.begin(); desc_iter != job.files.end(); ++desc_iter, ++desc_id) {
                 if(desc_iter == job.files.begin() || !job.ProduceMergedOutput()) {
                     for (Channel channel : setup.channels){
@@ -131,7 +195,9 @@ private:
                     inputFiles.push_back(root_ext::OpenRootFile(args.inputPath() + "/" + input));
                 }
                 std::cout << "\n\t\textracting summary" << std::endl;
-                const ProdSummary desc_summary = GetCombinedSummary(*desc_iter, inputFiles);
+                double weight_xs, weight_xs_withTopPt;
+                const ProdSummary desc_summary = GetCombinedSummary(*desc_iter, inputFiles, weight_xs,
+                                                                    weight_xs_withTopPt);
                 if(summary)
                     ntuple::MergeProdSummaries(*summary, desc_summary);
                 else
@@ -147,6 +213,14 @@ private:
                     for(size_t n = 0; n < desc_iter->inputs.size(); ++n) {
                         auto file = inputFiles.at(n);
                         std::cout << "\t\t" << desc_iter->inputs.at(n) << ":" << treeName << std::endl;
+
+                        if(channel == Channel::TauTau && (n == 0 || !desc_iter->first_input_is_ref)) {
+                            std::cout << "\t\t\t" << "Loading tau decay modes... ";
+                            dm_collection = std::make_shared<DecayModeCollection>(args.inputPath() + "/../Full_dm",
+                                                                                  desc_iter->inputs.at(n), "tauTau");
+                            std::cout << "done." << std::endl;
+                        }
+
                         std::shared_ptr<EventTuple> tuple;
                         try {
                             tuple = ntuple::CreateEventTuple(treeName, file.get(), true, ntuple::TreeState::Full);
@@ -159,7 +233,8 @@ private:
                         unsigned split_id = 0;
                         for(const Event& event : *tuple) {
                             auto event_ptr = std::make_shared<Event>(event);
-                            event_ptr->weight_xs = desc_iter->GetCrossSectionWeight();
+                            event_ptr->weight_xs = weight_xs;
+                            event_ptr->weight_xs_withTopPt = weight_xs_withTopPt;
                             event_ptr->file_desc_id = desc_id;
                             event_ptr->split_id = 0;
                             if(split_distr) {
@@ -170,6 +245,8 @@ private:
                                 split_id = event_ptr->split_id;
                             }
                             event_ptr->split_id = split_distr ? (*split_distr)(gen_map.at(channel)) : 0;
+                            if(channel == Channel::TauTau)
+                                dm_collection->UpdateEvent(*event_ptr);
                             processQueue.Push(event_ptr);
                         }
                     }
@@ -245,7 +322,7 @@ private:
         }
     }
 
-    ProdSummary GetSummaryWithWeights(const std::shared_ptr<TFile>& file, double xs_weight) const
+    ProdSummary GetSummaryWithWeights(const std::shared_ptr<TFile>& file) const
     {
         using mc_corrections::WeightType;
         using mc_corrections::WeightingMode;
@@ -265,26 +342,37 @@ private:
         if(mode.size() || mode_withTopPt.size()) {
             ExpressTuple all_events("all_events", file.get(), true);
             for(const auto& event : all_events) {
-                summary.totalShapeWeight += eventWeights_HH->GetTotalWeight(event, mode) * xs_weight;
+                summary.totalShapeWeight += eventWeights_HH->GetTotalWeight(event, mode);
                 if(calc_withTopPt)
                     summary.totalShapeWeight_withTopPt +=
-                            eventWeights_HH->GetTotalWeight(event, mode_withTopPt) * xs_weight;
+                            eventWeights_HH->GetTotalWeight(event, mode_withTopPt);
             }
         }
         return summary;
     }
 
-    ProdSummary GetCombinedSummary(const FileDescriptor& desc, const std::vector<std::shared_ptr<TFile>>& input_files)
+    ProdSummary GetCombinedSummary(const FileDescriptor& desc, const std::vector<std::shared_ptr<TFile>>& input_files,
+                                   double& weight_xs, double& weight_xs_withTopPt)
     {
         if(!input_files.size())
             throw exception("Input files list is empty.");
         auto file_iter = input_files.begin();
-        auto summary = GetSummaryWithWeights(*file_iter++, desc.GetCrossSectionWeight());
+        auto summary = GetSummaryWithWeights(*file_iter++);
         if(!desc.first_input_is_ref) {
             for(; file_iter != input_files.end(); ++file_iter) {
-                auto other_summary = GetSummaryWithWeights(*file_iter, desc.GetCrossSectionWeight());
+                auto other_summary = GetSummaryWithWeights(*file_iter);
                 ntuple::MergeProdSummaries(summary, other_summary);
             }
+        }
+
+        if(desc.HasCrossSection()) {
+            weight_xs = desc.GetCrossSectionWeight() / summary.totalShapeWeight;
+            summary.totalShapeWeight = desc.GetCrossSectionWeight();
+            weight_xs_withTopPt = desc.GetCrossSectionWeight() / summary.totalShapeWeight_withTopPt;
+            summary.totalShapeWeight_withTopPt = desc.GetCrossSectionWeight();
+        } else {
+            weight_xs = 1;
+            weight_xs_withTopPt = 1;
         }
         return summary;
     }
@@ -321,6 +409,7 @@ private:
     {
         using EventPart = ntuple::StorageMode::EventPart;
         using WeightType = mc_corrections::WeightType;
+        using WeightingMode = mc_corrections::WeightingMode;
 
         Event full_event = event;
         storage_mode = ntuple::EventLoader::Load(full_event, prev_event.get());
@@ -368,6 +457,8 @@ private:
             event.weight_lepton_trig = 1;
             event.weight_lepton_id_iso = 1;
         }
+        event.weight_tau_id = weighting_mode.count(WeightType::TauId)
+                ? eventWeights_HH->GetWeight(full_event, WeightType::TauId) : 1;
         if(weighting_mode.count(WeightType::BTag)) {
             auto btag_wp = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(WeightType::BTag);
             event.weight_btag = btag_wp->Get(full_event);
@@ -386,9 +477,18 @@ private:
                 ? eventWeights_HH->GetWeight(full_event, WeightType::Wjets) : 1;
         event.weight_bsm_to_sm = weighting_mode.count(WeightType::BSM_to_SM)
                 ? eventWeights_HH->GetWeight(full_event, WeightType::BSM_to_SM) : 1;
-        event.weight_top_pt = weighting_mode.count(WeightType::TopPt)
-                ? eventWeights_HH->GetWeight(full_event, WeightType::TopPt) : 1;
-        event.weight_total = eventWeights_HH->GetTotalWeight(full_event, weighting_mode) * event.weight_xs;
+
+        if(weighting_mode.count(WeightType::TopPt)) {
+            event.weight_top_pt = eventWeights_HH->GetWeight(full_event, WeightType::TopPt);
+            const auto wmode_withoutTopPt = weighting_mode - WeightingMode{WeightType::TopPt};
+            event.weight_total = eventWeights_HH->GetTotalWeight(full_event, wmode_withoutTopPt) * event.weight_xs;
+            event.weight_total_withTopPt = eventWeights_HH->GetTotalWeight(full_event, weighting_mode)
+                    * event.weight_xs_withTopPt;
+        } else {
+            event.weight_top_pt = 1;
+            event.weight_total = eventWeights_HH->GetTotalWeight(full_event, weighting_mode) * event.weight_xs;
+            event.weight_total_withTopPt = 0;
+        }
 
         if(storage_mode.IsPresent(EventPart::Jets)) {
             event.jets_csv.resize(2);
