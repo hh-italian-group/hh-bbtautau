@@ -39,7 +39,7 @@ public:
                     ana_setup.draw_sequence, sample_descriptors, cmb_sample_descriptors, ana_setup.signals,
                     ana_setup.data, args.channel());
 
-        for(const auto& subCategory : EventSubCategoriesToProcess()) {
+        for(const auto& subCategory : sub_categories_to_process) {
             std::cout << subCategory << std::endl;
             AnaDataCollection anaDataCollection(outputFile, channelId, &tupleReader.GetAnaTuple(), activeVariables,
                                                 histConfig.GetItems());
@@ -61,7 +61,7 @@ public:
                 for(const std::string& hist_name : ana_setup.final_variables) {
                     if(!activeVariables.count(hist_name)) continue;
                     limitsInputProducer.Produce(args.output(), hist_name, ana_setup.limit_categories, subCategory,
-                                                ana_setup.energy_scales, EventRegionsToProcess());
+                                                ana_setup.energy_scales, ana_setup.regions);
                 }
             }
 
@@ -69,7 +69,7 @@ public:
                 std::cout << "\tCreating plots..." << std::endl;
                 PlotsProducer plotsProducer(anaDataCollection, samplesToDraw, false, true);
                 const std::string pdf_prefix = args.output() + "_" + ToString(subCategory);
-                plotsProducer.PrintStackedPlots(pdf_prefix, EventRegion::SignalRegion(), EventCategoriesToProcess(),
+                plotsProducer.PrintStackedPlots(pdf_prefix, EventRegion::SignalRegion(), ana_setup.categories,
                                                 {subCategory}, signal_names);
             }
         }
@@ -103,7 +103,7 @@ private:
         static const EventEnergyScaleSet qcdEnergyScales = { EventEnergyScale::Central };
         const EventSubCategorySet subCategories = { subCategory };
 
-        for(const EventAnalyzerDataId& metaDataId : EventAnalyzerDataId::MetaLoop(EventCategoriesToProcess(),
+        for(const EventAnalyzerDataId& metaDataId : EventAnalyzerDataId::MetaLoop(ana_setup.categories,
                 subCategories, sidebandRegions, qcdEnergyScales)) {
             const auto qcdAnaDataId = metaDataId.Set(qcd_sample.name);
             auto& qcdAnaData = anaDataCollection.Get(qcdAnaDataId);
@@ -125,7 +125,7 @@ private:
             }
         }
 
-        for(const EventAnalyzerDataId& metaDataId : EventAnalyzerDataId::MetaLoop(EventCategoriesToProcess(),
+        for(const EventAnalyzerDataId& metaDataId : EventAnalyzerDataId::MetaLoop(ana_setup.categories,
                 subCategories, qcdEnergyScales)) {
             const auto anaDataId = metaDataId.Set(qcd_sample.name);
             auto& osIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::OS_Isolated()));
@@ -191,8 +191,8 @@ private:
     void AddSampleToCombined(AnaDataCollection& anaDataCollection, const EventSubCategory& subCategory,
                              CombinedSampleDescriptor& sample, SampleDescriptor& sub_sample)
     {
-        for(const EventAnalyzerDataId& metaDataId : EventAnalyzerDataId::MetaLoop(EventCategoriesToProcess(),
-                EventRegionsToProcess(), ana_setup.energy_scales)) {
+        for(const EventAnalyzerDataId& metaDataId : EventAnalyzerDataId::MetaLoop(ana_setup.categories,
+                ana_setup.regions, ana_setup.energy_scales)) {
             const auto anaDataId = metaDataId.Set(sample.name).Set(subCategory);
             auto& anaData = anaDataCollection.Get(anaDataId);
             for(const auto& sub_sample_wp : sub_sample.working_points) {
