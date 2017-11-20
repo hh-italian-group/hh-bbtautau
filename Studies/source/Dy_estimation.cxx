@@ -5,7 +5,6 @@
 #include "Analysis/include/EventAnalyzerDataId.h"
 #include "Analysis/include/AnalysisCategories.h"
 
-//Root and Roofit Headers
 #include "RooRealVar.h"
 #include "RooDataHist.h"
 #include "RooHistPdf.h"
@@ -20,9 +19,9 @@
 #include "TAxis.h"
 #include "RooPlot.h"
 
-struct Arguments { // list of all program arguments
-    REQ_ARG(std::string, input_file); // required argument "input_file"
-    REQ_ARG(std::string, output_file); // required argument "output_file"
+struct Arguments {
+    REQ_ARG(std::string, input_file);
+    REQ_ARG(std::string, output_file);
     OPT_ARG(analysis::Range<double>, fit_range, analysis::Range<double>(0, 500));
     OPT_ARG(std::string, var_name, "mass");
     OPT_ARG(std::string, histo_name, "m_tt_vis");
@@ -31,7 +30,7 @@ struct Arguments { // list of all program arguments
 
 using namespace RooFit;
 namespace analysis {
-struct Contribution{ // list of Variables to create an extended pdf for a contribution
+struct Contribution{
     std::string name;
     std::shared_ptr<TH1D> histogram;
     RooRealVar norm;
@@ -92,6 +91,7 @@ public:
         std::string data_folder = "Data_SingleMuon";
         std::map<std::string,TH1*> dataCategories;
         std::map<std::string,std::shared_ptr<CategoryModel>> categories;
+        RooCategory rooCategories("rooCategories","rooCategories") ;
         for(const EventCategory& cat : eventCategories ){
             EventAnalyzerDataId catId = metaId.Set(cat);
             std::string category = ToString(catId.Get<EventCategory>());
@@ -99,18 +99,14 @@ public:
                                                                    ,x,scale_factor_map);
             EventAnalyzerDataId dataId = catId.Set(data_folder);
             dataCategories[category] = root_ext::ReadObject<TH1>(*input_file,dataId.GetName()+ "/" + args.histo_name());
-        }
 
-        //Define a RooCategory
-        RooCategory rooCategories("rooCategories","rooCategories") ;
-        for(const EventCategory& cat : eventCategories ){
             rooCategories.defineType(ToString(cat).c_str()) ;
         }
 
-        // Construct combined dataset in (x,category)
+        // Construct combined dataset in (x,rooCategories)
         RooDataHist combData("combData","combined data",x,rooCategories,dataCategories);
 
-        // Construct a simultaneous pdf in (mass,categories)
+        // Construct a simultaneous pdf in (x,rooCategories)
         RooSimultaneous simPdf("simPdf","simultaneous pdf",rooCategories) ;
         for(const EventCategory& cat : eventCategories ){
             std::string category = ToString(cat);
@@ -121,10 +117,10 @@ public:
         simPdf.fitTo(combData,Extended(kTRUE)) ;
 
         //Plotting
-        TCanvas* c = new TCanvas("rf501_simultaneouspdf","rf403_simultaneouspdf",800,400) ;
-        c->Divide(4) ;
-        size_t i=0;
+        output_file->cd();
         for(const EventCategory& cat : eventCategories ){
+            TCanvas* c = new TCanvas(("fit_"+ToString(cat)).c_str(),
+                                     ("fit in eventCategory " + ToString(cat)).c_str(),800,400) ;
             RooPlot* frame = x.frame() ;
             combData.plotOn(frame,Cut(((std::string)("rooCategories==rooCategories::")+
                                     ToString(cat)).c_str())) ;
@@ -132,17 +128,14 @@ public:
             simPdf.plotOn(frame,Slice(rooCategories,ToString(cat).c_str()),
                       Components(((std::string)("expdf_")+ToString(cat)+(std::string)("_other_bkg")).c_str() ),
                       ProjWData(rooCategories,combData),LineStyle(kDashed)) ;
-             c->cd(i+1) ; gPad->SetLeftMargin(0.15) ; frame->GetYaxis()->SetTitleOffset(1.4) ; frame->Draw() ;
-             i++;
+             gPad->SetLeftMargin(0.15) ; frame->GetYaxis()->SetTitleOffset(1.4) ; frame->Draw() ;
+             c->Write();
         }
-        output_file->cd();
-        c->Write();
   }
 
 private:
     Arguments args;
     std::shared_ptr<TFile> input_file, output_file;
-    enum scale_factors {_0b, _1b, _2b, _ob};
     //X axis
     RooRealVar x;
 
