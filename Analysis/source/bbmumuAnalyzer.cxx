@@ -22,22 +22,6 @@ protected:
         region.SetLowerIso(DiscriminatorWP::Medium);
         return region;
     }
-
-    virtual const EventRegionSet& EventRegionsToProcess() const override
-    {
-        static const EventRegionSet regions = {
-            EventRegion::OS_Isolated()
-        };
-        return regions;
-    }
-
-    virtual const EventSubCategorySet& EventSubCategoriesToProcess() const override
-    {
-        static const EventSubCategorySet sub_categories = {
-            EventSubCategory().SetCutResult(SelectionCut::mh, true)
-        };
-        return sub_categories;
-    }
 };
 
 } // namespace analysis

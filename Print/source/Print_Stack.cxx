@@ -38,7 +38,7 @@ public:
                     ana_setup.data, channelId);
 
         PlotsProducer plotsProducer(*anaDataCollection, samplesToDraw, false, true, vars);
-        plotsProducer.PrintStackedPlots(args.output(), EventRegion::SignalRegion(), EventCategoriesToProcess(),
+        plotsProducer.PrintStackedPlots(args.output(), EventRegion::SignalRegion(), ana_setup.categories,
                                         sub_categories_to_process, signal_names);
     }
 
