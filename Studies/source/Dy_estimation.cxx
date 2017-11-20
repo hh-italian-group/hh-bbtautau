@@ -90,7 +90,6 @@ public:
                      args.scale_factor_range().min(),args.scale_factor_range().max());
         }
         std::string data_folder = "Data_SingleMuon";
-        //std::map<std::string,std::shared_ptr<RooDataHist>> dataCategories;
         std::map<std::string,TH1*> dataCategories;
         std::map<std::string,std::shared_ptr<CategoryModel>> categories;
         for(const EventCategory& cat : eventCategories ){
@@ -99,64 +98,43 @@ public:
             categories[category] = std::make_shared<CategoryModel>(input_file,catId,contribution_names,args.histo_name()
                                                                    ,x,scale_factor_map);
             EventAnalyzerDataId dataId = catId.Set(data_folder);
-            //std::shared_ptr<TH1D> dataHisto = std::make_shared<TH1D>(*(root_ext::ReadObject<TH1D>(*input_file,
-            //                                                            dataId.GetName()+ "/" + args.histo_name())));
-            //dataCategories[category] = std::make_shared<RooDataHist>(("data_"+category).c_str(),
-            //                                    ("RooHistogram for data for "+category).c_str(),x,Import(*dataHisto));
             dataCategories[category] = root_ext::ReadObject<TH1>(*input_file,dataId.GetName()+ "/" + args.histo_name());
         }
 
+        //Define a RooCategory
         RooCategory rooCategories("rooCategories","rooCategories") ;
         for(const EventCategory& cat : eventCategories ){
             rooCategories.defineType(ToString(cat).c_str()) ;
         }
 
-        // Construct combined dataset in (mass,category)
+        // Construct combined dataset in (x,category)
         RooDataHist combData("combData","combined data",x,rooCategories,dataCategories);
-        //RooDataHist combData("combData","combined data",x,Index(categories),Import(,data0b),
-        //                     Import("1b_tag",data1b),Import("2b_tag",data2b));
-/*        std::cout<<"combdata is created"<<std::endl;
+
         // Construct a simultaneous pdf in (mass,categories)
-
-        // Construct a simultaneous pdf using category "categories" as index
-        RooSimultaneous simPdf("simPdf","simultaneous pdf",categories) ;
-
-        // Associate pdfs with the categories
-        CategoryModel cat_0b = Category_Map["0b"];
-        CategoryModel cat_1b = Category_Map["1b"];
-        CategoryModel cat_2b = Category_Map["2b"];
-
-        simPdf.addPdf(*(cat_0b.sum_pdf),"0b_tag") ;
-        simPdf.addPdf(*(cat_1b.sum_pdf),"1b_tag") ;
-        simPdf.addPdf(*(cat_2b.sum_pdf),"2b_tag") ;
+        RooSimultaneous simPdf("simPdf","simultaneous pdf",rooCategories) ;
+        for(const EventCategory& cat : eventCategories ){
+            std::string category = ToString(cat);
+            simPdf.addPdf(*(categories[category]->sum_pdf),category.c_str());
+        }
 
         // Perform simultaneous fit
         simPdf.fitTo(combData,Extended(kTRUE)) ;
-*/
+
         //Plotting
-        RooPlot* frame0 = x.frame() ;
-        combData.plotOn(frame0,Cut(((std::string)("rooCategories==rooCategories::")+
-                                    ToString(EventCategory::TwoJets_ZeroBtag_Resolved())).c_str())) ;
-        //simPdf.plotOn(frame0,Slice(categories,"0b_tag"),ProjWData(categories,combData)) ;
-        //simPdf.plotOn(frame0,Slice(categories,"0b_tag"),Components("DY_ob_0b_pdf"),ProjWData(categories,combData),LineStyle(kDashed)) ;
-
-/*
-        RooPlot* frame1 = x.frame() ;
-        combData.plotOn(frame1,Cut("categories==categories::1b_tag")) ;
-        simPdf.plotOn(frame1,Slice(categories,"1b_tag"),ProjWData(categories,combData)) ;
-        simPdf.plotOn(frame1,Slice(categories,"1b_tag"),Components("DY_ob_1b_pdf"),ProjWData(categories,combData),LineStyle(kDashed)) ;
-
-        RooPlot* frame2 = x.frame() ;
-        combData.plotOn(frame2,Cut("categories==categories::2b_tag")) ;
-        simPdf.plotOn(frame2,Slice(categories,"2b_tag"),ProjWData(categories,combData)) ;
-        simPdf.plotOn(frame2,Slice(categories,"2b_tag"),Components("DY_ob_2b_pdf"),ProjWData(categories,combData),LineStyle(kDashed)) ;
-*/
         TCanvas* c = new TCanvas("rf501_simultaneouspdf","rf403_simultaneouspdf",800,400) ;
         c->Divide(4) ;
-        c->cd(1) ; gPad->SetLeftMargin(0.15) ; frame0->GetYaxis()->SetTitleOffset(1.4) ; frame0->Draw() ;
-        //c->cd(2) ; gPad->SetLeftMargin(0.15) ; frame1->GetYaxis()->SetTitleOffset(1.4) ; frame1->Draw() ;
-        //c->cd(3) ; gPad->SetLeftMargin(0.15) ; frame2->GetYaxis()->SetTitleOffset(1.4) ; frame2->Draw() ;
-
+        size_t i=0;
+        for(const EventCategory& cat : eventCategories ){
+            RooPlot* frame = x.frame() ;
+            combData.plotOn(frame,Cut(((std::string)("rooCategories==rooCategories::")+
+                                    ToString(cat)).c_str())) ;
+            simPdf.plotOn(frame,Slice(rooCategories,ToString(cat).c_str()),ProjWData(rooCategories,combData)) ;
+            simPdf.plotOn(frame,Slice(rooCategories,ToString(cat).c_str()),
+                      Components(((std::string)("expdf_")+ToString(cat)+(std::string)("_other_bkg")).c_str() ),
+                      ProjWData(rooCategories,combData),LineStyle(kDashed)) ;
+             c->cd(i+1) ; gPad->SetLeftMargin(0.15) ; frame->GetYaxis()->SetTitleOffset(1.4) ; frame->Draw() ;
+             i++;
+        }
         output_file->cd();
         c->Write();
   }
@@ -175,84 +153,6 @@ private:
                 EventCategory::TwoJets_OneBtag_Resolved(),EventCategory::TwoJets_TwoBtag_Resolved()};
 
     std::set<std::string> contribution_names{"DY_0b","DY_1b","DY_2b","other_bkg"};
-
-
-/*
-    std::map<std::string,CategoryModel> Category_Map;
-
-    Contribution setPdf(std::string name, std::string title,std::shared_ptr<TH1D> h, scale_factors sf){
-        Contribution temp ;
-        RooRealVar* scale_factor;
-        switch(sf) {
-            case _0b :
-                scale_factor = &sf_0b;
-                break;
-            case  _1b:
-                scale_factor = &sf_1b;
-                break;
-            case _2b:
-                scale_factor = &sf_2b;
-                break;
-            case _ob:
-                scale_factor = &sf_ob;
-                break;
-        }
-        temp.histogram = h;
-        std::shared_ptr<RooRealVar> norm(("norm_"+name).c_str(),("norm for "+title).c_str(),h->Integral());
-        temp.norm = norm;
-        std::shared_ptr<RooFormulaVar> frac(("frac_"+name).c_str(),("fraction of "+title).c_str(),
-                                                "@0*@1",RooArgList(*scale_factor,*norm));
-        temp.fraction = frac;
-        h->Scale(1./h->Integral());
-        std::shared_ptr<RooDataHist> dataHist(("dataHist_"+name).c_str(),("RooHistogram for "+title).c_str(),
-                                               x,Import(*h)) ;
-        temp.rooHistogram = dataHist;
-        std::shared_ptr<RooHistPdf> histpdf(("DY_"+name+"_pdf").c_str(),("Pdf for "+title).c_str(),
-                                             x,*dataHist);
-        temp.pdf = histpdf;
-        std::shared_ptr<RooExtendPdf> expdf(("DY_"+name+"_expdf").c_str(),("Extended pdf "+title).c_str(),
-                                               *histpdf,*frac);
-        temp.expdf = expdf;
-
-        return temp;
-
-    }
-
-    void createCategory(std::string cat_name, std::shared_ptr<TH1D> histo_0b, std::shared_ptr<TH1D> histo_1b,
-                        std::shared_ptr<TH1D> histo_2b, std::shared_ptr<TH1D> histo_ob){
-        // 0b contribution
-        scale_factors sf = _0b;
-        Contribution DY_0b = setPdf("0b_"+cat_name,"for 0b contribution in "+ cat_name +" category",histo_0b,sf);
-
-        // 1b contribution
-        sf = _1b;
-        Contribution DY_1b = setPdf("1b_"+cat_name,"for 1b contribution in "+ cat_name +" category",histo_1b,sf);
-
-        // 2b contribution
-        sf = _2b;
-        Contribution DY_2b = setPdf("2b_"+cat_name,"for 2b contribution in "+ cat_name + " category",histo_2b,sf);
-
-        // Other Background contribution
-        sf = _ob;
-        Contribution DY_ob = setPdf("ob_"+cat_name,"for other bbkg contribution in " + cat_name + " category",
-                                    histo_ob,sf);
-
-        // Adding all contributions and create the total pdf
-        RooAddPdf* sumpdf = new RooAddPdf(("sumpdf_"+cat_name).c_str(),
-                                          ("0b+1b+2b+other_bkg for " + cat_name + " category").c_str(),
-                                            RooArgList(*(DY_0b.expdf),*(DY_1b.expdf),*(DY_2b.expdf),*(DY_ob.expdf)));
-
-        CategoryModel category;
-        category.cont_0b = DY_0b;
-        category.cont_1b = DY_1b;
-        category.cont_2b = DY_2b;
-        category.cont_ob = DY_ob;
-        category.sum_pdf = sumpdf;
-
-        Category_Map[cat_name] = category;
-
-    }
-*/
 };
 
 } // namesapce analysis
