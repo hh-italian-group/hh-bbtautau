@@ -1,3 +1,6 @@
+/*! Final analysis step to estimate scale-factors for DY normalization using the muMu channel
+ in the HH->bbtautau analysis.
+This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include "AnalysisTools/Run/include/program_main.h"
 #include "AnalysisTools/Core/include/AnalyzerData.h"
@@ -145,7 +148,7 @@ private:
     EventCategorySet eventCategories{EventCategory::TwoJets_ZeroBtag_Resolved(),
                 EventCategory::TwoJets_OneBtag_Resolved(),EventCategory::TwoJets_TwoBtag_Resolved()};
 
-    std::set<std::string> contribution_names{"DY_0b","DY_1b","DY_2b","other_bkg"};
+    std::set<std::string> contribution_names{"DY_0b","DY_1b","DY_2b","other_bkg_muMu"};
 };
 
 } // namesapce analysis

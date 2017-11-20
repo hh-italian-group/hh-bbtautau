@@ -28,6 +28,7 @@ protected:
         region.SetCharge(os);
         region.SetLowerIso(DiscriminatorWP::Medium);
 
+
         double mass_muMu = (muon1.GetMomentum()+muon2.GetMomentum()).M();
         double mass_jj = jets.GetMomentum().M();
         const bool jetMass = (mass_jj > 80 && mass_jj < 160);
@@ -53,6 +54,16 @@ protected:
         };
         return sub_categories;
     }
+
+    virtual const EventCategorySet& EventCategoriesToProcess() const override
+        {
+            static const EventCategorySet categories = {
+                EventCategory::TwoJets_Inclusive(), EventCategory::TwoJets_ZeroBtag(),
+                EventCategory::TwoJets_OneBtag(), /*EventCategory::TwoJets_OneLooseBtag(),*/
+                EventCategory::TwoJets_TwoBtag() /*EventCategory::TwoJets_TwoLooseBtag()*/
+            };
+            return categories;
+        }
 };
 
 } // namespace analysis
