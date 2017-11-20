@@ -71,9 +71,9 @@ struct CategoryModel{
         sum_pdf = std::make_shared<RooAddPdf>(("sumpdf_"+name).c_str(),("Total Pdf for "+name).c_str(),pdf_list);
     }
 };
-class Dy_estimation { // simple analyzer definition
+class DY_estimation { // simple analyzer definition
 public:
-    Dy_estimation(const Arguments& _args) : args(_args),
+    DY_estimation(const Arguments& _args) : args(_args),
     x(args.var_name().c_str(), args.var_name().c_str(), args.fit_range().min(), args.fit_range().max()),
     input_file(root_ext::OpenRootFile(args.input_file())),
     output_file(root_ext::CreateRootFile(args.output_file()))
@@ -149,5 +149,5 @@ private:
 };
 
 } // namesapce analysis
-PROGRAM_MAIN(analysis::Dy_estimation, Arguments) // definition of the main program function
+PROGRAM_MAIN(analysis::DY_estimation, Arguments) // definition of the main program function
 
