@@ -58,7 +58,7 @@ protected:
     virtual const EventCategorySet& EventCategoriesToProcess() const override
         {
             static const EventCategorySet categories = {
-                EventCategory::TwoJets_Inclusive(), EventCategory::TwoJets_ZeroBtag(),
+                EventCategory::TwoJets_ZeroBtag(),
                 EventCategory::TwoJets_OneBtag(), /*EventCategory::TwoJets_OneLooseBtag(),*/
                 EventCategory::TwoJets_TwoBtag() /*EventCategory::TwoJets_TwoLooseBtag()*/
             };

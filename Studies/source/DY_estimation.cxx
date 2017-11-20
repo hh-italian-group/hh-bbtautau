@@ -145,8 +145,8 @@ private:
     EventSubCategory subCategory = EventSubCategory().SetCutResult(SelectionCut::mh, true);
     EventAnalyzerDataId metaId{subCategory,EventRegion::SignalRegion(),EventEnergyScale::Central};
 
-    EventCategorySet eventCategories{EventCategory::TwoJets_ZeroBtag_Resolved(),
-                EventCategory::TwoJets_OneBtag_Resolved(),EventCategory::TwoJets_TwoBtag_Resolved()};
+    EventCategorySet eventCategories{EventCategory::TwoJets_ZeroBtag(),
+                EventCategory::TwoJets_OneBtag(),EventCategory::TwoJets_TwoBtag()};
 
     std::set<std::string> contribution_names{"DY_0b","DY_1b","DY_2b","other_bkg_muMu"};
 };
