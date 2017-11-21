@@ -100,30 +100,6 @@ public:
         return true;
     }
 
-protected:
-    virtual const EventCategorySet& EventCategoriesToProcess() const
-    {
-        static const EventCategorySet categories = {
-            EventCategory::TwoJets_Inclusive(), EventCategory::TwoJets_ZeroBtag_Resolved(),
-            EventCategory::TwoJets_OneBtag_Resolved(), /*EventCategory::TwoJets_OneLooseBtag(),*/
-            EventCategory::TwoJets_TwoBtag_Resolved(), /*EventCategory::TwoJets_TwoLooseBtag()*/
-            EventCategory::TwoJets_TwoLooseBtag_Boosted()
-        };
-        return categories;
-    }
-
-    virtual const EventSubCategorySet& EventSubCategoriesToProcess() const { return sub_categories_to_process; }
-
-    virtual const EventRegionSet& EventRegionsToProcess() const
-    {
-        static const EventRegionSet regions = {
-            EventRegion::OS_Isolated(), EventRegion::OS_AntiIsolated(),
-            EventRegion::SS_Isolated(), EventRegion::SS_AntiIsolated(),
-            EventRegion::SS_LooseIsolated()
-        };
-        return regions;
-    }
-
 private:
     void CreateEventSubCategoriesToProcess()
     {

@@ -39,23 +39,7 @@ protected:
         return region;
     }
 
-    virtual const EventRegionSet& EventRegionsToProcess() const override
-    {
-        static const EventRegionSet regions = {
-            EventRegion::OS_Isolated()
-        };
-        return regions;
-    }
-
-    virtual const EventSubCategorySet& EventSubCategoriesToProcess() const override
-    {
-        static const EventSubCategorySet sub_categories = {
-            EventSubCategory().SetCutResult(SelectionCut::mh, true)
-        };
-        return sub_categories;
-    }
-
-    virtual const EventCategorySet& EventCategoriesToProcess() const override
+    virtual const EventCategorySet& EventCategoriesToProcess() const
         {
             static const EventCategorySet categories = {
                 EventCategory::TwoJets_ZeroBtag(),

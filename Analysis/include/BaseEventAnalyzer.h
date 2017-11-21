@@ -189,14 +189,14 @@ protected:
             bbtautau::AnaTupleWriter::DataIdMap dataIds;
             const auto eventCategories = DetermineEventCategories(event);
             for(auto eventCategory : eventCategories) {
-                if (!EventCategoriesToProcess().count(eventCategory)) continue;
+                if (!ana_setup.categories.count(eventCategory)) continue;
                 const EventRegion eventRegion = DetermineEventRegion(event, eventCategory);
-                for(const auto& region : EventRegionsToProcess()){
+                for(const auto& region : ana_setup.regions){
                     if(!eventRegion.Implies(region)) continue;
 
                     std::map<SelectionCut, double> mva_scores;
                     const auto eventSubCategory = DetermineEventSubCategory(event, eventCategory, mva_scores);
-                    for(const auto& subCategory : EventSubCategoriesToProcess()) {
+                    for(const auto& subCategory : sub_categories_to_process) {
                         if(!eventSubCategory.Implies(subCategory)) continue;
                         SelectionCut mva_cut;
                         double mva_score = 0, mva_weight_scale = 1.;
