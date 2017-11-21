@@ -248,7 +248,7 @@ protected:
             static const size_t b_index = find_b_index();
 
             bool wp_found = false;
-            static constexpr double pt_cut =18, b_Flavour = 5;
+            //static constexpr double pt_cut =18, b_Flavour = 5;
 
             for(const auto& sample_wp : sample.working_points) {
                 const size_t n_b_partons = static_cast<size_t>(sample_wp.param_values.at(b_index));
