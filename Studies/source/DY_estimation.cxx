@@ -148,7 +148,7 @@ private:
     EventCategorySet eventCategories{EventCategory::TwoJets_ZeroBtag(),
                 EventCategory::TwoJets_OneBtag(),EventCategory::TwoJets_TwoBtag()};
 
-    std::set<std::string> contribution_names{"DY_0b","DY_1b","DY_2b","other_bkg_muMu"};
+    std::set<std::string> contribution_names{"DY_MC_0b","DY_MC_1b","DY_MC_2b","other_bkg_muMu"};
 };
 
 } // namesapce analysis
