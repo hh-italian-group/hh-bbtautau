@@ -81,6 +81,7 @@ public:
         outputFileName << outputFileNamePrefix << blindCondition << ratioCondition << "_" << eventRegion << ".pdf";
         root_ext::PdfPrinter printer(outputFileName.str());
 
+        std::vector<StackedPlotDescriptor> descriptors;
         for(const EventCategory& eventCategory : eventCategories) {
             for (const auto& hist_name : histogramNames) {
                 for(const EventSubCategory& subCategory : eventSubCategories) {
@@ -113,10 +114,13 @@ public:
                         }
                     }
 
-                    printer.PrintStack(stackDescriptor);
+                    descriptors.push_back(stackDescriptor);
                 }
             }
         }
+
+        for(auto iter = descriptors.begin(); iter != descriptors.end(); ++iter)
+            printer.PrintStack(*iter, std::next(iter) == descriptors.end());
     }
 
 private:
