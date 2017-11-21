@@ -262,9 +262,9 @@ protected:
                         n_genJets++;
                     }
                 }
-                if(event->lhe_n_b_partons == n_b_partons ||
+                if(event->jets_nTotal_hadronFlavour_b == n_b_partons ||
                         (n_b_partons == sample.GetNWorkingPoints() - 1
-                         && event->lhe_n_b_partons > n_b_partons)) {
+                         && event->jets_nTotal_hadronFlavour_b > n_b_partons)) {
                     const auto finalId = anaDataId.Set(sample_wp.full_name);
                     dataIds[finalId] = std::make_tuple(weight * sample_wp.norm_sf, event.GetMvaScore());
                     wp_found = true;
