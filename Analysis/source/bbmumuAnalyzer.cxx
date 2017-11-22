@@ -44,15 +44,8 @@ protected:
     virtual EventSubCategory DetermineEventSubCategory(EventInfo& event, const EventCategory& category,
                                                        std::map<SelectionCut, double>& mva_scores) override
     {
-        using namespace cuts::hh_bbtautau_2016::hh_tag;
-        using MvaKey = std::tuple<std::string, int, int>;
-
-        const MuonCandidate& muon1 = event.GetFirstLeg();
-        const MuonCandidate& muon2 = event.GetSecondLeg();
-        const HiggsBBCandidate& jets  = event.GetHiggsBB();
-
-        double mass_muMu = (muon1.GetMomentum()+muon2.GetMomentum()).M();
-        double mass_jj = jets.GetMomentum().M();
+        double mass_muMu = (event.GetHiggsTTMomentum(false)).M();
+        double mass_jj = event.GetHiggsBB().GetMomentum().M();
         const bool jetMass = (mass_jj > 80 && mass_jj < 160);
         const bool muonMass= (mass_muMu > 60);
 
