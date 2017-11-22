@@ -252,8 +252,8 @@ protected:
 
             for(const auto& sample_wp : sample.working_points) {
                 const size_t n_b_partons = static_cast<size_t>(sample_wp.param_values.at(b_index));
-                size_t n_genJets = 0;
-                /*for(const auto& b_Candidates : event.GetHiggsBB().GetDaughterMomentums()) {
+                /*size_t n_genJets = 0;
+                for(const auto& b_Candidates : event.GetHiggsBB().GetDaughterMomentums()) {
                     for(size_t i=0; i<event->genJets_p4.size(); i++){
                         const auto& jet_p4 = event->genJets_p4.at(i);
                         const auto& jet_hadronFlavour = event->genJets_hadronFlavour.at(i);

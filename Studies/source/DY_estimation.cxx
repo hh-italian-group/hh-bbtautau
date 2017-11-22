@@ -74,14 +74,13 @@ struct CategoryModel{
         sum_pdf = std::make_shared<RooAddPdf>(("sumpdf_"+name).c_str(),("Total Pdf for "+name).c_str(),pdf_list);
     }
 };
-class DY_estimation { // simple analyzer definition
+class DY_estimation {
 public:
     DY_estimation(const Arguments& _args) : args(_args),
     x(args.var_name().c_str(), args.var_name().c_str(), args.fit_range().min(), args.fit_range().max()),
     input_file(root_ext::OpenRootFile(args.input_file())),
     output_file(root_ext::CreateRootFile(args.output_file()))
     {
-        // Analyzer initialization (e.g. open input/output files, parse configs...)
     }
     void Run()
     {
@@ -94,7 +93,10 @@ public:
         std::string data_folder = "Data_SingleMuon";
         std::map<std::string,TH1*> dataCategories;
         std::map<std::string,std::shared_ptr<CategoryModel>> categories;
+
         RooCategory rooCategories("rooCategories","rooCategories") ;
+        RooSimultaneous simPdf("simPdf","simultaneous pdf",rooCategories) ;
+
         for(const EventCategory& cat : eventCategories ){
             EventAnalyzerDataId catId = metaId.Set(cat);
             std::string category = ToString(catId.Get<EventCategory>());
@@ -103,18 +105,12 @@ public:
             EventAnalyzerDataId dataId = catId.Set(data_folder);
             dataCategories[category] = root_ext::ReadObject<TH1>(*input_file,dataId.GetName()+ "/" + args.histo_name());
 
-            rooCategories.defineType(ToString(cat).c_str()) ;
+            rooCategories.defineType(category.c_str()) ;
+            simPdf.addPdf(*(categories[category]->sum_pdf),category.c_str());
         }
 
         // Construct combined dataset in (x,rooCategories)
         RooDataHist combData("combData","combined data",x,rooCategories,dataCategories);
-
-        // Construct a simultaneous pdf in (x,rooCategories)
-        RooSimultaneous simPdf("simPdf","simultaneous pdf",rooCategories) ;
-        for(const EventCategory& cat : eventCategories ){
-            std::string category = ToString(cat);
-            simPdf.addPdf(*(categories[category]->sum_pdf),category.c_str());
-        }
 
         // Perform simultaneous fit
         simPdf.fitTo(combData,Extended(kTRUE)) ;
@@ -129,7 +125,7 @@ public:
                                     ToString(cat)).c_str())) ;
             simPdf.plotOn(frame,Slice(rooCategories,ToString(cat).c_str()),ProjWData(rooCategories,combData)) ;
             simPdf.plotOn(frame,Slice(rooCategories,ToString(cat).c_str()),
-                      Components(((std::string)("expdf_")+ToString(cat)+(std::string)("_other_bkg")).c_str() ),
+                      Components(((std::string)("expdf_")+ToString(cat)+(std::string)("_other_bkg_muMu")).c_str() ),
                       ProjWData(rooCategories,combData),LineStyle(kDashed)) ;
              gPad->SetLeftMargin(0.15) ; frame->GetYaxis()->SetTitleOffset(1.4) ; frame->Draw() ;
              c->Write();
