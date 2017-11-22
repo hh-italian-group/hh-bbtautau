@@ -138,7 +138,8 @@ private:
     //X axis
     RooRealVar x;
 
-    EventSubCategory subCategory = EventSubCategory().SetCutResult(SelectionCut::mh, true);
+    EventSubCategory subCategory = EventSubCategory().SetCutResult(SelectionCut::mh, true)
+                                    .SetCutResult(SelectionCut::lowMET,true);
     EventAnalyzerDataId metaId{subCategory,EventRegion::SignalRegion(),EventEnergyScale::Central};
 
     EventCategorySet eventCategories{EventCategory::TwoJets_ZeroBtag(),
