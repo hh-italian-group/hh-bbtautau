@@ -9,16 +9,7 @@ class bbmumuAnalyzer : public BaseEventAnalyzer<MuonCandidate, MuonCandidate> {
 public:
 
     using Base = BaseEventAnalyzer<MuonCandidate, MuonCandidate>;
-    bbmumuAnalyzer(const AnalyzerArguments& _args) : Base(_args)
-    {
-        auto& sc = sub_categories_to_process;
-        sc.clear();
-        sc.insert(EventSubCategory::NoCuts());
-        sc.insert(EventSubCategory().SetCutResult(SelectionCut::mh,true));
-        sc.insert(EventSubCategory().SetCutResult(SelectionCut::lowMET,true));
-        sc.insert(EventSubCategory().SetCutResult(SelectionCut::mh,true).SetCutResult(SelectionCut::lowMET,true));
-    }
-
+    using Base::BaseEventAnalyzer;
     using HiggsBBCandidate = EventInfoBase::HiggsBBCandidate;
 protected:
     virtual EventRegion DetermineEventRegion(EventInfo& event, EventCategory /*eventCategory*/) override
