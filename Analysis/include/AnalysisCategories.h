@@ -422,6 +422,8 @@ struct EventSubCategory {
 
     std::string ToString() const
     {
+        if(*this == NoCuts())
+            return "NoCuts";
         std::ostringstream s;
         for(size_t n = 0; n < MaxNumberOfCuts; ++n) {
             const BitsContainer mask = BitsContainer(1) << n;
@@ -437,6 +439,8 @@ struct EventSubCategory {
 
     static EventSubCategory Parse(const std::string& str)
     {
+        if(str == "NoCuts")
+            return NoCuts();
         EventSubCategory sub;
         const std::vector<std::string> cut_strings = SplitValueList(str, false, "_");
         try {
