@@ -26,6 +26,7 @@ struct AnalyzerSetup {
     bool apply_mass_cut{false}, apply_os_cut{true}, apply_iso_cut{true};
     EventEnergyScaleSet energy_scales;
     EventCategorySet categories;
+    EventSubCategorySet sub_categories;
     EventRegionSet regions;
     std::vector<std::string> data, signals, backgrounds, cmb_samples;
     std::vector<std::string> draw_sequence;

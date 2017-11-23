@@ -176,6 +176,11 @@ protected:
     void ProcessDataSource(const SampleDescriptor& sample, const SampleDescriptor::Point& sample_wp,
                            std::shared_ptr<ntuple::EventTuple> tuple, const ntuple::ProdSummary& prod_summary)
     {
+        using FullEventId = std::tuple<EventIdentifier, EventEnergyScale>;
+        using FullEventIdSet = std::set<FullEventId>;
+
+        FullEventIdSet processed_events;
+
         const SummaryInfo summary(prod_summary);
         Event prevFullEvent, *prevFullEventPtr = nullptr;
         for(auto tupleEvent : *tuple) {
@@ -185,6 +190,15 @@ protected:
             }
             EventInfo event(tupleEvent, ntuple::JetPair{0, 1}, &summary);
             if(!ana_setup.energy_scales.count(event.GetEnergyScale())) continue;
+            const FullEventId fullId{EventIdentifier(event->run, event->lumi, event->evt, event->file_desc_id),
+                                     event.GetEnergyScale()};
+            if(processed_events.count(fullId)) {
+                std::cout << "\t\tWARNING: duplicated event " << std::get<EventIdentifier>(fullId) << " "
+                          << std::get<EventEnergyScale>(fullId) << std::endl;
+                continue;
+            }
+            processed_events.insert(fullId);
+
 
             bbtautau::AnaTupleWriter::DataIdMap dataIds;
             const auto eventCategories = DetermineEventCategories(event);

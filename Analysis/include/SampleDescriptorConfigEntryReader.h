@@ -22,6 +22,7 @@ public:
         CheckReadParamCounts("apply_iso_cut", 1, Condition::less_equal);
         CheckReadParamCounts("energy_scales", 1, Condition::less_equal);
         CheckReadParamCounts("categories", 1, Condition::less_equal);
+        CheckReadParamCounts("sub_categories", 1, Condition::less_equal);
         CheckReadParamCounts("regions", 1, Condition::less_equal);
         CheckReadParamCounts("data", 1, Condition::less_equal);
         CheckReadParamCounts("signals", 1, Condition::less_equal);
@@ -46,6 +47,7 @@ public:
         ParseEntry("apply_iso_cut", current.apply_iso_cut);
         ParseEnumList("energy_scales", current.energy_scales);
         ParseEnumList("categories", current.categories);
+        ParseEnumList("sub_categories", current.sub_categories);
         ParseEnumList("regions", current.regions);
         ParseEntryList("data", current.data);
         ParseEntryList("signals", current.signals);
@@ -55,7 +57,7 @@ public:
         ParseEntry("limit_category", current.limit_categories);
         ParseEntry("mva_setup", current.mva_setup);
         ParseEntry("hist_cfg", current.hist_cfg);
-        ParseEntry("syncDataIds", current.syncDataIds);
+        ParseEntryList("syncDataIds", current.syncDataIds);
     }
 };
 
