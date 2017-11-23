@@ -3,6 +3,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #pragma once
 
+#include "AnalysisTools/Core/include/AnalysisMath.h"
 #include "EventAnalyzerDataCollection.h"
 #include "SampleDescriptorConfigEntryReader.h"
 #include "h-tautau/Cuts/include/Btag_2016.h"
@@ -175,6 +176,11 @@ protected:
     void ProcessDataSource(const SampleDescriptor& sample, const SampleDescriptor::Point& sample_wp,
                            std::shared_ptr<ntuple::EventTuple> tuple, const ntuple::ProdSummary& prod_summary)
     {
+        using FullEventId = std::tuple<EventIdentifier, EventEnergyScale>;
+        using FullEventIdSet = std::set<FullEventId>;
+
+        FullEventIdSet processed_events;
+
         const SummaryInfo summary(prod_summary);
         Event prevFullEvent, *prevFullEventPtr = nullptr;
         for(auto tupleEvent : *tuple) {
@@ -184,6 +190,15 @@ protected:
             }
             EventInfo event(tupleEvent, ntuple::JetPair{0, 1}, &summary);
             if(!ana_setup.energy_scales.count(event.GetEnergyScale())) continue;
+            const FullEventId fullId{EventIdentifier(event->run, event->lumi, event->evt, event->file_desc_id),
+                                     event.GetEnergyScale()};
+            if(processed_events.count(fullId)) {
+                std::cout << "\t\tWARNING: duplicated event " << std::get<EventIdentifier>(fullId) << " "
+                          << std::get<EventEnergyScale>(fullId) << std::endl;
+                continue;
+            }
+            processed_events.insert(fullId);
+
 
             bbtautau::AnaTupleWriter::DataIdMap dataIds;
             const auto eventCategories = DetermineEventCategories(event);
@@ -247,8 +262,20 @@ protected:
             static const size_t b_index = find_b_index();
 
             bool wp_found = false;
+            //static constexpr double pt_cut =18, b_Flavour = 5;
+
             for(const auto& sample_wp : sample.working_points) {
                 const size_t n_b_partons = static_cast<size_t>(sample_wp.param_values.at(b_index));
+                /*size_t n_genJets = 0;
+                for(const auto& b_Candidates : event.GetHiggsBB().GetDaughterMomentums()) {
+                    for(size_t i=0; i<event->genJets_p4.size(); i++){
+                        const auto& jet_p4 = event->genJets_p4.at(i);
+                        const auto& jet_hadronFlavour = event->genJets_hadronFlavour.at(i);
+                        double deltaR = ROOT::Math::VectorUtil::DeltaR(b_Candidates, jet_p4);
+                        if (jet_p4.Pt() <= pt_cut || jet_hadronFlavour != b_Flavour || deltaR >= 0.3) continue;
+                        n_genJets++;
+                    }
+                }*/
                 if(event->jets_nTotal_hadronFlavour_b == n_b_partons ||
                         (n_b_partons == sample.GetNWorkingPoints() - 1
                          && event->jets_nTotal_hadronFlavour_b > n_b_partons)) {
