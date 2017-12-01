@@ -150,7 +150,7 @@ public:
             scale_factors_hist->SetBinError(i,scale_factor_map[contrib_name]->getError());
             i++;
         }
-        cov_hist->Write();\
+        cov_hist->Write();
         cor_hist->Write();
         scale_factors_hist->Write();
 
