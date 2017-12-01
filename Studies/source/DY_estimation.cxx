@@ -123,10 +123,10 @@ public:
         const TMatrixDSym& covariance_matrix = result->covarianceMatrix();
         int nRows = covariance_matrix.GetNrows();
         int nColumns = covariance_matrix.GetNcols();
-        auto cov_hist = std::make_shared<TH2D>("covariane_matrix","covariance matrix",
-                                                                        nRows,0.5,4.5,nColumns,0.5,4.5);
+        auto cov_hist = std::make_shared<TH2D>("covariance_matrix","covariance matrix",
+                                                                        nRows,0.5,0.5+nRows,nColumns,0.5,0.5+nRows);
         auto cor_hist = std::make_shared<TH2D>("correlation_matrix","correlation matrix",
-                                                                        nRows,0.5,4.5,nColumns,0.5,4.5);
+                                                                        nRows,0.5,0.5+nRows,nColumns,0.5,0.5+nRows);
         for(int i = 0; i<nRows;i++){
             for(int j = 0; j<nColumns;j++){
                 double cov = covariance_matrix[i][j];
@@ -140,12 +140,12 @@ public:
                                                                      4,-0.5,3.5);
         int i=1;
         for (const std::string& contrib_name: contribution_names){
-            cov_hist->GetXaxis()->SetBinLabel(i,("sf_"+contrib_name).c_str());
-            cov_hist->GetYaxis()->SetBinLabel(i,("sf_"+contrib_name).c_str());
-            cor_hist->GetXaxis()->SetBinLabel(i,("sf_"+contrib_name).c_str());
-            cor_hist->GetYaxis()->SetBinLabel(i,("sf_"+contrib_name).c_str());
+            cov_hist->GetXaxis()->SetBinLabel(i,contrib_name.c_str());
+            cov_hist->GetYaxis()->SetBinLabel(i,contrib_name.c_str());
+            cor_hist->GetXaxis()->SetBinLabel(i,contrib_name.c_str());
+            cor_hist->GetYaxis()->SetBinLabel(i,contrib_name.c_str());
 
-            scale_factors_hist->GetXaxis()->SetBinLabel(i,("sf_"+contrib_name).c_str());
+            scale_factors_hist->GetXaxis()->SetBinLabel(i,contrib_name.c_str());
             scale_factors_hist->SetBinContent(i,scale_factor_map[contrib_name]->getValV());
             scale_factors_hist->SetBinError(i,scale_factor_map[contrib_name]->getError());
             i++;
