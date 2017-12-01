@@ -119,35 +119,40 @@ public:
         //Saving Results
         output_file->cd();
 
-        RooArgList parasFinal = result->floatParsFinal();
-        parasFinal.at(1)->Print();
-
-        //Correlation Matrix
-        TH2* correaltion_hist = result->correlationHist();
-        correaltion_hist->Write();
-
-        //Covariance Matrix
-        TMatrixDSym covariance_matrix = result->covarianceMatrix();
-        double *pData = covariance_matrix.GetMatrixArray();
+        const TMatrixDSym& correaltion_matrix = result->correlationMatrix();
+        const TMatrixDSym& covariance_matrix = result->covarianceMatrix();
         int nRows = covariance_matrix.GetNrows();
         int nColumns = covariance_matrix.GetNcols();
-        std::shared_ptr<TH2D> covariation_hist = std::make_shared<TH2D>("covariane matrix","covariance_matrix",
-                                                                        4,0.5,4.5,4,0.5,4.5);
+        auto cov_hist = std::make_shared<TH2D>("covariane_matrix","covariance matrix",
+                                                                        nRows,0.5,4.5,nColumns,0.5,4.5);
+        auto cor_hist = std::make_shared<TH2D>("correlation_matrix","correlation matrix",
+                                                                        nRows,0.5,4.5,nColumns,0.5,4.5);
         for(int i = 0; i<nRows;i++){
             for(int j = 0; j<nColumns;j++){
-                double data = pData[i*nColumns+j];
-                covariation_hist->SetBinContent(i+1,nColumns-j,data);
+                double cov = covariance_matrix[i][j];
+                cov_hist->SetBinContent(i+1,j+1,cov);
+                double cor = correaltion_matrix[i][j];
+                cor_hist->SetBinContent(i+1,j+1,cor);
             }
         }
 
-        int i=0;
+        auto scale_factors_hist = std::make_shared<TH1D>("scale_factors","Scale factors afte the fit",
+                                                                     4,-0.5,3.5);
+        int i=1;
         for (const std::string& contrib_name: contribution_names){
-            covariation_hist->GetXaxis()->SetBinLabel(i+1,("sf_"+contrib_name).c_str());
-            covariation_hist->GetYaxis()->SetBinLabel(nColumns-i,("sf_"+contrib_name).c_str());
+            cov_hist->GetXaxis()->SetBinLabel(i,("sf_"+contrib_name).c_str());
+            cov_hist->GetYaxis()->SetBinLabel(i,("sf_"+contrib_name).c_str());
+            cor_hist->GetXaxis()->SetBinLabel(i,("sf_"+contrib_name).c_str());
+            cor_hist->GetYaxis()->SetBinLabel(i,("sf_"+contrib_name).c_str());
+
+            scale_factors_hist->GetXaxis()->SetBinLabel(i,("sf_"+contrib_name).c_str());
+            scale_factors_hist->SetBinContent(i,scale_factor_map[contrib_name]->getValV());
+            scale_factors_hist->SetBinError(i,scale_factor_map[contrib_name]->getError());
             i++;
         }
-        covariance_matrix.Write();
-        covariation_hist->Write();
+        cov_hist->Write();\
+        cor_hist->Write();
+        scale_factors_hist->Write();
 
         //Plotting
         for(const EventCategory& cat : eventCategories ){
