@@ -21,6 +21,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "TCanvas.h"
 #include "TAxis.h"
 #include "RooPlot.h"
+#include "RooFitResult.h"
 
 struct Arguments {
     REQ_ARG(std::string, input_file);
@@ -113,10 +114,42 @@ public:
         RooDataHist combData("combData","combined data",x,rooCategories,dataCategories);
 
         // Perform simultaneous fit
-        simPdf.fitTo(combData,Extended(kTRUE)) ;
+        RooFitResult* result = simPdf.fitTo(combData,Extended(kTRUE),Save()) ;
+
+        //Saving Results
+        output_file->cd();
+
+        RooArgList parasFinal = result->floatParsFinal();
+        parasFinal.at(1)->Print();
+
+        //Correlation Matrix
+        TH2* correaltion_hist = result->correlationHist();
+        correaltion_hist->Write();
+
+        //Covariance Matrix
+        TMatrixDSym covariance_matrix = result->covarianceMatrix();
+        double *pData = covariance_matrix.GetMatrixArray();
+        int nRows = covariance_matrix.GetNrows();
+        int nColumns = covariance_matrix.GetNcols();
+        std::shared_ptr<TH2D> covariation_hist = std::make_shared<TH2D>("covariane matrix","covariance_matrix",
+                                                                        4,0.5,4.5,4,0.5,4.5);
+        for(int i = 0; i<nRows;i++){
+            for(int j = 0; j<nColumns;j++){
+                double data = pData[i*nColumns+j];
+                covariation_hist->SetBinContent(i+1,nColumns-j,data);
+            }
+        }
+
+        int i=0;
+        for (const std::string& contrib_name: contribution_names){
+            covariation_hist->GetXaxis()->SetBinLabel(i+1,("sf_"+contrib_name).c_str());
+            covariation_hist->GetYaxis()->SetBinLabel(nColumns-i,("sf_"+contrib_name).c_str());
+            i++;
+        }
+        covariance_matrix.Write();
+        covariation_hist->Write();
 
         //Plotting
-        output_file->cd();
         for(const EventCategory& cat : eventCategories ){
             TCanvas* c = new TCanvas(("fit_"+ToString(cat)).c_str(),
                                      ("fit in eventCategory " + ToString(cat)).c_str(),800,400) ;
