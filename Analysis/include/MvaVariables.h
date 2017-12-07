@@ -142,6 +142,9 @@ public:
 
         const auto& met = eventbase.GetMET();
 
+        VAR("csv_1", event.jets_csv.at(0));
+        VAR("csv_2", event.jets_csv.at(1));
+
         VAR("pt_b1", b1.GetMomentum().Pt());
         VAR("pt_b2", b2.GetMomentum().Pt());
         VAR("pt_hbb", Hbb.GetMomentum().Pt());
