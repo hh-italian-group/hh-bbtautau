@@ -342,7 +342,9 @@ public:
                     continue;
                 if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
                 if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
-                vars.AddEvent(event, entry.id, entry.spin, set.channel, entry.weight);
+                auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(set.channel) ,event) ;
+                EventInfoBase& eventbase = *eventInfoPtr;
+                vars.AddEvent(eventbase, entry.id, entry.spin, entry.weight);
                 tot_entries++;
             }
             std::cout << entry << " number of events: " << tot_entries << std::endl;

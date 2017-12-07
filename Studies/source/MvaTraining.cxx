@@ -475,12 +475,14 @@ public:
                         else which_set = 1;
                     }
                     tot_entries++;
-                    if (entry.id.IsBackground()) {
+                    auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(s.channel), event) ;
+                    EventInfoBase& eventbase = *eventInfoPtr;
+                                        if (entry.id.IsBackground()) {
                         const auto pair_mass_spin = mass_spin.at(it(gen));
                         const SampleId sample_bkg(SampleType::Bkg_TTbar, pair_mass_spin.first);
-                        vars->AddEvent(event, sample_bkg, pair_mass_spin.second, s.channel, entry.weight, which_set);
+                        vars->AddEvent(eventbase, sample_bkg, pair_mass_spin.second,entry.weight, which_set);
                     }
-                    else vars->AddEvent(event, entry.id, entry.spin, s.channel, entry.weight , which_set);
+                    else vars->AddEvent(eventbase, entry.id, entry.spin, entry.weight , which_set);
                 }
                 std::cout << " channel " << s.channel << "    " << entry.filename << " number of events: " << tot_entries << std::endl;
             }

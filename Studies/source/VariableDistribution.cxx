@@ -90,7 +90,9 @@ public:
             auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
             auto tuple = ntuple::CreateEventTuple(args.tree_name(), input_file.get(), true, ntuple::TreeState::Skimmed);
             for(const Event& event : *tuple) {
-                vars.AddEvent(event, entry.id, entry.spin, args.tree_name(), entry.weight);
+                auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(args.tree_name()) ,event) ;
+                EventInfoBase& eventbase = *eventInfoPtr;
+                vars.AddEvent(eventbase, entry.id, entry.spin, entry.weight);
             }
             std::cout << entry << " number of events: " << tuple->size() << std::endl;
         }
@@ -117,7 +119,9 @@ public:
                     continue;
                 if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
                 if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
-                vars.AddEvent(event, entry.id, entry.spin, args.tree_name(), entry.weight);
+                auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(args.tree_name()) ,event) ;
+                EventInfoBase& eventbase = *eventInfoPtr;
+                vars.AddEvent(eventbase, entry.id, entry.spin, entry.weight);
             }
             std::cout << entry << " number of events: " << tuple->size() << "  spin:" << entry.spin << "    " << entry.weight << std::endl;
         }
