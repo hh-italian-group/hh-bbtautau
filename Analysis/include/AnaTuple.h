@@ -3,6 +3,8 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #pragma once
 
+#include <boost/preprocessor/seq.hpp>
+#include <boost/preprocessor/variadic.hpp>
 #include "AnalysisTools/Core/include/SmartTree.h"
 #include "AnalysisTools/Core/include/AnalysisMath.h"
 #include "EventAnalyzerDataId.h"
