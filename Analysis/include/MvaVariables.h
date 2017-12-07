@@ -130,8 +130,7 @@ public:
     virtual void AddEvent(analysis::EventInfoBase& eventbase, const SampleId& mass , int spin, double sample_weight = 1., int which_test = -1) override
     {
         ntuple::Event event = *eventbase;
-//        analysis::EventInfo eventinfo(???);
-//dR_l1l2 dR_b1b2_boosted abs_dphi_hbbhatutau abs_dphi_l1l2 abs_dphi_l1MET  dR_hbbhtautau costheta_METhtautau dR_l1l2_boosted abs_dphi_htautauMET abs_dphi_l1l2MET abs_dphi_l2MET costheta_l1l2METhh mass_H_kinfit mass_H_kinfit_chi2 abs_deta_htautauMET dR_l1l2MET abs_deta_l1l2MET pt_l2 dR_htautauMET
+
         const auto& Htt = eventbase.GetHiggsTTMomentum(false);
         const auto& Htt_sv = eventbase.GetHiggsTTMomentum(true);
         const auto& t1 = eventbase.GetLeg(1);
@@ -167,14 +166,14 @@ public:
         VAR("abs_dphi_l1l2MET", std::abs(ROOT::Math::VectorUtil::DeltaPhi(t1.GetMomentum()+t2.GetMomentum(), met.GetMomentum())));
         VAR("dphi_l1l2MET", ROOT::Math::VectorUtil::DeltaPhi(t1.GetMomentum()+t2.GetMomentum(), met.GetMomentum()));
         VAR("abs_dphi_METhtautau", std::abs(ROOT::Math::VectorUtil::DeltaPhi(Htt, met.GetMomentum())));
-        VAR("dphi_htautauMET", ROOT::Math::VectorUtil::DeltaPhi(Htt_sv, met.GetMomentum()));
-//        VAR("abs_dphi_METhtautau_sv", std::abs(ROOT::Math::VectorUtil::DeltaPhi(Htt_sv, met.GetMomentum())));
-//        VAR("dphi_METhtautau_sv", ROOT::Math::VectorUtil::DeltaPhi(Htt_sv, met.GetMomentum()));
+        VAR("dphi_METhtautau", ROOT::Math::VectorUtil::DeltaPhi(Htt, met.GetMomentum()));
+        VAR("abs_dphi_METhtautau_sv", std::abs(ROOT::Math::VectorUtil::DeltaPhi(Htt_sv, met.GetMomentum())));
+        VAR("dphi_METhtautau_sv", ROOT::Math::VectorUtil::DeltaPhi(Htt_sv, met.GetMomentum()));
         VAR("abs_dphi_hbbMET", std::abs(ROOT::Math::VectorUtil::DeltaPhi(Hbb.GetMomentum(), met.GetMomentum())));
         VAR("dphi_hbbMET", ROOT::Math::VectorUtil::DeltaPhi(Hbb.GetMomentum(), met.GetMomentum()));
-        VAR("abs_dphi_hbbhatutau", std::abs(ROOT::Math::VectorUtil::DeltaPhi(Hbb.GetMomentum(), Htt_sv)));
+        VAR("abs_dphi_hbbhatutau", std::abs(ROOT::Math::VectorUtil::DeltaPhi(Hbb.GetMomentum(), Htt)));
         VAR("dphi_hbbhtautau", ROOT::Math::VectorUtil::DeltaPhi(Hbb.GetMomentum(), Htt));
-//        VAR("abs_dphi_hbbhatutau_sv", std::abs(ROOT::Math::VectorUtil::DeltaPhi(Hbb.GetMomentum(), Htt_sv)));
+        VAR("abs_dphi_hbbhatutau_sv", std::abs(ROOT::Math::VectorUtil::DeltaPhi(Hbb.GetMomentum(), Htt_sv)));
         VAR("dphi_hbbhtautau_sv", ROOT::Math::VectorUtil::DeltaPhi(Hbb.GetMomentum(), Htt_sv));
 
         VAR("abs_deta_l1l2", std::abs(t1.GetMomentum().eta() - t2.GetMomentum().eta()));
@@ -187,8 +186,8 @@ public:
         VAR("deta_l2MET", t2.GetMomentum().eta()-met.GetMomentum().eta());
         VAR("abs_deta_l1l2MET", std::abs((t1.GetMomentum()+t2.GetMomentum()).eta()-met.GetMomentum().eta()));
         VAR("deta_l1l2MET", (t1.GetMomentum()+t2.GetMomentum()).eta()-met.GetMomentum().eta());
-        VAR("abs_deta_htautauMET", std::abs(Htt_sv.eta()-met.GetMomentum().eta()));
-//        VAR("deta_METhtautau", Htt.eta()-met.GetMomentum().eta());
+        VAR("abs_deta_METhtautau", std::abs(Htt.eta()-met.GetMomentum().eta()));
+        VAR("deta_METhtautau", Htt.eta()-met.GetMomentum().eta());
         VAR("abs_deta_METhtautau_sv", std::abs(Htt_sv.eta()-met.GetMomentum().eta()));
         VAR("deta_METhtautau_sv", Htt_sv.eta()-met.GetMomentum().eta());
         VAR("abs_deta_hbbMET", std::abs(Hbb.GetMomentum().eta()-met.GetMomentum().eta()));
@@ -203,17 +202,17 @@ public:
         VAR("dR_l1MET", ROOT::Math::VectorUtil::DeltaR(t1.GetMomentum(), met.GetMomentum()));
         VAR("dR_l2MET", ROOT::Math::VectorUtil::DeltaR(t2.GetMomentum(), met.GetMomentum()));
         VAR("dR_l1l2MET", ROOT::Math::VectorUtil::DeltaR(t1.GetMomentum()+t2.GetMomentum(), met.GetMomentum()));
-        VAR("dR_htautauMET", ROOT::Math::VectorUtil::DeltaR(Htt_sv, met.GetMomentum()));
-//        VAR("dR_METhtautau_sv", ROOT::Math::VectorUtil::DeltaR(Htt_sv, met.GetMomentum()));
+        VAR("dR_METhtautau", ROOT::Math::VectorUtil::DeltaR(Htt, met.GetMomentum()));
+        VAR("dR_METhtautau_sv", ROOT::Math::VectorUtil::DeltaR(Htt_sv, met.GetMomentum()));
         VAR("dR_hbbMET", ROOT::Math::VectorUtil::DeltaR(Hbb.GetMomentum(), met.GetMomentum()));
-        VAR("dR_hbbhtautau", ROOT::Math::VectorUtil::DeltaR(Hbb.GetMomentum(), Htt_sv));
-//        VAR("dR_hbbhtautau_sv", ROOT::Math::VectorUtil::DeltaR(Hbb.GetMomentum(), Htt_sv));
+        VAR("dR_hbbhtautau", ROOT::Math::VectorUtil::DeltaR(Hbb.GetMomentum(), Htt));
+        VAR("dR_hbbhtautau_sv", ROOT::Math::VectorUtil::DeltaR(Hbb.GetMomentum(), Htt_sv));
         VAR("dR_b1b2Pt_hbb", (ROOT::Math::VectorUtil::DeltaR(b1.GetMomentum(), b2.GetMomentum()))*Hbb.GetMomentum().Pt());
         VAR("dR_l1l2Pt_htautau", ROOT::Math::VectorUtil::DeltaR(t1.GetMomentum(), t2.GetMomentum())*Htt.Pt());
         VAR("dR_l1l2Pt_htautau_sv", ROOT::Math::VectorUtil::DeltaR(t1.GetMomentum(), t2.GetMomentum())*Htt_sv.Pt());
         VAR("dR_b1b2_boosted", four_bodies::Calculate_dR_boosted(b1.GetMomentum(), b2.GetMomentum(), Hbb.GetMomentum()));
-        VAR("dR_l1l2_boosted_sv", four_bodies::Calculate_dR_boosted(t1.GetMomentum(), t2.GetMomentum(), Htt));
-//        VAR("dR_l1l2_boosted_sv", four_bodies::Calculate_dR_boosted(t1.GetMomentum(), t2.GetMomentum(), Htt_sv));
+        VAR("dR_l1l2_boosted", four_bodies::Calculate_dR_boosted(t1.GetMomentum(), t2.GetMomentum(), Htt));
+        VAR("dR_l1l2_boosted_sv", four_bodies::Calculate_dR_boosted(t1.GetMomentum(), t2.GetMomentum(), Htt_sv));
 
         VAR("mass_l1l2MET", ROOT::Math::VectorUtil::InvariantMass(t1.GetMomentum()+t2.GetMomentum(), met.GetMomentum()));
         VAR("mass_htautau", Htt.M());
@@ -249,8 +248,8 @@ public:
         VAR("costheta_l1htautau_sv", four_bodies::Calculate_cosTheta_2bodies(t1.GetMomentum(), Htt_sv));
         VAR("costheta_l2htautau", four_bodies::Calculate_cosTheta_2bodies(t2.GetMomentum(), Htt));
         VAR("costheta_l2htautau_sv", four_bodies::Calculate_cosTheta_2bodies(t2.GetMomentum(), Htt_sv));
-        VAR("costheta_METhtautau_sv", four_bodies::Calculate_cosTheta_2bodies(met.GetMomentum(), Htt));
-//        VAR("costheta_METhtautau_sv", four_bodies::Calculate_cosTheta_2bodies(met.GetMomentum(), Htt_sv));
+        VAR("costheta_METhtautau", four_bodies::Calculate_cosTheta_2bodies(met.GetMomentum(), Htt));
+        VAR("costheta_METhtautau_sv", four_bodies::Calculate_cosTheta_2bodies(met.GetMomentum(), Htt_sv));
         VAR("costheta_METhbb", four_bodies::Calculate_cosTheta_2bodies(met.GetMomentum(), Hbb.GetMomentum()));
         VAR("costheta_b1hbb", four_bodies::Calculate_cosTheta_2bodies(b1.GetMomentum(), Hbb.GetMomentum()));
 
@@ -265,9 +264,9 @@ public:
         VAR("costheta_htautau_svhh_sv", four_bodies::Calculate_cosTheta_2bodies(Htt_sv, eventbase.GetResonanceMomentum(true,false)));
         VAR("costheta_htautau_svhhMET", four_bodies::Calculate_cosTheta_2bodies(Htt_sv, eventbase.GetResonanceMomentum(false,true)));
 
-        VAR("costheta_l1l2METhh", four_bodies::Calculate_cosTheta_2bodies(t1.GetMomentum()+t2.GetMomentum()+met.GetMomentum(), eventbase.GetResonanceMomentum(true,false)));
-//        VAR("costheta_l1l2METhh_sv", four_bodies::Calculate_cosTheta_2bodies(t1.GetMomentum()+t2.GetMomentum()+met.GetMomentum(), eventbase.GetResonanceMomentum(true,false)));
-//        VAR("costheta_l1l2METhhMET", four_bodies::Calculate_cosTheta_2bodies(t1.GetMomentum()+t2.GetMomentum()+met.GetMomentum(), eventbase.GetResonanceMomentum(false,true)));
+        VAR("costheta_l1l2METhh", four_bodies::Calculate_cosTheta_2bodies(t1.GetMomentum()+t2.GetMomentum()+met.GetMomentum(), eventbase.GetResonanceMomentum(false,false)));
+        VAR("costheta_l1l2METhh_sv", four_bodies::Calculate_cosTheta_2bodies(t1.GetMomentum()+t2.GetMomentum()+met.GetMomentum(), eventbase.GetResonanceMomentum(true,false)));
+        VAR("costheta_l1l2METhhMET", four_bodies::Calculate_cosTheta_2bodies(t1.GetMomentum()+t2.GetMomentum()+met.GetMomentum(), eventbase.GetResonanceMomentum(false,true)));
 
         VAR("mass", mass.mass);
         VAR_INT("channel", event.channelId);

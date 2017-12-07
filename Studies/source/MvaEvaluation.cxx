@@ -92,8 +92,7 @@ public:
 
 
         enabled_vars.insert(mva_setup.variables.begin(), mva_setup.variables.end());
-        for (const auto& v : enabled_vars)
-            std::cout<<v<<std::endl;
+
         if(mva_setup.use_mass_var) {
             enabled_vars.insert("mass");
             enabled_vars.insert("channel");
@@ -107,7 +106,6 @@ public:
     {
         for(const auto& sample : data){           
             for(const auto& entry : sample.second){
-                std::cout<<sample.first.channel<<sample.first.sample_id<<sample.first.spin<<entry.first<<std::endl;
                 std::vector<BDTData::Hist*> outs = { &outputBDT(sample.first.channel, sample.first.sample_id, sample.first.spin, entry.first)};
                 for (const auto& value : entry.second){
                     for(auto out : outs)
@@ -252,15 +250,12 @@ public:
             SampleId sample_R(SampleType::Sgn_Res, mass);
             SampleId sample_SM(SampleType::Sgn_NonRes, mass);
             SampleId sample_sgn = args.range() == "SM20" || "SMAN"  ? sample_SM  : sample_R;
-            std::cout<<"cosa ha scelto?" << sample_sgn<< " perchè?"<<args.range()<<std::endl;
 
             SampleId sample_bkg(SampleType::Bkg_TTbar, mass);
 
             ChannelSampleIdSpin id_sgn(args.channel(), sample_sgn, args.spin());
             ChannelSampleIdSpin id_bkg(args.channel(), sample_bkg, args.spin());
-            std::cout<<args.channel()<<sample_sgn<<args.spin()<<test_train<<std::endl;
-            std::cout<<outputBDT.bdt_out(args.channel(), sample_sgn, args.spin(), test_train).Integral()<<std::endl;
-            std::cout<<outputBDT.bdt_out(args.channel(),sample_bkg, args.spin(), test_train).Integral()<<std::endl;
+
             roc[mass] = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), sample_sgn, args.spin(), test_train), &outputBDT.bdt_out(args.channel(),sample_bkg, args.spin(), test_train));
             roc_testing[mass] = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), sample_sgn, args.spin(), 0), &outputBDT.bdt_out(args.channel(),sample_bkg,args.spin(),0));
             roc_training[mass] = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), sample_sgn, args.spin(), 1), &outputBDT.bdt_out(args.channel(),sample_bkg,args.spin(),1));
