@@ -137,7 +137,7 @@ public:
         }
 
         auto scale_factors_hist = std::make_shared<TH1D>("scale_factors","Scale factors afte the fit",
-                                                                     4,-0.5,3.5);
+                                                                     nRows,0.5,0.5+nRows);
         int i=1;
         for (const std::string& contrib_name: contribution_names){
             cov_hist->GetXaxis()->SetBinLabel(i,contrib_name.c_str());
