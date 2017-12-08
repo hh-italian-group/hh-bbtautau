@@ -21,6 +21,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "TCanvas.h"
 #include "TAxis.h"
 #include "RooPlot.h"
+#include "RooFitResult.h"
 
 struct Arguments {
     REQ_ARG(std::string, input_file);
@@ -113,10 +114,47 @@ public:
         RooDataHist combData("combData","combined data",x,rooCategories,dataCategories);
 
         // Perform simultaneous fit
-        simPdf.fitTo(combData,Extended(kTRUE)) ;
+        RooFitResult* result = simPdf.fitTo(combData,Extended(kTRUE),Save()) ;
+
+        //Saving Results
+        output_file->cd();
+
+        const TMatrixDSym& correaltion_matrix = result->correlationMatrix();
+        const TMatrixDSym& covariance_matrix = result->covarianceMatrix();
+        int nRows = covariance_matrix.GetNrows();
+        int nColumns = covariance_matrix.GetNcols();
+        auto cov_hist = std::make_shared<TH2D>("covariance_matrix","covariance matrix",
+                                                                        nRows,0.5,0.5+nRows,nColumns,0.5,0.5+nRows);
+        auto cor_hist = std::make_shared<TH2D>("correlation_matrix","correlation matrix",
+                                                                        nRows,0.5,0.5+nRows,nColumns,0.5,0.5+nRows);
+        for(int i = 0; i<nRows;i++){
+            for(int j = 0; j<nColumns;j++){
+                double cov = covariance_matrix[i][j];
+                cov_hist->SetBinContent(i+1,j+1,cov);
+                double cor = correaltion_matrix[i][j];
+                cor_hist->SetBinContent(i+1,j+1,cor);
+            }
+        }
+
+        auto scale_factors_hist = std::make_shared<TH1D>("scale_factors","Scale factors afte the fit",
+                                                                     nRows,0.5,0.5+nRows);
+        int i=1;
+        for (const std::string& contrib_name: contribution_names){
+            cov_hist->GetXaxis()->SetBinLabel(i,contrib_name.c_str());
+            cov_hist->GetYaxis()->SetBinLabel(i,contrib_name.c_str());
+            cor_hist->GetXaxis()->SetBinLabel(i,contrib_name.c_str());
+            cor_hist->GetYaxis()->SetBinLabel(i,contrib_name.c_str());
+
+            scale_factors_hist->GetXaxis()->SetBinLabel(i,contrib_name.c_str());
+            scale_factors_hist->SetBinContent(i,scale_factor_map[contrib_name]->getValV());
+            scale_factors_hist->SetBinError(i,scale_factor_map[contrib_name]->getError());
+            i++;
+        }
+        cov_hist->Write();
+        cor_hist->Write();
+        scale_factors_hist->Write();
 
         //Plotting
-        output_file->cd();
         for(const EventCategory& cat : eventCategories ){
             TCanvas* c = new TCanvas(("fit_"+ToString(cat)).c_str(),
                                      ("fit in eventCategory " + ToString(cat)).c_str(),800,400) ;
