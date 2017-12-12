@@ -55,6 +55,7 @@ public:
         if(set >= all_variables.size())
             throw exception("Sample part is out of range.");
         ChannelSpin chsp(channel,spin);
+        std::cout<<chsp.channel<<"  "<<chsp.spin<<" "<<set<<std::endl;
         return all_variables.at(chsp).at(set);
     }
 

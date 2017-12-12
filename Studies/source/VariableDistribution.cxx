@@ -47,7 +47,6 @@ public:
         configReader.ReadConfig(args.cfg_file());
 
         samples = samples_list.at("Samples").files;
-
     }
 
     void Histo1D(const VarData& sample, TDirectory* directory)
@@ -96,6 +95,7 @@ public:
             }
             std::cout << entry << " number of events: " << tuple->size() << std::endl;
         }
+        std::cout<<"\\qui"<<std::endl;
         sample_vars = vars.GetSampleVariables(args.tree_name(), args.spin());
         TimeReport();
     }
@@ -125,7 +125,9 @@ public:
             }
             std::cout << entry << " number of events: " << tuple->size() << "  spin:" << entry.spin << "    " << entry.weight << std::endl;
         }
+        std::cout<<"\\qui"<<std::endl;
         sample_vars = vars.GetSampleVariables(args.tree_name(), args.spin());
+        std::cout<<"\\qui"<<std::endl;
         TimeReport();
     }
 
