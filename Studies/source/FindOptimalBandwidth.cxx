@@ -24,8 +24,10 @@ struct Arguments { // list of all program arguments
     REQ_ARG(unsigned, number_threads);
     REQ_ARG(bool, range);
     REQ_ARG(int, which_range);
+    REQ_ARG(std::string, suffix);
     OPT_ARG(Long64_t, number_events, 15000);
     OPT_ARG(bool, is_SM, false);
+
 
 };
 
@@ -142,7 +144,7 @@ public:
                 std::stringstream ss;
                 ss << std::fixed << std::setprecision(0) << s.spin;
                 std::string spin = ss.str();
-                std::ofstream ListOptimalBandwidth(file_name_prefix+ToString(sample.first)+"_"+s.channel+"_spin"+spin+".csv", std::ofstream::out);
+                std::ofstream ListOptimalBandwidth(file_name_prefix+ToString(sample.first)+"_"+s.channel+"_spin"+spin+args.suffix()+".csv", std::ofstream::out);
                 for(const auto& value: bandwidth[s][sample.first]){
                    for(const auto& var_name: value.first)
                    {
