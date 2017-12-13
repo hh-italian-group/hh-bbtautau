@@ -282,7 +282,7 @@ public:
         VAR_INT("spin", spin);
 
         size_t test = which_test ==-1 ? which_set(gen) : static_cast<size_t>(which_test);
-        AddEventVariables(test, mass, eventbase->weight_total, sample_weight, spin, ToString(eventbase->channelId));
+        AddEventVariables(test, mass, eventbase->weight_total, sample_weight, spin, ToString(static_cast<Channel>(eventbase->channelId)));
     }
 
 private:
