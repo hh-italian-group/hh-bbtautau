@@ -71,12 +71,14 @@ inline NameElement OptimalBandwidth(const VarData& sample)
 }
 
 //Create elements of mutual information matrix for a single value o f mass
-inline NameElement Mutual(const VarData& sample_vars, const NameElement& bandwidth)
+inline NameElement Mutual(const VarData& sample_vars, NameElement& bandwidth)
 {
    NameElementFuture matrix_future;
    for(auto var_1 = sample_vars.begin(); var_1 != sample_vars.end(); ++var_1){
        for(auto var_2 = var_1; var_2 != sample_vars.end(); ++var_2) {
-            matrix_future[Name_ND{var_1->first, var_2->first}] = run::async(stat_estimators::ScaledMutualInformation<double>, std::cref(var_1->second),
+           if (bandwidth.at(Name_ND{var_1->first}) == 0) bandwidth[Name_ND{var_1->first}] = 0.0001;
+           if (bandwidth.at(Name_ND{var_2->first}) == 0) bandwidth[Name_ND{var_2->first}] = 0.0001;
+           matrix_future[Name_ND{var_1->first, var_2->first}] = run::async(stat_estimators::ScaledMutualInformation<double>, std::cref(var_1->second),
                                                                           std::cref(var_2->second), bandwidth.at(Name_ND{var_1->first}), bandwidth.at(Name_ND{var_2->first}));
         }
     }
