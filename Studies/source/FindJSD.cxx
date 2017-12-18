@@ -183,13 +183,13 @@ public:
             for (const auto& sample: samples_mass[s]){
                 std::cout<<"----"<<ToString(sample.first)<<"----"<<" entries: "<<sample.second.at("pt_l1").size()<<std::endl;
                 bandwidth[s][sample.first] = Read_csvfile(args.optband_folder()+"/OptimalBandwidth"+ToString(sample.first)+"_"+s.channel+
-                                                          "_spin"+spin+"_ANcut.csv");
+                                                          "_spin"+spin+"_newcut.csv");
                 if(args.range()){
                     bandwidth_range[s][sample.first] = Read_csvfile(args.optband_folder()+"/OptimalBandwidthRange"+ToString(sample.first)+
-                                                                    "_"+s.channel+"_spin"+spin+"_ANcut.csv");
+                                                                    "_"+s.channel+"_spin"+spin+"_newcut.csv");
                 }
             }
-            bandwidth[s][SampleType::Bkg_TTbar] = Read_csvfile(args.optband_folder()+"/OptimalBandwidthTT_"+s.channel+"_spin"+spin+"_ANcut.csv");
+            bandwidth[s][SampleType::Bkg_TTbar] = Read_csvfile(args.optband_folder()+"/OptimalBandwidthTT_"+s.channel+"_spin"+spin+"_newcut.csv");
         }
 
 
@@ -212,7 +212,7 @@ public:
                     JSDivergenceSB[s][sample.first] = JensenDivergenceSamples(sample.second, samples_mass.at(chsp_bkg).at(SampleType::Bkg_TTbar),
                                                                          sgn_band_ptr, bandwidth.at(chsp_bkg).at(SampleType::Bkg_TTbar));
 
-                    std::ofstream ListJSD(file_name_prefix_JSDSB+ToString(sample.first)+"_"+s.channel+"_spin"+spin+"_ANcut.csv", std::ofstream::out);
+                    std::ofstream ListJSD(file_name_prefix_JSDSB+ToString(sample.first)+"_"+s.channel+"_spin"+spin+"_newcut.csv", std::ofstream::out);
                     std::cout<<"list"<<std::endl;
                     for(const auto& value: JSDivergenceSB[s][sample.first]){
                        for(const auto& var_name: value.first)
@@ -238,7 +238,7 @@ public:
                     ss << std::fixed << std::setprecision(0) << entry.first.spin;
                     std::string spin = ss.str();
                     std::ofstream ListJSD(file_name_prefix_JSDSS+ToString(sample.first.first)+"_"+ToString(sample.first.second)+"_"+
-                                          entry.first.channel+"_spin"+spin+"_ANcut.csv", std::ofstream::out);
+                                          entry.first.channel+"_spin"+spin+"_newcut.csv", std::ofstream::out);
                     for (const auto& value: sample.second){
                         for (const auto& var: value.first){
                             ListJSD << var << "," ;
