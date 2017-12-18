@@ -149,15 +149,34 @@ public:
 
     void Run()
     {
+        std::set<std::string> successful_jobs, failed_jobs;
         for(const auto& job : jobs) {
             try {
                 std::cout << boost::format("Skimming job %1%...") % job.name << std::endl;
                 ProcessJob(job);
                 std::cout << "Job " << job.name << " has been skimmed." << std::endl;
+                successful_jobs.insert(job.name);
             } catch(std::exception& e) {
                 std::cerr << "\nEROOR: " << e.what() << "\nJob " <<job.name << " is failed." << std::endl;
+                failed_jobs.insert(job.name);
             }
         }
+        std::cout << "Summary:";
+        if(failed_jobs.empty())
+            std::cout << " all jobs has been successfully skimmed.";
+        std::cout << std::endl;
+
+        auto print_jobs = [](const std::set<std::string>& job_set, const std::string& name) {
+            if(!job_set.empty()) {
+                std::cout << name << " jobs:";
+                for(const auto& job : job_set)
+                    std::cout << " " << job;
+                std::cout << std::endl;
+            }
+        };
+
+        print_jobs(successful_jobs, "Successful");
+        print_jobs(failed_jobs, "Failed");
     }
 
 private:
@@ -190,9 +209,14 @@ private:
                 }
                 std::cout << "\tProcessing";
                 std::vector<std::shared_ptr<TFile>> inputFiles;
-                for(const auto& input : desc_iter->inputs) {
+                for(unsigned n = 0; n < desc_iter->inputs.size(); ++n) {
+                    const auto& input = desc_iter->inputs.at(n);
                     std::cout << " " << input;
                     inputFiles.push_back(root_ext::OpenRootFile(args.inputPath() + "/" + input));
+                    if(n == 0 || !desc_iter->first_input_is_ref) {
+                        summary->file_desc_name.push_back(input);
+                        summary->file_desc_id.push_back(n * 1000 + desc_id);
+                    }
                 }
                 std::cout << "\n\t\textracting summary" << std::endl;
                 double weight_xs, weight_xs_withTopPt;
@@ -203,18 +227,26 @@ private:
                 else
                     summary = std::make_shared<ProdSummary>(desc_summary);
 
-                summary->file_desc_name.push_back(desc_iter->inputs.at(0));
-                summary->file_desc_id.push_back(desc_id);
                 summary->n_splits = setup.n_splits;
                 summary->split_seed = setup.split_seed;
 
                 for(Channel channel : setup.channels) {
                     const std::string treeName = ToString(channel);
+
+                    using FullEventId = std::tuple<EventIdentifier, EventEnergyScale>;
+                    using FullEventIdSet = std::set<FullEventId>;
+
+                    FullEventIdSet processed_events;
+
                     for(size_t n = 0; n < desc_iter->inputs.size(); ++n) {
                         auto file = inputFiles.at(n);
                         std::cout << "\t\t" << desc_iter->inputs.at(n) << ":" << treeName << std::endl;
 
-                        if(channel == Channel::TauTau && (n == 0 || !desc_iter->first_input_is_ref)) {
+                        if(!desc_iter->first_input_is_ref)
+                            processed_events.clear();
+
+                        if(job.apply_dm_fix && channel == Channel::TauTau
+                                && (n == 0 || !desc_iter->first_input_is_ref)) {
                             std::cout << "\t\t\t" << "Loading tau decay modes... ";
                             dm_collection = std::make_shared<DecayModeCollection>(args.inputPath() + "/../Full_dm",
                                                                                   desc_iter->inputs.at(n), "tauTau");
@@ -232,6 +264,15 @@ private:
                         EventIdentifier prev_event_id = EventIdentifier::Undef_event();
                         unsigned split_id = 0;
                         for(const Event& event : *tuple) {
+                            const FullEventId fullId{EventIdentifier(event.run, event.lumi, event.evt),
+                                                     static_cast<EventEnergyScale>(event.eventEnergyScale)};
+                            if(processed_events.count(fullId)) {
+                                std::cout << "WARNING: duplicated event " << std::get<EventIdentifier>(fullId) << " "
+                                          << std::get<EventEnergyScale>(fullId) << std::endl;
+                                continue;
+                            }
+                            processed_events.insert(fullId);
+
                             auto event_ptr = std::make_shared<Event>(event);
                             event_ptr->weight_xs = weight_xs;
                             event_ptr->weight_xs_withTopPt = weight_xs_withTopPt;
@@ -245,7 +286,7 @@ private:
                                 split_id = event_ptr->split_id;
                             }
                             event_ptr->split_id = split_distr ? (*split_distr)(gen_map.at(channel)) : 0;
-                            if(channel == Channel::TauTau)
+                            if(job.apply_dm_fix && channel == Channel::TauTau)
                                 dm_collection->UpdateEvent(*event_ptr);
                             processQueue.Push(event_ptr);
                         }

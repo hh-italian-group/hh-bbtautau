@@ -382,7 +382,7 @@ struct EventSubCategory {
     EventSubCategory& SetCutResult(SelectionCut cut, bool result)
     {
         if(HasCut(cut))
-            throw exception("Cut '%1%' is aready defined.") % cut;
+            throw exception("Cut '%1%' is already defined.") % cut;
         const size_t index = GetIndex(cut);
         const BitsContainer mask = BitsContainer(1) << index;
         results = (results & ~mask) | (BitsContainer(result) << index);
