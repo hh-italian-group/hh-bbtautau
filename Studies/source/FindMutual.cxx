@@ -86,8 +86,8 @@ public:
                     if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
                     auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(s.channel) ,event) ;
                     EventInfoBase& eventbase = *eventInfoPtr;
-                    if (!IsInsideEllipse(eventbase.GetHiggsBB().GetMomentum().M(),eventbase.GetHiggsTTMomentum(false).M(),109.639, 87.9563, 43.0346,41.8451))
-                        continue;
+//                    if (!IsInsideEllipse(eventbase.GetHiggsBB().GetMomentum().M(),eventbase.GetHiggsTTMomentum(false).M(),109.639, 87.9563, 43.0346,41.8451))
+//                        continue;
                     vars.AddEvent(eventbase, entry.id, entry.spin, entry.weight);
                     tot_entries++;
                 }
@@ -146,10 +146,10 @@ public:
                 ss << std::fixed << std::setprecision(0) << s.spin;
                 std::string spin = ss.str();
                 bandwidth[s][sample.first] = Read_csvfile(args.optband_folder()+file_name_prefix_bandwidth+ToString(sample.first)+"_"+
-                                                          s.channel+"_spin"+spin+"_newcut.csv");
+                                                          s.channel+"_spin"+spin+"_nocut.csv");
 
                 mutualmatrix[s][sample.first] = Mutual(sample.second, bandwidth.at(s).at(sample.first));
-                std::ofstream ListMID(file_name_prefix+ToString(sample.first)+"_"+s.channel+"_spin"+spin+"_newcut.csv", std::ofstream::out);
+                std::ofstream ListMID(file_name_prefix+ToString(sample.first)+"_"+s.channel+"_spin"+spin+"_nocut.csv", std::ofstream::out);
                 for(const auto& value: mutualmatrix[s][sample.first]){
                    for(const auto& var_name: value.first)
                    {
