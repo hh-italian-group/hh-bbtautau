@@ -209,14 +209,9 @@ private:
                 }
                 std::cout << "\tProcessing";
                 std::vector<std::shared_ptr<TFile>> inputFiles;
-                for(unsigned n = 0; n < desc_iter->inputs.size(); ++n) {
-                    const auto& input = desc_iter->inputs.at(n);
+                for(const auto& input : desc_iter->inputs) {
                     std::cout << " " << input;
                     inputFiles.push_back(root_ext::OpenRootFile(args.inputPath() + "/" + input));
-                    if(n == 0 || !desc_iter->first_input_is_ref) {
-                        summary->file_desc_name.push_back(input);
-                        summary->file_desc_id.push_back(n * 1000 + desc_id);
-                    }
                 }
                 std::cout << "\n\t\textracting summary" << std::endl;
                 double weight_xs, weight_xs_withTopPt;
@@ -226,6 +221,12 @@ private:
                     ntuple::MergeProdSummaries(*summary, desc_summary);
                 else
                     summary = std::make_shared<ProdSummary>(desc_summary);
+
+                for(unsigned n = 0; n < desc_iter->inputs.size() && (n == 0 || !desc_iter->first_input_is_ref); ++n) {
+                    const auto& input = desc_iter->inputs.at(n);
+                    summary->file_desc_name.push_back(input);
+                    summary->file_desc_id.push_back(n * 1000 + desc_id);
+                }
 
                 summary->n_splits = setup.n_splits;
                 summary->split_seed = setup.split_seed;
