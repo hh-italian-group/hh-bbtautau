@@ -210,7 +210,7 @@ inline NameElement JensenDivergenceSamples(const VarData& sample_signal, const V
         x.push_back(&sample_signal.at(entry_1->first));
         y.push_back(&sample_bkg.at(entry_1->first));
         band_x.push_back(bandwidth_signal.at(Name_ND{entry_1->first}));
-        band_y.push_back(bandwidth_bkg.at(Name_ND{entry_1->first}));
+        band_y.push_back(bandwidth_bkg.at(Name_ND{entry_1->first}));        
         JSDivergenceND_future[Name_ND{entry_1->first}] = run::async(stat_estimators::JensenShannonDivergence_ND<double>, x, y, band_x, band_y);
         for(auto entry_2 = std::next(entry_1); entry_2 != sample_signal.end(); ++entry_2) {
             x.push_back(&sample_signal.at(entry_2->first));

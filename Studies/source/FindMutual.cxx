@@ -41,7 +41,7 @@ public:
 
     std::vector<ChannelSpin> set_SM{{"tauTau",SM_spin},{"muTau",SM_spin}, {"eTau",SM_spin},
                                  {"muTau",bkg_spin}, {"eTau",bkg_spin}, {"tauTau",bkg_spin}};
-    std::vector<ChannelSpin> set_R{{"tauTau",0}, {"muTau",0}, {"eTau",0},
+    std::vector<ChannelSpin> set_R{/*{"tauTau",0},*/ {"muTau",0}, {"eTau",0},
                                    {"tauTau",2}, {"muTau",2}, {"eTau",2},
                                  {"muTau",bkg_spin}, {"eTau",bkg_spin}, {"tauTau",bkg_spin}};
     std::vector<ChannelSpin> set;
@@ -80,8 +80,8 @@ public:
                 for(const Event& event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
                     LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
-//                    if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(), bb.mass()))
-//                        continue;
+                    if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(), bb.mass()))
+                        continue;
                     if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
                     if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
                     auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(s.channel) ,event) ;
@@ -146,10 +146,10 @@ public:
                 ss << std::fixed << std::setprecision(0) << s.spin;
                 std::string spin = ss.str();
                 bandwidth[s][sample.first] = Read_csvfile(args.optband_folder()+file_name_prefix_bandwidth+ToString(sample.first)+"_"+
-                                                          s.channel+"_spin"+spin+"_nocut.csv");
+                                                          s.channel+"_spin"+spin+"_newcut.csv");
 
                 mutualmatrix[s][sample.first] = Mutual(sample.second, bandwidth.at(s).at(sample.first));
-                std::ofstream ListMID(file_name_prefix+ToString(sample.first)+"_"+s.channel+"_spin"+spin+"_nocut.csv", std::ofstream::out);
+                std::ofstream ListMID(file_name_prefix+ToString(sample.first)+"_"+s.channel+"_spin"+spin+"_newcut.csv", std::ofstream::out);
                 for(const auto& value: mutualmatrix[s][sample.first]){
                    for(const auto& var_name: value.first)
                    {
