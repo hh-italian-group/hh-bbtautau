@@ -3,8 +3,12 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #pragma once
 
+#include <boost/preprocessor/seq.hpp>
+#include <boost/preprocessor/variadic.hpp>
 #include "AnalysisTools/Core/include/SmartTree.h"
 #include "AnalysisTools/Core/include/AnalysisMath.h"
+#include "AnalysisTools/Core/include/NumericPrimitives.h"
+#include "AnalysisTools/Core/include/RootExt.h"
 #include "EventAnalyzerDataId.h"
 
 namespace analysis {
@@ -40,6 +44,9 @@ INITIALIZE_TREE(bbtautau, AnaTuple, ANA_EVENT_DATA)
 #define ANA_AUX_DATA() \
     VAR(std::vector<uint32_t>, dataIds) /* EventAnalyzerDataId code */ \
     VAR(std::vector<std::string>, dataId_names) /* EventAnalyzerDataId name */ \
+    VAR(std::vector<unsigned>, mva_selections) /* SelectionCut for mva selection */ \
+    VAR(std::vector<double>, mva_min) /* Minimal value for the given mva SelectionCut */ \
+    VAR(std::vector<double>, mva_max) /* Maximal value for the given mva SelectionCut */ \
     /**/
 
 #define VAR(type, name) DECLARE_BRANCH_VARIABLE(type, name)
@@ -57,6 +64,8 @@ public:
     using DataId = EventAnalyzerDataId;
     using DataIdBiMap = boost::bimap<DataId, uint32_t>;
     using DataIdMap = std::map<DataId, std::tuple<double, double>>;
+    using Range = ::analysis::Range<double>;
+    using RangeMap = std::map<SelectionCut, Range>;
 
     AnaTupleWriter(const std::string& file_name, Channel channel) :
         file(root_ext::CreateRootFile(file_name)), tuple(ToString(channel), file.get(), false),
@@ -69,6 +78,11 @@ public:
         for(const auto& id : known_data_ids.left) {
             aux_tuple().dataIds.push_back(id.second);
             aux_tuple().dataId_names.push_back(id.first.GetName());
+        }
+        for(const auto& range : mva_ranges) {
+            aux_tuple().mva_selections.push_back(static_cast<unsigned>(range.first));
+            aux_tuple().mva_min.push_back(range.second.min());
+            aux_tuple().mva_max.push_back(range.second.max());
         }
         aux_tuple.Fill();
         aux_tuple.Write();
@@ -90,6 +104,12 @@ public:
                         %  known_data_ids.right.at(hash);
                 known_data_ids.insert({entry.first, hash});
             }
+
+            SelectionCut mva_cut;
+            if(entry.first.Get<EventSubCategory>().TryGetLastMvaCut(mva_cut)) {
+                mva_ranges[mva_cut] = mva_ranges[mva_cut].Extend(std::get<1>(entry.second));
+            }
+
             tuple().dataIds.push_back(known_data_ids.left.at(entry.first));
             tuple().all_weights.push_back(std::get<0>(entry.second));
             tuple().all_mva_scores.push_back(static_cast<float>(std::get<1>(entry.second)));
@@ -195,6 +215,7 @@ private:
     AnaTuple tuple;
     AnaAuxTuple aux_tuple;
     DataIdBiMap known_data_ids;
+    RangeMap mva_ranges;
 };
 
 class AnaTupleReader {
@@ -204,6 +225,8 @@ public:
     using DataIdBiMap = boost::bimap<DataId, Hash>;
     using DataIdMap = std::map<DataId, std::tuple<double, double>>;
     using NameSet = std::set<std::string>;
+    using Range = ::analysis::Range<double>;
+    using RangeMap = std::map<SelectionCut, Range>;
 
     AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names) :
         file(root_ext::OpenRootFile(file_name))
@@ -229,6 +252,7 @@ public:
         AnaAuxTuple aux_tuple(file.get(), true);
         aux_tuple.GetEntry(0);
         ExtractDataIds(aux_tuple());
+        ExtractMvaRanges(aux_tuple());
     }
 
     const DataId& GetDataIdByHash(Hash hash) const
@@ -248,15 +272,19 @@ public:
 
     AnaTuple& GetAnaTuple() { return *tuple; }
 
-    void UpdateSecondaryBranches(size_t dataId_index)
+    void UpdateSecondaryBranches(const DataId& dataId, size_t dataId_index)
     {
         if(dataId_index >= (*tuple)().dataIds.size())
             throw exception("DataId index is out of range.");
         if(dataId_index >= (*tuple)().all_weights.size())
             throw exception("Inconsistent AnaTuple entry.");
         (*tuple)().weight = (*tuple)().all_weights.at(dataId_index);
-        (*tuple)().mva_score = dataId_index < (*tuple)().all_mva_scores.size()
-                             ? (*tuple)().all_mva_scores.at(dataId_index) : 0;
+        if(dataId_index < (*tuple)().all_mva_scores.size()) {
+            const auto raw_score = (*tuple)().all_mva_scores.at(dataId_index);
+            (*tuple)().mva_score =  GetNormalizedMvaScore(dataId, raw_score);
+        } else {
+            (*tuple)().mva_score = 0;
+        }
     }
 
 private:
@@ -270,10 +298,23 @@ private:
             const auto& dataId_name = aux.dataId_names.at(n);
             const auto dataId = DataId::Parse(dataId_name);
             if(known_data_ids.right.count(hash))
-                throw exception("Duplicated hash = %1% for in AnaAux tuple.") % hash;
+                throw exception("Duplicated hash = %1% in AnaAux tuple.") % hash;
             if(known_data_ids.left.count(dataId))
-                throw exception("Duplicated dataId = '%1%' for in AnaAux tuple.") % dataId_name;
+                throw exception("Duplicated dataId = '%1%' in AnaAux tuple.") % dataId_name;
             known_data_ids.insert({dataId, hash});
+        }
+    }
+
+    void ExtractMvaRanges(const AnaAux& aux)
+    {
+        const size_t N = aux.mva_selections.size();
+        if(aux.mva_min.size() != N || aux.mva_max.size() != N)
+            throw exception("Inconsistent mva range info in AnaAux tuple.");
+        for(size_t n = 0; n < N; ++n) {
+            const SelectionCut sel = static_cast<SelectionCut>(aux.mva_selections.at(n));
+            if(mva_ranges.count(sel))
+                throw exception("Duplicated mva selection = %1% in AnaAux tuple.") % sel;
+            mva_ranges[sel] = Range(aux.mva_min.at(n), aux.mva_max.at(n));
         }
     }
 
@@ -283,11 +324,27 @@ private:
         return tmpTuple.GetActiveBranches();
     }
 
+    float GetNormalizedMvaScore(const DataId& dataId, float raw_score) const
+    {
+        SelectionCut sel;
+        if(!dataId.Get<EventSubCategory>().TryGetLastMvaCut(sel))
+            return raw_score;
+        auto iter = mva_ranges.find(sel);
+        if(iter == mva_ranges.end())
+            throw exception("Mva range not found for %1%.") % sel;
+        const Range& range = iter->second;
+        const double result = mva_target_range.size() / range.size() * (raw_score - range.min())
+                + mva_target_range.min();
+        return static_cast<float>(result);
+    }
+
 private:
     std::shared_ptr<TFile> file;
     std::shared_ptr<AnaTuple> tuple;
     DataIdBiMap known_data_ids;
     NameSet var_branch_names;
+    RangeMap mva_ranges;
+    Range mva_target_range{0., 0.99999};
 };
 } // namespace bbtautau
 } // namespace analysis

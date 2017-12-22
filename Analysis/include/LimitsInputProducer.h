@@ -41,6 +41,21 @@ public:
         return full_name.str();
     }
 
+    static std::string EventRegionSuffix(EventRegion region)
+    {
+        static const std::map<EventRegion, std::string> regions {
+            { EventRegion::OS_AntiIsolated(), "_OS_antiiso" },
+            { EventRegion::SS_AntiIsolated(), "_SS_antiiso" },
+            { EventRegion::SS_Isolated(), "_SS_iso" },
+        };
+
+        if(region == EventRegion::SignalRegion())
+            return "";
+        if(regions.count(region))
+            return regions.at(region);
+        return "_" + ToString(region);
+    }
+
     template<typename ...Args>
     LimitsInputProducer(AnaDataCollection& _anaDataCollection, Args&&... sample_descriptors) :
         anaDataCollection(&_anaDataCollection)
@@ -67,9 +82,8 @@ public:
         for(const EventAnalyzerDataId& metaId : EventAnalyzerDataId::MetaLoop(eventCategories, eventEnergyScales,
                                                                               sampleWorkingPoints, eventRegions))
         {
-            std::string directoryName = dirNamePrefix + eventCategories.at(metaId.Get<EventCategory>());
-            if(metaId.Get<EventRegion>() != EventRegion::SignalRegion())
-                directoryName += "_" + ToString(metaId.Get<EventRegion>());
+            const std::string directoryName = dirNamePrefix + eventCategories.at(metaId.Get<EventCategory>())
+                    + EventRegionSuffix(metaId.Get<EventRegion>());
             TDirectory* directory = root_ext::GetDirectory(*outputFile, directoryName, true);
             const SampleWP& sampleWP = sampleWorkingPoints.at(metaId.Get<std::string>());
             const auto anaDataId = metaId.Set(eventSubCategory).Set(metaId.Get<EventRegion>());
@@ -101,9 +115,9 @@ public:
             of.exceptions(std::ios::failbit);
             for(const auto& id : empty_histograms)
                 of << id << "\n";
-            std::cout << "\t\tWarning: some datacard histograms are empty.\n"
-                      << "\t\tThey are replaced with histograms with a tiny yield in the central bin.\n"
-                      << "\t\tSee '" << of_name << "' for details." << std::endl;
+            std::cout << "\t\t\tWarning: some datacard histograms are empty.\n"
+                      << "\t\t\tThey are replaced with histograms with a tiny yield in the central bin.\n"
+                      << "\t\t\tSee '" << of_name << "' for details." << std::endl;
         }
     }
 

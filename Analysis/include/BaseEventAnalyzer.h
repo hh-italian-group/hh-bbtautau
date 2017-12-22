@@ -176,11 +176,6 @@ protected:
     void ProcessDataSource(const SampleDescriptor& sample, const SampleDescriptor::Point& sample_wp,
                            std::shared_ptr<ntuple::EventTuple> tuple, const ntuple::ProdSummary& prod_summary)
     {
-        using FullEventId = std::tuple<EventIdentifier, EventEnergyScale>;
-        using FullEventIdSet = std::set<FullEventId>;
-
-        FullEventIdSet processed_events;
-
         const SummaryInfo summary(prod_summary);
         Event prevFullEvent, *prevFullEventPtr = nullptr;
         for(auto tupleEvent : *tuple) {
@@ -190,15 +185,6 @@ protected:
             }
             EventInfo event(tupleEvent, ntuple::JetPair{0, 1}, &summary);
             if(!ana_setup.energy_scales.count(event.GetEnergyScale())) continue;
-            const FullEventId fullId{EventIdentifier(event->run, event->lumi, event->evt, event->file_desc_id),
-                                     event.GetEnergyScale()};
-            if(processed_events.count(fullId)) {
-                std::cout << "\t\tWARNING: duplicated event " << std::get<EventIdentifier>(fullId) << " "
-                          << std::get<EventEnergyScale>(fullId) << std::endl;
-                continue;
-            }
-            processed_events.insert(fullId);
-
 
             bbtautau::AnaTupleWriter::DataIdMap dataIds;
             const auto eventCategories = DetermineEventCategories(event);
@@ -218,7 +204,7 @@ protected:
                             mva_score = mva_scores.at(mva_cut);
                             const auto& mva_params = mva_setup->selections.at(mva_cut);
                             if(mva_params.training_range.is_initialized() && mva_params.samples.count(sample.name)) {
-                                if(!mva_params.training_range->Contains(event->split_id)) continue;
+                                if(mva_params.training_range->Contains(event->split_id)) continue;
                                 mva_weight_scale = double(summary->n_splits)
                                         / (summary->n_splits - mva_params.training_range->size());
                             }
@@ -294,10 +280,12 @@ protected:
 //                const double weight_topPt = event->weight_total * sample.cross_section * ana_setup.int_lumi
 //                        / event.GetSummaryInfo()->totalShapeWeight_withTopPt;
                 // FIXME
-                dataIds[anaDataId.Set(EventEnergyScale::TopPtUp)] = std::make_tuple(weight * event->weight_top_pt,
-                                                                                    event.GetMvaScore());
-                dataIds[anaDataId.Set(EventEnergyScale::TopPtDown)] = std::make_tuple(weight * event->weight_top_pt,
-                                                                                      event.GetMvaScore());
+                if(ana_setup.energy_scales.count(EventEnergyScale::TopPtUp))
+                    dataIds[anaDataId.Set(EventEnergyScale::TopPtUp)] = std::make_tuple(weight * event->weight_top_pt,
+                                                                                        event.GetMvaScore());
+                if(ana_setup.energy_scales.count(EventEnergyScale::TopPtDown))
+                    dataIds[anaDataId.Set(EventEnergyScale::TopPtDown)] = std::make_tuple(weight * event->weight_top_pt,
+                                                                                          event.GetMvaScore());
             }
         } else
             throw exception("Unsupported special event type '%1%'.") % sample.sampleType;
