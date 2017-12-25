@@ -31,7 +31,7 @@ public:
         }
 
 
-        std::shared_ptr<TFile> input_file = root_ext::OpenRootFile("hh-bbtautau/McCorrections/data/DY_Scale_factors.root");
+        std::shared_ptr<TFile> input_file = root_ext::OpenRootFile(sample.norm_sf_file);
         std::shared_ptr<TH1F> scale_factor_histo = std::make_shared<TH1F>(root_ext::ReadObject<TH1F>(*input_file,
                                                                                                      "scale_factors"));
         int nbins = scale_factor_histo->GetNbinsX();
@@ -62,7 +62,8 @@ public:
         if(wp_found){
             const auto& sample_wp = working_points_map.at(min(2,n_bjets));
             const auto finalId = anaDataId.Set(sample_wp.full_name);
-            dataIds[finalId] = std::make_tuple(weight * sample_wp.norm_sf, event.GetMvaScore());
+            double norm_sf = scale_factor_maps[sample_wp.full_name];
+            dataIds[finalId] = std::make_tuple(weight * norm_sf, event.GetMvaScore());
         }
         else
             throw exception("Unable to find WP for DY event with lhe_n_b_partons = %1%") % event->lhe_n_b_partons;
