@@ -16,6 +16,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisCategories.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
 #include "EventAnalyzerDataId.h"
+//#include "Studies/include/DYModel.h"
 
 namespace analysis {
 
@@ -147,6 +148,8 @@ struct SampleDescriptorBase {
     std::set<Channel> channels;
     SampleType sampleType{SampleType::MC};
     std::string datacard_name;
+    std::string norm_sf_file;
+    DYFitModel fit_method;
 
     PointCollection working_points;
 

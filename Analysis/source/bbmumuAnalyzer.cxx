@@ -2,6 +2,7 @@
 This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include "Analysis/include/BaseEventAnalyzer.h"
+#include "Studies/include/DYModel.h"
 
 namespace analysis {
 

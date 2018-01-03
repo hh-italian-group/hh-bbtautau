@@ -18,6 +18,11 @@ ENUM_NAMES(SampleType) = {
     { SampleType::TT, "TT" }
 };
 
+enum class DYFitModel { NbjetBins = 0};
+ENUM_NAMES(DYFitModel) = {
+    { DYFitModel::NbjetBins, "NbjetBins" }
+};
+
 struct EventRegion {
     using EventRegionMapString = boost::bimap<std::string, EventRegion>;
 
