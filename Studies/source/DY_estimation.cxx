@@ -117,7 +117,9 @@ public:
         RooFitResult* result = simPdf.fitTo(combData,Extended(kTRUE),Save()) ;
 
         //Saving Results
-        output_file->cd();
+        DYFitModel fit_model = DYFitModel::NbjetBins;
+        output_file->mkdir(ToString(fit_model).c_str());
+        output_file->cd(ToString(fit_model).c_str());
 
         const TMatrixDSym& correaltion_matrix = result->correlationMatrix();
         const TMatrixDSym& covariance_matrix = result->covarianceMatrix();

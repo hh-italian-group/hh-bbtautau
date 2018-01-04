@@ -17,9 +17,6 @@ public:
     using FirstLeg = _FirstLeg;
     using SecondLeg = _SecondLeg;
     using EventInfo = ::analysis::EventInfo<FirstLeg, SecondLeg>;
-    std::map<std::string,double> scale_factor_maps;
-    static size_t b_index;
-    std::map<size_t,SampleDescriptorBase::Point> working_points_map;
     DYModel(const SampleDescriptor& sample)
     {
         // Analyzer initialization (e.g. open input/output files, parse configs...)
@@ -32,19 +29,21 @@ public:
             const size_t n_b_partons = static_cast<size_t>(sample_wp.param_values.at(b_index));
             working_points_map[n_b_partons] = sample_wp;
         }
-
-        DYFitModel fit_method = sample.fit_method;
-        auto input_file = root_ext::OpenRootFile(sample.norm_sf_file);
-        auto scale_factor_histo =  std::shared_ptr<TH1F>(root_ext::ReadObject<TH1F>(*input_file,ToString(fit_method)
+        fit_method = sample.fit_method;
+        if(fit_method == DYFitModel::NbjetBins){
+            auto input_file = root_ext::OpenRootFile(sample.norm_sf_file);
+            auto scale_factor_histo =  std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*input_file,ToString(fit_method)
                                                                                     +"/scale_factors"));
-        int nbins = scale_factor_histo->GetNbinsX();
-        for(int i=1; i<=nbins;i++){
-            std::string scale_factor_name = scale_factor_histo->GetXaxis()->GetBinLabel(i);
-            double value = scale_factor_histo->GetBinContent(i);
-            scale_factor_name.erase(2,3);
-            if(sample.name == "DY") scale_factor_maps[scale_factor_name] = value;
-            else scale_factor_maps[scale_factor_name] = 1; //in case of running without the scale factor
+            int nbins = scale_factor_histo->GetNbinsX();
+            for(int i=1; i<=nbins;i++){
+                std::string scale_factor_name = scale_factor_histo->GetXaxis()->GetBinLabel(i);
+                double value = scale_factor_histo->GetBinContent(i);
+                scale_factor_name.erase(2,3);
+                scale_factor_maps[scale_factor_name] = value;
+            }
         }
+        else if(fit_method != DYFitModel::None)
+            throw exception("Unable to find the fit method");
     }
 
     void ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfo& event, double weight,
@@ -60,17 +59,23 @@ public:
                 n_genJets++;
             }
         }*/
-        double n_bJets = event->lhe_n_b_partons;
-        std::map<size_t,SampleDescriptorBase::Point>::iterator it = working_points_map.find(std::min(2.0,n_bJets));
+        unsigned int n_bJets = event->lhe_n_b_partons;
+        std::map<size_t,SampleDescriptorBase::Point>::iterator it = working_points_map.find(std::min((unsigned int)2,
+                                                                                                     n_bJets));
         if(it == working_points_map.end())
             throw exception("Unable to find WP for DY event with lhe_n_b_partons = %1%") % event->lhe_n_b_partons;
         const auto& sample_wp = it->second;
         const auto finalId = anaDataId.Set(sample_wp.full_name);
-        double norm_sf = scale_factor_maps[sample_wp.full_name];
+        double norm_sf = 1;
+        if(fit_method == DYFitModel::NbjetBins)
+            norm_sf = scale_factor_maps.at(sample_wp.full_name);
         dataIds[finalId] = std::make_tuple(weight * norm_sf, event.GetMvaScore());
     }
 
 private:
-
+    std::map<std::string,double> scale_factor_maps;
+    size_t b_index;
+    std::map<size_t,SampleDescriptorBase::Point> working_points_map;
+    DYFitModel fit_method;
 };
 }
