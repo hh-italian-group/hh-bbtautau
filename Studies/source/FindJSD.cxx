@@ -202,9 +202,6 @@ public:
                 }
             }
             bandwidth[s][SampleType::Bkg_TTbar] = Read_csvfile(args.optband_folder()+"/OptimalBandwidthTT_"+s.channel+"_spin"+spin+args.suffix()+".csv", {});
-            std::cout<<args.optband_folder()+"/OptimalBandwidthTT_"+s.channel+"_spin"+spin+args.suffix()+".csv"<<std::endl;
-
-            std::cout<<bandwidth[s][SampleType::Bkg_TTbar].size()<<std::endl;
             for (auto& el : bandwidth[s][SampleType::Bkg_TTbar])
                 if (el.second == 0) el.second = 0.0001;
 
