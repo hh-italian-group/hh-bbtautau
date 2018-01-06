@@ -39,7 +39,7 @@ std::map<Key, Value> CollectFutures(std::map<Key, std::future<Value>>& futures)
 }
 
 //Read a .csv file and return or bandwidth of JSDivergence
-NameElement Read_csvfile(const std::string& filecsv)
+NameElement Read_csvfile(const std::string& filecsv, const std::unordered_set<std::string>& disabled_vars)
 {
     NameElement bandwidth;
     std::ifstream file(filecsv);
@@ -53,7 +53,7 @@ NameElement Read_csvfile(const std::string& filecsv)
         while(std::getline(lineStream,cell,','))
         {
             bool check = TryParse(cell,value);
-            if (!check) name.insert(cell);
+            if (!check && !disabled_vars.count(cell)) name.insert(cell);
         }
         bandwidth[name] = value;
     }
@@ -263,6 +263,11 @@ inline VectorName_ND CopySelectedVariables(const VectorName_ND& JSDivergence_vec
             copy.push_back(entry);
     }
     return copy;
+}
+
+inline static bool IsInsideEllipse(double x, double y, double x0, double y0, double a, double b)
+{
+    return pow(x - x0, 2) / pow(a, 2) + pow(y - y0, 2) / pow(b, 2) < 1.;
 }
 
 class BDTData : public root_ext::AnalyzerData {

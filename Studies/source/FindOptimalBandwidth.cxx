@@ -43,9 +43,9 @@ public:
 
     std::vector<ChannelSpin> set_SM{{"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin},
                                  {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
-    std::vector<ChannelSpin> set_R{/*{"tauTau",0}, {"muTau",0},{"eTau",0},
-                                   {"tauTau",2}, {"muTau",2},*/{"eTau",2},
-                                 /*{"muTau",bkg_spin},*/{"eTau",bkg_spin}/*,{"tauTau",bkg_spin}*/};
+    std::vector<ChannelSpin> set_R{{"tauTau",0}, {"muTau",0},{"eTau",0},
+                                   {"tauTau",2}, {"muTau",2},{"eTau",2},
+                                   {"muTau",bkg_spin},{"eTau",bkg_spin},{"tauTau",bkg_spin}};
     std::vector<ChannelSpin> set;
 
     FindOptimalBandwidth(const Arguments& _args): args(_args), vars(1, 12345678,{}, {"channel", "mass", "spin"}),
@@ -63,11 +63,6 @@ public:
 
         set = args.is_SM() ? set_SM : set_R;
         samples = samples_list.at("Samples").files;
-    }
-
-    static bool IsInsideEllipse(double x, double y, double x0, double y0, double a, double b)
-    {
-        return pow(x - x0, 2) / pow(a, 2) + pow(y - y0, 2) / pow(b, 2) < 1.;
     }
 
     void LoadSkimmedData()

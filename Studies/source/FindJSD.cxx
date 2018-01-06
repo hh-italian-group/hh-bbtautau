@@ -29,6 +29,8 @@ struct Arguments { // list of all program arguments
     OPT_ARG(Long64_t, number_events, 15000);
     OPT_ARG(bool, is_SM, false);
     OPT_ARG(bool, bkg_vs_sgn, true);
+    REQ_ARG(std::string, channel);
+    REQ_ARG(int, spin);
 
 };
 
@@ -61,13 +63,11 @@ public:
         configReader.AddEntryReader("FILES", sampleReader, false);
         configReader.ReadConfig(args.cfg_file());
 
-        set = args.is_SM() ? set_SM : set_R;
+        set.emplace_back(args.channel(), args.spin());
+        set.emplace_back(args.channel(), bkg_spin);
+        std::cout<<"set size "<<set.size()<<std::endl;
+//        set = args.is_SM() ? set_SM : set_R;
         samples = samples_list.at("Samples").files;
-    }
-
-    static bool IsInsideEllipse(double x, double y, double x0, double y0, double a, double b)
-    {
-        return pow(x - x0, 2) / pow(a, 2) + pow(y - y0, 2) / pow(b, 2) < 1.;
     }
 
     void LoadSkimmedData()
@@ -187,18 +187,24 @@ public:
             std::string spin = ss.str();
             for (const auto& sample: samples_mass[s]){
                 std::cout<<"----"<<ToString(sample.first)<<"----"<<" entries: "<<sample.second.at("pt_l1").size()<<std::endl;
+                std::cout<<args.optband_folder()+"/OptimalBandwidth"+ToString(sample.first)+"_"+s.channel+
+                           "_spin"+spin+args.suffix()+".csv"<<std::endl;
                 bandwidth[s][sample.first] = Read_csvfile(args.optband_folder()+"/OptimalBandwidth"+ToString(sample.first)+"_"+s.channel+
-                                                          "_spin"+spin+args.suffix()+".csv");
+                                                          "_spin"+spin+args.suffix()+".csv", {});
+                std::cout<<bandwidth[s][sample.first].size()<<std::endl;
                 for (auto& el : bandwidth[s][sample.first])
                     if (el.second == 0) el.second = 0.0001;
                 if(args.range()){
                     bandwidth_range[s][sample.first] = Read_csvfile(args.optband_folder()+"/OptimalBandwidthRange"+ToString(sample.first)+
-                                                                    "_"+s.channel+"_spin"+spin+args.suffix()+".csv");
+                                                                    "_"+s.channel+"_spin"+spin+args.suffix()+".csv", {});
                     for (auto& el : bandwidth_range[s][sample.first])
                         if (el.second == 0) el.second = 0.0001;
                 }
             }
-            bandwidth[s][SampleType::Bkg_TTbar] = Read_csvfile(args.optband_folder()+"/OptimalBandwidthTT_"+s.channel+"_spin"+spin+args.suffix()+".csv");
+            bandwidth[s][SampleType::Bkg_TTbar] = Read_csvfile(args.optband_folder()+"/OptimalBandwidthTT_"+s.channel+"_spin"+spin+args.suffix()+".csv", {});
+            std::cout<<args.optband_folder()+"/OptimalBandwidthTT_"+s.channel+"_spin"+spin+args.suffix()+".csv"<<std::endl;
+
+            std::cout<<bandwidth[s][SampleType::Bkg_TTbar].size()<<std::endl;
             for (auto& el : bandwidth[s][SampleType::Bkg_TTbar])
                 if (el.second == 0) el.second = 0.0001;
 
@@ -220,6 +226,7 @@ public:
                     ChannelSpin chsp_bkg(s.channel,-1);
 
                     const auto& sgn_band_ptr = args.range() ? bandwidth_range.at(s).at(sample.first) : bandwidth.at(s).at(sample.first);
+
                     JSDivergenceSB[s][sample.first] = JensenDivergenceSamples(sample.second, samples_mass.at(chsp_bkg).at(SampleType::Bkg_TTbar),
                                                                          sgn_band_ptr, bandwidth.at(chsp_bkg).at(SampleType::Bkg_TTbar));
 

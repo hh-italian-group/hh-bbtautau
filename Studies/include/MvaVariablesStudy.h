@@ -34,6 +34,7 @@ private:
 
 public:
     using MvaVariables::MvaVariables;
+
     virtual void SetValue(const std::string& name, double value, char /*type = 'F'*/) override
     {
         variables[name] = value;
@@ -60,6 +61,7 @@ public:
     }
 
     virtual std::shared_ptr<TMVA::Reader> GetReader() override {throw exception ("GetReader not supported.");}
+
 };
 
 

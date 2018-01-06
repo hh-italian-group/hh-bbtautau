@@ -63,11 +63,6 @@ public:
     double N_bkg{0}, N_sgn{0};
     double max_histo_mbb, max_histo_mtt;
 
-    static bool IsInsideEllipse(double x, double y, double x0, double y0, double a, double b)
-    {
-        return pow(x - x0, 2) / pow(a, 2) + pow(y - y0, 2) / pow(b, 2) < 1.;
-    }
-
     void TimeReport(bool tot = false) const
     {
         reporter->TimeReport(tot);

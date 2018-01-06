@@ -63,11 +63,6 @@ public:
         samples = samples_list.at("Samples").files;
     }
 
-    static bool IsInsideEllipse(double x, double y, double x0, double y0, double a, double b)
-    {
-        return pow(x - x0, 2) / pow(a, 2) + pow(y - y0, 2) / pow(b, 2) < 1.;
-    }
-
     void LoadSkimmedData()
     {
         for (const auto& s: set){
@@ -151,7 +146,7 @@ public:
                 ss << std::fixed << std::setprecision(0) << s.spin;
                 std::string spin = ss.str();
                 bandwidth[s][sample.first] = Read_csvfile(args.optband_folder()+file_name_prefix_bandwidth+ToString(sample.first)+"_"+
-                                                          s.channel+"_spin"+spin+args.suffix()+".csv");
+                                                          s.channel+"_spin"+spin+args.suffix()+".csv", {});
 
                 mutualmatrix[s][sample.first] = Mutual(sample.second, bandwidth.at(s).at(sample.first));
                 std::ofstream ListMID(file_name_prefix+ToString(sample.first)+"_"+s.channel+"_spin"+spin+args.suffix()+".csv", std::ofstream::out);
