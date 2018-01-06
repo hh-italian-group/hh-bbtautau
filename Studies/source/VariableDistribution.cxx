@@ -105,7 +105,6 @@ public:
             }
             std::cout << entry << " number of events: " << tuple->size() << std::endl;
         }
-        std::cout<<"\\qui"<<std::endl;
         sample_vars = vars.GetSampleVariables(args.tree_name(), args.spin());
         TimeReport();
     }
@@ -135,9 +134,7 @@ public:
             }
             std::cout << entry << " number of events: " << tuple->size() << "  spin:" << entry.spin << "    " << entry.weight << std::endl;
         }
-        std::cout<<"\\qui"<<std::endl;
         sample_vars = vars.GetSampleVariables(args.tree_name(), args.spin());
-        std::cout<<"\\qui"<<std::endl;
         TimeReport();
     }
 
