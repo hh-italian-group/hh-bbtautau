@@ -47,6 +47,7 @@ struct Arguments { // list of all program arguments
         REQ_ARG(std::string, range);
         REQ_ARG(Long64_t, number_variables);
         REQ_ARG(uint_fast32_t, which_test);
+        REQ_ARG(std::string, suffix);
         OPT_ARG(size_t, number_sets, 2);
         OPT_ARG(uint_fast32_t, seed, std::numeric_limits<uint_fast32_t>::max());
         OPT_ARG(std::string, save, "");
@@ -122,7 +123,9 @@ public:
                 const  ChannelSampleIdSpin id = m_entry.first;
                 const SampleId m = id.sample_id;
                 const std::string samplename = m.IsSignal() ? "Signal" : "Background";
+                const double weight_bkg = 1;
                 for(const auto& vars : m_entry.second.data) {
+
                     loader->AddEvent(samplename, treetype, vars.first , vars.second*weights.at(id));
                 }
             }
@@ -363,7 +366,6 @@ public:
                     eval_cas.insert(eval_cas.end(), evaluation[entry.first][type_entry.first].begin(), evaluation[entry.first][type_entry.first].end());
                 }
 
-
                 std::set<BDTData::Hist*> outs = { &outputBDT(entry.first.channel, entry.first.sample_id, entry.first.spin, type_entry.first),
                                                   &outputBDT(entry.first.channel, entry.first.sample_id, entry.first.spin, tot),
                                                   &outputBDT(all_channel, entry.first.sample_id, entry.first.spin, type_entry.first),
@@ -448,8 +450,10 @@ public:
                 for(const Event& event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
                     LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
-                    if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(), bb.mass()))
-                        continue;
+                    if (args.suffix() == "_ANcut"){
+                        if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(), bb.mass()))
+                            continue;
+                    }
 //                    if (event.p4_1.pt()<40 || event.p4_2.pt()<40) continue;
                     int which_set=0;
                     if(!args.all_data()){
@@ -475,12 +479,22 @@ public:
                         else which_set = 1;
                     }
                     tot_entries++;
+                    auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(s.channel), event) ;
+                    EventInfoBase& eventbase = *eventInfoPtr;
+                    if (args.suffix() == "_newcut"){
+                        if (!IsInsideEllipse(eventbase.GetHiggsBB().GetMomentum().M(),eventbase.GetHiggsTTMomentum(false).M(),109.639, 87.9563, 43.0346,41.8451))
+                            continue;
+                    }
+
                     if (entry.id.IsBackground()) {
                         const auto pair_mass_spin = mass_spin.at(it(gen));
                         const SampleId sample_bkg(SampleType::Bkg_TTbar, pair_mass_spin.first);
-                        vars->AddEvent(event, sample_bkg, pair_mass_spin.second, s.channel, entry.weight, which_set);
+                        double weight_bkg = 1;
+//                        if (entry.filename == "TT.root") weight_bkg = 831.76/mergesummary.totalShapeWeight;
+//                        if (entry.filename == "DYJetsToLL_M-50.root") weight_bkg = 5765.4/mergesummary.totalShapeWeight;
+                       vars->AddEvent(eventbase, sample_bkg, pair_mass_spin.second,entry.weight, which_set, weight_bkg);
                     }
-                    else vars->AddEvent(event, entry.id, entry.spin, s.channel, entry.weight , which_set);
+                    else vars->AddEvent(eventbase, entry.id, entry.spin, entry.weight , which_set);
                 }
                 std::cout << " channel " << s.channel << "    " << entry.filename << " number of events: " << tot_entries << std::endl;
             }

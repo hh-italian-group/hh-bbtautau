@@ -84,19 +84,29 @@ public:
         reader->BookMVA(method_name, bdt_weights);
     }
 
-    virtual void AddEvent(const ntuple::Event& event, const SampleId& /*mass*/ , int /* spin*/, std::string /*channel*/, double /*sample_weight*/, int /*which_test*/) override
+    virtual void AddEvent(analysis::EventInfoBase& eventbase, const SampleId& /*mass*/ , int /* spin*/, double /*sample_weight*/, int /*which_test*/, double /*weight_bkg*/) override
     {
-        auto bb = event.jets_p4[0] + event.jets_p4[1];
-        dphi_mumet = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.p4_1, event.pfMET_p4));
-        dphi_metsv = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.SVfit_p4, event.pfMET_p4));
-        dR_bb = std::abs(ROOT::Math::VectorUtil::DeltaR(event.jets_p4[0], event.jets_p4[1]));
-        dR_bbbb = ROOT::Math::VectorUtil::DeltaR(event.jets_p4[0], event.jets_p4[1])*bb.Pt();
-        dR_taumu = std::abs(ROOT::Math::VectorUtil::DeltaR(event.p4_1, event.p4_2));
-        dR_taumusvfit = ROOT::Math::VectorUtil::DeltaR(event.p4_1, event.p4_2)*event.SVfit_p4.Pt();
-        mT1 = static_cast<float>(Calculate_MT(event.p4_1,event.pfMET_p4));
-        mT2 = static_cast<float>(Calculate_MT(event.p4_2,event.pfMET_p4));
-        dphi_bbmet = std::abs(ROOT::Math::VectorUtil::DeltaPhi(bb, event.pfMET_p4));
-        dphi_bbsv = std::abs(ROOT::Math::VectorUtil::DeltaPhi(bb, event.SVfit_p4));
+        const auto& Htt = eventbase.GetHiggsTTMomentum(false);
+        const auto& Htt_sv = eventbase.GetHiggsTTMomentum(true);
+        const auto& t1 = eventbase.GetLeg(1);
+        const auto& t2 = eventbase.GetLeg(2);
+
+        const auto& Hbb = eventbase.GetHiggsBB();
+        const auto& b1 = Hbb.GetFirstDaughter();
+        const auto& b2 = Hbb.GetSecondDaughter();
+
+        const auto& met = eventbase.GetMET();
+
+        dphi_mumet = std::abs(ROOT::Math::VectorUtil::DeltaPhi(t1.GetMomentum(), met.GetMomentum()));
+        dphi_metsv = std::abs(ROOT::Math::VectorUtil::DeltaPhi(Htt_sv, met.GetMomentum()));
+        dR_bb = std::abs(ROOT::Math::VectorUtil::DeltaR(b1.GetMomentum(), b2.GetMomentum()));
+        dR_bbbb = ROOT::Math::VectorUtil::DeltaR(b1.GetMomentum(), b2.GetMomentum())*Hbb.GetMomentum().Pt();
+        dR_taumu = std::abs(ROOT::Math::VectorUtil::DeltaR(t1.GetMomentum(), t2.GetMomentum()));
+        dR_taumusvfit = ROOT::Math::VectorUtil::DeltaR(t1.GetMomentum(), t2.GetMomentum())*Htt.Pt();
+        mT1 = static_cast<float>(Calculate_MT(t1.GetMomentum(), met.GetMomentum()));
+        mT2 = static_cast<float>(Calculate_MT(t2.GetMomentum(), met.GetMomentum()));
+        dphi_bbmet = std::abs(ROOT::Math::VectorUtil::DeltaPhi(Hbb.GetMomentum(), met.GetMomentum()));
+        dphi_bbsv = std::abs(ROOT::Math::VectorUtil::DeltaPhi(Hbb.GetMomentum(), Htt_sv));
     }
     virtual double Evaluate() override { return reader->EvaluateMVA(method_name); }
 
@@ -136,7 +146,9 @@ public:
                     const std::string channel = "")
     {
         auto& vars = FindMvaVariables(mass, method_name);
-        vars.AddEvent(event, SampleId(SampleType::Sgn_Res, mass), spin, channel);
+        auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(channel) ,event) ;
+        EventInfoBase& eventbase = *eventInfoPtr;
+        vars.AddEvent(eventbase, SampleId(SampleType::Sgn_Res, mass), spin);
         return vars.Evaluate();
     }
 
