@@ -18,9 +18,10 @@ ENUM_NAMES(SampleType) = {
     { SampleType::TT, "TT" }
 };
 
-enum class DYFitModel { None = 0, NbjetBins = 1};
+enum class DYFitModel { None = 0, NbjetBins = 1,NbjetBins_htBins = 2};
 ENUM_NAMES(DYFitModel) = {
-    { { DYFitModel::None, "None" } , { DYFitModel::NbjetBins, "NbjetBins" } }
+    { { DYFitModel::None, "None" } , { DYFitModel::NbjetBins, "NbjetBins" } ,
+    { DYFitModel::NbjetBins_htBins, "NbjetBins_htBins"} }
 };
 
 struct EventRegion {

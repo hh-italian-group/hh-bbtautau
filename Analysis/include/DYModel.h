@@ -39,13 +39,9 @@ public:
         }
 
         for(const auto& sample_wp : sample.working_points) {
-            std::cout<<" WOrkin point names = "<<sample_wp.full_name<<std::endl;
+            std::cout<<" Working point names = "<<sample_wp.full_name<<std::endl;
             const size_t n_b_partons = static_cast<size_t>(sample_wp.param_values.at(b_index));
-            if(ht_found){
-                double ht_cut = static_cast<double>(sample_wp.param_values.at(ht_index));
-                working_points_map[std::pair<size_t,double>(n_b_partons,ht_cut)] = sample_wp;
-            }
-            working_points_map[std::pair<size_t,double>(n_b_partons,0)] = sample_wp;
+            working_points_map[n_b_partons].push_back(sample_wp);
         }
 
         fit_method = sample.fit_method;
@@ -80,31 +76,47 @@ public:
         }*/
         //unsigned int n_bJets = event->lhe_n_b_partons;
         unsigned int n_bJets = event->jets_nTotal_hadronFlavour_b;
-        double HT = 0;
-        if(ht_found) HT = event->lhe_HT;
-        double HT_wp = 0;
-        if(HT<80) HT_wp=0;
-        if(HT>80 && HT<150) HT_wp=80;
-        if(HT>150) HT_wp = 150;
-        std::pair<size_t,double> p(std::min((unsigned int)2, n_bJets),HT_wp);
-        std::map<std::pair<size_t,double>,SampleDescriptorBase::Point>::iterator it = working_points_map.find(p);
+        double lheHT = event->lhe_HT;
+        int ht_wp = GetHTWP(lheHT);
+        std::map<size_t,std::vector<SampleDescriptorBase::Point>>::iterator it = working_points_map.find(
+                                                                               std::min((unsigned int)2,n_bJets));
         if(it == working_points_map.end())
             throw exception("Unable to find WP for DY event with  jets_nTotal_hadronFlavour_b = %1%") % event->jets_nTotal_hadronFlavour_b;
            // throw exception("Unable to find WP for DY event with lhe_n_b_partons = %1%") % event->lhe_n_b_partons;
-        const auto& sample_wp = it->second;
-        const auto finalId = anaDataId.Set(sample_wp.full_name);
-        double norm_sf = 1;
-        if(fit_method == DYFitModel::NbjetBins)
-            norm_sf = scale_factor_maps.at(sample_wp.full_name);
-        dataIds[finalId] = std::make_tuple(weight * norm_sf, event.GetMvaScore());
+
+        for(const auto& sample_wp : it->second){
+            if(ht_found){
+                const int sample_ht_wp = static_cast<int>(sample_wp.param_values.at(ht_index));
+                if(ht_wp != sample_ht_wp) continue;
+            }
+            const auto finalId = anaDataId.Set(sample_wp.full_name);
+            double norm_sf = 1;
+            if(fit_method == DYFitModel::NbjetBins)
+                norm_sf = scale_factor_maps.at(sample_wp.full_name);
+            else if(fit_method == DYFitModel::NbjetBins_htBins){
+                if(ht_found) norm_sf = scale_factor_maps.at(sample_wp.full_name);
+                else norm_sf = scale_factor_maps.at(sample_wp.full_name+ToString(ht_wp)+"ht");
+            }
+            dataIds[finalId] = std::make_tuple(weight * norm_sf, event.GetMvaScore());
+        }
+    }
+
+    int GetHTWP(double ht)
+    {
+        auto prev = ht_wp.begin();
+        for(auto iter = std::next(prev); iter != ht_wp.end() && *iter < ht; ++iter) {
+            prev = iter;
+        }
+        return static_cast<int>(*prev);
     }
 
 private:
     std::map<std::string,double> scale_factor_maps;
     size_t b_index;
     size_t ht_index;
-    std::map<std::pair<size_t,double>,SampleDescriptorBase::Point> working_points_map;
+    std::map<size_t,std::vector<SampleDescriptorBase::Point>> working_points_map;
     DYFitModel fit_method;
     bool ht_found;
+    std::set<double> ht_wp{0,80,150};
 };
 }
