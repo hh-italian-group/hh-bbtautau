@@ -39,10 +39,17 @@ protected:
         double mass_jj = event.GetHiggsBB().GetMomentum().M();
         const bool jetMass = mass_jj > 80 && mass_jj < 160;
         const bool muonMass= mass_muMu > 60;
+        double pt_jets = event.GetHiggsBB().GetFirstDaughter().GetMomentum().Pt()
+                        + event.GetHiggsBB().GetSecondDaughter().GetMomentum().Pt()
+                        + event->ht_other_jets;
+
 
         EventSubCategory sub_category;
         sub_category.SetCutResult(SelectionCut::mh, jetMass && muonMass);
         sub_category.SetCutResult(SelectionCut::lowMET,event.GetMET().GetMomentum().Pt() < 45);
+        sub_category.SetCutResult(SelectionCut::lowPt, pt_jets < 80);
+        sub_category.SetCutResult(SelectionCut::medPt,pt_jets > 80 && pt_jets < 150);
+        sub_category.SetCutResult(SelectionCut::highPt,pt_jets > 150);
 
         return sub_category;
     }
