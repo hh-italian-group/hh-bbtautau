@@ -125,6 +125,41 @@ struct MvaReaderSetup {
             suffix.erase(suffix.size() - 1);
         return suffix;
     }
+
+    static MvaReaderSetup Join(const std::vector<MvaReaderSetup>& setups, const std::string& name = "")
+    {
+        MvaReaderSetup joined;
+        joined.name = name;
+        for(const auto& setup : setups) {
+            if(!setup.trainings.size()) continue;
+            const bool need_suffix = setup.trainings.size() > 1;
+            InsertMap(joined.trainings, setup.trainings, setup.name, need_suffix);
+            InsertMap(joined.variables, setup.variables, setup.name, need_suffix);
+            InsertMap(joined.masses, setup.masses, setup.name, need_suffix);
+            InsertMap(joined.spins, setup.spins, setup.name, need_suffix);
+            InsertMap(joined.cuts, setup.cuts, setup.name, need_suffix);
+            InsertMap(joined.legacy, setup.legacy, setup.name, need_suffix);
+            InsertMap(joined.training_ranges, setup.training_ranges, setup.name, need_suffix);
+            InsertMap(joined.samples, setup.samples, setup.name, need_suffix);
+        }
+        joined.CreateSelections();
+        return joined;
+    }
+
+private:
+    template<typename Value>
+    static void InsertMap(std::map<std::string, Value>& target, const std::map<std::string, Value>& original,
+                          const std::string& setup_name, bool need_suffix)
+    {
+        for(const auto& item : original) {
+            std::string item_name = setup_name;
+            if(need_suffix)
+                item_name += "_" + item.first;
+            if(target.count(item_name))
+                throw exception("Unable to merge MvaReader setups. Duplicated entries are found.");
+            target[item_name] = item.second;
+        }
+    }
 };
 
 using MvaReaderSetupCollection = std::unordered_map<std::string, MvaReaderSetup>;

@@ -25,24 +25,55 @@ protected:
         const TauCandidate& tau_1 = event.GetFirstLeg();
         const TauCandidate& tau_2 = event.GetSecondLeg();
 
-        EventRegion region;
+//        EventRegion region;
 
-        if(!event.GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)
-                || !tau_1->byIsolationMVA(DiscriminatorWP::Medium)) return EventRegion::Unknown();
+//        if(!event.GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)
+//                || !tau_1->byIsolationMVA(DiscriminatorWP::Medium)) return EventRegion::Unknown();
+
+//        const bool os = !ana_setup.apply_os_cut || tau_1.GetCharge() * tau_2.GetCharge() == -1;
+//        region.SetCharge(os);
+
+//        for(auto wp = working_points.rbegin(); wp != working_points.rend(); ++wp) {
+//            if(tau_2->byIsolationMVA(*wp)) {
+//                region.SetLowerIso(*wp);
+//                if(wp != working_points.rbegin())
+//                    region.SetUpperIso(*(--wp));
+//                break;
+//            }
+//        }
+
+//        return region;
+
+        EventRegion region_tau1, region_tau2;
+
+        if(!event.GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) return EventRegion::Unknown();
 
         const bool os = !ana_setup.apply_os_cut || tau_1.GetCharge() * tau_2.GetCharge() == -1;
-        region.SetCharge(os);
+        region_tau1.SetCharge(os);
+        region_tau2.SetCharge(os);
 
-        for(auto wp = working_points.rbegin(); wp != working_points.rend(); ++wp) {
-            if(tau_2->byIsolationMVA(*wp)) {
-                region.SetLowerIso(*wp);
-                if(wp != working_points.rbegin())
-                    region.SetUpperIso(*(--wp));
+        for(auto wp_1 = working_points.rbegin(); wp_1 != working_points.rend(); ++wp_1) {
+            if(tau_1->byIsolationMVA(*wp_1)) {
+                region_tau1.SetLowerIso(*wp_1);
+                if(wp_1 != working_points.rbegin())
+                    region_tau1.SetUpperIso(*(--wp_1));
                 break;
             }
         }
 
-        return region;
+        for(auto wp_2 = working_points.rbegin(); wp_2 != working_points.rend(); ++wp_2) {
+            if(tau_2->byIsolationMVA(*wp_2)) {
+                region_tau2.SetLowerIso(*wp_2);
+                if(wp_2 != working_points.rbegin())
+                    region_tau2.SetUpperIso(*(--wp_2));
+                break;
+            }
+        }
+
+        if(!region_tau1.HasLowerIso() || !region_tau2.HasLowerIso()) return EventRegion::Unknown();
+        if(region_tau1.GetLowerIso() >= DiscriminatorWP::Medium) return region_tau2;
+        if(region_tau2.GetLowerIso() >= DiscriminatorWP::Medium) return region_tau1;
+        return EventRegion::Unknown();
     }
 };
 

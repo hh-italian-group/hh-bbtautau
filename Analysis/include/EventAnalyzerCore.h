@@ -50,9 +50,14 @@ public:
         ana_setup = ana_setup_collection.at(args.setup());
 
         if(args.mva_setup().size()) {
-            if(!mva_setup_collection.count(args.mva_setup()))
-                throw exception("MVA setup '%1%' not found.") % args.mva_setup();
-            mva_setup = mva_setup_collection.at(args.mva_setup());
+            const auto mva_setup_names = SplitValueList(args.mva_setup(), false, ", \t", true);
+            std::vector<MvaReaderSetup> mva_setups;
+            for(const auto& name : mva_setup_names) {
+                if(!mva_setup_collection.count(name))
+                    throw exception("MVA setup '%1%' not found.") % name;
+                mva_setups.push_back(mva_setup_collection.at(name));
+            }
+            mva_setup = mva_setups.size() == 1 ? mva_setups.front() : MvaReaderSetup::Join(mva_setups);
         }
         RemoveUnusedSamples();
 
