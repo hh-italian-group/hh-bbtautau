@@ -4,6 +4,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #pragma once
 
 #include "AnalysisTools/Core/include/AnalysisMath.h"
+#include "AnalysisTools/Run/include/MultiThread.h"
 #include "EventAnalyzerDataCollection.h"
 #include "SampleDescriptorConfigEntryReader.h"
 #include "h-tautau/Cuts/include/Btag_2016.h"
@@ -85,6 +86,7 @@ public:
 
     void Run()
     {
+        run::ThreadPull threads(args.n_threads());
         ProcessSamples(ana_setup.signals, "signal");
         ProcessSamples(ana_setup.data, "data");
         ProcessSamples(ana_setup.backgrounds, "background");
@@ -130,14 +132,20 @@ protected:
 
         if(mva_setup.is_initialized()) {
 
-            std::map<MvaKey, double> scores;
+            std::map<MvaKey, std::future<double>> scores;
             for(const auto& mva_sel : mva_setup->selections) {
                 const auto& params = mva_sel.second;
                 const MvaKey key{params.name, static_cast<int>(params.mass), params.spin};
-                if(!scores.count(key))
-                    scores[key] = mva_reader.Evaluate(*event, static_cast<int>(params.mass), params.name, params.spin,
-                                                      ToString(ChannelId()));
-                const double score = scores.at(key);
+                if(!scores.count(key)) {
+                    auto eval = std::bind(&mva_study::MvaReader::Evaluate, &mva_reader, &event,
+                                          static_cast<int>(params.mass), params.name, params.spin);
+                    scores[key] = run::async(eval);
+                }
+            }
+            for(const auto& mva_sel : mva_setup->selections) {
+                const auto& params = mva_sel.second;
+                const MvaKey key{params.name, static_cast<int>(params.mass), params.spin};
+                const double score = scores.at(key).get();
                 const bool pass = score > params.cut;
                 sub_category.SetCutResult(mva_sel.first, pass);
                 mva_scores[mva_sel.first] = score;
