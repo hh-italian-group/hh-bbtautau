@@ -79,10 +79,9 @@ public:
         unsigned int n_bJets = event->jets_nTotal_hadronFlavour_b;
         double lheHT = event->lhe_HT;
         int ht_wp = 0;
-        std::pair<size_t,size_t> p;
         if(ht_found || fit_method == DYFitModel::NbjetBins_htBins)
             ht_wp = GetHTWP(lheHT);
-        p = std::make_pair(std::min((unsigned int)2, n_bJets),0);
+        std::pair<size_t,size_t> p(std::min((unsigned int)2, n_bJets),ht_wp);
         std::map<std::pair<size_t,size_t>,SampleDescriptorBase::Point>::iterator it = working_points_map.find(p);
         if(it == working_points_map.end())
             throw exception("Unable to find WP for DY event with  jets_nTotal_hadronFlavour_b = %1%") % event->jets_nTotal_hadronFlavour_b;
