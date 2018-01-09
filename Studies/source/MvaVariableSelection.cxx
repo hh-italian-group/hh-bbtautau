@@ -69,16 +69,16 @@ public:
 
 
     VariableDistribution(const Arguments& _args): args(_args),
-        outfile(root_ext::CreateRootFile(args.output_file())), vars(args.number_sets(), args.seed(),{}, {"channel", "mass", "spin",
-                                                                    "decayMode_1", "decayMode_2", "iso_1", "iso_2", "csv_1", "csv_2",
-                                                                    "costheta_l1l2METhh_sv","costheta_htautau_svhhMET","costheta_htautau_svhh_sv",
-                                                                    "costheta_htautau_svhh", "costheta_htautauhh_sv", "costheta_hbbhh_sv",
-                                                                    "costheta_METhtautau_sv", "costheta_l2htautau_sv", "costheta_l1htautau_sv",
-                                                                    "costheta_star_leptons_sv", "phi_2_sv", "phi_1_sv", "phi_sv", "mass_H_sv",
-                                                                    "MT_htautau_sv", "mass_htautau_sv", "dR_l1l2_boosted_sv", "dR_l1l2Pt_htautau_sv",
-                                                                    "dR_hbbhtautau_sv", "dR_METhtautau_sv", "deta_hbbhtautau_sv", "abs_deta_hbbhtautau_sv"
-                                                                    "deta_METhtautau_sv", "abs_deta_METhtautau_sv","dphi_hbbhtautau_sv", "abs_dphi_hbbhatutau_sv",
-                                                                    "dphi_hbbhtautau_sv", "abs_dphi_hbbhatutau_sv", "dphi_METhtautau_sv", "abs_dphi_METhtautau_sv","pt_htautau_sv"
+        outfile(root_ext::CreateRootFile(args.output_file())), vars(args.number_sets(), args.seed(),{}, {"channel", "mass", "spin", "iso_2",
+//                                                                    "decayMode_1", "decayMode_2", "iso_1", "csv_1", "csv_2",
+//                                                                    "costheta_l1l2METhh_sv","costheta_htautau_svhhMET","costheta_htautau_svhh_sv",
+//                                                                    "costheta_htautau_svhh", "costheta_htautauhh_sv", "costheta_hbbhh_sv",
+//                                                                    "costheta_METhtautau_sv", "costheta_l2htautau_sv", "costheta_l1htautau_sv",
+//                                                                    "costheta_star_leptons_sv", "phi_2_sv", "phi_1_sv", "phi_sv", "mass_H_sv",
+//                                                                    "MT_htautau_sv", "mass_htautau_sv", "dR_l1l2_boosted_sv", "dR_l1l2Pt_htautau_sv",
+//                                                                    "dR_hbbhtautau_sv", "dR_METhtautau_sv", "deta_hbbhtautau_sv", "abs_deta_hbbhtautau_sv"
+//                                                                    "deta_METhtautau_sv", "abs_deta_METhtautau_sv","dphi_hbbhtautau_sv", "abs_dphi_hbbhatutau_sv",
+//                                                                    "dphi_hbbhtautau_sv", "abs_dphi_hbbhatutau_sv", "dphi_METhtautau_sv", "abs_dphi_METhtautau_sv","pt_htautau_sv"
 }),
               reporter(std::make_shared<TimeReporter>())
     {
@@ -186,7 +186,7 @@ public:
                             if (!mutual_matrix.at(se).at(entry.first).count(names) || !mutual_matrix.at(chsp_bkg).at(SampleType::Bkg_TTbar).count(names)) continue;
                             if(mutual_matrix.at(se).at(entry.first).at(names) < threashold_mi && mutual_matrix.at(chsp_bkg).at(SampleType::Bkg_TTbar).at(names) < threashold_mi){
                                 not_corrected.insert(other_entry.first);
-                                best_entries_file << "," <<name<<"-"<<other_entry.first << "," <<"MID(sgn) "<<mutual_matrix.at(se).at(entry.first).at(names) << "," <<"MID(bkg) "<<  mutual_matrix.at(chsp_bkg).at(SampleType::Bkg_TTbar).at(names) << ",";
+                                best_entries_file << "," <<name<<"-"<<other_entry.first << "," <<"MID(sgn) "<<mutual_matrix.at(se).at(entry.first).at(names) << "," <<"MID(bkg) "<<  mutual_matrix.at(chsp_bkg).at(SampleType::Bkg_TTbar).at(names) << "," << entry.first <<",";
                             }
                         }
                     }
