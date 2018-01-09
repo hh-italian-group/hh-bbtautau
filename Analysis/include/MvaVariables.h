@@ -102,10 +102,25 @@ inline std::istream& operator>>(std::istream& is, SampleId& id)
 
 class MvaVariablesBase {
 public:
+    using Mutex = std::mutex;
+    using Lock = std::lock_guard<Mutex>;
+
     virtual ~MvaVariablesBase() {}
-    virtual void AddEvent(analysis::EventInfoBase& eventbase, const SampleId& mass , int spin, double sample_weight = 1., int which_test = -1, double weight_bkg = 1) = 0;
+    virtual void AddEvent(analysis::EventInfoBase& eventbase, const SampleId& mass, int spin, double sample_weight = 1.,
+                          int which_test = -1, double weight_bkg = 1) = 0;
     virtual double Evaluate() { throw exception("Not supported."); }
     virtual std::shared_ptr<TMVA::Reader> GetReader() = 0;
+
+    double AddAndEvaluate(EventInfoBase& eventbase, const SampleId& mass, int spin,
+                          double sample_weight = 1., int which_test = -1, double weight_bkg = 1)
+    {
+        Lock lock(mutex);
+        AddEvent(eventbase, mass, spin, sample_weight, which_test, weight_bkg);
+        return Evaluate();
+    }
+
+private:
+    Mutex mutex;
 };
 
 #define VAR(name, formula) if(IsEnabled(name)) SetValue(name, formula)

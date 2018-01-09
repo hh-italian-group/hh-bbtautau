@@ -14,8 +14,6 @@ namespace mva_study{
 
 class MvaVariablesEvaluation : public MvaVariables {
 private:
-    using Mutex = std::mutex;
-    using Lock = std::lock_guard<Mutex>;
     using DataVectorF = std::vector<float>;
     static constexpr size_t max_n_vars = 1000;
     DataVectorF variable_float;
@@ -24,7 +22,6 @@ private:
     std::shared_ptr<TMVA::Reader> reader;
     size_t n_vars;
     bool is_initialized;
-    Mutex mutex;
 
 public:
     MvaVariablesEvaluation(const std::string& _method_name, const std::string& _bdt_weights,
@@ -47,18 +44,14 @@ public:
 
     virtual double Evaluate() override
     {
-        {
-            Lock lock(mutex);
-            if(!is_initialized) {
-                reader->BookMVA(method_name, bdt_weights);
-                is_initialized = true;
-            }
+        if(!is_initialized) {
+            reader->BookMVA(method_name, bdt_weights);
+            is_initialized = true;
         }
         return reader->EvaluateMVA(method_name);
     }
 
     virtual std::shared_ptr<TMVA::Reader> GetReader() override { return reader;}
-
 };
 
 class LegacyMvaVariables : public MvaVariablesBase {
@@ -151,8 +144,7 @@ public:
     double Evaluate(EventInfoBase* event, int mass, const std::string& method_name, int spin)
     {
         auto& vars = FindMvaVariables(mass, method_name);
-        vars.AddEvent(*event, SampleId(SampleType::Sgn_Res, mass), spin);
-        return vars.Evaluate();
+        return vars.AddAndEvaluate(*event, SampleId(SampleType::Sgn_Res, mass), spin);
     }
 
     Vars& FindMvaVariables(int mass, const std::string& method_name = "")
