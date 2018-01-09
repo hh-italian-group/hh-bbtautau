@@ -31,20 +31,21 @@ public:
 
         std::string ht_suffix = "ht";
         ht_found = sample.name_suffix.find(ht_suffix) != std::string::npos;
-        if(ht_found){
-            const auto ht_param_iter = param_names.find("ht");
-            if(ht_param_iter == param_names.end())
-            throw exception("Unable to find ht WP for DY smaple");
-            ht_index = ht_param_iter->second;
-        }
+
+        fit_method = sample.fit_method;
+
+        const auto ht_param_iter = param_names.find("ht");
+        if(ht_param_iter == param_names.end())
+        throw exception("Unable to find ht WP for DY smaple");
+        ht_index = ht_param_iter->second;
 
         for(const auto& sample_wp : sample.working_points) {
             std::cout<<" Working point names = "<<sample_wp.full_name<<std::endl;
             const size_t n_b_partons = static_cast<size_t>(sample_wp.param_values.at(b_index));
-            working_points_map[n_b_partons].push_back(sample_wp);
+            const size_t ht_wp = static_cast<size_t>(sample_wp.param_values.at(ht_index));
+            working_points_map[std::pair<size_t,size_t>(n_b_partons,ht_wp)] = sample_wp;
+            if(ht_found || fit_method == DYFitModel::NbjetBins_htBins) ht_wp_set.insert(ht_wp);
         }
-
-        fit_method = sample.fit_method;
         if(fit_method == DYFitModel::NbjetBins){
             auto input_file = root_ext::OpenRootFile(sample.norm_sf_file);
             auto scale_factor_histo =  std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*input_file,ToString(fit_method)
@@ -77,34 +78,33 @@ public:
         //unsigned int n_bJets = event->lhe_n_b_partons;
         unsigned int n_bJets = event->jets_nTotal_hadronFlavour_b;
         double lheHT = event->lhe_HT;
-        int ht_wp = GetHTWP(lheHT);
-        std::map<size_t,std::vector<SampleDescriptorBase::Point>>::iterator it = working_points_map.find(
-                                                                               std::min((unsigned int)2,n_bJets));
+        int ht_wp = 0;
+        std::pair<size_t,size_t> p;
+        if(ht_found || fit_method == DYFitModel::NbjetBins_htBins)
+            ht_wp = GetHTWP(lheHT);
+        p = std::make_pair(std::min((unsigned int)2, n_bJets),0);
+        std::map<std::pair<size_t,size_t>,SampleDescriptorBase::Point>::iterator it = working_points_map.find(p);
         if(it == working_points_map.end())
             throw exception("Unable to find WP for DY event with  jets_nTotal_hadronFlavour_b = %1%") % event->jets_nTotal_hadronFlavour_b;
            // throw exception("Unable to find WP for DY event with lhe_n_b_partons = %1%") % event->lhe_n_b_partons;
 
-        for(const auto& sample_wp : it->second){
-            if(ht_found){
-                const int sample_ht_wp = static_cast<int>(sample_wp.param_values.at(ht_index));
-                if(ht_wp != sample_ht_wp) continue;
-            }
-            const auto finalId = anaDataId.Set(sample_wp.full_name);
-            double norm_sf = 1;
-            if(fit_method == DYFitModel::NbjetBins)
-                norm_sf = scale_factor_maps.at(sample_wp.full_name);
-            else if(fit_method == DYFitModel::NbjetBins_htBins){
-                if(ht_found) norm_sf = scale_factor_maps.at(sample_wp.full_name);
-                else norm_sf = scale_factor_maps.at(sample_wp.full_name+ToString(ht_wp)+"ht");
-            }
-            dataIds[finalId] = std::make_tuple(weight * norm_sf, event.GetMvaScore());
+        auto sample_wp = it->second;
+        const auto finalId = anaDataId.Set(sample_wp.full_name);
+        double norm_sf = 1;
+        if(fit_method == DYFitModel::NbjetBins)
+            norm_sf = scale_factor_maps.at(sample_wp.full_name);
+        else if(fit_method == DYFitModel::NbjetBins_htBins){
+            if(ht_found) norm_sf = scale_factor_maps.at(sample_wp.full_name);
+            else norm_sf = scale_factor_maps.at(sample_wp.full_name+ToString(ht_wp)+"ht");
         }
+        dataIds[finalId] = std::make_tuple(weight * norm_sf, event.GetMvaScore());
+
     }
 
     int GetHTWP(double ht)
     {
-        auto prev = ht_wp.begin();
-        for(auto iter = std::next(prev); iter != ht_wp.end() && *iter < ht; ++iter) {
+        auto prev = ht_wp_set.begin();
+        for(auto iter = std::next(prev); iter != ht_wp_set.end() && *iter < ht; ++iter) {
             prev = iter;
         }
         return static_cast<int>(*prev);
@@ -114,9 +114,9 @@ private:
     std::map<std::string,double> scale_factor_maps;
     size_t b_index;
     size_t ht_index;
-    std::map<size_t,std::vector<SampleDescriptorBase::Point>> working_points_map;
+    std::map<std::pair<size_t,size_t>,SampleDescriptorBase::Point> working_points_map;
     DYFitModel fit_method;
     bool ht_found;
-    std::set<double> ht_wp{0,80,150};
+    std::set<size_t> ht_wp_set;
 };
 }
