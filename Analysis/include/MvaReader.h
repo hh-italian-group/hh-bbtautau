@@ -146,7 +146,7 @@ public:
                     const std::string channel = "")
     {
         auto& vars = FindMvaVariables(mass, method_name);
-        auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(channel) ,event) ;
+        auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(channel), event) ;
         EventInfoBase& eventbase = *eventInfoPtr;
         vars.AddEvent(eventbase, SampleId(SampleType::Sgn_Res, mass), spin);
         return vars.Evaluate();

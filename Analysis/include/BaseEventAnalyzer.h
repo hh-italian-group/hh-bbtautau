@@ -135,7 +135,8 @@ protected:
                 const auto& params = mva_sel.second;
                 const MvaKey key{params.name, static_cast<int>(params.mass), params.spin};
                 if(!scores.count(key))
-                    scores[key] = mva_reader.Evaluate(*event, static_cast<int>(params.mass), params.name, params.spin);
+                    scores[key] = mva_reader.Evaluate(*event, static_cast<int>(params.mass), params.name, params.spin,
+                                                      ToString(ChannelId()));
                 const double score = scores.at(key);
                 const bool pass = score > params.cut;
                 sub_category.SetCutResult(mva_sel.first, pass);
