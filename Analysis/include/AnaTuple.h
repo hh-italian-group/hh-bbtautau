@@ -42,7 +42,7 @@ INITIALIZE_TREE(bbtautau, AnaTuple, ANA_EVENT_DATA)
 #undef CREATE_VAR
 
 #define ANA_AUX_DATA() \
-    VAR(std::vector<uint32_t>, dataIds) /* EventAnalyzerDataId code */ \
+    VAR(std::vector<size_t>, dataIds) /* EventAnalyzerDataId code */ \
     VAR(std::vector<std::string>, dataId_names) /* EventAnalyzerDataId name */ \
     VAR(std::vector<unsigned>, mva_selections) /* SelectionCut for mva selection */ \
     VAR(std::vector<double>, mva_min) /* Minimal value for the given mva SelectionCut */ \
@@ -62,7 +62,7 @@ namespace bbtautau {
 class AnaTupleWriter {
 public:
     using DataId = EventAnalyzerDataId;
-    using DataIdBiMap = boost::bimap<DataId, uint32_t>;
+    using DataIdBiMap = boost::bimap<DataId, size_t>;
     using DataIdMap = std::map<DataId, std::tuple<double, double>>;
     using Range = ::analysis::Range<double>;
     using RangeMap = std::map<SelectionCut, Range>;
@@ -98,7 +98,7 @@ public:
         if(!dataIds.size()) return;
         for(const auto& entry : dataIds) {
             if(!known_data_ids.left.count(entry.first)) {
-                const uint32_t hash = tools::hash(entry.first.GetName());
+                const size_t hash = std::hash(entry.first.GetName());
                 if(known_data_ids.right.count(hash))
                     throw exception("Duplicated hash for event id '%1%' and '%2%'.") % entry.first
                         %  known_data_ids.right.at(hash);
@@ -221,7 +221,7 @@ private:
 class AnaTupleReader {
 public:
     using DataId = EventAnalyzerDataId;
-    using Hash = uint32_t;
+    using Hash = size_t;
     using DataIdBiMap = boost::bimap<DataId, Hash>;
     using DataIdMap = std::map<DataId, std::tuple<double, double>>;
     using NameSet = std::set<std::string>;
