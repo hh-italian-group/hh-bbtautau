@@ -44,7 +44,7 @@ public:
             const size_t n_b_partons = static_cast<size_t>(sample_wp.param_values.at(b_index));
             const size_t ht_wp = static_cast<size_t>(sample_wp.param_values.at(ht_index));
             working_points_map[std::pair<size_t,size_t>(n_b_partons,ht_wp)] = sample_wp;
-            if(ht_found || fit_method == DYFitModel::NbjetBins_htBins) ht_wp_set.insert(ht_wp);
+            ht_wp_set.insert(ht_wp);
         }
         if(fit_method == DYFitModel::NbjetBins){
             auto input_file = root_ext::OpenRootFile(sample.norm_sf_file);
@@ -78,9 +78,7 @@ public:
         //unsigned int n_bJets = event->lhe_n_b_partons;
         unsigned int n_bJets = event->jets_nTotal_hadronFlavour_b;
         double lheHT = event->lhe_HT;
-        int ht_wp = 0;
-        if(ht_found || fit_method == DYFitModel::NbjetBins_htBins)
-            ht_wp = GetHTWP(lheHT);
+        int ht_wp = GetHTWP(lheHT);
         std::pair<size_t,size_t> p(std::min((unsigned int)2, n_bJets),ht_wp);
         std::map<std::pair<size_t,size_t>,SampleDescriptorBase::Point>::iterator it = working_points_map.find(p);
         if(it == working_points_map.end())
@@ -100,13 +98,13 @@ public:
 
     }
 
-    int GetHTWP(double ht)
+    size_t GetHTWP(double ht)
     {
         auto prev = ht_wp_set.begin();
         for(auto iter = std::next(prev); iter != ht_wp_set.end() && *iter < ht; ++iter) {
             prev = iter;
         }
-        return static_cast<int>(*prev);
+        return (*prev);
     }
 
 private:
