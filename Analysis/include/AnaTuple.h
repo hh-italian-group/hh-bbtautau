@@ -17,7 +17,7 @@ namespace analysis {
 #define VAR_LIST(type, ...) BOOST_PP_SEQ_FOR_EACH(CREATE_VAR, type, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
 
 #define ANA_EVENT_DATA() \
-    VAR(std::vector<uint32_t>, dataIds) /* EventAnalyzerDataId */ \
+    VAR(std::vector<size_t>, dataIds) /* EventAnalyzerDataId */ \
     VAR(std::vector<double>, all_weights) /* all weight */ \
     VAR(std::vector<float>, all_mva_scores) /* all mva scores */ \
     VAR(bool, has_2jets) /* has 2 jets */ \
@@ -290,17 +290,12 @@ public:
 private:
     void ExtractDataIds(const AnaAux& aux)
     {
-        static const std::set<std::string> workaround = {
-            "2jets0btagR/mh_MVA16/OS_Isolated/JetDown/Signal_Radion_M750",
-            "2jets2LoosebtagR/mh_MVA24/SS_Isolated/JetUp/Signal_Radion_M450"
-        };
         const size_t N = aux.dataIds.size();
         if(aux.dataId_names.size() != N)
             throw exception("Inconsistent dataId info in AnaAux tuple.");
         for(size_t n = 0; n < N; ++n) {
-            const auto hash = static_cast<uint32_t>(aux.dataIds.at(n));
+            const auto hash = aux.dataIds.at(n);
             const auto& dataId_name = aux.dataId_names.at(n);
-            if(workaround.count(dataId_name)) continue;
             const auto dataId = DataId::Parse(dataId_name);
             if(known_data_ids.right.count(hash))
                 throw exception("Duplicated hash = %1% in AnaAux tuple for dataId = %2%.\n"
