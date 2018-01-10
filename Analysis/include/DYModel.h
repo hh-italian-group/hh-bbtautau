@@ -46,7 +46,7 @@ public:
             working_points_map[std::pair<size_t,size_t>(n_b_partons,ht_wp)] = sample_wp;
             ht_wp_set.insert(ht_wp);
         }
-        if(fit_method == DYFitModel::NbjetBins){
+        if(fit_method == DYFitModel::NbjetBins || fit_method == DYFitModel::NbjetBins_htBins){
             auto input_file = root_ext::OpenRootFile(sample.norm_sf_file);
             auto scale_factor_histo =  std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*input_file,ToString(fit_method)
                                                                                     +"/scale_factors"));
@@ -92,7 +92,7 @@ public:
             norm_sf = scale_factor_maps.at(sample_wp.full_name);
         else if(fit_method == DYFitModel::NbjetBins_htBins){
             if(ht_found) norm_sf = scale_factor_maps.at(sample_wp.full_name);
-            else norm_sf = scale_factor_maps.at(sample_wp.full_name+ToString(ht_wp)+"ht");
+            else norm_sf = scale_factor_maps.at(sample_wp.full_name+"_"+ToString(ht_wp)+"ht");
         }
         dataIds[finalId] = std::make_tuple(weight * norm_sf, event.GetMvaScore());
 
