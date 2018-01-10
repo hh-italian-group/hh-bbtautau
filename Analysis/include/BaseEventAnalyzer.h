@@ -101,18 +101,21 @@ protected:
 
     void InitializeMvaReader()
     {
+        using MvaKey = mva_study::MvaReader::MvaKey;
         if(!mva_setup.is_initialized()) return;
         for(const auto& method : mva_setup->trainings) {
             const auto& name = method.first;
             const auto& file = method.second;
             const auto& vars = mva_setup->variables.at(name);
             const auto& masses = mva_setup->masses.at(name);
-            const auto& mass_range_pair= std::minmax_element(masses.begin(), masses.end());
-            const Range<int> mass_range(static_cast<int>(*mass_range_pair.first),
-                                        static_cast<int>(*mass_range_pair.second));
+            const auto& spins = mva_setup->spins.at(name);
             const bool legacy = mva_setup->legacy.count(name);
             const bool legacy_lm = legacy && mva_setup->legacy.at(name) == "lm";
-            mva_reader.AddRange(mass_range, name, file, vars, legacy, legacy_lm);
+            const size_t n_wp = masses.size();
+            for(size_t n = 0; n < n_wp; ++n) {
+                const MvaKey key{name, static_cast<int>(masses.at(n)), spins.at(n)};
+                mva_reader.Add(key, file, vars, legacy, legacy_lm);
+            }
         }
     }
 
@@ -120,7 +123,7 @@ protected:
                                                        std::map<SelectionCut, double>& mva_scores)
     {
         using namespace cuts::hh_bbtautau_2016::hh_tag;
-        using MvaKey = std::tuple<std::string, int, int>;
+        using MvaKey = mva_study::MvaReader::MvaKey;
 
         EventSubCategory sub_category;
         sub_category.SetCutResult(SelectionCut::mh,
@@ -137,8 +140,7 @@ protected:
                 const auto& params = mva_sel.second;
                 const MvaKey key{params.name, static_cast<int>(params.mass), params.spin};
                 if(!scores.count(key)) {
-                    auto eval = std::bind(&mva_study::MvaReader::Evaluate, &mva_reader, &event,
-                                          static_cast<int>(params.mass), params.name, params.spin);
+                    auto eval = std::bind(&mva_study::MvaReader::Evaluate, &mva_reader, key, &event);
                     scores[key] = run::async(eval);
                 }
             }

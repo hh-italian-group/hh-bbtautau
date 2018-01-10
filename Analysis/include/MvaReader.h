@@ -7,8 +7,6 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "MvaVariables.h"
 #include "AnalysisTools/Core/include/NumericPrimitives.h"
 
-
-
 namespace analysis {
 namespace mva_study{
 
@@ -117,45 +115,37 @@ class MvaReader {
 public:
     using Vars = MvaVariablesBase;
     using VarsPtr = std::shared_ptr<Vars>;
-    using Range = ::analysis::Range<int>;
 
-    struct VarRange { Range range; VarsPtr vars; };
-    using VarRangeMap = std::map<int, VarRange>;
-    using MethodRanges = std::map<std::string, VarRangeMap>;
+    struct MvaKey {
+        std::string method_name;
+        int mass, spin;
 
-    VarsPtr AddRange(const Range& mass_range, const std::string& method_name, const std::string& bdt_weights,
-                  const std::unordered_set<std::string>& enabled_vars, bool is_legacy = false, bool is_Low = true)
-    {
-        if(method_vars.count(method_name))
-            throw exception("MVA method with name '%1%' already exists.") % method_name;
-
-        auto& vars = method_vars[method_name];
-        auto bound = vars.lower_bound(mass_range.min());
-        for(size_t n = 0; n < 2 && bound != vars.end() && bound->second.range != mass_range; ++n, ++bound) {
-            if(bound->second.range.Overlaps(mass_range, false))
-                throw exception("Overlapping ranges.");
+        bool operator<(const MvaKey& other) const
+        {
+            if(method_name != other.method_name) return method_name < other.method_name;
+            if(mass != other.mass) return mass < other.mass;
+            return spin < other.spin;
         }
+    };
 
-        vars[mass_range.max()].range = mass_range;
-        return vars[mass_range.max()].vars = CreateMvaVariables(method_name, bdt_weights, enabled_vars, is_legacy,
-                                                                is_Low);
+    using MethodMap = std::map<MvaKey, VarsPtr>;
+
+    VarsPtr Add(const MvaKey& key, const std::string& bdt_weights, const std::unordered_set<std::string>& enabled_vars,
+                bool is_legacy = false, bool is_Low = true)
+    {
+        if(methods.count(key))
+            throw exception("MVA method with (name, mass, spin) = '%1%, %2%, %3%' already exists.")
+                % key.method_name % key.mass % key.spin;
+
+        return methods[key] = CreateMvaVariables(key.method_name, bdt_weights, enabled_vars, is_legacy, is_Low);
     }
 
-    double Evaluate(EventInfoBase* event, int mass, const std::string& method_name, int spin)
+    double Evaluate(const MvaKey& key, EventInfoBase* event)
     {
-        auto& vars = FindMvaVariables(mass, method_name);
-        return vars.AddAndEvaluate(*event, SampleId(SampleType::Sgn_Res, mass), spin);
-    }
-
-    Vars& FindMvaVariables(int mass, const std::string& method_name = "")
-    {
-        if(!method_vars.count(method_name))
-            throw exception("Method '%1%' not found.") % method_name;
-        const auto& vars = method_vars.at(method_name);
-        auto low_bound = vars.lower_bound(mass);
-        if(low_bound == vars.end() || !low_bound->second.range.Contains(mass))
-            throw exception("Range not found for method = '%1%' for mass = %2%.") % method_name % mass;
-        return *low_bound->second.vars;
+        auto iter = methods.find(key);
+        if(iter == methods.end())
+            throw exception("Method '%1%' not found.") % key.method_name;
+        return iter->second->AddAndEvaluate(*event, SampleId(SampleType::Sgn_Res, key.mass), key.spin);
     }
 
 private:
@@ -167,7 +157,7 @@ private:
     }
 
 private:
-    MethodRanges method_vars;
+    MethodMap methods;
 };
 
 }

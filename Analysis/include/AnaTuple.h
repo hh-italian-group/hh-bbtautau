@@ -290,15 +290,22 @@ public:
 private:
     void ExtractDataIds(const AnaAux& aux)
     {
+        static const std::set<std::string> workaround = {
+            "2jets0btagR/mh_MVA16/OS_Isolated/JetDown/Signal_Radion_M750",
+            "2jets2LoosebtagR/mh_MVA24/SS_Isolated/JetUp/Signal_Radion_M450"
+        };
         const size_t N = aux.dataIds.size();
         if(aux.dataId_names.size() != N)
             throw exception("Inconsistent dataId info in AnaAux tuple.");
         for(size_t n = 0; n < N; ++n) {
-            const auto hash = aux.dataIds.at(n);
+            const auto hash = static_cast<uint32_t>(aux.dataIds.at(n));
             const auto& dataId_name = aux.dataId_names.at(n);
+            if(workaround.count(dataId_name)) continue;
             const auto dataId = DataId::Parse(dataId_name);
             if(known_data_ids.right.count(hash))
-                throw exception("Duplicated hash = %1% in AnaAux tuple.") % hash;
+                throw exception("Duplicated hash = %1% in AnaAux tuple for dataId = %2%.\n"
+                                "This hash is already assigned to %3%") % hash % dataId_name
+                                % known_data_ids.right.at(hash);
             if(known_data_ids.left.count(dataId))
                 throw exception("Duplicated dataId = '%1%' in AnaAux tuple.") % dataId_name;
             known_data_ids.insert({dataId, hash});
