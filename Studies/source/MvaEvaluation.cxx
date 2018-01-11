@@ -51,6 +51,7 @@ struct Arguments { // list of all program arguments
     REQ_ARG(bool, isLegacy);
     REQ_ARG(bool, isLow);
     REQ_ARG(std::string, range);
+    REQ_ARG(std::string, suffix);
     OPT_ARG(bool, is_SM, false);
     OPT_ARG(std::string, error_file, "");
     OPT_ARG(bool, all_data, 1);
@@ -92,6 +93,7 @@ public:
 
 
         enabled_vars.insert(mva_setup.variables.begin(), mva_setup.variables.end());
+
         if(mva_setup.use_mass_var) {
             enabled_vars.insert("mass");
             enabled_vars.insert("channel");
@@ -161,10 +163,17 @@ public:
                 for(const Event& event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
                     LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
-                    if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(), bb.mass()))
-                        continue;
+                    if (args.suffix() == "_ANcut"){
+                        if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(), bb.mass()))
+                            continue;
+                    }
                     auto step = (mergesummary.n_splits/2)/args.subdivisions();
-
+                    auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(s.channel), event) ;
+                    EventInfoBase& eventbase = *eventInfoPtr;
+                    if (args.suffix() == "_newcut"){
+                        if (!IsInsideEllipse(eventbase.GetHiggsBB().GetMomentum().M(),eventbase.GetHiggsTTMomentum(false).M(),109.639, 87.9563, 43.0346,41.8451))
+                            continue;
+                    }
                     int which_set=0;
                     if(!args.all_data()){
                         if (args.blind()){
@@ -193,6 +202,7 @@ public:
                                 which_set = args.train_primary() ? 0 : 1;
                         }
                     }
+
                     tot_entries++;
                     if (entry.id.IsBackground()) {
                         for (const auto mass : mass_range){
@@ -250,11 +260,11 @@ public:
             SampleId sample_SM(SampleType::Sgn_NonRes, mass);
             SampleId sample_sgn = args.range() == "SM20" ? sample_SM  : sample_R;
 
-
             SampleId sample_bkg(SampleType::Bkg_TTbar, mass);
 
             ChannelSampleIdSpin id_sgn(args.channel(), sample_sgn, args.spin());
             ChannelSampleIdSpin id_bkg(args.channel(), sample_bkg, args.spin());
+
             roc[mass] = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), sample_sgn, args.spin(), test_train), &outputBDT.bdt_out(args.channel(),sample_bkg, args.spin(), test_train));
             roc_testing[mass] = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), sample_sgn, args.spin(), 0), &outputBDT.bdt_out(args.channel(),sample_bkg,args.spin(),0));
             roc_training[mass] = method->GetROCIntegral(&outputBDT.bdt_out(args.channel(), sample_sgn, args.spin(), 1), &outputBDT.bdt_out(args.channel(),sample_bkg,args.spin(),1));

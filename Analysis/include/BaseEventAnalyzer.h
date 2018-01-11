@@ -4,6 +4,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #pragma once
 
 #include "AnalysisTools/Core/include/AnalysisMath.h"
+#include "AnalysisTools/Run/include/MultiThread.h"
 #include "EventAnalyzerDataCollection.h"
 #include "SampleDescriptorConfigEntryReader.h"
 #include "h-tautau/Cuts/include/Btag_2016.h"
@@ -85,6 +86,7 @@ public:
 
     void Run()
     {
+        run::ThreadPull threads(args.n_threads());
         ProcessSamples(ana_setup.signals, "signal");
         ProcessSamples(ana_setup.data, "data");
         ProcessSamples(ana_setup.backgrounds, "background");
@@ -99,18 +101,21 @@ protected:
 
     void InitializeMvaReader()
     {
+        using MvaKey = mva_study::MvaReader::MvaKey;
         if(!mva_setup.is_initialized()) return;
         for(const auto& method : mva_setup->trainings) {
             const auto& name = method.first;
             const auto& file = method.second;
             const auto& vars = mva_setup->variables.at(name);
             const auto& masses = mva_setup->masses.at(name);
-            const auto& mass_range_pair= std::minmax_element(masses.begin(), masses.end());
-            const Range<int> mass_range(static_cast<int>(*mass_range_pair.first),
-                                        static_cast<int>(*mass_range_pair.second));
+            const auto& spins = mva_setup->spins.at(name);
             const bool legacy = mva_setup->legacy.count(name);
             const bool legacy_lm = legacy && mva_setup->legacy.at(name) == "lm";
-            mva_reader.AddRange(mass_range, name, file, vars, legacy, legacy_lm);
+            const size_t n_wp = masses.size();
+            for(size_t n = 0; n < n_wp; ++n) {
+                const MvaKey key{name, static_cast<int>(masses.at(n)), spins.at(n)};
+                mva_reader.Add(key, file, vars, legacy, legacy_lm);
+            }
         }
     }
 
@@ -118,7 +123,7 @@ protected:
                                                        std::map<SelectionCut, double>& mva_scores)
     {
         using namespace cuts::hh_bbtautau_2016::hh_tag;
-        using MvaKey = std::tuple<std::string, int, int>;
+        using MvaKey = mva_study::MvaReader::MvaKey;
 
         EventSubCategory sub_category;
         sub_category.SetCutResult(SelectionCut::mh,
@@ -130,13 +135,19 @@ protected:
 
         if(mva_setup.is_initialized()) {
 
-            std::map<MvaKey, double> scores;
+            std::map<MvaKey, std::future<double>> scores;
             for(const auto& mva_sel : mva_setup->selections) {
                 const auto& params = mva_sel.second;
                 const MvaKey key{params.name, static_cast<int>(params.mass), params.spin};
-                if(!scores.count(key))
-                    scores[key] = mva_reader.Evaluate(*event, static_cast<int>(params.mass), params.name, params.spin);
-                const double score = scores.at(key);
+                if(!scores.count(key)) {
+                    auto eval = std::bind(&mva_study::MvaReader::Evaluate, &mva_reader, key, &event);
+                    scores[key] = run::async(eval);
+                }
+            }
+            for(const auto& mva_sel : mva_setup->selections) {
+                const auto& params = mva_sel.second;
+                const MvaKey key{params.name, static_cast<int>(params.mass), params.spin};
+                const double score = scores.at(key).get();
                 const bool pass = score > params.cut;
                 sub_category.SetCutResult(mva_sel.first, pass);
                 mva_scores[mva_sel.first] = score;
@@ -176,11 +187,6 @@ protected:
     void ProcessDataSource(const SampleDescriptor& sample, const SampleDescriptor::Point& sample_wp,
                            std::shared_ptr<ntuple::EventTuple> tuple, const ntuple::ProdSummary& prod_summary)
     {
-        using FullEventId = std::tuple<EventIdentifier, EventEnergyScale>;
-        using FullEventIdSet = std::set<FullEventId>;
-
-        FullEventIdSet processed_events;
-
         const SummaryInfo summary(prod_summary);
         Event prevFullEvent, *prevFullEventPtr = nullptr;
         for(auto tupleEvent : *tuple) {
@@ -190,15 +196,6 @@ protected:
             }
             EventInfo event(tupleEvent, ntuple::JetPair{0, 1}, &summary);
             if(!ana_setup.energy_scales.count(event.GetEnergyScale())) continue;
-            const FullEventId fullId{EventIdentifier(event->run, event->lumi, event->evt, event->file_desc_id),
-                                     event.GetEnergyScale()};
-            if(processed_events.count(fullId)) {
-                std::cout << "\t\tWARNING: duplicated event " << std::get<EventIdentifier>(fullId) << " "
-                          << std::get<EventEnergyScale>(fullId) << std::endl;
-                continue;
-            }
-            processed_events.insert(fullId);
-
 
             bbtautau::AnaTupleWriter::DataIdMap dataIds;
             const auto eventCategories = DetermineEventCategories(event);
@@ -218,7 +215,7 @@ protected:
                             mva_score = mva_scores.at(mva_cut);
                             const auto& mva_params = mva_setup->selections.at(mva_cut);
                             if(mva_params.training_range.is_initialized() && mva_params.samples.count(sample.name)) {
-                                if(!mva_params.training_range->Contains(event->split_id)) continue;
+                                if(mva_params.training_range->Contains(event->split_id)) continue;
                                 mva_weight_scale = double(summary->n_splits)
                                         / (summary->n_splits - mva_params.training_range->size());
                             }
@@ -294,10 +291,12 @@ protected:
 //                const double weight_topPt = event->weight_total * sample.cross_section * ana_setup.int_lumi
 //                        / event.GetSummaryInfo()->totalShapeWeight_withTopPt;
                 // FIXME
-                dataIds[anaDataId.Set(EventEnergyScale::TopPtUp)] = std::make_tuple(weight * event->weight_top_pt,
-                                                                                    event.GetMvaScore());
-                dataIds[anaDataId.Set(EventEnergyScale::TopPtDown)] = std::make_tuple(weight * event->weight_top_pt,
-                                                                                      event.GetMvaScore());
+                if(ana_setup.energy_scales.count(EventEnergyScale::TopPtUp))
+                    dataIds[anaDataId.Set(EventEnergyScale::TopPtUp)] = std::make_tuple(weight * event->weight_top_pt,
+                                                                                        event.GetMvaScore());
+                if(ana_setup.energy_scales.count(EventEnergyScale::TopPtDown))
+                    dataIds[anaDataId.Set(EventEnergyScale::TopPtDown)] = std::make_tuple(weight * event->weight_top_pt,
+                                                                                          event.GetMvaScore());
             }
         } else
             throw exception("Unsupported special event type '%1%'.") % sample.sampleType;

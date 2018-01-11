@@ -382,7 +382,7 @@ struct EventSubCategory {
     EventSubCategory& SetCutResult(SelectionCut cut, bool result)
     {
         if(HasCut(cut))
-            throw exception("Cut '%1%' is aready defined.") % cut;
+            throw exception("Cut '%1%' is already defined.") % cut;
         const size_t index = GetIndex(cut);
         const BitsContainer mask = BitsContainer(1) << index;
         results = (results & ~mask) | (BitsContainer(result) << index);
@@ -421,7 +421,7 @@ struct EventSubCategory {
         return true;
     }
 
-    std::string ToString() const
+    std::string ToString(const std::map<SelectionCut, std::string>& sel_aliases = {}) const
     {
         if(*this == NoCuts())
             return "NoCuts";
@@ -430,7 +430,12 @@ struct EventSubCategory {
             const BitsContainer mask = BitsContainer(1) << n;
             if((presence & mask) == BitsContainer(0)) continue;
             if((results & mask) == BitsContainer(0)) s << "not";
-            s << static_cast<SelectionCut>(n) << "_";
+            const SelectionCut cut = static_cast<SelectionCut>(n);
+            if(sel_aliases.count(cut))
+                s << sel_aliases.at(cut);
+            else
+                s << cut;
+            s << "_";
         }
         std::string str = s.str();
         if(str.size())
