@@ -58,6 +58,7 @@ public:
                 mva_setups.push_back(mva_setup_collection.at(name));
             }
             mva_setup = mva_setups.size() == 1 ? mva_setups.front() : MvaReaderSetup::Join(mva_setups);
+            CreateMvaSelectionAliases();
         }
         RemoveUnusedSamples();
 
@@ -124,6 +125,25 @@ private:
         }
     }
 
+    void CreateMvaSelectionAliases()
+    {
+        mva_sel_aliases.clear();
+        if(!mva_setup) return;
+        for(const auto& entry : mva_setup->selections)
+        {
+            const SelectionCut sel = entry.first;
+            const auto& params = entry.second;
+            std::ostringstream ss_name;
+            ss_name << params.name << "S" << params.spin << "M" << params.mass << "C" << params.cut;
+            const std::string name = ss_name.str();
+            for(const auto& alias : mva_sel_aliases) {
+                if(alias.second == name)
+                    throw exception("Duplicated mva selection alias = '%1%'.") % name;
+            }
+            mva_sel_aliases[sel] = name;
+        }
+    }
+
     template<typename SampleCollection>
     std::vector<std::string> FilterInactiveSamples(const SampleCollection& samples,
                                                    const std::vector<std::string>& sample_names) const
@@ -169,6 +189,7 @@ protected:
     CombinedSampleDescriptorCollection cmb_sample_descriptors;
     EventSubCategorySet sub_categories_to_process;
     Channel channelId;
+    std::map<SelectionCut, std::string> mva_sel_aliases;
 };
 
 } // namespace analysis

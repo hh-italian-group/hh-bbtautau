@@ -78,7 +78,7 @@ public:
                     if(!activeVariables.count(hist_name)) continue;
                     for(const auto& subCategory : subCategories)
                         limitsInputProducer.Produce(args.output(), hist_name, ana_setup.limit_categories, subCategory,
-                                                    ana_setup.energy_scales, ana_setup.regions);
+                                                    ana_setup.energy_scales, ana_setup.regions, mva_sel_aliases);
                 }
             }
 

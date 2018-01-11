@@ -65,7 +65,8 @@ public:
 
     void Produce(const std::string& outputFileNamePrefix, const std::string& hist_name,
                  const std::map<EventCategory, std::string>& eventCategories, EventSubCategory eventSubCategory,
-                 const EventEnergyScaleSet& eventEnergyScales, const EventRegionSet& eventRegions)
+                 const EventEnergyScaleSet& eventEnergyScales, const EventRegionSet& eventRegions,
+                 const std::map<SelectionCut, std::string>& sel_aliases)
     {
         static constexpr double tiny_value = 1e-9;
         static constexpr double tiny_value_error = tiny_value;
@@ -74,7 +75,7 @@ public:
         std::ostringstream s_file_name;
         s_file_name << outputFileNamePrefix << "_" << hist_name;
         if(eventSubCategory != EventSubCategory::NoCuts())
-            s_file_name << "_" << eventSubCategory;
+            s_file_name << "_" << eventSubCategory.ToString(sel_aliases);
         const std::string file_name = s_file_name.str();
         auto outputFile = root_ext::CreateRootFile(file_name + ".root");
         std::set<EventAnalyzerDataId> empty_histograms;
