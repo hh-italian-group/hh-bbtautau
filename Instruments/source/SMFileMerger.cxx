@@ -86,6 +86,7 @@ private:
                     anaData.lhe_hh_m(name).Fill(event->lhe_hh_m);
                     anaData.lhe_hh_cosTheta(name).Fill(std::abs(event->lhe_hh_cosTheta));
                     anaData.lhe_hh_cosTheta_vs_m(name).Fill(event->lhe_hh_m,std::abs(event->lhe_hh_cosTheta));
+                    anaData.lhe_hh_cosTheta_vs_m().Fill(event->lhe_hh_m,std::abs(event->lhe_hh_cosTheta));
                 } //end loop on entries
 
             } //end loop on files
@@ -96,6 +97,7 @@ private:
             if (file_descriptor_element.fileType == FileType::sm)
                 name_sm = name;
         } //end loop n file_descriptors
+        RenormalizeHistogram(anaData.lhe_hh_cosTheta_vs_m(), 1, true);
 
         for (const auto& file_descriptor : file_descriptors) {
             const std::string& name = file_descriptor.second.name;
@@ -118,6 +120,9 @@ private:
             anaData.weight(name).CopyContent(anaData.lhe_hh_cosTheta_vs_m(name_sm));
             anaData.weight(name).Divide(&anaData.lhe_hh_cosTheta_vs_m(name));
         }
+
+        anaData.weight().CopyContent(anaData.lhe_hh_cosTheta_vs_m(name_sm));
+        anaData.weight().Divide(&anaData.lhe_hh_cosTheta_vs_m());
     }
 };
 
