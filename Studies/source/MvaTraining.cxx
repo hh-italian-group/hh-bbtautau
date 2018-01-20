@@ -467,7 +467,6 @@ public:
                     }
 //                    if (event.p4_1.pt()<40 || event.p4_2.pt()<40) continue;
                     int which_set=0;
-
                     if(!args.all_data()){
                         if (args.blind()){
                             if (event.split_id >= (mergesummary.n_splits/2)) continue;
@@ -505,37 +504,30 @@ public:
 
                     if (entry.id.IsBackground()) {
                         std::pair<int,int> pair_mass_spin;
+                        double weight_bkg = 1;
+//                        if (entry.filename == "TT.root") weight_bkg = 831.76/mergesummary.totalShapeWeight;
+//                        if (entry.filename == "DYJetsToLL_M-50.root") weight_bkg = 5765.4/mergesummary.totalShapeWeight;
                         if (args.is_SM() && args.is_BSM()){
                             pair_mass_spin = std::make_pair(SampleId::SM().mass, which_benchmark);
                             const SampleId sample_bkg(SampleType::Bkg_TTbar, pair_mass_spin.first);
-                            double weight_bkg = 1;
-    //                        if (entry.filename == "TT.root") weight_bkg = 831.76/mergesummary.totalShapeWeight;
-    //                        if (entry.filename == "DYJetsToLL_M-50.root") weight_bkg = 5765.4/mergesummary.totalShapeWeight;
                             vars->AddEvent(eventbase, sample_bkg, pair_mass_spin.second, entry.weight, which_set, weight_bkg);
 
                         }
                         else {
-                            const SampleId sample_bkg(SampleType::Bkg_TTbar, pair_mass_spin.first);
-                            double weight_bkg = 1;
-    //                        if (entry.filename == "TT.root") weight_bkg = 831.76/mergesummary.totalShapeWeight;
-    //                        if (entry.filename == "DYJetsToLL_M-50.root") weight_bkg = 5765.4/mergesummary.totalShapeWeight;
                             pair_mass_spin = mass_spin.at(it(gen));
+                            const SampleId sample_bkg(SampleType::Bkg_TTbar, pair_mass_spin.first);
                             vars->AddEvent(eventbase, sample_bkg, pair_mass_spin.second,entry.weight, which_set, weight_bkg);
                         }
                     }
                     else {
                         if (args.is_SM() && args.is_BSM()){
-                            double benchmarkWeight = 1;
                             double weight_bsm = 1/eventbase->weight_bsm_to_sm;
                             BenchmarkParameters parameters = BenchmarkId.at(which_benchmark);
-                            benchmarkWeight = reweight5D.getWeight(parameters, event.lhe_hh_m, event.lhe_hh_cosTheta);
+                            double benchmarkWeight = reweight5D.getWeight(parameters, event.lhe_hh_m, event.lhe_hh_cosTheta);
                             vars->AddEvent(eventbase, entry.id, which_benchmark, entry.weight , which_set, weight_bsm*benchmarkWeight);
-
                         }
                         vars->AddEvent(eventbase, entry.id, entry.spin, entry.weight , which_set);
                     }
-
-
                 }
                 std::cout << " channel " << s.channel << "    " << entry.filename << " number of events: " << tot_entries << std::endl;
             }
@@ -626,15 +618,13 @@ public:
                     std::cout<<"è BSM"<<std::endl;
                     SampleId sample_sgn(SampleType::Sgn_NonRes, SampleId::SM().mass);
                     SampleId sample_bkg(SampleType::Bkg_TTbar, SampleId::SM().mass);
-
                     id_sgn_allch_sp.sample_id = sample_sgn;
                     id_sgn_ch_sp.sample_id = sample_sgn;
                     id_bkg_allch_sp.sample_id = sample_bkg;
                     id_bkg_ch_sp.sample_id = sample_bkg;
-                    std::cout<<vars->data_pair[0].count(id_sgn_ch_sp)<<std::endl;
                     if (!vars->data_pair[0].count(id_sgn_ch_sp)) continue;
 
-                    for(int i=-1; i<=12 ; i++){
+                    for(int i=BenchmarkId.begin()->first; i<=BenchmarkId.rbegin()->first ; i++){
                         std::cout<<"i: "<<i<<std::endl;
                         roc_testing[id_sgn_allch_sp] = method->GetROCIntegral(&outputBDT->bdt_out(id_sgn_allch_sp.channel, id_sgn_allch_sp.sample_id, i, 0),
                                                                                           &outputBDT->bdt_out(id_bkg_allch_sp.channel, id_bkg_allch_sp.sample_id, i, 0));
@@ -646,10 +636,7 @@ public:
                                                                                           &outputBDT->bdt_out(id_bkg_ch_sp.channel, id_bkg_ch_sp.sample_id, i, 0));
                         roc_training[id_sgn_ch_sp] = method->GetROCIntegral(&outputBDT->bdt_out(id_sgn_ch_sp.channel, id_sgn_ch_sp.sample_id, id_sgn_ch_sp.spin, 1),
                                                                                           &outputBDT->bdt_out(id_bkg_ch_sp.channel, id_bkg_ch_sp.sample_id, i, 1));
-
                         std::cout<<"channel: "<< id_sgn_ch_sp.channel<<"  sampleid: "<< id_sgn_ch_sp.sample_id<<" spin: "<<i <<" ---  ROC testing:  "<<roc_testing[id_sgn_ch_sp]<<std::endl;
-
-
                     }
                 }
 
