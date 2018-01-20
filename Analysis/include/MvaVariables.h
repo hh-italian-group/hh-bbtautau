@@ -55,6 +55,12 @@ struct SampleId {
         static const SampleId bkg(SampleType::Bkg_TTbar, 0);
         return bkg;
     }
+
+    static const SampleId& SM()
+    {
+        static const SampleId sm(SampleType::Sgn_NonRes, 0);
+        return sm;
+    }
 };
 
 //static const SampleId Bkg{SampleType::Bkg_TTbar, -1};
