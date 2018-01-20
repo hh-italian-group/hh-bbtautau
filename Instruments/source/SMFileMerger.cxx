@@ -27,6 +27,9 @@ public:
     using AnalyzerData::AnalyzerData;
 
 
+//    const std::vector<double> mhh_Bins{ 245, 270, 300, 330, 360, 390, 420, 450, 500, 550, 600, 700, 800, 1000, 10000 };
+//    const std::vector<double> cosTheta_Bins{ 0.0, 0.4, 0.6, 0.8, 0.9, 1.0 };
+
     const std::vector<double> mhh_Bins{ 250,260,270,280,290,300,310,320,330,340,
                                         350,360,370,380,390,400,410,420,430,440,
                                         450,460,470,480,490,

@@ -248,10 +248,7 @@ public:
 
         if (args.is_BSM()){
             auto file_histo_reweight = root_ext::OpenRootFile(args.input_histo());
-            std::cout<<file_histo_reweight->GetName()<<std::endl;
             auto hInput = dynamic_cast<TH2*>(file_histo_reweight.get()->Get("lhe_hh_cosTheta_vs_m"));
-            std::cout<<hInput->GetDimension()<<std::endl;
-            std::cout<<hInput->GetBinContent(2,2)<<std::endl;
             reweight5D = HHReweight5D(args.coeffFile(), hInput);
         }
     }
@@ -463,7 +460,6 @@ public:
                 Long64_t tot_entries = 0;
                 for(const Event& event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
-
                     LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
                     if (args.suffix() == "_ANcut"){
                         if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(), bb.mass()))
