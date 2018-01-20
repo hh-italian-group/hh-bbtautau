@@ -256,7 +256,7 @@ struct EventCategory {
         if(HasBtagConstraint()) {
             s << *n_btag;
             if(*btag_wp != DiscriminatorWP::Medium)
-                s << *btag_wp;
+                s << __DiscriminatorWP_short_names.EnumToString(*btag_wp);
             s << "btag";
         }
         if(HasBoostConstraint()) {
@@ -289,7 +289,7 @@ struct EventCategory {
             if(btag_pos == std::string::npos)
                 throw exception("");
             const DiscriminatorWP btag_wp = btag_wp_pos == btag_pos ? DiscriminatorWP::Medium
-                    : ::analysis::Parse<DiscriminatorWP>(str.substr(btag_wp_pos, btag_pos - btag_wp_pos));
+                    : __DiscriminatorWP_short_names.Parse(str.substr(btag_wp_pos, btag_pos - btag_wp_pos));
             const size_t boosted_pos = btag_pos + btag_suffix.size();
             if(str.size() == boosted_pos)
                 return EventCategory(n_jets, n_btag, btag_wp);
