@@ -110,8 +110,10 @@ public:
                         ss_title << " " << subCategory;
                     ss_title << ": " << hist_name;
 
-                    if(plot_cfg.count("cat_text"))
-                        plot_cfg["cat_text"]["text"] = ChannelNameLatex() + " " + ToString(eventCategory);
+                    if(plot_cfg.count("cat_text")) {
+                        const auto cat_text = ChannelNameLatex() + ", " + ToString(eventCategory);
+                        printer.GetLabelOptions("cat_text").SetText(cat_text);
+                    }
 
                     StackedPlotDescriptor stackDescriptor(page_opt, plot_cfg);
 

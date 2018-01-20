@@ -84,7 +84,8 @@ public:
 
             if(args.draw()) {
                 std::cout << "\t\tCreating plots..." << std::endl;
-                PlotsProducer plotsProducer(anaDataCollection, samplesToDraw, false, true);
+                PlotsProducer plotsProducer(anaDataCollection, samplesToDraw, ana_setup.plot_cfg,
+                                            ana_setup.plot_page_opt);
                 std::string pdf_prefix = args.output();
                 if(n != 0)
                     pdf_prefix += "_part" + ToString(n + 1);
