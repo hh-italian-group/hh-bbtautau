@@ -55,6 +55,12 @@ struct SampleId {
         static const SampleId bkg(SampleType::Bkg_TTbar, 0);
         return bkg;
     }
+
+    static const SampleId& SM()
+    {
+        static const SampleId sm(SampleType::Sgn_NonRes, 0);
+        return sm;
+    }
 };
 
 //static const SampleId Bkg{SampleType::Bkg_TTbar, -1};
@@ -297,7 +303,7 @@ public:
 
         VAR("mass", mass.mass);
         VAR_INT("channel", eventbase->channelId);
-        VAR_INT("spin", spin);
+        VAR("spin", spin);
 
         size_t test = which_test ==-1 ? which_set(gen) : static_cast<size_t>(which_test);
         AddEventVariables(test, mass, eventbase->weight_total*weight_bkg, sample_weight, spin, ToString(static_cast<Channel>(eventbase->channelId)));
