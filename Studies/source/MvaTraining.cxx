@@ -436,7 +436,7 @@ public:
         std::cout<< "quante coppie massa-spin? "<<mass_spin.size() <<std::endl;
 
         std::uniform_int_distribution<size_t> it(0, mass_spin.size() - 1);
-        std::uniform_int_distribution<size_t> bp(0, 9);
+        std::uniform_int_distribution<int> bp(0, 9);
         std::cout<<bkg<<std::endl;
 
         for (const auto& s : set){
