@@ -174,7 +174,7 @@ public:
                         if (!IsInsideEllipse(eventbase.GetHiggsBB().GetMomentum().M(),eventbase.GetHiggsTTMomentum(false).M(),109.639, 87.9563, 43.0346,41.8451))
                             continue;
                     }
-                    int which_set=0;
+                    size_t which_set=0;
                     if(!args.all_data()){
                         if (args.blind()){
                             if (event.split_id >= (mergesummary.n_splits/2)) continue;

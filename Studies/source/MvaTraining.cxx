@@ -123,9 +123,7 @@ public:
                 const  ChannelSampleIdSpin id = m_entry.first;
                 const SampleId m = id.sample_id;
                 const std::string samplename = m.IsSignal() ? "Signal" : "Background";
-                const double weight_bkg = 1;
                 for(const auto& vars : m_entry.second.data) {
-
                     loader->AddEvent(samplename, treetype, vars.first , vars.second*weights.at(id));
                 }
             }
