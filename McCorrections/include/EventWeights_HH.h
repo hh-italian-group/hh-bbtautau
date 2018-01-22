@@ -23,7 +23,7 @@ public:
         providers[WeightType::DY] = std::make_shared<NJets_HT_weight>("DY", dy_weights);
         providers[WeightType::TTbar] = std::make_shared<TTbar_weight>(Full_Cfg_Name("ttbar_weights_full.cfg"));
         providers[WeightType::BSM_to_SM] = std::make_shared<HH_BMStoSM_weight>(
-                    FullBSMtoSM_Name("weight_SM.root"), "weight_node_BSM");
+                    FullBSMtoSM_Name("weight_SM.root"), "weight");
         std::string wjet_weights =
                 use_LLR_weights ? Full_Cfg_Name("wjets_weights_LLR.cfg") : Full_Cfg_Name("wjets_weights.cfg");
         providers[WeightType::Wjets] = std::make_shared<NJets_HT_weight>("Wjets", wjet_weights);

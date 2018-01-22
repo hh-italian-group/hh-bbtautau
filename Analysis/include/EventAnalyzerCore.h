@@ -15,6 +15,8 @@ struct CoreAnalyzerArguments {
     OPT_ARG(std::string, mva_setup, "");
     OPT_ARG(unsigned, n_threads, 1);
 
+    CoreAnalyzerArguments() {}
+    CoreAnalyzerArguments(const CoreAnalyzerArguments&) = default;
     virtual ~CoreAnalyzerArguments() {}
 };
 
@@ -65,6 +67,8 @@ public:
         CreateEventSubCategoriesToProcess();
     }
 
+    EventAnalyzerCore(const EventAnalyzerCore&) = delete;
+    EventAnalyzerCore& operator=(const EventAnalyzerCore&) = delete;
     virtual ~EventAnalyzerCore() {}
 
     const std::string& ChannelNameLatex() const { return __Channel_names_latex.EnumToString(channelId); }

@@ -20,7 +20,7 @@ protected:
 
         const MuonCandidate& muon1 = event.GetFirstLeg();
         const MuonCandidate& muon2 = event.GetSecondLeg();
-        const HiggsBBCandidate& jets  = event.GetHiggsBB();
+//        const HiggsBBCandidate& jets  = event.GetHiggsBB();
 
         if(!event.GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) return EventRegion::Unknown();
 
@@ -32,8 +32,8 @@ protected:
         return region;
     }
 
-    virtual EventSubCategory DetermineEventSubCategory(EventInfo& event, const EventCategory& category,
-                                                       std::map<SelectionCut, double>& mva_scores) override
+    virtual EventSubCategory DetermineEventSubCategory(EventInfo& event, const EventCategory& /*category*/,
+                                                       std::map<SelectionCut, double>& /*mva_scores*/) override
     {
         double mass_muMu = event.GetHiggsTTMomentum(false).M();
         double mass_jj = event.GetHiggsBB().GetMomentum().M();

@@ -13,6 +13,8 @@
 #include "TH2.h"
 #include "TAxis.h"
 #include "TFile.h"
+#include "AnalysisTools/Core/include/exception.h"
+
 
 #define NCOEFFSA 15
 #define DEBUG false
@@ -44,12 +46,11 @@ class HHReweight5D{
     public:
 
     HHReweight5D() {}
-
     HHReweight5D(std::string _coeffFile, const  TH2* _hInput, bool _useAbsEta=true): coeffFile(_coeffFile), useAbsEta(_useAbsEta)
     {
         readInputFile(coeffFile); // initialize the reweight parameters from the txt input
 
-        TH2* cloneH = (TH2*) _hInput->Clone("h_input");
+        TH2* cloneH = dynamic_cast<TH2*>(_hInput->Clone("h_input"));
         if (!CheckConsistency(cloneH, h_A_vec.at(0).get()))
         {
             throw analysis::exception("* Error : the input histogram to HHReweight is not compatible with the reweight file, did you use the correct binning?");
@@ -60,7 +61,6 @@ class HHReweight5D{
 
         useAbsEta = _useAbsEta;
     }
-    ~HHReweight5D() {}
 
         // return the weight to be applied for the reweight
         // NOTE: normalization is arbitrary you'll have to scale by the sum of weights

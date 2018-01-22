@@ -127,9 +127,7 @@ public:
                 const  ChannelSampleIdSpin id = m_entry.first;
                 const SampleId m = id.sample_id;
                 const std::string samplename = m.IsSignal() ? "Signal" : "Background";
-                const double weight_bkg = 1;
                 for(const auto& vars : m_entry.second.data) {
-
                     loader->AddEvent(samplename, treetype, vars.first , vars.second*weights.at(id));
                 }
             }
@@ -438,7 +436,7 @@ public:
         std::cout<< "quante coppie massa-spin? "<<mass_spin.size() <<std::endl;
 
         std::uniform_int_distribution<size_t> it(0, mass_spin.size() - 1);
-        std::uniform_int_distribution<size_t> bp(0, 9);
+        std::uniform_int_distribution<int> bp(0, 9);
         std::cout<<bkg<<std::endl;
 
         for (const auto& s : set){

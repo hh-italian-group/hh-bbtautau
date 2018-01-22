@@ -33,6 +33,8 @@ public:
         CheckReadParamCounts("mva_setup", 1, Condition::less_equal);
         CheckReadParamCounts("hist_cfg", 1, Condition::less_equal);
         CheckReadParamCounts("syncDataIds", 1, Condition::less_equal);
+        CheckReadParamCounts("plot_cfg", 1, Condition::less_equal);
+        CheckReadParamCounts("plot_page_opt", 1, Condition::less_equal);
 
         ConfigEntryReaderT<AnalyzerSetup>::EndEntry();
     }
@@ -58,6 +60,8 @@ public:
         ParseEntry("mva_setup", current.mva_setup);
         ParseEntry("hist_cfg", current.hist_cfg);
         ParseEntryList("syncDataIds", current.syncDataIds);
+        ParseEntry("plot_cfg", current.plot_cfg);
+        ParseEntry("plot_page_opt", current.plot_page_opt);
     }
 };
 

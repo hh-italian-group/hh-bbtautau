@@ -5,7 +5,8 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include "EventAnalyzerDataCollection.h"
 #include "SampleDescriptor.h"
-#include "AnalysisTools/Print/include/RootPrintToPdf.h"
+#include "AnalysisTools/Print/include/PdfPrinter.h"
+#include "AnalysisTools/Print/include/StackedPlotDescriptor.h"
 
 namespace analysis {
 
@@ -17,6 +18,10 @@ public:
     using SampleCollection = std::vector<const Sample*>;
     using Hist = TH1D;
     using HistPtr = std::shared_ptr<root_ext::SmartHistogram<Hist>>;
+    using PlotConfigReader = ::analysis::PropertyConfigReader;
+    using PlotConfig = PlotConfigReader::ItemCollection;
+    using PageOptions = ::root_ext::draw_options::Page;
+    using StackedPlotDescriptor = ::root_ext::StackedPlotDescriptor;
 
     static SampleCollection CreateOrderedSampleCollection(const std::vector<std::string>& draw_sequence,
                                                           const SampleDescriptorCollection& samples,
@@ -55,9 +60,9 @@ public:
 
 
     StackedPlotsProducer(AnaDataCollection& _anaDataCollection, const SampleCollection& _samples,
-                         bool _isBlind, bool _drawRatio, const std::set<std::string>& _histogramNames = {}) :
-        anaDataCollection(&_anaDataCollection), samples(_samples), histogramNames(_histogramNames), isBlind(_isBlind),
-        drawRatio(_drawRatio)
+                         const std::string& plot_cfg_name, const std::string& page_opt_name,
+                         const std::set<std::string>& _histogramNames = {}) :
+        anaDataCollection(&_anaDataCollection), samples(_samples), histogramNames(_histogramNames)
     {
         if(!histogramNames.size()) {
             for(const auto& anaData : anaDataCollection->GetAll()) {
@@ -66,6 +71,15 @@ public:
                 }
             }
         }
+
+        PlotConfigReader cfg_reader;
+        cfg_reader.Parse(plot_cfg_name);
+        plot_cfg = cfg_reader.GetItems();
+        if(!plot_cfg.count(page_opt_name)) {
+            throw exception("Page drawing options = '%1%' not found in config file '%2%'.")
+                % page_opt_name % plot_cfg_name;
+        }
+        page_opt = PageOptions(plot_cfg.at(page_opt_name));
     }
 
     Channel ChannelId() const { return anaDataCollection->ChannelId(); }
@@ -73,17 +87,21 @@ public:
 
     void PrintStackedPlots(const std::string& outputFileNamePrefix, const EventRegion& eventRegion,
                            const EventCategorySet& eventCategories,
-                           const EventSubCategorySet& eventSubCategories, const std::set<std::string>& signals) const
+                           const EventSubCategorySet& eventSubCategories, const std::set<std::string>& signals)
     {
-        const std::string blindCondition = isBlind ? "_blind" : "_noBlind";
-        const std::string ratioCondition = drawRatio ? "_ratio" : "_noRatio";
         std::ostringstream outputFileName;
-        outputFileName << outputFileNamePrefix << blindCondition << ratioCondition << "_" << eventRegion << ".pdf";
-        root_ext::PdfPrinter printer(outputFileName.str());
+        outputFileName << outputFileNamePrefix << "_" << eventRegion << ".pdf";
+        root_ext::PdfPrinter printer(outputFileName.str(), plot_cfg, page_opt);
 
-        for(const EventCategory& eventCategory : eventCategories) {
-            for (const auto& hist_name : histogramNames) {
-                for(const EventSubCategory& subCategory : eventSubCategories) {
+        std::vector<std::pair<std::string, StackedPlotDescriptor>> descriptors;
+        for(auto category_iter = eventCategories.begin(); category_iter != eventCategories.end(); ++category_iter) {
+            const auto& eventCategory = *category_iter;
+            for (auto hist_name_iter = histogramNames.begin(); hist_name_iter != histogramNames.end();
+                 ++hist_name_iter) {
+                const auto& hist_name = *hist_name_iter;
+                for(auto sub_category_iter = eventSubCategories.begin(); sub_category_iter != eventSubCategories.end();
+                    ++sub_category_iter) {
+                    const auto& subCategory = *sub_category_iter;
                     const EventAnalyzerDataId anaDataMetaId(eventRegion, eventCategory, subCategory,
                                                             EventEnergyScale::Central);
                     std::ostringstream ss_title;
@@ -92,8 +110,12 @@ public:
                         ss_title << " " << subCategory;
                     ss_title << ": " << hist_name;
 
-                    StackedPlotDescriptor stackDescriptor(ss_title.str(), false, ChannelNameLatex(),
-                                                          ToString(eventCategory), drawRatio, false);
+                    if(plot_cfg.count("cat_text")) {
+                        const auto cat_text = ChannelNameLatex() + ", " + ToString(eventCategory);
+                        printer.GetLabelOptions("cat_text").SetText(cat_text);
+                    }
+
+                    StackedPlotDescriptor stackDescriptor(page_opt, plot_cfg);
 
                     for(const Sample* sample : samples) {
                         for(const Sample::Point& item : sample->working_points) {
@@ -106,14 +128,16 @@ public:
                             if(signals.count(sample->name))
                                 stackDescriptor.AddSignalHistogram(*histogram, item.title, color, sample->draw_sf);
                             else if(sample->sampleType == SampleType::Data)
-                                stackDescriptor.AddDataHistogram(*histogram, item.title, isBlind,
-                                                                 GetBlindRegion(subCategory, hist_name));
+                                stackDescriptor.AddDataHistogram(*histogram, item.title);
                             else
                                 stackDescriptor.AddBackgroundHistogram(*histogram, item.title, color);
                         }
                     }
 
-                    printer.PrintStack(stackDescriptor);
+                    const bool is_last = std::next(category_iter) == eventCategories.end()
+                            && std::next(hist_name_iter) == histogramNames.end()
+                            && std::next(sub_category_iter) == eventSubCategories.end();
+                    printer.Print(ss_title.str(), stackDescriptor, is_last);
                 }
             }
         }
@@ -146,7 +170,8 @@ private:
     AnaDataCollection* anaDataCollection;
     SampleCollection samples;
     std::set<std::string> histogramNames;
-    bool isBlind, drawRatio;
+    PlotConfig plot_cfg;
+    PageOptions page_opt;
 };
 
 } // namespace analysis

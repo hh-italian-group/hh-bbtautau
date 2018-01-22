@@ -77,12 +77,13 @@ struct CategoryModel{
 };
 class DY_estimation {
 public:
-    DY_estimation(const Arguments& _args) : args(_args),
-    x(args.var_name().c_str(), args.var_name().c_str(), args.fit_range().min(), args.fit_range().max()),
-    input_file(root_ext::OpenRootFile(args.input_file())),
-    output_file(root_ext::CreateRootFile(args.output_file()))
+    DY_estimation(const Arguments& _args) :
+        args(_args), input_file(root_ext::OpenRootFile(args.input_file())),
+        output_file(root_ext::CreateRootFile(args.output_file())),
+        x(args.var_name().c_str(), args.var_name().c_str(), args.fit_range().min(), args.fit_range().max())
     {
     }
+
     void Run()
     {
         std::map<std::string, std::shared_ptr<RooRealVar>> scale_factor_map;
@@ -159,13 +160,14 @@ public:
             TCanvas* c = new TCanvas(("fit_"+ToString(cat)).c_str(),
                                      ("fit in eventCategory " + ToString(cat)).c_str(),800,400) ;
             RooPlot* frame = x.frame() ;
-            combData.plotOn(frame,Cut(((std::string)("rooCategories==rooCategories::")+
-                                    ToString(cat)).c_str())) ;
+            combData.plotOn(frame,Cut(("rooCategories==rooCategories::" + ToString(cat)).c_str())) ;
             simPdf.plotOn(frame,Slice(rooCategories,ToString(cat).c_str()),ProjWData(rooCategories,combData)) ;
             simPdf.plotOn(frame,Slice(rooCategories,ToString(cat).c_str()),
-                      Components(((std::string)("expdf_")+ToString(cat)+(std::string)("_other_bkg_muMu")).c_str() ),
+                      Components(("expdf_" + ToString(cat) + "_other_bkg_muMu").c_str() ),
                       ProjWData(rooCategories,combData),LineStyle(kDashed)) ;
-             gPad->SetLeftMargin(0.15) ; frame->GetYaxis()->SetTitleOffset(1.4) ; frame->Draw() ;
+             gPad->SetLeftMargin(0.15f);
+             frame->GetYaxis()->SetTitleOffset(1.4f);
+             frame->Draw();
              c->Write();
         }
   }
