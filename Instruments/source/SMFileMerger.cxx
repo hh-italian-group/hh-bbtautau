@@ -110,8 +110,6 @@ private:
 
         const std::vector<std::string> names = { "", "node_SM" };
         for(const auto& name : names){
-//        for (const auto& file_descriptor : file_descriptors) {
-//            const std::string& name = file_descriptor.second.name;
             const auto& hist = anaData.lhe_hh_cosTheta_vs_m(name);
             const Int_t N = hist.GetNbinsX() + 1;
             const Int_t H = hist.GetNbinsY() + 1;

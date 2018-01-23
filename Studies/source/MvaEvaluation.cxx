@@ -209,7 +209,6 @@ public:
                             SampleId sample_bkg(SampleType::Bkg_TTbar, mass);
                             ChannelSampleIdSpin id_ch_sample_spin{args.channel(), sample_bkg, args.spin()};
                             ChannelSampleIdSpin id_ch_bkg_spin{args.channel(), bkg, args.spin()};
-
                             MvaReader::MvaKey key{args.method_name(), mass, args.spin()};
                             double eval = reader.Evaluate(key, &eventbase);
                             data[id_ch_sample_spin][which_set].push_back(eval);
