@@ -135,8 +135,8 @@ public:
         const auto mass_range = CreateMassRange(args.min(), args.max());
         std::cout<<"SAMPLES nel RANGE:"<<mass_range.size() <<std::endl;
 
-        ::analysis::Range<int> range(args.min(), args.max());
-        auto vars = reader.AddRange(range, args.method_name(), args.file_xml(), enabled_vars, args.isLegacy(), args.isLow());
+        MvaReader::MvaKey key{args.method_name(),args.min(),args.spin()};
+        auto vars = reader.Add(key, args.file_xml(), enabled_vars, args.isLegacy(), args.isLow());
 
         std::vector<ChannelSpin> set_SM{{"tauTau",SM_spin}, {"muTau",SM_spin},{"eTau",SM_spin},
                                      {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
@@ -209,7 +209,9 @@ public:
                             SampleId sample_bkg(SampleType::Bkg_TTbar, mass);
                             ChannelSampleIdSpin id_ch_sample_spin{args.channel(), sample_bkg, args.spin()};
                             ChannelSampleIdSpin id_ch_bkg_spin{args.channel(), bkg, args.spin()};
-                            double eval = reader.Evaluate(event, mass, args.method_name(), args.spin(), args.channel());
+
+                            MvaReader::MvaKey key{args.method_name(), mass, args.spin()};
+                            double eval = reader.Evaluate(key, &eventbase);
                             data[id_ch_sample_spin][which_set].push_back(eval);
                             data[id_ch_bkg_spin][which_set].push_back(eval);
                             data[id_ch_sample_spin][test_train].push_back(eval);
@@ -217,7 +219,8 @@ public:
                         }
                     }
                     else{
-                        double eval = reader.Evaluate(event, entry.id.mass, args.method_name(), args.spin(), args.channel());
+                        MvaReader::MvaKey key{args.method_name(), entry.id.mass, args.spin()};
+                        double eval = reader.Evaluate(key, &eventbase);
                         ChannelSampleIdSpin id_ch_sample_spin{args.channel(), entry.id, args.spin()};
                         ChannelSampleIdSpin id_ch_tot_spin{args.channel(), mass_tot, args.spin()};
                         data[id_ch_sample_spin][which_set].push_back(eval);

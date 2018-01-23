@@ -108,8 +108,10 @@ private:
         } //end loop n file_descriptors
         RenormalizeHistogram(anaData.lhe_hh_cosTheta_vs_m(), 1, true);
 
-        for (const auto& file_descriptor : file_descriptors) {
-            const std::string& name = file_descriptor.second.name;
+        const std::vector<std::string> names = { "", "node_SM" };
+        for(const auto& name : names){
+//        for (const auto& file_descriptor : file_descriptors) {
+//            const std::string& name = file_descriptor.second.name;
             const auto& hist = anaData.lhe_hh_cosTheta_vs_m(name);
             const Int_t N = hist.GetNbinsX() + 1;
             const Int_t H = hist.GetNbinsY() + 1;
@@ -117,6 +119,7 @@ private:
                 for (Int_t h = 0; h <= H; ++h){
                     const bool zero_content = anaData.lhe_hh_cosTheta_vs_m(name).GetBinContent(n,h) == 0;
                     const bool overflow_bin = n == 0 || n == N || h == 0 || h == H;
+                    if(overflow_bin) continue;
                     if((zero_content && !overflow_bin) || (!zero_content && overflow_bin)) {
                         std::ostringstream ss;
                         const std::string prefix = overflow_bin ? "Non empty" : "Empty";
