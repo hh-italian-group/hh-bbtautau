@@ -35,7 +35,7 @@ struct AnalyzerSetup {
     std::vector<EventAnalyzerDataId> syncDataIds;
     std::string plot_cfg, plot_page_opt;
 
-    four_bodies::MassWindowParameters massWindowParams;
+    std::map<SelectionCut,analysis::EllipseParameters> massWindowParams;
 
     bool IsSignal(const std::string& sample_name) const
     {

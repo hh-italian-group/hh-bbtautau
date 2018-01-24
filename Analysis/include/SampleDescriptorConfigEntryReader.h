@@ -35,7 +35,7 @@ public:
         CheckReadParamCounts("syncDataIds", 1, Condition::less_equal);
         CheckReadParamCounts("plot_cfg", 1, Condition::less_equal);
         CheckReadParamCounts("plot_page_opt", 1, Condition::less_equal);
-        CheckReadParamCounts("massWindowParams", 1, Condition::less_equal);
+        CheckReadParamCounts("massWindowParams", 0, Condition::greater_equal);
 
         ConfigEntryReaderT<AnalyzerSetup>::EndEntry();
     }
@@ -63,7 +63,7 @@ public:
         ParseEntryList("syncDataIds", current.syncDataIds);
         ParseEntry("plot_cfg", current.plot_cfg);
         ParseEntry("plot_page_opt", current.plot_page_opt);
-        ParseEntryList("massWindowParams", current.massWindowParams);
+        ParseEntry("massWindowParams", current.massWindowParams);
     }
 };
 

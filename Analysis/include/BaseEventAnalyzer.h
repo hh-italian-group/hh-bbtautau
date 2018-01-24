@@ -122,34 +122,26 @@ protected:
     virtual EventSubCategory DetermineEventSubCategory(EventInfo& event, const EventCategory& category,
                                                        std::map<SelectionCut, double>& mva_scores)
     {
-        using namespace analysis::four_bodies::MassWindowParameters;
+        using namespace cuts::hh_bbtautau_2016::hh_tag;
         using MvaKey = mva_study::MvaReader::MvaKey;
 
         EventSubCategory sub_category;
-        sub_category.SetCutResult(SelectionCut::mh,
-                                  IsInsideMassWindow(event.GetHiggsTT(true).GetMomentum().mass(),
-                                                     event.GetHiggsBB().GetMomentum().mass(),
-                                                     ana_setup.massWindowParams.peak_tautau,
-                                                     ana_setup.massWindowParams.resolution_tautau,
-                                                     ana_setup.massWindowParams.peak_bb,
-                                                     ana_setup.massWindowParams.resolution_bb,
-                                                     category.HasBoostConstraint() && category.IsBoosted()));
-        sub_category.SetCutResult(SelectionCut::mhVis,
-                                  IsInsideMassWindow(event.GetHiggsTT(false).GetMomentum().mass(),
-                                                     event.GetHiggsBB().GetMomentum().mass(),
-                                                     ana_setup.massWindowParams.peak_tautau,
-                                                     ana_setup.massWindowParams.resolution_tautau,
-                                                     ana_setup.massWindowParams.peak_bb,
-                                                     ana_setup.massWindowParams.resolution_bb,
-                                                     category.HasBoostConstraint() && category.IsBoosted()));
-        sub_category.SetCutResult(SelectionCut::mhMET,
-                                  IsInsideMassWindow((event.GetHiggsTT(false).GetMomentum() + event.GetMET().GetMomentum()).mass(),
-                                                     event.GetHiggsBB().GetMomentum().mass(),
-                                                     ana_setup.massWindowParams.peak_tautau,
-                                                     ana_setup.massWindowParams.resolution_tautau,
-                                                     ana_setup.massWindowParams.peak_bb,
-                                                     ana_setup.massWindowParams.resolution_bb,
-                                                     category.HasBoostConstraint() && category.IsBoosted()));
+        const double mbb = event.GetHiggsBB().GetMomentum().mass();
+        if(category.HasBoostConstraint() && category.IsBoosted()){
+            sub_category.SetCutResult(SelectionCut::mh,
+                                      IsInsideBoostedMassWindow(event.GetHiggsTT(true).GetMomentum().mass(),mbb));
+        }
+        else{
+            if(ana_setup.massWindowParams.count(SelectionCut::mh))
+                sub_category.SetCutResult(SelectionCut::mh,ana_setup.massWindowParams.at(SelectionCut::mh)
+                        .IsInside(event.GetHiggsTT(true).GetMomentum().mass(),mbb));
+            if(ana_setup.massWindowParams.count(SelectionCut::mhVis))
+                sub_category.SetCutResult(SelectionCut::mhVis,ana_setup.massWindowParams.at(SelectionCut::mhVis)
+                        .IsInside(event.GetHiggsTT(false).GetMomentum().mass(),mbb));
+            if(ana_setup.massWindowParams.count(SelectionCut::mhMET))
+                sub_category.SetCutResult(SelectionCut::mhMET,ana_setup.massWindowParams.at(SelectionCut::mhMET)
+                        .IsInside((event.GetHiggsTT(false).GetMomentum() + event.GetMET().GetMomentum()).mass(),mbb));
+        }
         sub_category.SetCutResult(SelectionCut::KinematicFitConverged,
                                   event.GetKinFitResults().HasValidMass());
 
