@@ -328,8 +328,8 @@ std::istream& operator>>(std::istream& is, EventCategory& eventCategory)
 #define DECL_MVA_SEL(z, n, first) MVA##n = n + first,
 #define MVA_CUT_LIST(first, count) BOOST_PP_REPEAT(count, DECL_MVA_SEL, first)
 
-enum class SelectionCut { mh = 0, KinematicFitConverged = 1, lowMET = 2,
-                          MVA_CUT_LIST(3, 100) MVA_first = MVA0, MVA_last = MVA99 };
+enum class SelectionCut { mh = 0, mhVis = 1, mhMET = 2, KinematicFitConverged = 3, lowMET = 4,
+                          MVA_CUT_LIST(5, 102) MVA_first = MVA0, MVA_last = MVA99 };
 
 #undef MVA_CUT_LIST
 #undef DECL_MVA_SEL
@@ -339,6 +339,8 @@ inline std::map<SelectionCut, std::string> CreateSelectionCutNames()
 {
     std::map<SelectionCut, std::string> names;
     names[SelectionCut::mh] = "mh";
+    names[SelectionCut::mhVis] = "mhVis";
+    names[SelectionCut::mhMET] = "mhMET";
     names[SelectionCut::KinematicFitConverged] = "KinematicFitConverged";
     names[SelectionCut::lowMET] = "lowMET";
     const size_t MVA_first_index = static_cast<size_t>(SelectionCut::MVA_first);

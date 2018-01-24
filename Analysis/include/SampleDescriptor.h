@@ -35,6 +35,8 @@ struct AnalyzerSetup {
     std::vector<EventAnalyzerDataId> syncDataIds;
     std::string plot_cfg, plot_page_opt;
 
+    four_bodies::MassWindowParameters massWindowParams;
+
     bool IsSignal(const std::string& sample_name) const
     {
         const auto iter = std::find(signals.begin(), signals.end(), sample_name);
