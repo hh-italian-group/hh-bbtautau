@@ -72,6 +72,7 @@ public:
 
     void LoadSkimmedData()
     {
+
         for (const auto& s: set){
             std::cout << s.channel << s.spin <<std::endl;
             for(const SampleEntry& entry:samples)
@@ -84,16 +85,16 @@ public:
                     if(tot_entries >= args.number_events()) break;
                     LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
                     if (args.suffix() == "_ANcut"){
-                        if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(), bb.mass()))
-                            continue;
+                        if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(event.SVfit_p4.mass(),bb.mass())) continue;
                     }
                     if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
                     if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
                     auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(s.channel) ,event) ;
                     EventInfoBase& eventbase = *eventInfoPtr;
                     if (args.suffix() == "_newcut"){
-                        if (!IsInsideEllipse(eventbase.GetHiggsBB().GetMomentum().M(),eventbase.GetHiggsTTMomentum(false).M(),109.639, 87.9563, 43.0346,41.8451))
+                        if (!cuts::hh_bbtautau_2016::hh_tag::new_m_hh_window().IsInside(eventbase.GetHiggsTTMomentum(false).M(),bb.mass()))
                             continue;
+
                     }
                     vars.AddEvent(eventbase, entry.id, entry.spin, entry.weight);
                     tot_entries++;

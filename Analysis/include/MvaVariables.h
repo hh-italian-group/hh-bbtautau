@@ -112,12 +112,12 @@ public:
     using Lock = std::lock_guard<Mutex>;
 
     virtual ~MvaVariablesBase() {}
-    virtual void AddEvent(analysis::EventInfoBase& eventbase, const SampleId& mass, double spin, double sample_weight = 1.,
+    virtual void AddEvent(analysis::EventInfoBase& eventbase, const SampleId& mass, int  spin, double sample_weight = 1.,
                           int which_test = -1, double weight_bkg = 1) = 0;
     virtual double Evaluate() { throw exception("Not supported."); }
     virtual std::shared_ptr<TMVA::Reader> GetReader() = 0;
 
-    double AddAndEvaluate(EventInfoBase& eventbase, const SampleId& mass, double spin,
+    double AddAndEvaluate(EventInfoBase& eventbase, const SampleId& mass, int spin,
                           double sample_weight = 1., int which_test = -1, double weight_bkg = 1)
     {
         Lock lock(mutex);
@@ -142,7 +142,7 @@ public:
 
     virtual ~MvaVariables() {}
     virtual void SetValue(const std::string& name, double value, char type = 'F') = 0;
-    virtual void AddEventVariables(size_t which_set, const SampleId& mass, double weight, double sampleweight, double spin, std::string channel) = 0;
+    virtual void AddEventVariables(size_t which_set, const SampleId& mass, double weight, double sampleweight, int spin, std::string channel) = 0;
     const std::unordered_set<std::string>& GetDisabledVars() const{
         return disabled_vars;
     }
@@ -151,7 +151,7 @@ public:
         return (!enabled_vars.size() && !disabled_vars.count(name)) || enabled_vars.count(name);
     }
 
-    virtual void AddEvent(analysis::EventInfoBase& eventbase, const SampleId& mass , double spin, double sample_weight = 1., int which_test = -1, double weight_bkg = 1) override
+    virtual void AddEvent(analysis::EventInfoBase& eventbase, const SampleId& mass , int spin, double sample_weight = 1., int which_test = -1, double weight_bkg = 1) override
     {
         using namespace ROOT::Math::VectorUtil;
 

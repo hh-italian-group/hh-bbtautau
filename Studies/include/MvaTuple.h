@@ -18,27 +18,27 @@ namespace  analysis {
     VAR(std::vector<double>, roc_testing_value) \
     VAR(std::vector<int>, roc_testing_mass) \
     VAR(std::vector<int>, roc_testing_type) \
-    VAR(std::vector<double>, roc_testing_spin) \
+    VAR(std::vector<int>, roc_testing_spin) \
     VAR(std::vector<std::string>, roc_testing_channel) \
     VAR(std::vector<double>, err_roc_testing) \
     /**/ \
     VAR(std::vector<double>, roc_training_value) \
     VAR(std::vector<int>, roc_training_mass) \
     VAR(std::vector<int>, roc_training_type) \
-    VAR(std::vector<double>, roc_training_spin) \
+    VAR(std::vector<int>, roc_training_spin) \
     VAR(std::vector<std::string>, roc_training_channel) \
     VAR(std::vector<double>, err_roc_training) \
     /**/ \
     VAR(std::vector<double>, KS_value) \
     VAR(std::vector<int>, KS_type) \
     VAR(std::vector<int>, KS_mass) \
-    VAR(std::vector<double>, KS_spin) \
+    VAR(std::vector<int>, KS_spin) \
     VAR(std::vector<std::string>, KS_channel) \
     /**/ \
     VAR(std::vector<double>, chi_value) \
     VAR(std::vector<int>, chi_type) \
     VAR(std::vector<int>, chi_mass) \
-    VAR(std::vector<double>, chi_spin) \
+    VAR(std::vector<int>, chi_spin) \
     VAR(std::vector<std::string>, chi_channel) \
     /**/ \
     VAR(std::vector<size_t>, position) \
@@ -50,7 +50,7 @@ namespace  analysis {
     VAR(std::vector<double>, significance_err) \
     VAR(std::vector<int>, significance_mass) \
     VAR(std::vector<int>, significance_type) \
-    VAR(std::vector<double>, significance_spin) \
+    VAR(std::vector<int>, significance_spin) \
     VAR(std::vector<std::string>, significance_channel) \
     /**/ \
     VAR(std::string, name) \
@@ -85,7 +85,7 @@ inline GridPoint GetGridPoint(const MvaResults& results)
 inline std::map<ChannelSampleIdSpin, PhysicalValue> GetRocIntegralMap(const std::string& name, const std::vector<double>& vec_value,
                                                                       const std::vector<double>& vec_err, const std::vector<std::string>& vec_channel,
                                                                       const std::vector<int>& vec_mass, const std::vector<int>& vec_type,
-                                                                      const std::vector<double>& vec_spin)
+                                                                      const std::vector<int>& vec_spin)
 {
     std::map<ChannelSampleIdSpin, PhysicalValue> rocs;
     const size_t N = vec_mass.size();
@@ -115,7 +115,7 @@ inline std::map<ChannelSampleIdSpin, PhysicalValue> GetRocTestingIntegralMap(con
 
 inline std::map<ChannelSampleIdSpin, double> GetTestResultsMap(const std::string& name, const std::vector<int>& vec_type,  const std::vector<std::string>& vec_channel,
                                                                const std::vector<double>& vec_value, const std::vector<int>& vec_mass,
-                                                               const std::vector<double>& vec_spin)
+                                                               const std::vector<int>& vec_spin)
 {
     std::map<ChannelSampleIdSpin, double> test;
     const size_t N = vec_mass.size();

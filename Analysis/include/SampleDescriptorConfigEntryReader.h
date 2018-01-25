@@ -35,6 +35,8 @@ public:
         CheckReadParamCounts("syncDataIds", 1, Condition::less_equal);
         CheckReadParamCounts("plot_cfg", 1, Condition::less_equal);
         CheckReadParamCounts("plot_page_opt", 1, Condition::less_equal);
+        CheckReadParamCounts("massWindowParams", 0, Condition::greater_equal);
+        CheckReadParamCounts("unc_cfg", 1, Condition::less_equal);
 
         ConfigEntryReaderT<AnalyzerSetup>::EndEntry();
     }
@@ -62,6 +64,8 @@ public:
         ParseEntryList("syncDataIds", current.syncDataIds);
         ParseEntry("plot_cfg", current.plot_cfg);
         ParseEntry("plot_page_opt", current.plot_page_opt);
+        ParseEntry("massWindowParams", current.massWindowParams);
+        ParseEntry("unc_cfg", current.unc_cfg);
     }
 };
 
@@ -193,6 +197,41 @@ public:
 
 private:
     const SampleDescriptorCollection* sampleDescriptorCollection;
+};
+
+class ModellingUncertaintyEntryReader : public ConfigEntryReader {
+public:
+    ModellingUncertaintyEntryReader(ModellingUncertaintyCollection& _items) : items(&_items) {}
+
+    virtual void StartEntry(const std::string& name, const std::string& reference_name) override
+    {
+        ConfigEntryReader::StartEntry(name, reference_name);
+        current = ModellingUncertainty();
+        current_name = name;
+    }
+
+    virtual void EndEntry() override
+    {
+        CheckReadParamCounts("unc", 1, Condition::less_equal);
+        CheckReadParamCounts("sf", 1, Condition::less_equal);
+        CheckReadParamCounts("ref_category", 1, Condition::less_equal);
+
+        current.CreateSampleUncMap();
+        items->Add(current_name, current);
+    }
+
+    virtual void ReadParameter(const std::string& /*param_name*/, const std::string& /*param_value*/,
+                               std::istringstream& /*ss*/) override
+    {
+        ParseEntry("unc", current.uncertainties);
+        ParseEntry("sf", current.scale_factors);
+        ParseEntry("ref_category", current.ref_category);
+    }
+
+private:
+    std::string current_name;
+    ModellingUncertainty current;
+    ModellingUncertaintyCollection* items;
 };
 
 } // namespace analysis

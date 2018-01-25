@@ -5,7 +5,6 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include "AnalysisTools/Core/include/AnalysisMath.h"
 #include "AnalysisTools/Run/include/MultiThread.h"
-#include "EventAnalyzerDataCollection.h"
 #include "SampleDescriptorConfigEntryReader.h"
 #include "h-tautau/Cuts/include/Btag_2016.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
@@ -113,7 +112,7 @@ protected:
             const bool legacy_lm = legacy && mva_setup->legacy.at(name) == "lm";
             const size_t n_wp = masses.size();
             for(size_t n = 0; n < n_wp; ++n) {
-                const MvaKey key{name, static_cast<int>(masses.at(n)), static_cast<double>(spins.at(n))};
+                const MvaKey key{name, static_cast<int>(masses.at(n)), spins.at(n)};
                 mva_reader.Add(key, file, vars, legacy, legacy_lm);
             }
         }
@@ -126,10 +125,24 @@ protected:
         using MvaKey = mva_study::MvaReader::MvaKey;
 
         EventSubCategory sub_category;
-        sub_category.SetCutResult(SelectionCut::mh,
-                                  IsInsideMassWindow(event.GetHiggsTT(true).GetMomentum().mass(),
-                                                     event.GetHiggsBB().GetMomentum().mass(),
-                                                     category.HasBoostConstraint() && category.IsBoosted()));
+        const double mbb = event.GetHiggsBB().GetMomentum().mass();
+        if(category.HasBoostConstraint() && category.IsBoosted()){
+            bool isInsideBoostedCut = IsInsideBoostedMassWindow(event.GetHiggsTT(true).GetMomentum().mass(),mbb);
+            sub_category.SetCutResult(SelectionCut::mh,isInsideBoostedCut);
+            sub_category.SetCutResult(SelectionCut::mhVis,isInsideBoostedCut);
+            sub_category.SetCutResult(SelectionCut::mhMET,isInsideBoostedCut);
+        }
+        else{
+            if(ana_setup.massWindowParams.count(SelectionCut::mh))
+                sub_category.SetCutResult(SelectionCut::mh,ana_setup.massWindowParams.at(SelectionCut::mh)
+                        .IsInside(event.GetHiggsTT(true).GetMomentum().mass(),mbb));
+            if(ana_setup.massWindowParams.count(SelectionCut::mhVis))
+                sub_category.SetCutResult(SelectionCut::mhVis,ana_setup.massWindowParams.at(SelectionCut::mhVis)
+                        .IsInside(event.GetHiggsTT(false).GetMomentum().mass(),mbb));
+            if(ana_setup.massWindowParams.count(SelectionCut::mhMET))
+                sub_category.SetCutResult(SelectionCut::mhMET,ana_setup.massWindowParams.at(SelectionCut::mhMET)
+                        .IsInside((event.GetHiggsTT(false).GetMomentum() + event.GetMET().GetMomentum()).mass(),mbb));
+        }
         sub_category.SetCutResult(SelectionCut::KinematicFitConverged,
                                   event.GetKinFitResults().HasValidMass());
 

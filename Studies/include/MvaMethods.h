@@ -265,10 +265,6 @@ inline VectorName_ND CopySelectedVariables(const VectorName_ND& JSDivergence_vec
     return copy;
 }
 
-inline static bool IsInsideEllipse(double x, double y, double x0, double y0, double a, double b)
-{
-    return pow(x - x0, 2) / pow(a, 2) + pow(y - y0, 2) / pow(b, 2) < 1.;
-}
 
 class BDTData : public root_ext::AnalyzerData {
 public:
@@ -284,7 +280,7 @@ const SampleId mass_tot = SampleId::MassTot();
 const SampleId bkg = SampleId::Bkg();
 const std::string tot = "full";
 const size_t test_train = 10; //test and training together in the evaluation of the method
-const double spin_tot = 3;
+const int spin_tot = 3;
 const std::string all_channel = "all_channel";
 const int SM_spin = 1;
 const int bkg_spin = -1;
@@ -292,9 +288,9 @@ const int bkg_spin = -1;
 struct ChannelSampleIdSpin{
     std::string channel;
     SampleId sample_id;
-    double spin;
+    int spin;
     ChannelSampleIdSpin() : channel("all_channel"), sample_id(mass_tot), spin(spin_tot) {}
-    ChannelSampleIdSpin(std::string _channel, SampleId _sample_id, double _spin) : channel(_channel), sample_id(_sample_id), spin(_spin) {}
+    ChannelSampleIdSpin(std::string _channel, SampleId _sample_id, int _spin) : channel(_channel), sample_id(_sample_id), spin(_spin) {}
 
     bool operator<(const ChannelSampleIdSpin& x) const
     {
@@ -390,7 +386,7 @@ inline std::vector<OptimalSignificance> Calculate_CutSignificance(const ChannelS
      return cuts;
 }
 
-inline std::map<ChannelSampleIdSpin, OptimalSignificance> EstimateSignificativity(const std::string& channel, const double& spin, const std::vector<int>& mass_range,
+inline std::map<ChannelSampleIdSpin, OptimalSignificance> EstimateSignificativity(const std::string& channel, const int& spin, const std::vector<int>& mass_range,
                                                                                               BDTData::Entry& outputBDT, TDirectory* directory, bool total)
 
 {

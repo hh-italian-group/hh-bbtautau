@@ -38,7 +38,7 @@ public:
         variable_float.at(name_indices.at(name)) = static_cast<float>(value);
     }
 
-    virtual void AddEventVariables(size_t /*istraining*/, const SampleId& /*mass*/, double /*weight*/, double /*sampleweight*/, double /*spin*/, std::string /*channel*/) override {}
+    virtual void AddEventVariables(size_t /*istraining*/, const SampleId& /*mass*/, double /*weight*/, double /*sampleweight*/, int /*spin*/, std::string /*channel*/) override {}
 
     virtual double Evaluate() override
     {
@@ -81,7 +81,7 @@ public:
         reader->BookMVA(method_name, bdt_weights);
     }
 
-    virtual void AddEvent(analysis::EventInfoBase& eventbase, const SampleId& /*mass*/ , double /* spin*/, double /*sample_weight*/, int /*which_test*/, double /*weight_bkg*/) override
+    virtual void AddEvent(analysis::EventInfoBase& eventbase, const SampleId& /*mass*/ , int /* spin*/, double /*sample_weight*/, int /*which_test*/, double /*weight_bkg*/) override
     {
         const auto& Htt = eventbase.GetHiggsTTMomentum(false);
         const auto& Htt_sv = eventbase.GetHiggsTTMomentum(true);
@@ -118,8 +118,7 @@ public:
 
     struct MvaKey {
         std::string method_name;
-        int mass;
-        double spin;
+        int mass, spin;
 
         bool operator<(const MvaKey& other) const
         {

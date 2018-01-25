@@ -16,6 +16,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/ConfigReader.h"
 #include "h-tautau/Analysis/include/EventLoader.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
+#include "hh-bbtautau/Analysis/include/AnalysisCategories.h"
 
 struct Arguments {
     REQ_ARG(std::string, cfg);
@@ -467,12 +468,29 @@ private:
                 || std::abs(full_event.jets_p4.at(0).eta()) >= cuts::btag_2016::eta
                 || std::abs(full_event.jets_p4.at(1).eta()) >= cuts::btag_2016::eta) return false;
 
-        const double m_bb = (full_event.jets_p4.at(0) + full_event.jets_p4.at(1)).mass();
-        const double m_tautau = full_event.SVfit_p4.mass();
-        if (setup.apply_mass_cut
-                && !(cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(m_tautau, m_bb, true) ||
-                     cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(m_tautau, m_bb, false)))
-            return false;
+        if (setup.apply_mass_cut){
+            bool pass_mass_cut = false;
+            const double mbb = (full_event.jets_p4.at(0) + full_event.jets_p4.at(1)).mass();
+            const double mtautau = (full_event.p4_1 + full_event.p4_2).mass();
+            pass_mass_cut = pass_mass_cut || cuts::hh_bbtautau_2016::hh_tag::IsInsideBoostedMassWindow(full_event.SVfit_p4.mass(),mbb);
+
+            if(setup.massWindowParams.count(SelectionCut::mh))
+                pass_mass_cut = pass_mass_cut || setup.massWindowParams.at(SelectionCut::mh)
+                        .IsInside(full_event.SVfit_p4.mass(),mbb);
+
+            if(setup.massWindowParams.count(SelectionCut::mhVis))
+                pass_mass_cut = pass_mass_cut || setup.massWindowParams.at(SelectionCut::mhVis)
+                        .IsInside(mtautau,mbb);
+
+            if(setup.massWindowParams.count(SelectionCut::mhMET))
+                pass_mass_cut = pass_mass_cut || setup.massWindowParams.at(SelectionCut::mhMET)
+                        .IsInside((full_event.p4_1 + full_event.p4_2 + full_event.pfMET_p4).mass(),mbb);
+
+            if(!pass_mass_cut)
+                return false;
+        }
+
+
 
         if (setup.apply_charge_cut && (full_event.q_1+full_event.q_2) != 0) return false;
 

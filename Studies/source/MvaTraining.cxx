@@ -99,7 +99,7 @@ public:
         variable.at(name_indices.at(name)) = value;
     }
 
-    virtual void AddEventVariables(size_t istraining, const SampleId& mass, double weight, double sampleweight, double spin, std::string channel) override
+    virtual void AddEventVariables(size_t istraining, const SampleId& mass, double weight, double sampleweight, int spin, std::string channel) override
     {
         ChannelSampleIdSpin id{channel, mass, spin};
         data_pair[istraining][id].data.emplace_back(variable, weight);
@@ -173,7 +173,7 @@ public:
         return reader->EvaluateMVA(method_name);
     }
 
-    std::vector<std::pair<double,double>> EvaluateForAllEvents(const std::string& method_name, size_t istraining, const std::string channel, const double& spin,
+    std::vector<std::pair<double,double>> EvaluateForAllEvents(const std::string& method_name, size_t istraining, const std::string channel, const int& spin,
                                                                const SampleId& sample)
     {
         ChannelSampleIdSpin id{channel, sample, spin};
@@ -460,8 +460,7 @@ public:
                     if(tot_entries >= args.number_events()) break;
                     LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
                     if (args.suffix() == "_ANcut"){
-                        if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(), bb.mass()))
-                            continue;
+                        if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(event.SVfit_p4.mass(),bb.mass())) continue;
                     }
 //                    if (event.p4_1.pt()<40 || event.p4_2.pt()<40) continue;
                     int which_set=0;
@@ -492,8 +491,7 @@ public:
                     auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(s.channel), event) ;
                     EventInfoBase& eventbase = *eventInfoPtr;
                     if (args.suffix() == "_newcut"){
-                        if (!IsInsideEllipse(eventbase.GetHiggsBB().GetMomentum().M(),eventbase.GetHiggsTTMomentum(false).M(),109.639, 87.9563, 43.0346,41.8451))
-                            continue;
+                        if (!cuts::hh_bbtautau_2016::hh_tag::new_m_hh_window().IsInside(eventbase.GetHiggsTTMomentum(false).M(),bb.mass())) continue;
                     }
 
                     if (!args.is_SM() && args.is_BSM())
@@ -707,7 +705,7 @@ public:
 
             auto directory_roc_method = root_ext::GetDirectory(*directory_roc, m.first);
             std::vector<float> mvaS, mvaB;
-            double spin = args.range() == "SM" ? 1 : spin_tot;
+            int spin = args.range() == "SM" ? 1 : spin_tot;
             ChannelSampleIdSpin id_sgn{all_channel, mass_tot, spin};
             ChannelSampleIdSpin id_bkg{all_channel, bkg, spin};
             for (auto& eval : evaluation[id_sgn][0])
