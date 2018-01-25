@@ -17,10 +17,14 @@ public:
     using Tuple = bbtautau::AnaTuple;
     using NameSet = std::set<std::string>;
     using DescSet = PropertyConfigReader::ItemCollection;
+    using SampleUnc = ModellingUncertainty::SampleUnc;
+    using MucPtr = std::shared_ptr<ModellingUncertaintyCollection>;
 
     explicit EventAnalyzerDataCollection(std::shared_ptr<TFile> _file, Channel _channel, const Tuple* _tuple,
-                                         const NameSet& _histNames, const DescSet& _histDescs) :
-        file(_file), channel(_channel), tuple(_tuple), histNames(_histNames), histDescs(_histDescs)
+            const NameSet& _histNames, const DescSet& _histDescs, const NameSet& _backgrounds = {},
+            MucPtr _unc_collection = MucPtr()) :
+        file(_file), channel(_channel), tuple(_tuple), histNames(_histNames), histDescs(_histDescs),
+        backgrounds(_backgrounds), unc_collection(_unc_collection)
     {}
 
     Data& Get(const DataId& id)
@@ -46,7 +50,19 @@ private:
         if(!id.IsComplete())
             throw exception("EventAnalyzerDataId '%1%' is not complete.") % id;
         const std::string dir_name = id.GetName();
-        return std::make_shared<Data>(file, dir_name, channel, id, tuple, histNames, histDescs);
+        const auto& sample_unc = GetModellingUncertainty(id);
+        return std::make_shared<Data>(file, dir_name, channel, id, tuple, histNames, histDescs, sample_unc);
+    }
+
+    SampleUnc GetModellingUncertainty(const DataId& id) const
+    {
+        const std::string& sample = id.Get<std::string>();
+        if(!unc_collection || !backgrounds.count(sample))
+            return SampleUnc();
+        const auto& unc_values = unc_collection->Get(channel, id.Get<EventCategory>());
+        if(!unc_values.samples.count(sample))
+            throw exception("Modelling uncertainty not found for '%1%'.") % sample;
+        return unc_values.samples.at(sample);
     }
 
 private:
@@ -56,6 +72,9 @@ private:
     NameSet histNames;
     DescSet histDescs;
     DataMap anaDataMap;
+    NameSet backgrounds;
+    MucPtr unc_collection;
+
 };
 
 } // namespace analysis
