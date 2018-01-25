@@ -31,11 +31,19 @@ public:
         outputFile(root_ext::CreateRootFile(args.output() + "_full.root"))
     {
         histConfig.Parse(ana_setup.hist_cfg);
+        if(!ana_setup.unc_cfg.empty()) {
+            ConfigReader config_reader;
+            unc_collection = std::make_shared<ModellingUncertaintyCollection>();
+            ModellingUncertaintyEntryReader unc_reader(*unc_collection);
+            config_reader.AddEntryReader("UNC", unc_reader, true);
+            config_reader.ReadConfig(ana_setup.unc_cfg);
+        }
     }
 
     void Run()
     {
         const std::set<std::string> signal_names(ana_setup.signals.begin(), ana_setup.signals.end());
+        const std::set<std::string> bkg_names(ana_setup.backgrounds.begin(), ana_setup.backgrounds.end());
         const auto samplesToDraw = PlotsProducer::CreateOrderedSampleCollection(
                     ana_setup.draw_sequence, sample_descriptors, cmb_sample_descriptors, ana_setup.signals,
                     ana_setup.data, args.channel());
@@ -47,7 +55,7 @@ public:
 
         for(size_t n = 0; n * args.n_parallel() < all_subCategories.size(); ++n) {
             AnaDataCollection anaDataCollection(outputFile, channelId, &tupleReader.GetAnaTuple(), activeVariables,
-                                                histConfig.GetItems());
+                                                histConfig.GetItems(), bkg_names, unc_collection);
             EventSubCategorySet subCategories;
             for(size_t k = 0; k < args.n_parallel() && n * args.n_parallel() + k < all_subCategories.size(); ++k) {
                 const auto& subCategory = all_subCategories.at(n * args.n_parallel() + k);
@@ -227,7 +235,7 @@ private:
                 for(const auto& sub_entry : subAnaData.GetEntriesEx<TH1D>()) {
                     auto& entry = anaData.GetEntryEx<TH1D>(sub_entry.first);
                     for(const auto& hist : sub_entry.second->GetHistograms()) {
-                        entry(hist.first).Add(hist.second.get(), 1);
+                        entry(hist.first).AddHistogram(*hist.second);
                     }
                 }
             }
@@ -246,6 +254,7 @@ private:
     bbtautau::AnaTupleReader tupleReader;
     std::shared_ptr<TFile> outputFile;
     PropertyConfigReader histConfig;
+    std::shared_ptr<ModellingUncertaintyCollection> unc_collection;
 };
 
 } // namespace analysis
