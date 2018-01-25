@@ -128,8 +128,10 @@ protected:
         EventSubCategory sub_category;
         const double mbb = event.GetHiggsBB().GetMomentum().mass();
         if(category.HasBoostConstraint() && category.IsBoosted()){
-            sub_category.SetCutResult(SelectionCut::mh,
-                                      IsInsideBoostedMassWindow(event.GetHiggsTT(true).GetMomentum().mass(),mbb));
+            bool isInsideBoostedCut = IsInsideBoostedMassWindow(event.GetHiggsTT(true).GetMomentum().mass(),mbb);
+            sub_category.SetCutResult(SelectionCut::mh,isInsideBoostedCut);
+            sub_category.SetCutResult(SelectionCut::mhVis,isInsideBoostedCut);
+            sub_category.SetCutResult(SelectionCut::mhMET,isInsideBoostedCut);
         }
         else{
             if(ana_setup.massWindowParams.count(SelectionCut::mh))

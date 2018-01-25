@@ -77,12 +77,12 @@ public:
         if(a < 0 || b < 0 || x0 < 0 || y0 < 0) return 2;
 
         for (const auto& entry: element.at(SampleId::MassTot())){
-            analysis::EllipseParameters ellipse_params{x0, y0, a, b};
+            analysis::EllipseParameters ellipse_params{x0, a, y0, b};
             if(ellipse_params.IsInside(entry.mbb, entry.mtt))
                 n_s += entry.weight;
         }
         for (const auto& entry: element.at(SampleId::Bkg())){
-            analysis::EllipseParameters ellipse_params{x0, y0, a, b};
+            analysis::EllipseParameters ellipse_params{x0, a, y0, b};
             if(ellipse_params.IsInside(entry.mbb, entry.mtt))
                 n_b += entry.weight;
         }
@@ -104,7 +104,7 @@ public:
 
         if(a < 0 || b < 0 || x0 < 0 || y0 < 0) return std::numeric_limits<double>::infinity();
         for (const auto& entry: element.at(SampleId::MassTot())){
-            analysis::EllipseParameters ellipse_params{x0, y0, a, b};
+            analysis::EllipseParameters ellipse_params{x0, a, y0, b};
             if(ellipse_params.IsInside(entry.mbb, entry.mtt))
                 n_s += entry.weight;
         }

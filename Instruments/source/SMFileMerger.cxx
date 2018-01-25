@@ -131,8 +131,6 @@ private:
             anaData.weight(name).Divide(&anaData.lhe_hh_cosTheta_vs_m(name));
         }
 
-//        anaData.weight().CopyContent(anaData.lhe_hh_cosTheta_vs_m(name_sm));
-//        anaData.weight().Divide(&anaData.lhe_hh_cosTheta_vs_m());
     }
 };
 

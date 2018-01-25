@@ -329,7 +329,7 @@ std::istream& operator>>(std::istream& is, EventCategory& eventCategory)
 #define MVA_CUT_LIST(first, count) BOOST_PP_REPEAT(count, DECL_MVA_SEL, first)
 
 enum class SelectionCut { mh = 0, mhVis = 1, mhMET = 2, KinematicFitConverged = 3, lowMET = 4,
-                          MVA_CUT_LIST(5, 102) MVA_first = MVA0, MVA_last = MVA99 };
+                          MVA_CUT_LIST(5, 100) MVA_first = MVA0, MVA_last = MVA99 };
 
 #undef MVA_CUT_LIST
 #undef DECL_MVA_SEL
