@@ -38,7 +38,7 @@ public:
         variable_float.at(name_indices.at(name)) = static_cast<float>(value);
     }
 
-    virtual void AddEventVariables(size_t /*istraining*/, const SampleId& /*mass*/, double /*weight*/, double /*sampleweight*/, int /*spin*/, std::string /*channel*/) override {}
+    virtual void AddEventVariables(size_t /*istraining*/, const SampleId& /*mass*/, double /*weight*/, double /*sampleweight*/, double /*spin*/, std::string /*channel*/) override {}
 
     virtual double Evaluate() override
     {
@@ -81,7 +81,7 @@ public:
         reader->BookMVA(method_name, bdt_weights);
     }
 
-    virtual void AddEvent(analysis::EventInfoBase& eventbase, const SampleId& /*mass*/ , int /* spin*/, double /*sample_weight*/, int /*which_test*/, double /*weight_bkg*/) override
+    virtual void AddEvent(analysis::EventInfoBase& eventbase, const SampleId& /*mass*/ , double /* spin*/, double /*sample_weight*/, int /*which_test*/, double /*weight_bkg*/) override
     {
         const auto& Htt = eventbase.GetHiggsTTMomentum(false);
         const auto& Htt_sv = eventbase.GetHiggsTTMomentum(true);
@@ -118,7 +118,8 @@ public:
 
     struct MvaKey {
         std::string method_name;
-        int mass, spin;
+        int mass;
+        double spin;
 
         bool operator<(const MvaKey& other) const
         {
@@ -140,12 +141,12 @@ public:
         return methods[key] = CreateMvaVariables(key.method_name, bdt_weights, enabled_vars, is_legacy, is_Low);
     }
 
-    double Evaluate(const MvaKey& key, EventInfoBase* event)
+    double Evaluate(const MvaKey& key, EventInfoBase* event, double weight_bkg = 1)
     {
         auto iter = methods.find(key);
         if(iter == methods.end())
             throw exception("Method '%1%' not found.") % key.method_name;
-        return iter->second->AddAndEvaluate(*event, SampleId(SampleType::Sgn_Res, key.mass), key.spin);
+        return iter->second->AddAndEvaluate(*event, SampleId(SampleType::Sgn_Res, key.mass), key.spin, 1, -1 ,weight_bkg);
     }
 
 private:

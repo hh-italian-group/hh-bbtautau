@@ -15,9 +15,9 @@ using SampleIdVarData = std::map<SampleId, VarData>;
 
 struct ChannelSpin{
     std::string channel;
-    int spin;
+    double spin;
 
-    ChannelSpin(std::string _channel, int _spin) : channel(_channel), spin(_spin) {}
+    ChannelSpin(std::string _channel, double _spin) : channel(_channel), spin(_spin) {}
 
     bool operator<(const ChannelSpin& x) const
     {
@@ -40,7 +40,7 @@ public:
         variables[name] = value;
     }
 
-    virtual void AddEventVariables(size_t set, const SampleId& mass,  double /*weight*/, double /*sampleweight*/, int spin, std::string channel) override
+    virtual void AddEventVariables(size_t set, const SampleId& mass,  double /*weight*/, double /*sampleweight*/, double spin, std::string channel) override
     {
         ChannelSpin chsp(channel,spin);
         VarData& sample_vars = all_variables[chsp][set][mass];
@@ -51,7 +51,7 @@ public:
         }
     }
 
-    const SampleIdVarData& GetSampleVariables(std::string channel, int spin, size_t set = 0) const
+    const SampleIdVarData& GetSampleVariables(std::string channel, double spin, size_t set = 0) const
     {
         if(set >= all_variables.size())
             throw exception("Sample part is out of range.");

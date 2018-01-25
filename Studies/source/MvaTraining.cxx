@@ -99,7 +99,7 @@ public:
         variable.at(name_indices.at(name)) = value;
     }
 
-    virtual void AddEventVariables(size_t istraining, const SampleId& mass, double weight, double sampleweight, int spin, std::string channel) override
+    virtual void AddEventVariables(size_t istraining, const SampleId& mass, double weight, double sampleweight, double spin, std::string channel) override
     {
         ChannelSampleIdSpin id{channel, mass, spin};
         data_pair[istraining][id].data.emplace_back(variable, weight);
@@ -173,7 +173,7 @@ public:
         return reader->EvaluateMVA(method_name);
     }
 
-    std::vector<std::pair<double,double>> EvaluateForAllEvents(const std::string& method_name, size_t istraining, const std::string channel, const int& spin,
+    std::vector<std::pair<double,double>> EvaluateForAllEvents(const std::string& method_name, size_t istraining, const std::string channel, const double& spin,
                                                                const SampleId& sample)
     {
         ChannelSampleIdSpin id{channel, sample, spin};
@@ -510,7 +510,6 @@ public:
                             pair_mass_spin = std::make_pair(SampleId::SM().mass,  parameters.kl);
                             const SampleId sample_bkg(SampleType::Bkg_TTbar, pair_mass_spin.first);
                             vars->AddEvent(eventbase, sample_bkg, pair_mass_spin.second, entry.weight, which_set, weight_bkg);
-
                         }
                         else {
                             pair_mass_spin = mass_spin.at(it(gen));
@@ -708,7 +707,7 @@ public:
 
             auto directory_roc_method = root_ext::GetDirectory(*directory_roc, m.first);
             std::vector<float> mvaS, mvaB;
-            int spin = args.range() == "SM" ? 1 : spin_tot;
+            double spin = args.range() == "SM" ? 1 : spin_tot;
             ChannelSampleIdSpin id_sgn{all_channel, mass_tot, spin};
             ChannelSampleIdSpin id_bkg{all_channel, bkg, spin};
             for (auto& eval : evaluation[id_sgn][0])

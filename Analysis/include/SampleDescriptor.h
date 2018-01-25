@@ -50,7 +50,7 @@ struct MvaReaderSetup {
 
     struct Params {
         std::string name;
-        int spin; double mass;
+        int spin, mass;
         double cut;
         boost::optional<Range> training_range;
         StrSet samples;

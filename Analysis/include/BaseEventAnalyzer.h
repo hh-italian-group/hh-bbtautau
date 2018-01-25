@@ -113,7 +113,7 @@ protected:
             const bool legacy_lm = legacy && mva_setup->legacy.at(name) == "lm";
             const size_t n_wp = masses.size();
             for(size_t n = 0; n < n_wp; ++n) {
-                const MvaKey key{name, static_cast<int>(masses.at(n)), spins.at(n)};
+                const MvaKey key{name, static_cast<int>(masses.at(n)), static_cast<double>(spins.at(n))};
                 mva_reader.Add(key, file, vars, legacy, legacy_lm);
             }
         }
@@ -146,7 +146,7 @@ protected:
             }
             for(const auto& mva_sel : mva_setup->selections) {
                 const auto& params = mva_sel.second;
-                const MvaKey key{params.name, static_cast<int>(params.mass), params.spin};
+                const MvaKey key{params.name, static_cast<int>(params.mass),params.spin};
                 const double score = scores.at(key).get();
                 const bool pass = score > params.cut;
                 sub_category.SetCutResult(mva_sel.first, pass);
