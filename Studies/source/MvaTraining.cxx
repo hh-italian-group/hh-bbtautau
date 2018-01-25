@@ -519,7 +519,7 @@ public:
                         if (args.is_SM() && args.is_BSM()){
                             double weight_bsm = 1/eventbase->weight_bsm_to_sm;
                             double benchmarkWeight = reweight5D.getWeight(parameters, event.lhe_hh_m, event.lhe_hh_cosTheta);
-                            vars->AddEvent(eventbase, entry.id, parameters.kl, entry.weight , which_set, weight_bsm*benchmarkWeight);
+                            vars->AddEvent(eventbase, entry.id, static_cast<int>(parameters.kl), entry.weight , which_set, weight_bsm*benchmarkWeight);
                         }
                         vars->AddEvent(eventbase, entry.id, entry.spin, entry.weight , which_set);
                     }

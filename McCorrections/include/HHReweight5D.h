@@ -21,7 +21,7 @@
 
 struct BenchmarkParameters{
     double kl, kt, c2, cg, c2g;
-    BenchmarkParameters(int_kl, double _kt, double _c2, double _cg, double _c2g):
+    BenchmarkParameters(double _kl, double _kt, double _c2, double _cg, double _c2g):
         kl(_kl), kt(_kt), c2(_c2), cg(_cg), c2g(_c2g) {}
 };
 
