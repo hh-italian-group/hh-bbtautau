@@ -24,7 +24,7 @@ struct CoreAnalyzerArguments {
 class EventAnalyzerCore {
 public:
     EventAnalyzerCore(const CoreAnalyzerArguments& args, Channel _channel) :
-        channelId(_channel)
+        channelId(_channel), working_path(args.working_path())
     {
         ROOT::EnableThreadSafety();
         if(args.n_threads() > 1)
