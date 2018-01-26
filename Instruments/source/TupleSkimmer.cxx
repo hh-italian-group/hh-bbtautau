@@ -364,45 +364,16 @@ private:
         }
     }
 
-    ProdSummary GetSummaryWithWeights(const std::shared_ptr<TFile>& file) const
-    {
-        using mc_corrections::WeightType;
-        using mc_corrections::WeightingMode;
-
-        static const WeightingMode shape_weights = { WeightType::PileUp, WeightType::BSM_to_SM, WeightType::DY,
-                                                   WeightType::TTbar, WeightType::Wjets};
-        static const WeightingMode shape_weights_withTopPt = shape_weights | WeightingMode({WeightType::TopPt});
-
-        auto summary_tuple = ntuple::CreateSummaryTuple("summary", file.get(), true, ntuple::TreeState::Full);
-        auto summary = ntuple::MergeSummaryTuple(*summary_tuple);
-        summary.totalShapeWeight = 0;
-        summary.totalShapeWeight_withTopPt = 0;
-
-        const auto mode = shape_weights & weighting_mode;
-        const auto mode_withTopPt = shape_weights_withTopPt & weighting_mode;
-        const bool calc_withTopPt = mode_withTopPt.count(WeightType::TopPt);
-        if(mode.size() || mode_withTopPt.size()) {
-            ExpressTuple all_events("all_events", file.get(), true);
-            for(const auto& event : all_events) {
-                summary.totalShapeWeight += eventWeights_HH->GetTotalWeight(event, mode);
-                if(calc_withTopPt)
-                    summary.totalShapeWeight_withTopPt +=
-                            eventWeights_HH->GetTotalWeight(event, mode_withTopPt);
-            }
-        }
-        return summary;
-    }
-
     ProdSummary GetCombinedSummary(const FileDescriptor& desc, const std::vector<std::shared_ptr<TFile>>& input_files,
                                    double& weight_xs, double& weight_xs_withTopPt)
     {
         if(!input_files.size())
             throw exception("Input files list is empty.");
         auto file_iter = input_files.begin();
-        auto summary = GetSummaryWithWeights(*file_iter++);
+        auto summary = eventWeights_HH->GetSummaryWithWeights(*file_iter++, weighting_mode);
         if(!desc.first_input_is_ref) {
             for(; file_iter != input_files.end(); ++file_iter) {
-                auto other_summary = GetSummaryWithWeights(*file_iter);
+                auto other_summary = eventWeights_HH->GetSummaryWithWeights(*file_iter, weighting_mode);
                 ntuple::MergeProdSummaries(summary, other_summary);
             }
         }
