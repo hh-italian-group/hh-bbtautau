@@ -456,7 +456,7 @@ public:
                 auto mergesummary = ntuple::MergeSummaryTuple(*sumtuple.get());
 
                 Long64_t tot_entries = 0;
-                for(const Event& event : *tuple) {
+                for(Event event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
                     LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
                     if (args.suffix() == "_ANcut"){
@@ -497,32 +497,30 @@ public:
                     if (!args.is_SM() && args.is_BSM())
                         throw exception("Impossible to reweight events in different benchmark scenario if you don't use SM sample");
                     int which_benchmark = bp(gen2);
+                    BenchmarkParameters parameters = BenchmarkId.at(which_benchmark);
 
                     if (entry.id.IsBackground()) {
                         std::pair<int,int> pair_mass_spin;
-                        double weight_bkg = 1;
-//                        if (entry.filename == "TT.root") weight_bkg = 831.76/mergesummary.totalShapeWeight;
+//                        if (entry.filename == "TT.root") weight_bkg = 831.76/mergesummary.totalShapeWeight; //To Fix
 //                        if (entry.filename == "DYJetsToLL_M-50.root") weight_bkg = 5765.4/mergesummary.totalShapeWeight;
                         if (args.is_SM() && args.is_BSM()){
-                            pair_mass_spin = std::make_pair(SampleId::SM().mass, which_benchmark);
+                            pair_mass_spin = std::make_pair(SampleId::SM().mass,  parameters.kl);
                             const SampleId sample_bkg(SampleType::Bkg_TTbar, pair_mass_spin.first);
-                            vars->AddEvent(eventbase, sample_bkg, pair_mass_spin.second, entry.weight, which_set, weight_bkg);
-
+                            vars->AddEvent(eventbase, sample_bkg, pair_mass_spin.second, entry.weight, which_set);
                         }
                         else {
                             pair_mass_spin = mass_spin.at(it(gen));
                             const SampleId sample_bkg(SampleType::Bkg_TTbar, pair_mass_spin.first);
-                            vars->AddEvent(eventbase, sample_bkg, pair_mass_spin.second,entry.weight, which_set, weight_bkg);
+                            vars->AddEvent(eventbase, sample_bkg, pair_mass_spin.second,entry.weight, which_set);
                         }
                     }
                     else {
                         if (args.is_SM() && args.is_BSM()){
-                            double weight_bsm = 1/eventbase->weight_bsm_to_sm;
-                            BenchmarkParameters parameters = BenchmarkId.at(which_benchmark);
                             double benchmarkWeight = reweight5D.getWeight(parameters, event.lhe_hh_m, event.lhe_hh_cosTheta);
-                            vars->AddEvent(eventbase, entry.id, which_benchmark, entry.weight , which_set, weight_bsm*benchmarkWeight);
+                            event.weight_total = eventbase->weight_total/eventbase->weight_bsm_to_sm*benchmarkWeight;
+                            vars->AddEvent(eventbase, entry.id, static_cast<int>(parameters.kl), entry.weight , which_set);
                         }
-                        vars->AddEvent(eventbase, entry.id, entry.spin, entry.weight , which_set);
+                        else vars->AddEvent(eventbase, entry.id, entry.spin, entry.weight , which_set);
                     }
                 }
                 std::cout << " channel " << s.channel << "    " << entry.filename << " number of events: " << tot_entries << std::endl;
@@ -620,19 +618,19 @@ public:
                     id_bkg_ch_sp.sample_id = sample_bkg;
                     if (!vars->data_pair[0].count(id_sgn_ch_sp)) continue;
 
-                    for(int i=BenchmarkId.begin()->first; i<=BenchmarkId.rbegin()->first ; i++){
-                        std::cout<<"i: "<<i<<std::endl;
-                        roc_testing[id_sgn_allch_sp] = method->GetROCIntegral(&outputBDT->bdt_out(id_sgn_allch_sp.channel, id_sgn_allch_sp.sample_id, i, 0),
-                                                                                          &outputBDT->bdt_out(id_bkg_allch_sp.channel, id_bkg_allch_sp.sample_id, i, 0));
-                        roc_training[id_sgn_allch_sp] = method->GetROCIntegral(&outputBDT->bdt_out(id_sgn_allch_sp.channel, id_sgn_allch_sp.sample_id, i, 1),
-                                                                                          &outputBDT->bdt_out(id_bkg_allch_sp.channel, id_bkg_allch_sp.sample_id, i, 1));
-                        std::cout<<"channel: "<< id_sgn_allch_sp.channel<<"  sampleid: "<< id_sgn_allch_sp.sample_id<<" spin: "<<i <<" ---  ROC testing:  "<<roc_testing[id_sgn_allch_sp]<<std::endl;
+                    for(const auto& id : BenchmarkId){
+                        std::cout<<"kl: "<<id.second.kl<<std::endl;
+                        roc_testing[id_sgn_allch_sp] = method->GetROCIntegral(&outputBDT->bdt_out(id_sgn_allch_sp.channel, id_sgn_allch_sp.sample_id, id.second.kl, 0),
+                                                                                          &outputBDT->bdt_out(id_bkg_allch_sp.channel, id_bkg_allch_sp.sample_id, id.second.kl, 0));
+                        roc_training[id_sgn_allch_sp] = method->GetROCIntegral(&outputBDT->bdt_out(id_sgn_allch_sp.channel, id_sgn_allch_sp.sample_id, id.second.kl, 1),
+                                                                                          &outputBDT->bdt_out(id_bkg_allch_sp.channel, id_bkg_allch_sp.sample_id, id.second.kl, 1));
+                        std::cout<<"channel: "<< id_sgn_allch_sp.channel<<"  sampleid: "<< id_sgn_allch_sp.sample_id<<" kl: "<<id.second.kl <<" ---  ROC testing:  "<<roc_testing[id_sgn_allch_sp]<<std::endl;
 
-                        roc_testing[id_sgn_ch_sp] = method->GetROCIntegral(&outputBDT->bdt_out(id_sgn_ch_sp.channel, id_sgn_ch_sp.sample_id, i, 0),
-                                                                                          &outputBDT->bdt_out(id_bkg_ch_sp.channel, id_bkg_ch_sp.sample_id, i, 0));
+                        roc_testing[id_sgn_ch_sp] = method->GetROCIntegral(&outputBDT->bdt_out(id_sgn_ch_sp.channel, id_sgn_ch_sp.sample_id, id.second.kl, 0),
+                                                                                          &outputBDT->bdt_out(id_bkg_ch_sp.channel, id_bkg_ch_sp.sample_id, id.second.kl, 0));
                         roc_training[id_sgn_ch_sp] = method->GetROCIntegral(&outputBDT->bdt_out(id_sgn_ch_sp.channel, id_sgn_ch_sp.sample_id, id_sgn_ch_sp.spin, 1),
-                                                                                          &outputBDT->bdt_out(id_bkg_ch_sp.channel, id_bkg_ch_sp.sample_id, i, 1));
-                        std::cout<<"channel: "<< id_sgn_ch_sp.channel<<"  sampleid: "<< id_sgn_ch_sp.sample_id<<" spin: "<<i <<" ---  ROC testing:  "<<roc_testing[id_sgn_ch_sp]<<std::endl;
+                                                                                          &outputBDT->bdt_out(id_bkg_ch_sp.channel, id_bkg_ch_sp.sample_id, id.second.kl, 1));
+                        std::cout<<"channel: "<< id_sgn_ch_sp.channel<<"  sampleid: "<< id_sgn_ch_sp.sample_id<<" kl: "<<id.second.kl <<" ---  ROC testing:  "<<roc_testing[id_sgn_ch_sp]<<std::endl;
                     }
                 }
 

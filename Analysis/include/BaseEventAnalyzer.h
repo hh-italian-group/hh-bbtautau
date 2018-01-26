@@ -159,7 +159,7 @@ protected:
             }
             for(const auto& mva_sel : mva_setup->selections) {
                 const auto& params = mva_sel.second;
-                const MvaKey key{params.name, static_cast<int>(params.mass), params.spin};
+                const MvaKey key{params.name, static_cast<int>(params.mass),params.spin};
                 const double score = scores.at(key).get();
                 const bool pass = score > params.cut;
                 sub_category.SetCutResult(mva_sel.first, pass);
