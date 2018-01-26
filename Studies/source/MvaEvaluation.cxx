@@ -181,7 +181,7 @@ public:
                 auto mergesummary = ntuple::MergeSummaryTuple(*sumtuple.get());
 
                 Long64_t tot_entries = 0;
-                for(const Event& event : *tuple) {
+                for(Event event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
                     LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
                     if (args.suffix() == "_ANcut"){
@@ -244,12 +244,10 @@ public:
                     }
                     else{
                         MvaReader::MvaKey key{args.method_name(), entry.id.mass, parameter};
-                        double weight = 1;
                         if (args.is_BSM()){
                             BenchmarkParameters benchmarkparameters(args.kl(), 1, 0, 0, 0);
-                            double weight_bsm = 1/eventbase->weight_bsm_to_sm;
                             double benchmarkWeight = reweight5D.getWeight(benchmarkparameters, event.lhe_hh_m, event.lhe_hh_cosTheta);
-                            weight = weight_bsm*benchmarkWeight;
+                            event.weight_total = eventbase->weight_total/eventbase->weight_bsm_to_sm*benchmarkWeight;
                         }
                         double eval = reader.Evaluate(key, &eventbase);
                         ChannelSampleIdSpin id_ch_sample_spin{args.channel(), entry.id, parameter};

@@ -456,7 +456,7 @@ public:
                 auto mergesummary = ntuple::MergeSummaryTuple(*sumtuple.get());
 
                 Long64_t tot_entries = 0;
-                for(const Event& event : *tuple) {
+                for(Event event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
                     LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
                     if (args.suffix() == "_ANcut"){
@@ -501,27 +501,26 @@ public:
 
                     if (entry.id.IsBackground()) {
                         std::pair<int,int> pair_mass_spin;
-                        double weight_bkg = 1;
-//                        if (entry.filename == "TT.root") weight_bkg = 831.76/mergesummary.totalShapeWeight;
+//                        if (entry.filename == "TT.root") weight_bkg = 831.76/mergesummary.totalShapeWeight; //To Fix
 //                        if (entry.filename == "DYJetsToLL_M-50.root") weight_bkg = 5765.4/mergesummary.totalShapeWeight;
                         if (args.is_SM() && args.is_BSM()){
                             pair_mass_spin = std::make_pair(SampleId::SM().mass,  parameters.kl);
                             const SampleId sample_bkg(SampleType::Bkg_TTbar, pair_mass_spin.first);
-                            vars->AddEvent(eventbase, sample_bkg, pair_mass_spin.second, entry.weight, which_set, weight_bkg);
+                            vars->AddEvent(eventbase, sample_bkg, pair_mass_spin.second, entry.weight, which_set);
                         }
                         else {
                             pair_mass_spin = mass_spin.at(it(gen));
                             const SampleId sample_bkg(SampleType::Bkg_TTbar, pair_mass_spin.first);
-                            vars->AddEvent(eventbase, sample_bkg, pair_mass_spin.second,entry.weight, which_set, weight_bkg);
+                            vars->AddEvent(eventbase, sample_bkg, pair_mass_spin.second,entry.weight, which_set);
                         }
                     }
                     else {
                         if (args.is_SM() && args.is_BSM()){
-                            double weight_bsm = 1/eventbase->weight_bsm_to_sm;
                             double benchmarkWeight = reweight5D.getWeight(parameters, event.lhe_hh_m, event.lhe_hh_cosTheta);
-                            vars->AddEvent(eventbase, entry.id, static_cast<int>(parameters.kl), entry.weight , which_set, weight_bsm*benchmarkWeight);
+                            event.weight_total = eventbase->weight_total/eventbase->weight_bsm_to_sm*benchmarkWeight;
+                            vars->AddEvent(eventbase, entry.id, static_cast<int>(parameters.kl), entry.weight , which_set);
                         }
-                        vars->AddEvent(eventbase, entry.id, entry.spin, entry.weight , which_set);
+                        else vars->AddEvent(eventbase, entry.id, entry.spin, entry.weight , which_set);
                     }
                 }
                 std::cout << " channel " << s.channel << "    " << entry.filename << " number of events: " << tot_entries << std::endl;

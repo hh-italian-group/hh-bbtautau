@@ -53,7 +53,7 @@ struct MvaReaderSetup {
 
     struct Params {
         std::string name;
-        int spin, mass;
+        int spin; double mass;
         double cut;
         boost::optional<Range> training_range;
         StrSet samples;
@@ -102,7 +102,7 @@ struct MvaReaderSetup {
 
             for(size_t wp_index = 0; wp_index < tr_spins.size(); ++wp_index) {
                 params.spin = tr_spins.at(wp_index);
-                params.mass = static_cast<int>(tr_masses.at(wp_index));
+                params.mass = tr_masses.at(wp_index);
                 for(double cut_wp : tr_cuts) {
                     params.cut = cut_wp;
                     if(n > n_max)
