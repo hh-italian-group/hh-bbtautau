@@ -30,13 +30,13 @@ public:
         tupleReader(args.input(), args.channel(), activeVariables),
         outputFile(root_ext::CreateRootFile(args.output() + "_full.root"))
     {
-        histConfig.Parse(ana_setup.hist_cfg);
+        histConfig.Parse(FullPath(ana_setup.hist_cfg));
         if(!ana_setup.unc_cfg.empty()) {
             ConfigReader config_reader;
             unc_collection = std::make_shared<ModellingUncertaintyCollection>();
             ModellingUncertaintyEntryReader unc_reader(*unc_collection);
             config_reader.AddEntryReader("UNC", unc_reader, true);
-            config_reader.ReadConfig(ana_setup.unc_cfg);
+            config_reader.ReadConfig(FullPath(ana_setup.unc_cfg));
         }
     }
 
@@ -92,7 +92,7 @@ public:
 
             if(args.draw()) {
                 std::cout << "\t\tCreating plots..." << std::endl;
-                PlotsProducer plotsProducer(anaDataCollection, samplesToDraw, ana_setup.plot_cfg,
+                PlotsProducer plotsProducer(anaDataCollection, samplesToDraw, FullPath(ana_setup.plot_cfg),
                                             ana_setup.plot_page_opt);
                 std::string pdf_prefix = args.output();
                 if(n != 0)
