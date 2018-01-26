@@ -4,11 +4,11 @@
     <Info name="TMVA Release" value="4.2.1 [262657]"/>
     <Info name="ROOT Release" value="6.10/08 [395784]"/>
     <Info name="Creator" value="angelagiraldi"/>
-    <Info name="Date" value="Tue Jan  9 11:21:16 2018"/>
+    <Info name="Date" value="Fri Jan 26 18:15:52 2018"/>
     <Info name="Host" value="Darwin AngelaGiraldi.local 17.2.0 Darwin Kernel Version 17.2.0: Fri Sep 29 18:27:05 PDT 2017; root:xnu-4570.20.62~3/RELEASE_X86_64 x86_64"/>
     <Info name="Dir" value="/Users/angelagiraldi/workspace/hh-analysis"/>
     <Info name="Training events" value="142724"/>
-    <Info name="TrainingTime" value="2.63662781e+02"/>
+    <Info name="TrainingTime" value="1.30579937e+02"/>
     <Info name="AnalysisType" value="Classification"/>
   </GeneralInfo>
   <Options>
