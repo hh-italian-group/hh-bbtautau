@@ -265,10 +265,6 @@ inline VectorName_ND CopySelectedVariables(const VectorName_ND& JSDivergence_vec
     return copy;
 }
 
-inline static bool IsInsideEllipse(double x, double y, double x0, double y0, double a, double b)
-{
-    return pow(x - x0, 2) / pow(a, 2) + pow(y - y0, 2) / pow(b, 2) < 1.;
-}
 
 class BDTData : public root_ext::AnalyzerData {
 public:

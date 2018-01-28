@@ -13,6 +13,7 @@ struct CoreAnalyzerArguments {
     REQ_ARG(std::string, sources);
     REQ_ARG(std::string, setup);
     OPT_ARG(std::string, mva_setup, "");
+    OPT_ARG(std::string, working_path, "");
     OPT_ARG(unsigned, n_threads, 1);
 
     CoreAnalyzerArguments() {}
@@ -23,7 +24,7 @@ struct CoreAnalyzerArguments {
 class EventAnalyzerCore {
 public:
     EventAnalyzerCore(const CoreAnalyzerArguments& args, Channel _channel) :
-        channelId(_channel)
+        channelId(_channel), working_path(args.working_path())
     {
         ROOT::EnableThreadSafety();
         if(args.n_threads() > 1)
@@ -72,6 +73,11 @@ public:
     virtual ~EventAnalyzerCore() {}
 
     const std::string& ChannelNameLatex() const { return __Channel_names_latex.EnumToString(channelId); }
+
+    std::string FullPath(const std::string& path) const
+    {
+        return working_path.empty() ? path : working_path + "/" + path;
+    }
 
     static bool FixNegativeContributions(TH1D& histogram, std::string& debug_info, std::string& negative_bins_info)
     {
@@ -194,6 +200,7 @@ protected:
     EventSubCategorySet sub_categories_to_process;
     Channel channelId;
     std::map<SelectionCut, std::string> mva_sel_aliases;
+    std::string working_path;
 };
 
 } // namespace analysis

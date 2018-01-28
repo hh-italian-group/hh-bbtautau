@@ -113,7 +113,7 @@ protected:
             const size_t n_wp = masses.size();
             for(size_t n = 0; n < n_wp; ++n) {
                 const MvaKey key{name, static_cast<int>(masses.at(n)), spins.at(n)};
-                mva_reader.Add(key, file, vars, legacy, legacy_lm);
+                mva_reader.Add(key, FullPath(file), vars, legacy, legacy_lm);
             }
         }
     }
@@ -125,10 +125,24 @@ protected:
         using MvaKey = mva_study::MvaReader::MvaKey;
 
         EventSubCategory sub_category;
-        sub_category.SetCutResult(SelectionCut::mh,
-                                  IsInsideMassWindow(event.GetHiggsTT(true).GetMomentum().mass(),
-                                                     event.GetHiggsBB().GetMomentum().mass(),
-                                                     category.HasBoostConstraint() && category.IsBoosted()));
+        const double mbb = event.GetHiggsBB().GetMomentum().mass();
+        if(category.HasBoostConstraint() && category.IsBoosted()){
+            bool isInsideBoostedCut = IsInsideBoostedMassWindow(event.GetHiggsTT(true).GetMomentum().mass(),mbb);
+            sub_category.SetCutResult(SelectionCut::mh,isInsideBoostedCut);
+            sub_category.SetCutResult(SelectionCut::mhVis,isInsideBoostedCut);
+            sub_category.SetCutResult(SelectionCut::mhMET,isInsideBoostedCut);
+        }
+        else{
+            if(ana_setup.massWindowParams.count(SelectionCut::mh))
+                sub_category.SetCutResult(SelectionCut::mh,ana_setup.massWindowParams.at(SelectionCut::mh)
+                        .IsInside(event.GetHiggsTT(true).GetMomentum().mass(),mbb));
+            if(ana_setup.massWindowParams.count(SelectionCut::mhVis))
+                sub_category.SetCutResult(SelectionCut::mhVis,ana_setup.massWindowParams.at(SelectionCut::mhVis)
+                        .IsInside(event.GetHiggsTT(false).GetMomentum().mass(),mbb));
+            if(ana_setup.massWindowParams.count(SelectionCut::mhMET))
+                sub_category.SetCutResult(SelectionCut::mhMET,ana_setup.massWindowParams.at(SelectionCut::mhMET)
+                        .IsInside((event.GetHiggsTT(false).GetMomentum() + event.GetMET().GetMomentum()).mass(),mbb));
+        }
         sub_category.SetCutResult(SelectionCut::KinematicFitConverged,
                                   event.GetKinFitResults().HasValidMass());
 
@@ -145,7 +159,7 @@ protected:
             }
             for(const auto& mva_sel : mva_setup->selections) {
                 const auto& params = mva_sel.second;
-                const MvaKey key{params.name, static_cast<int>(params.mass), params.spin};
+                const MvaKey key{params.name, static_cast<int>(params.mass),params.spin};
                 const double score = scores.at(key).get();
                 const bool pass = score > params.cut;
                 sub_category.SetCutResult(mva_sel.first, pass);

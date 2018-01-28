@@ -112,16 +112,16 @@ public:
     using Lock = std::lock_guard<Mutex>;
 
     virtual ~MvaVariablesBase() {}
-    virtual void AddEvent(analysis::EventInfoBase& eventbase, const SampleId& mass, int spin, double sample_weight = 1.,
-                          int which_test = -1, double weight_bkg = 1) = 0;
+    virtual void AddEvent(analysis::EventInfoBase& eventbase, const SampleId& mass, int  spin, double sample_weight = 1.,
+                          int which_test = -1) = 0;
     virtual double Evaluate() { throw exception("Not supported."); }
     virtual std::shared_ptr<TMVA::Reader> GetReader() = 0;
 
     double AddAndEvaluate(EventInfoBase& eventbase, const SampleId& mass, int spin,
-                          double sample_weight = 1., int which_test = -1, double weight_bkg = 1)
+                          double sample_weight = 1., int which_test = -1)
     {
         Lock lock(mutex);
-        AddEvent(eventbase, mass, spin, sample_weight, which_test, weight_bkg);
+        AddEvent(eventbase, mass, spin, sample_weight, which_test);
         return Evaluate();
     }
 
@@ -151,7 +151,7 @@ public:
         return (!enabled_vars.size() && !disabled_vars.count(name)) || enabled_vars.count(name);
     }
 
-    virtual void AddEvent(analysis::EventInfoBase& eventbase, const SampleId& mass , int spin, double sample_weight = 1., int which_test = -1, double weight_bkg = 1) override
+    virtual void AddEvent(analysis::EventInfoBase& eventbase, const SampleId& mass , int spin, double sample_weight = 1., int which_test = -1) override
     {
         using namespace ROOT::Math::VectorUtil;
 
@@ -303,10 +303,11 @@ public:
 
         VAR("mass", mass.mass);
         VAR_INT("channel", eventbase->channelId);
-        VAR("spin", spin);
+        VAR_INT("spin", spin);
+        VAR("kl", spin);
 
         size_t test = which_test ==-1 ? which_set(gen) : static_cast<size_t>(which_test);
-        AddEventVariables(test, mass, eventbase->weight_total*weight_bkg, sample_weight, spin, ToString(static_cast<Channel>(eventbase->channelId)));
+        AddEventVariables(test, mass, eventbase->weight_total, sample_weight, spin, ToString(static_cast<Channel>(eventbase->channelId)));
     }
 
 private:

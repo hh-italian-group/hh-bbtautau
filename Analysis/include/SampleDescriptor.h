@@ -36,6 +36,8 @@ struct AnalyzerSetup {
     std::vector<EventAnalyzerDataId> syncDataIds;
     std::string plot_cfg, plot_page_opt, unc_cfg;
 
+    std::map<SelectionCut,analysis::EllipseParameters> massWindowParams;
+
     bool IsSignal(const std::string& sample_name) const
     {
         const auto iter = std::find(signals.begin(), signals.end(), sample_name);

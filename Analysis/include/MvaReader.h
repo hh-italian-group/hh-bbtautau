@@ -81,7 +81,7 @@ public:
         reader->BookMVA(method_name, bdt_weights);
     }
 
-    virtual void AddEvent(analysis::EventInfoBase& eventbase, const SampleId& /*mass*/ , int /* spin*/, double /*sample_weight*/, int /*which_test*/, double /*weight_bkg*/) override
+    virtual void AddEvent(analysis::EventInfoBase& eventbase, const SampleId& /*mass*/ , int /* spin*/, double /*sample_weight*/, int /*which_test*/) override
     {
         const auto& Htt = eventbase.GetHiggsTTMomentum(false);
         const auto& Htt_sv = eventbase.GetHiggsTTMomentum(true);

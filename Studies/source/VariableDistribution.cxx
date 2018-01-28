@@ -92,14 +92,12 @@ public:
             for(const Event& event : *tuple) {
                 LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
                 if (args.suffix() == "_ANcut"){
-                    if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(), bb.mass()))
-                        continue;
+                    if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(event.SVfit_p4.mass(),bb.mass())) continue;
                 }
                 auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(args.tree_name()) ,event) ;
                 EventInfoBase& eventbase = *eventInfoPtr;
                 if (args.suffix() == "_newcut"){
-                    if (!IsInsideEllipse(eventbase.GetHiggsBB().GetMomentum().M(),eventbase.GetHiggsTTMomentum(false).M(),109.639, 87.9563, 43.0346,41.8451))
-                        continue;
+                    if (!cuts::hh_bbtautau_2016::hh_tag::new_m_hh_window().IsInside(eventbase.GetHiggsTTMomentum(false).M(),bb.mass())) continue;
                 }
                 vars.AddEvent(eventbase, entry.id, entry.spin, entry.weight);
             }
@@ -124,8 +122,7 @@ public:
                     continue;
 
                 LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
-                if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(), bb.mass()))
-                    continue;
+                if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(event.SVfit_p4.mass(),bb.mass())) continue;
                 if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
                 if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
                 auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(args.tree_name()) ,event) ;

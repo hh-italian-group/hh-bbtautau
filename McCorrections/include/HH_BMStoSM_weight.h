@@ -29,7 +29,8 @@ private:
         double cos_Theta = event.lhe_hh_cosTheta;
         const Int_t bin_x = sm_weight->GetXaxis()->FindBin(m_hh);
         const Int_t bin_y = sm_weight->GetYaxis()->FindBin(std::abs(cos_Theta));
-        if(bin_x < 1 || bin_x > sm_weight->GetNbinsX() || bin_y < 1 || bin_y > sm_weight->GetNbinsY())
+        if(bin_x < 1) return 0.0;
+        if(bin_x > sm_weight->GetNbinsX() || bin_y < 1 || bin_y > sm_weight->GetNbinsY())
             throw exception("Unable to estimate HH BSM to SM weight for the event with m_hh = %1%"
                             " and cos(theta) = %2%.") % m_hh % cos_Theta;
 
