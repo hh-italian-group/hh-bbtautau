@@ -207,6 +207,27 @@ private:
                     process_thread = std::make_shared<std::thread>(std::bind(&TupleSkimmer::ProcessThread, this));
                     writer_thread = std::make_shared<std::thread>(std::bind(&TupleSkimmer::WriteThread, this));
                     summary = std::shared_ptr<ProdSummary>();
+
+                    if(weighting_mode.count(mc_corrections::WeightType::BSM_to_SM)) {
+                        std::cout << "\tPreparing EFT weights" << std::endl;
+                        auto eft_weight_provider = eventWeights_HH->GetProviderT<NonResHH_EFT::WeightProvider>(
+                                    mc_corrections::WeightType::BSM_to_SM);
+                        ntuple::ExpressTuple express_tuple("all_events", outputFile.get(), false);
+                        for(auto desc_iter_2 = job.files.begin(); desc_iter_2 != job.files.end(); ++desc_iter_2) {
+                            if(desc_iter_2 != desc_iter && !job.ProduceMergedOutput()) continue;
+                            for(const auto& input : desc_iter_2->inputs) {
+                                auto file = root_ext::OpenRootFile(args.inputPath() + "/" + input);
+                                eft_weight_provider->AddFile(*file);
+                                ntuple::ExpressTuple file_events("all_events", file.get(), true);
+                                for(const auto& event : file_events) {
+                                    express_tuple() = event;
+                                    express_tuple.Fill();
+                                }
+                            }
+                        }
+                        express_tuple.Write();
+                        eft_weight_provider->CreatePdfs(outputFile.get());
+                    }
                 }
                 std::cout << "\tProcessing";
                 std::vector<std::shared_ptr<TFile>> inputFiles;
@@ -365,45 +386,16 @@ private:
         }
     }
 
-    ProdSummary GetSummaryWithWeights(const std::shared_ptr<TFile>& file) const
-    {
-        using mc_corrections::WeightType;
-        using mc_corrections::WeightingMode;
-
-        static const WeightingMode shape_weights = { WeightType::PileUp, WeightType::BSM_to_SM, WeightType::DY,
-                                                   WeightType::TTbar, WeightType::Wjets};
-        static const WeightingMode shape_weights_withTopPt = shape_weights | WeightingMode({WeightType::TopPt});
-
-        auto summary_tuple = ntuple::CreateSummaryTuple("summary", file.get(), true, ntuple::TreeState::Full);
-        auto summary = ntuple::MergeSummaryTuple(*summary_tuple);
-        summary.totalShapeWeight = 0;
-        summary.totalShapeWeight_withTopPt = 0;
-
-        const auto mode = shape_weights & weighting_mode;
-        const auto mode_withTopPt = shape_weights_withTopPt & weighting_mode;
-        const bool calc_withTopPt = mode_withTopPt.count(WeightType::TopPt);
-        if(mode.size() || mode_withTopPt.size()) {
-            ExpressTuple all_events("all_events", file.get(), true);
-            for(const auto& event : all_events) {
-                summary.totalShapeWeight += eventWeights_HH->GetTotalWeight(event, mode);
-                if(calc_withTopPt)
-                    summary.totalShapeWeight_withTopPt +=
-                            eventWeights_HH->GetTotalWeight(event, mode_withTopPt);
-            }
-        }
-        return summary;
-    }
-
     ProdSummary GetCombinedSummary(const FileDescriptor& desc, const std::vector<std::shared_ptr<TFile>>& input_files,
                                    double& weight_xs, double& weight_xs_withTopPt)
     {
         if(!input_files.size())
             throw exception("Input files list is empty.");
         auto file_iter = input_files.begin();
-        auto summary = GetSummaryWithWeights(*file_iter++);
+        auto summary = eventWeights_HH->GetSummaryWithWeights(*file_iter++, weighting_mode);
         if(!desc.first_input_is_ref) {
             for(; file_iter != input_files.end(); ++file_iter) {
-                auto other_summary = GetSummaryWithWeights(*file_iter);
+                auto other_summary = eventWeights_HH->GetSummaryWithWeights(*file_iter, weighting_mode);
                 ntuple::MergeProdSummaries(summary, other_summary);
             }
         }
@@ -472,7 +464,8 @@ private:
             bool pass_mass_cut = false;
             const double mbb = (full_event.jets_p4.at(0) + full_event.jets_p4.at(1)).mass();
             const double mtautau = (full_event.p4_1 + full_event.p4_2).mass();
-            pass_mass_cut = pass_mass_cut || cuts::hh_bbtautau_2016::hh_tag::IsInsideBoostedMassWindow(full_event.SVfit_p4.mass(),mbb);
+            pass_mass_cut = pass_mass_cut
+                    || cuts::hh_bbtautau_2016::hh_tag::IsInsideBoostedMassWindow(full_event.SVfit_p4.mass(),mbb);
 
             if(setup.massWindowParams.count(SelectionCut::mh))
                 pass_mass_cut = pass_mass_cut || setup.massWindowParams.at(SelectionCut::mh)

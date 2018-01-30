@@ -34,7 +34,7 @@ foreach(exe_name ${EXE_LIST})
 #    target_compile_options("${exe_name}" BEFORE PRIVATE "-include;${PrecompHeader}")
 endforeach()
 
-set_target_properties(LimitConfigurationProducer BjetSelectionStudy BjetEffSF KinFitStudy PROPERTIES EXCLUDE_FROM_ALL 1)
+set_target_properties(LimitConfigurationProducer BjetSelectionStudy BjetEffSF KinFitStudy SMWeight_t PROPERTIES EXCLUDE_FROM_ALL 1)
 
 add_library("hh-bbtautau" OBJECT ${HEADER_LIST} ${SOURCE_LIST} ${EXE_SOURCE_LIST} ${SCRIPT_LIST} ${CONFIG_LIST})
 set_target_properties("hh-bbtautau" PROPERTIES EXCLUDE_FROM_ALL 1)

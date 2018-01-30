@@ -34,7 +34,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "hh-bbtautau/Studies/include/MvaTuple.h"
 #include "hh-bbtautau/Studies/include/MvaVariablesStudy.h"
 #include "hh-bbtautau/Studies/include/MvaMethods.h"
-#include "hh-bbtautau/McCorrections/include/HHReweight5D.h"
+#include "hh-bbtautau/McCorrections/include/HH_nonResonant_weight.h"
 
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, input_path);
@@ -107,9 +107,7 @@ public:
         std::cout<<"VARS: "<<enabled_vars.size()<<std::endl;
 
         if (args.is_BSM()){
-            auto file_histo_reweight = root_ext::OpenRootFile(args.input_histo());
-            auto hInput = dynamic_cast<TH2*>(file_histo_reweight.get()->Get("lhe_hh_cosTheta_vs_m"));
-            reweight5D = HHReweight5D(args.coeffFile(), hInput);
+            reweight5D = std::make_shared<NonResHH_EFT::WeightProvider>(args.coeffFile());
         }
 
     }
@@ -180,6 +178,11 @@ public:
                 auto sumtuple = ntuple::CreateSummaryTuple("summary",input_file.get(), true, ntuple::TreeState::Skimmed);
                 auto mergesummary = ntuple::MergeSummaryTuple(*sumtuple.get());
 
+                if(entry.id.IsSM() && args.is_BSM()) {
+                    reweight5D->AddFile(*input_file);
+                    reweight5D->CreatePdfs();
+                }
+
                 Long64_t tot_entries = 0;
                 for(Event event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
@@ -245,8 +248,8 @@ public:
                     else{
                         MvaReader::MvaKey key{args.method_name(), entry.id.mass, parameter};
                         if (args.is_BSM()){
-                            BenchmarkParameters benchmarkparameters(args.kl(), 1, 0, 0, 0);
-                            double benchmarkWeight = reweight5D.getWeight(benchmarkparameters, event.lhe_hh_m, event.lhe_hh_cosTheta);
+                            NonResHH_EFT::Point benchmarkparameters(args.kl(), 1, 0, 0, 0);
+                            double benchmarkWeight = reweight5D->Get(event, benchmarkparameters);
                             event.weight_total = eventbase->weight_total/eventbase->weight_bsm_to_sm*benchmarkWeight;
                         }
                         double eval = reader.Evaluate(key, &eventbase);
@@ -406,7 +409,7 @@ private:
     MvaVariables::VarNameSet enabled_vars;
     MvaReader reader;
     std::uniform_int_distribution<size_t>  test_vs_training;
-    HHReweight5D reweight5D;
+    std::shared_ptr<NonResHH_EFT::WeightProvider> reweight5D;
 };
 
 }

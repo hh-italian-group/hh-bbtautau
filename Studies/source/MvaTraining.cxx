@@ -37,8 +37,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "hh-bbtautau/Studies/include/MvaTuple.h"
 #include "hh-bbtautau/Studies/include/MvaVariablesStudy.h"
 #include "hh-bbtautau/Studies/include/MvaMethods.h"
-#include "hh-bbtautau/McCorrections/include/HHReweight5D.h"
-
+#include "hh-bbtautau/McCorrections/include/HH_nonResonant_weight.h"
 
 struct Arguments { // list of all program arguments
         REQ_ARG(std::string, input_path);
@@ -244,10 +243,13 @@ public:
 
         set = args.is_SM() ? set_SM : set_R;
 
-        if (args.is_BSM()){
-            auto file_histo_reweight = root_ext::OpenRootFile(args.input_histo());
-            auto hInput = dynamic_cast<TH2*>(file_histo_reweight.get()->Get("lhe_hh_cosTheta_vs_m"));
-            reweight5D = HHReweight5D(args.coeffFile(), hInput);
+        if (args.is_BSM()) {
+            reweight5D = std::make_shared<NonResHH_EFT::WeightProvider>(args.coeffFile());
+//            benchmarks = NonResHH_EFT::BenchmarkCollection::Benchmarks();
+            const std::vector<std::vector<double>> kl_scan = {
+                { -20, -10, -5, -1, 0, 1, 2, 5, 10, 30 }, { 1 }, { 0 }, { 0 }, { 0 }
+            };
+            benchmarks = NonResHH_EFT::BenchmarkCollection::CreateScanBenchmarks(kl_scan);
         }
     }
 
@@ -436,7 +438,7 @@ public:
         std::cout<< "quante coppie massa-spin? "<<mass_spin.size() <<std::endl;
 
         std::uniform_int_distribution<size_t> it(0, mass_spin.size() - 1);
-        std::uniform_int_distribution<int> bp(0, 9);
+        std::uniform_int_distribution<size_t> bp(0, benchmarks.size() - 1);
         std::cout<<bkg<<std::endl;
 
         for (const auto& s : set){
@@ -454,6 +456,11 @@ public:
                 auto tuple = ntuple::CreateEventTuple(s.channel, input_file.get(), true, ntuple::TreeState::Skimmed);
                 auto sumtuple = ntuple::CreateSummaryTuple("summary",input_file.get(), true, ntuple::TreeState::Skimmed);
                 auto mergesummary = ntuple::MergeSummaryTuple(*sumtuple.get());
+
+                if(entry.id.IsSM() && args.is_BSM()) {
+                    reweight5D->AddFile(*input_file);
+                    reweight5D->CreatePdfs();
+                }
 
                 Long64_t tot_entries = 0;
                 for(Event event : *tuple) {
@@ -496,15 +503,15 @@ public:
 
                     if (!args.is_SM() && args.is_BSM())
                         throw exception("Impossible to reweight events in different benchmark scenario if you don't use SM sample");
-                    int which_benchmark = bp(gen2);
-                    BenchmarkParameters parameters = BenchmarkId.at(which_benchmark);
+                    size_t which_benchmark = bp(gen2);
+                    const auto& benchmark = benchmarks.at_index(which_benchmark);
 
                     if (entry.id.IsBackground()) {
                         std::pair<int,int> pair_mass_spin;
 //                        if (entry.filename == "TT.root") weight_bkg = 831.76/mergesummary.totalShapeWeight; //To Fix
 //                        if (entry.filename == "DYJetsToLL_M-50.root") weight_bkg = 5765.4/mergesummary.totalShapeWeight;
                         if (args.is_SM() && args.is_BSM()){
-                            pair_mass_spin = std::make_pair(SampleId::SM().mass,  parameters.kl);
+                            pair_mass_spin = std::make_pair(SampleId::SM().mass, benchmark.point.kl);
                             const SampleId sample_bkg(SampleType::Bkg_TTbar, pair_mass_spin.first);
                             vars->AddEvent(eventbase, sample_bkg, pair_mass_spin.second, entry.weight, which_set);
                         }
@@ -516,9 +523,9 @@ public:
                     }
                     else {
                         if (args.is_SM() && args.is_BSM()){
-                            double benchmarkWeight = reweight5D.getWeight(parameters, event.lhe_hh_m, event.lhe_hh_cosTheta);
+                            double benchmarkWeight = reweight5D->Get(event, benchmark.point);
                             event.weight_total = eventbase->weight_total/eventbase->weight_bsm_to_sm*benchmarkWeight;
-                            vars->AddEvent(eventbase, entry.id, static_cast<int>(parameters.kl), entry.weight , which_set);
+                            vars->AddEvent(eventbase, entry.id, static_cast<int>(benchmark.point.kl), entry.weight , which_set);
                         }
                         else vars->AddEvent(eventbase, entry.id, entry.spin, entry.weight , which_set);
                     }
@@ -618,19 +625,19 @@ public:
                     id_bkg_ch_sp.sample_id = sample_bkg;
                     if (!vars->data_pair[0].count(id_sgn_ch_sp)) continue;
 
-                    for(const auto& id : BenchmarkId){
-                        std::cout<<"kl: "<<id.second.kl<<std::endl;
-                        roc_testing[id_sgn_allch_sp] = method->GetROCIntegral(&outputBDT->bdt_out(id_sgn_allch_sp.channel, id_sgn_allch_sp.sample_id, id.second.kl, 0),
-                                                                                          &outputBDT->bdt_out(id_bkg_allch_sp.channel, id_bkg_allch_sp.sample_id, id.second.kl, 0));
-                        roc_training[id_sgn_allch_sp] = method->GetROCIntegral(&outputBDT->bdt_out(id_sgn_allch_sp.channel, id_sgn_allch_sp.sample_id, id.second.kl, 1),
-                                                                                          &outputBDT->bdt_out(id_bkg_allch_sp.channel, id_bkg_allch_sp.sample_id, id.second.kl, 1));
-                        std::cout<<"channel: "<< id_sgn_allch_sp.channel<<"  sampleid: "<< id_sgn_allch_sp.sample_id<<" kl: "<<id.second.kl <<" ---  ROC testing:  "<<roc_testing[id_sgn_allch_sp]<<std::endl;
+                    for(const auto& id : benchmarks){
+                        std::cout<<"kl: "<<id.second.point.kl<<std::endl;
+                        roc_testing[id_sgn_allch_sp] = method->GetROCIntegral(&outputBDT->bdt_out(id_sgn_allch_sp.channel, id_sgn_allch_sp.sample_id, id.second.point.kl, 0),
+                                                                                          &outputBDT->bdt_out(id_bkg_allch_sp.channel, id_bkg_allch_sp.sample_id, id.second.point.kl, 0));
+                        roc_training[id_sgn_allch_sp] = method->GetROCIntegral(&outputBDT->bdt_out(id_sgn_allch_sp.channel, id_sgn_allch_sp.sample_id, id.second.point.kl, 1),
+                                                                                          &outputBDT->bdt_out(id_bkg_allch_sp.channel, id_bkg_allch_sp.sample_id, id.second.point.kl, 1));
+                        std::cout<<"channel: "<< id_sgn_allch_sp.channel<<"  sampleid: "<< id_sgn_allch_sp.sample_id<<" kl: "<<id.second.point.kl <<" ---  ROC testing:  "<<roc_testing[id_sgn_allch_sp]<<std::endl;
 
-                        roc_testing[id_sgn_ch_sp] = method->GetROCIntegral(&outputBDT->bdt_out(id_sgn_ch_sp.channel, id_sgn_ch_sp.sample_id, id.second.kl, 0),
-                                                                                          &outputBDT->bdt_out(id_bkg_ch_sp.channel, id_bkg_ch_sp.sample_id, id.second.kl, 0));
+                        roc_testing[id_sgn_ch_sp] = method->GetROCIntegral(&outputBDT->bdt_out(id_sgn_ch_sp.channel, id_sgn_ch_sp.sample_id, id.second.point.kl, 0),
+                                                                                          &outputBDT->bdt_out(id_bkg_ch_sp.channel, id_bkg_ch_sp.sample_id, id.second.point.kl, 0));
                         roc_training[id_sgn_ch_sp] = method->GetROCIntegral(&outputBDT->bdt_out(id_sgn_ch_sp.channel, id_sgn_ch_sp.sample_id, id_sgn_ch_sp.spin, 1),
-                                                                                          &outputBDT->bdt_out(id_bkg_ch_sp.channel, id_bkg_ch_sp.sample_id, id.second.kl, 1));
-                        std::cout<<"channel: "<< id_sgn_ch_sp.channel<<"  sampleid: "<< id_sgn_ch_sp.sample_id<<" kl: "<<id.second.kl <<" ---  ROC testing:  "<<roc_testing[id_sgn_ch_sp]<<std::endl;
+                                                                                          &outputBDT->bdt_out(id_bkg_ch_sp.channel, id_bkg_ch_sp.sample_id, id.second.point.kl, 1));
+                        std::cout<<"channel: "<< id_sgn_ch_sp.channel<<"  sampleid: "<< id_sgn_ch_sp.sample_id<<" kl: "<<id.second.point.kl <<" ---  ROC testing:  "<<roc_testing[id_sgn_ch_sp]<<std::endl;
                     }
                 }
 
@@ -801,8 +808,8 @@ private:
     MvaVariables::VarNameSet enabled_vars;
     std::shared_ptr<MvaVariablesTMVA> vars;
     std::uniform_int_distribution<uint_fast32_t> test_vs_training;
-    HHReweight5D reweight5D;
-
+    std::shared_ptr<NonResHH_EFT::WeightProvider> reweight5D;
+    NonResHH_EFT::BenchmarkCollection benchmarks;
 };
 
 }

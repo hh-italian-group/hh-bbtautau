@@ -14,6 +14,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "EventAnalyzerData.h"
 #include "AnaTuple.h"
 #include "EventAnalyzerCore.h"
+#include "NonResModel.h"
 
 namespace analysis {
 
@@ -191,6 +192,12 @@ protected:
                 auto summary_tuple = ntuple::CreateSummaryTuple("summary", file.get(), true,
                                                                 ntuple::TreeState::Skimmed);
                 const auto prod_summary = ntuple::MergeSummaryTuple(*summary_tuple);
+                if(sample.sampleType == SampleType::NonResHH) {
+                    std::cout << "\t\tpreparing NonResModel... ";
+                    std::cout.flush();
+                    nonResModel = std::make_shared<NonResModel>(ana_setup.period, sample, file);
+                    std::cout << "done." << std::endl;
+                }
                 ProcessDataSource(sample, sample_wp, tuple, prod_summary);
                 processed_files.insert(sample_wp.file_path);
             }
@@ -244,13 +251,14 @@ protected:
                             if(sample.sampleType == SampleType::MC) {
                                 dataIds[anaDataId] = std::make_tuple(weight, mva_score);
                             } else
-                                ProcessSpecialEvent(sample, sample_wp, anaDataId, event, weight, dataIds);
+                                ProcessSpecialEvent(sample, sample_wp, anaDataId, event, weight,
+                                                    summary->totalShapeWeight, dataIds);
                         }
                     }
                 }
             }
             anaTupleWriter.AddEvent(event, dataIds);
-            for (auto& sync_iter : syncTuple_map){
+            for (auto& sync_iter : syncTuple_map) {
                 if(!dataIds.count(sync_iter.first)) continue;
                 htt_sync::FillSyncTuple(event,*sync_iter.second);
             }
@@ -259,7 +267,7 @@ protected:
 
     virtual void ProcessSpecialEvent(const SampleDescriptor& sample, const SampleDescriptor::Point& /*sample_wp*/,
                                      const EventAnalyzerDataId& anaDataId, EventInfo& event, double weight,
-                                     bbtautau::AnaTupleWriter::DataIdMap& dataIds)
+                                     double shape_weight, bbtautau::AnaTupleWriter::DataIdMap& dataIds)
     {
         if(sample.sampleType == SampleType::DY) {
             static auto const find_b_index = [&]() {
@@ -311,6 +319,8 @@ protected:
                     dataIds[anaDataId.Set(EventEnergyScale::TopPtDown)] = std::make_tuple(weight * event->weight_top_pt,
                                                                                           event.GetMvaScore());
             }
+        } else if(sample.sampleType == SampleType::NonResHH) {
+            nonResModel->ProcessEvent(anaDataId, event, weight, shape_weight, dataIds);
         } else
             throw exception("Unsupported special event type '%1%'.") % sample.sampleType;
     }
@@ -321,7 +331,7 @@ protected:
     mva_study::MvaReader mva_reader;
     std::shared_ptr<TFile> outputFile_sync;
     std::map<EventAnalyzerDataId, std::shared_ptr<htt_sync::SyncTuple>> syncTuple_map;
-
+    std::shared_ptr<NonResModel> nonResModel;
 };
 
 } // namespace analysis
