@@ -4,6 +4,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #pragma once
 
 #include "AnalysisTools/Core/include/TextIO.h"
+#include "AnalysisTools/Core/include/NumericPrimitives.h"
 
 namespace analysis {
 
@@ -12,11 +13,29 @@ namespace NonResHH_EFT {
 struct Point {
     double kl{1}, kt{1}, c2{0}, cg{0}, c2g{0};
 
+    static const std::vector<std::string> ParameterNames()
+    {
+        const std::vector<std::string> names = { "kl", "kt", "c2", "cg", "c2g" };
+        return names;
+    }
+
     static const Point& SM_Point() { static const Point p(1, 1, 0, 0, 0); return p; }
 
     Point() {}
     Point(double _kl, double _kt, double _c2, double _cg, double _c2g) :
         kl(_kl), kt(_kt), c2(_c2), cg(_cg), c2g(_c2g) {}
+    Point(const std::vector<double>& values)
+    {
+        if(values.size() != 5)
+            throw exception("Invalid numer of dimensions for non-resonat HH EFT parameters");
+        kl = values[0];
+        kt = values[1];
+        c2 = values[2];
+        cg = values[3];
+        c2g = values[4];
+    }
+
+    std::vector<double> ToVector() const { return { kl, kt, c2, cg, c2g }; }
 };
 
 inline std::ostream& operator<<(std::ostream& s, const Point& p)
@@ -81,6 +100,32 @@ public:
         return col;
     }
 
+    static BenchmarkCollection CreateScanBenchmarks(const std::vector<std::vector<double>>& values)
+    {
+        if(values.size() != 5)
+            throw exception("Invalid numer of dimensions for non-resonat HH EFT parameters grid.");
+        std::vector<size_t> limits;
+        for(const auto& v : values)
+            limits.push_back(v.size());
+        Grid_ND grid(limits);
+        BenchmarkCollection col;
+        int id = 0;
+        for(const auto& grid_point : grid) {
+            std::vector<double> p_vector(values.size());
+            for(size_t n = 0; n < values.size(); ++n)
+                p_vector[n] = values.at(n).at(grid_point.at(n));
+            const Point point(p_vector);
+            std::ostringstream p_name;
+            for(size_t n = 0; n < limits.size(); ++n) {
+                if(limits.at(n) > 1) {
+                    p_name << Point::ParameterNames().at(n) << p_vector.at(n);
+                }
+            }
+            col.insert(point, id++, p_name.str());
+        }
+        return col;
+    }
+
     void insert(const Benchmark& benchmark)
     {
         if(benchmarks.count(benchmark.id))
@@ -89,9 +134,10 @@ public:
             throw exception("Benchmark with name = '%1%' already present in the collection.") % benchmark.name;
         benchmarks[benchmark.id] = benchmark;
         names[benchmark.name] = benchmark.id;
+        ids.push_back(benchmark.id);
     }
 
-    void insert(const Point point, int id, const std::string& name = "")
+    void insert(const Point& point, int id, const std::string& name = "")
     {
         insert(Benchmark(point, id, name));
     }
@@ -112,6 +158,13 @@ public:
         return at(iter->second);
     }
 
+    const Benchmark& at_index(size_t index) const
+    {
+        if(index >= ids.size())
+            throw exception("Benchark index is out of range.");
+        return at(ids.at(index));
+    }
+
     const_iterator begin() const { return benchmarks.begin(); }
     const_iterator end() const { return benchmarks.end(); }
     size_t size() const { return benchmarks.size(); }
@@ -119,6 +172,7 @@ public:
 private:
     std::map<int, Benchmark> benchmarks;
     std::map<std::string, int> names;
+    std::vector<int> ids;
 };
 
 // Definition taken from here:

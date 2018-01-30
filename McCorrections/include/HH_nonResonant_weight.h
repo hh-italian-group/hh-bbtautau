@@ -19,6 +19,8 @@ public:
     using HistPtr = std::shared_ptr<SmartHist>;
     using ParamMap = std::map<int, std::map<int, GF_Parameterization>>;
 
+    static constexpr bool enable_negative_weight_warning = false;
+
     static const std::string& PangeaName() { static const std::string name = "pangea"; return name; }
     static const std::string& AllEventTupleName() { static const std::string name = "pangea"; return name; }
 
@@ -108,13 +110,25 @@ private:
         const double param_ratio = parameterization.at(bin_x).at(bin_y).Evaluate(point) / param_denom;
         const double weight = pdf_ratio * param_ratio;
         if(weight < 0) {
-            throw exception("Invalid EFT weight for m_hh = %1%, cos_theta = %2% in bin (%3%, %4%): n_pangea = %5%, "
-                            "pdf_pangea = %6% +/- %7%, pdf_sm = %8% +/- %9%, pdf_ratio = %10%, param_ratio = %11%, "
-                            "weight = %12%.")
-                    % m_hh % cos_theta % bin_x % bin_y % pangea->GetBinContent(bin_x, bin_y)
-                    % pangea_pdf->GetBinContent(bin_x, bin_y) % pangea_pdf->GetBinError(bin_x, bin_y)
-                    % sm_pdf->GetBinContent(bin_x, bin_y) % sm_pdf->GetBinError(bin_x, bin_y) % pdf_ratio
-                    % param_ratio % weight;
+            if(enable_negative_weight_warning) {
+                static std::set<std::tuple<int, int, int, int, int, int, int>> reported_bins;
+                const auto bin_tuple = std::make_tuple(int(point.kt * 1000), int(point.kl * 1000), int(point.c2 * 1000),
+                                                       int(point.cg * 1000), int(point.c2g * 1000), bin_x, bin_y);
+                if(!reported_bins.count(bin_tuple)) {
+                    std::cerr << boost::format("\nWarning: invalid EFT weight for m_hh = %1%, cos_theta = %2% in bin "
+                                 "(%3%, %4%): n_pangea = %5%, pdf_pangea = %6% +/- %7%, pdf_sm = %8% +/- %9%, "
+                                 "pdf_ratio = %10%, param_num = %11%, param_denom = %12%, param_ratio = %13%, "
+                                 "weight = %14%.\n(kl kt c2 cg c2g) = (%15%).\nA[n] = [ %16% ]")
+                                 % m_hh % cos_theta % bin_x % bin_y % pangea->GetBinContent(bin_x, bin_y)
+                                 % pangea_pdf->GetBinContent(bin_x, bin_y) % pangea_pdf->GetBinError(bin_x, bin_y)
+                                 % sm_pdf->GetBinContent(bin_x, bin_y) % sm_pdf->GetBinError(bin_x, bin_y) % pdf_ratio
+                                 % parameterization.at(bin_x).at(bin_y).Evaluate(point) % param_denom % param_ratio
+                                 % weight % point % parameterization.at(bin_x).at(bin_y) << std::endl;
+                    reported_bins.insert(bin_tuple);
+                }
+            }
+
+            return 0;
         }
         return weight;
     }

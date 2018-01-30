@@ -23,6 +23,7 @@ namespace analysis {
 struct AnalyzerSetup {
     std::string name;
     double int_lumi{0};
+    Period period;
     std::vector<std::string> final_variables;
     bool apply_mass_cut{false}, apply_os_cut{true}, apply_iso_cut{true};
     EventEnergyScaleSet energy_scales;

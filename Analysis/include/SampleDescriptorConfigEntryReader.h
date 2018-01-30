@@ -16,6 +16,7 @@ public:
     virtual void EndEntry() override
     {
         CheckReadParamCounts("int_lumi", 1, Condition::less_equal);
+        CheckReadParamCounts("period", 1, Condition::less_equal);
         CheckReadParamCounts("final_variables", 1, Condition::less_equal);
         CheckReadParamCounts("apply_mass_cut", 1, Condition::less_equal);
         CheckReadParamCounts("apply_os_cut", 1, Condition::less_equal);
@@ -45,6 +46,7 @@ public:
                                std::istringstream& /*ss*/) override
     {
         ParseEntry("int_lumi", current.int_lumi);
+        ParseEntry("period", current.period);
         ParseEntryList("final_variables", current.final_variables);
         ParseEntry("apply_mass_cut", current.apply_mass_cut);
         ParseEntry("apply_os_cut", current.apply_os_cut);
