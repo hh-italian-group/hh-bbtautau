@@ -12,6 +12,8 @@ namespace NonResHH_EFT {
 struct Point {
     double kl{1}, kt{1}, c2{0}, cg{0}, c2g{0};
 
+    static const Point& SM_Point() { static const Point p(1, 1, 0, 0, 0); return p; }
+
     Point() {}
     Point(double _kl, double _kt, double _c2, double _cg, double _c2g) :
         kl(_kl), kt(_kt), c2(_c2), cg(_cg), c2g(_c2g) {}
@@ -38,6 +40,87 @@ inline std::istream& operator>>(std::istream& s, Point& p)
     return s;
 }
 
+struct Benchmark {
+    Point point;
+    int id;
+    std::string name;
+
+    Benchmark() {}
+    Benchmark(const Point _point, int _id, const std::string& _name = "") :
+        point(_point), id(_id), name(_name)
+    {
+        if(name.empty())
+            name = std::to_string(id);
+    }
+};
+
+class BenchmarkCollection {
+public:
+    using BenchmarkMap = std::map<int, Benchmark>;
+    using const_iterator = BenchmarkMap::const_iterator;
+
+    static const BenchmarkCollection& Benchmarks()
+    {
+        static BenchmarkCollection col;
+        if(!col.size()) {
+            col.insert({ 7.5, 1., -1., 0., 0. }, 1);
+            col.insert({ 1., 1., 0.5, -0.8, 0.6 }, 2);
+            col.insert({ 1., 1., -1.5, 0., -0.8 }, 3);
+            col.insert({ -3.5, 1.5, -3., 0., 0. }, 4);
+            col.insert({ 1., 1., 0., 0.8, -1. }, 5);
+            col.insert({ 2.4, 1., 0., 0.2, -0.2 }, 6);
+            col.insert({ 5., 1., 0., 0.2, -0.2 }, 7);
+            col.insert({ 15., 1., 0., -1., 1. }, 8);
+            col.insert({ 1., 1., 1., -0.6, 0.6 }, 9);
+            col.insert({ 10, 1.5, -1.0, 0., 0. }, 10);
+            col.insert({ 2.4, 1., 0., 1., -1. }, 11);
+            col.insert({ 15., 1., 1., 0., 0. }, 12);
+            col.insert({ 0., 1., 0., 0., 0. }, 13, "box");
+            col.insert(Point::SM_Point(), 14, "SM");
+        }
+        return col;
+    }
+
+    void insert(const Benchmark& benchmark)
+    {
+        if(benchmarks.count(benchmark.id))
+            throw exception("Benchmark with id = %1% already present in the collection.") % benchmark.id;
+        if(names.count(benchmark.name))
+            throw exception("Benchmark with name = '%1%' already present in the collection.") % benchmark.name;
+        benchmarks[benchmark.id] = benchmark;
+        names[benchmark.name] = benchmark.id;
+    }
+
+    void insert(const Point point, int id, const std::string& name = "")
+    {
+        insert(Benchmark(point, id, name));
+    }
+
+    const Benchmark& at(int id) const
+    {
+        auto iter = benchmarks.find(id);
+        if(iter == benchmarks.end())
+            throw exception("Benchmark with id = %1% does not present in the collection.") % id;
+        return iter->second;
+    }
+
+    const Benchmark& at(const std::string& name) const
+    {
+        auto iter = names.find(name);
+        if(iter == names.end())
+            throw exception("Benchmark with name = '%1%' does not present in the collection.") % name;
+        return at(iter->second);
+    }
+
+    const_iterator begin() const { return benchmarks.begin(); }
+    const_iterator end() const { return benchmarks.end(); }
+    size_t size() const { return benchmarks.size(); }
+
+private:
+    std::map<int, Benchmark> benchmarks;
+    std::map<std::string, int> names;
+};
+
 // Definition taken from here:
 // https://github.com/cms-hh/HHStatAnalysis/blob/master/AnalyticalModels/python/NonResonantModel.py
 struct GF_Parameterization {
@@ -53,8 +136,8 @@ struct GF_Parameterization {
         return p;
     }
 
-    GF_Parameterization() {}
-    GF_Parameterization(const Array& _a) : a(_a) {}
+    GF_Parameterization() { a_err.fill(0); }
+    GF_Parameterization(const Array& _a) : a(_a) { a_err.fill(0); }
 
     double Evaluate(const Point& p) const
     {
@@ -69,7 +152,7 @@ struct GF_Parameterization {
                 + a[14] * cg * c2g * kl;
     }
 
-    Array a;
+    Array a, a_err;
 };
 
 inline std::ostream& operator<<(std::ostream& s, const GF_Parameterization& p)
@@ -77,15 +160,19 @@ inline std::ostream& operator<<(std::ostream& s, const GF_Parameterization& p)
     s << p.a[0];
     for(size_t n = 1; n < GF_Parameterization::n_params; ++n)
         s << " " << p.a[n];
+    for(size_t n = 0; n < GF_Parameterization::n_params; ++n)
+        s << " " << p.a_err[n];
     return s;
 }
 
 inline std::istream& operator>>(std::istream& s, GF_Parameterization& p)
 {
     try {
-        auto values = ReadValueList(s, GF_Parameterization::n_params, true, " /t", true);
-        for(size_t n = 0; n < GF_Parameterization::n_params; ++n)
+        auto values = ReadValueList(s, GF_Parameterization::n_params * 2, true, " /t", true);
+        for(size_t n = 0; n < GF_Parameterization::n_params; ++n) {
             p.a[n] = Parse<double>(values.at(n));
+            p.a_err[n] = Parse<double>(values.at(n + GF_Parameterization::n_params));
+        }
     } catch(std::exception& e) {
         throw exception("Invalid EFT parameterization definition. %1%") % e.what();
     }

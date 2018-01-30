@@ -207,6 +207,27 @@ private:
                     process_thread = std::make_shared<std::thread>(std::bind(&TupleSkimmer::ProcessThread, this));
                     writer_thread = std::make_shared<std::thread>(std::bind(&TupleSkimmer::WriteThread, this));
                     summary = std::shared_ptr<ProdSummary>();
+
+                    if(weighting_mode.count(mc_corrections::WeightType::BSM_to_SM)) {
+                        std::cout << "\tPreparing EFT weights" << std::endl;
+                        auto eft_weight_provider = eventWeights_HH->GetProviderT<NonResHH_EFT::WeightProvider>(
+                                    mc_corrections::WeightType::BSM_to_SM);
+                        ntuple::ExpressTuple express_tuple("all_events", outputFile.get(), false);
+                        for(auto desc_iter_2 = job.files.begin(); desc_iter_2 != job.files.end(); ++desc_iter_2) {
+                            if(desc_iter_2 != desc_iter && !job.ProduceMergedOutput()) continue;
+                            for(const auto& input : desc_iter_2->inputs) {
+                                auto file = root_ext::OpenRootFile(args.inputPath() + "/" + input);
+                                eft_weight_provider->AddFile(*file);
+                                ntuple::ExpressTuple file_events("all_events", file.get(), true);
+                                for(const auto& event : file_events) {
+                                    express_tuple() = event;
+                                    express_tuple.Fill();
+                                }
+                            }
+                        }
+                        express_tuple.Write();
+                        eft_weight_provider->CreatePdfs(outputFile.get());
+                    }
                 }
                 std::cout << "\tProcessing";
                 std::vector<std::shared_ptr<TFile>> inputFiles;
@@ -443,7 +464,8 @@ private:
             bool pass_mass_cut = false;
             const double mbb = (full_event.jets_p4.at(0) + full_event.jets_p4.at(1)).mass();
             const double mtautau = (full_event.p4_1 + full_event.p4_2).mass();
-            pass_mass_cut = pass_mass_cut || cuts::hh_bbtautau_2016::hh_tag::IsInsideBoostedMassWindow(full_event.SVfit_p4.mass(),mbb);
+            pass_mass_cut = pass_mass_cut
+                    || cuts::hh_bbtautau_2016::hh_tag::IsInsideBoostedMassWindow(full_event.SVfit_p4.mass(),mbb);
 
             if(setup.massWindowParams.count(SelectionCut::mh))
                 pass_mass_cut = pass_mass_cut || setup.massWindowParams.at(SelectionCut::mh)
