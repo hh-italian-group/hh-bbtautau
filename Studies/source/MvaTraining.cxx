@@ -502,15 +502,15 @@ public:
                     }
 
                     if (!args.is_SM() && args.is_BSM())
-                        throw exception("Impossible to reweight events in different benchmark scenario if you don't use SM sample");
-                    size_t which_benchmark = bp(gen2);
-                    const auto& benchmark = benchmarks.at_index(which_benchmark);
+                        throw exception("Impossible to reweight events in different benchmark scenario if you don't use SM sample");                    
 
                     if (entry.id.IsBackground()) {
                         std::pair<int,int> pair_mass_spin;
 //                        if (entry.filename == "TT.root") weight_bkg = 831.76/mergesummary.totalShapeWeight; //To Fix
 //                        if (entry.filename == "DYJetsToLL_M-50.root") weight_bkg = 5765.4/mergesummary.totalShapeWeight;
                         if (args.is_SM() && args.is_BSM()){
+                            size_t which_benchmark = bp(gen2);
+                            const auto& benchmark = benchmarks.at_index(which_benchmark);
                             pair_mass_spin = std::make_pair(SampleId::SM().mass, benchmark.point.kl);
                             const SampleId sample_bkg(SampleType::Bkg_TTbar, pair_mass_spin.first);
                             vars->AddEvent(eventbase, sample_bkg, pair_mass_spin.second, entry.weight, which_set);
@@ -523,6 +523,8 @@ public:
                     }
                     else {
                         if (args.is_SM() && args.is_BSM()){
+                            size_t which_benchmark = bp(gen2);
+                            const auto& benchmark = benchmarks.at_index(which_benchmark);
                             double benchmarkWeight = reweight5D->Get(event, benchmark.point);
                             event.weight_total = eventbase->weight_total/eventbase->weight_bsm_to_sm*benchmarkWeight;
                             vars->AddEvent(eventbase, entry.id, static_cast<int>(benchmark.point.kl), entry.weight , which_set);
