@@ -186,7 +186,7 @@ public:
         //Plotting
         for(const EventCategory& cat : eventCategories ){
             for(const EventSubCategory& sub_cat: subCategories){
-                TCanvas* c = new TCanvas(("fit_"+ToString(cat)).c_str(),
+                TCanvas* c = new TCanvas(("fit_"+ToString(cat)+"_"+ToString(sub_cat)).c_str(),
                                      ("fit in eventCategory " + ToString(cat)).c_str(),800,400) ;
                 RooPlot* frame = x.frame() ;
                 combData.plotOn(frame,Cut(((std::string)("rooCategories==rooCategories::")+
@@ -194,7 +194,7 @@ public:
                 simPdf.plotOn(frame,Slice(rooCategories,(ToString(cat)+ToString(sub_cat)).c_str()),
                                   ProjWData(rooCategories,combData)) ;
                 simPdf.plotOn(frame,Slice(rooCategories,(ToString(cat)+ToString(sub_cat)).c_str()),
-                            Components(((std::string)("expdf_")+ToString(cat)+(std::string)("_other_bkg_muMu")).c_str() ),
+                            Components(((std::string)("expdf_")+ToString(cat)+"_"+ToString(sub_cat)+(std::string)("_other_bkg_muMu")).c_str() ),
                             ProjWData(rooCategories,combData),LineStyle(kDashed)) ;
                 gPad->SetLeftMargin(0.15) ; frame->GetYaxis()->SetTitleOffset(1.4) ; frame->Draw() ;
                 c->Write();
