@@ -168,11 +168,6 @@ private:
                 auto& entry_ssAntiIso = ssAntiIsoData.template GetEntryEx<TH1D>(sub_entry.first);
                 for(const auto& hist : sub_entry.second->GetHistograms()) {
                     log << anaDataId << ": " << sub_entry.first << " " << hist.first << "\n";
-                    std::string debug_info, negative_bins_info;
-                    if(!FixNegativeContributions(*hist.second,debug_info, negative_bins_info)) {
-                        log << debug_info << "\n" << negative_bins_info << "\n";
-                        continue;
-                    }
                     const auto osAntiIso_integral = Integral(entry_osAntiIso(hist.first), true);
                     const auto ssAntiIso_integral = Integral(entry_ssAntiIso(hist.first), true);
                     if (osAntiIso_integral.GetValue() <= 0 || osAntiIso_integral.IsCompatible(PhysicalValue::Zero)){
@@ -194,7 +189,14 @@ private:
                     log << anaDataId << ": osAntiIso integral = " << osAntiIso_integral
                         << ", ssAntiIso integral = " << ssAntiIso_integral << ", os/ss sf = " << k_factor
                         << ", ssIso integral = " << ssIso_integral << ", total yield = " << total_yield << std::endl;
-                    entry_osIso(hist.first).CopyContent(entry_ss_looseIso(hist.first));
+
+                    TH1D shape_hist(entry_ss_looseIso(hist.first));
+                    std::string debug_info, negative_bins_info;
+                    if(!FixNegativeContributions(shape_hist, debug_info, negative_bins_info)) {
+                        log << debug_info << "\n" << negative_bins_info << "\n";
+                        continue;
+                    }
+                    entry_osIso(hist.first).CopyContent(shape_hist);
                     analysis::RenormalizeHistogram(entry_osIso(hist.first), total_yield.GetValue(), true);
                 }
             }
