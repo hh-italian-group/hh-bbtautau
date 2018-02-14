@@ -13,15 +13,18 @@ struct CoreAnalyzerArguments {
     REQ_ARG(std::string, sources);
     REQ_ARG(std::string, setup);
     OPT_ARG(std::string, mva_setup, "");
+    OPT_ARG(std::string, working_path, "");
     OPT_ARG(unsigned, n_threads, 1);
 
+    CoreAnalyzerArguments() {}
+    CoreAnalyzerArguments(const CoreAnalyzerArguments&) = default;
     virtual ~CoreAnalyzerArguments() {}
 };
 
 class EventAnalyzerCore {
 public:
     EventAnalyzerCore(const CoreAnalyzerArguments& args, Channel _channel) :
-        channelId(_channel)
+        channelId(_channel), working_path(args.working_path())
     {
         ROOT::EnableThreadSafety();
         if(args.n_threads() > 1)
@@ -50,18 +53,31 @@ public:
         ana_setup = ana_setup_collection.at(args.setup());
 
         if(args.mva_setup().size()) {
-            if(!mva_setup_collection.count(args.mva_setup()))
-                throw exception("MVA setup '%1%' not found.") % args.mva_setup();
-            mva_setup = mva_setup_collection.at(args.mva_setup());
+            const auto mva_setup_names = SplitValueList(args.mva_setup(), false, ", \t", true);
+            std::vector<MvaReaderSetup> mva_setups;
+            for(const auto& name : mva_setup_names) {
+                if(!mva_setup_collection.count(name))
+                    throw exception("MVA setup '%1%' not found.") % name;
+                mva_setups.push_back(mva_setup_collection.at(name));
+            }
+            mva_setup = mva_setups.size() == 1 ? mva_setups.front() : MvaReaderSetup::Join(mva_setups);
+            CreateMvaSelectionAliases();
         }
         RemoveUnusedSamples();
 
         CreateEventSubCategoriesToProcess();
     }
 
+    EventAnalyzerCore(const EventAnalyzerCore&) = delete;
+    EventAnalyzerCore& operator=(const EventAnalyzerCore&) = delete;
     virtual ~EventAnalyzerCore() {}
 
     const std::string& ChannelNameLatex() const { return __Channel_names_latex.EnumToString(channelId); }
+
+    std::string FullPath(const std::string& path) const
+    {
+        return working_path.empty() ? path : working_path + "/" + path;
+    }
 
     static bool FixNegativeContributions(TH1D& histogram, std::string& debug_info, std::string& negative_bins_info)
     {
@@ -106,6 +122,8 @@ private:
         sub_categories_to_process.insert(ana_setup.sub_categories.begin(), ana_setup.sub_categories.end());
         if(mva_setup.is_initialized()) {
             for(const auto& base : ana_setup.sub_categories) {
+                SelectionCut predefined_cut;
+                if(base.TryGetLastMvaCut(predefined_cut)) continue;
                 for(const auto& mva_sel : mva_setup->selections) {
                     auto param = mva_sel.second;
                     std::cout<<"Selection cut: "<<mva_sel.first<<" - name: "<<param.name
@@ -114,6 +132,25 @@ private:
                     sub_categories_to_process.insert(sub_category);
                 }
             }
+        }
+    }
+
+    void CreateMvaSelectionAliases()
+    {
+        mva_sel_aliases.clear();
+        if(!mva_setup) return;
+        for(const auto& entry : mva_setup->selections)
+        {
+            const SelectionCut sel = entry.first;
+            const auto& params = entry.second;
+            std::ostringstream ss_name;
+            ss_name << params.name << "S" << params.spin << "M" << params.mass << "C" << params.cut;
+            const std::string name = ss_name.str();
+            for(const auto& alias : mva_sel_aliases) {
+                if(alias.second == name)
+                    throw exception("Duplicated mva selection alias = '%1%'.") % name;
+            }
+            mva_sel_aliases[sel] = name;
         }
     }
 
@@ -162,6 +199,8 @@ protected:
     CombinedSampleDescriptorCollection cmb_sample_descriptors;
     EventSubCategorySet sub_categories_to_process;
     Channel channelId;
+    std::map<SelectionCut, std::string> mva_sel_aliases;
+    std::string working_path;
 };
 
 } // namespace analysis

@@ -30,6 +30,8 @@ public:
         CheckReadParamCounts("keep_genParticles", 1, Condition::less_equal);
         CheckReadParamCounts("keep_MET_cov",1,Condition::less_equal);
         CheckReadParamCounts("tau_iso", 1, Condition::less_equal);
+        CheckReadParamCounts("massWindowParams", 0, Condition::greater_equal);
+
 
         ConfigEntryReaderT<Setup>::EndEntry();
     }
@@ -52,6 +54,7 @@ public:
         ParseEntry("keep_genParticles", current.keep_genParticles);
         ParseEntry("keep_MET_cov",current.keep_MET_cov);
         ParseEntry("tau_id_cut", current.tau_id_cut);
+        ParseEntry("massWindowParams", current.massWindowParams);
     }
 };
 
@@ -63,6 +66,7 @@ public:
     {
         CheckReadParamCounts("merged_output", 1, Condition::less_equal);
         CheckReadParamCounts("apply_common_weights", 1, Condition::less_equal);
+        CheckReadParamCounts("apply_dm_fix", 1, Condition::less_equal);
         CheckReadParamCounts("weights", 1, Condition::less_equal);
 
         const size_t n_files = GetReadParamCounts("file");
@@ -84,6 +88,7 @@ public:
         ParseEntry("merged_output", current.merged_output);
         ParseFileDescriptor(param_name, param_value);
         ParseEntry("apply_common_weights", current.apply_common_weights);
+        ParseEntry("apply_dm_fix", current.apply_dm_fix);
         ParseEntryList("weights", current.weights);
     }
 

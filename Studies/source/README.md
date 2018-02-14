@@ -92,6 +92,3 @@
 ```shell
 ./run.sh MvaEvaluation --input_path /gpfs/ddn/cms/user/androsov/store/cms-it-hh-bbtautau/Tuples2016_v3/Skimmed_light --output_file Eval --cfg_file /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/hh-bbtautau/Studies/config/mva_config.cfg --file_xml  /gpfs/ddn/cms/user/giraldi/workspace/CMSSW_9_0_0/src/hh-bbtautau/Analysis/config/mva/HIG-17-002-BDT-LowMass.xml --method_name BDT::Grad_3 --number_events 200000 --number_sets 2 --seed 12345678 --min 0 --max 10 --channel muTau --spin 0 --isLegacy true --isLow true --range SMAN --is_SM true --all_data 0 --blind 1
 ```
-
-
-

@@ -25,9 +25,28 @@ protected:
         const TauCandidate& tau_1 = event.GetFirstLeg();
         const TauCandidate& tau_2 = event.GetSecondLeg();
 
+//        EventRegion region;
+
+//        if(!event.GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)
+//                || !tau_1->byIsolationMVA(DiscriminatorWP::Medium)) return EventRegion::Unknown();
+
+//        const bool os = !ana_setup.apply_os_cut || tau_1.GetCharge() * tau_2.GetCharge() == -1;
+//        region.SetCharge(os);
+
+//        for(auto wp = working_points.rbegin(); wp != working_points.rend(); ++wp) {
+//            if(tau_2->byIsolationMVA(*wp)) {
+//                region.SetLowerIso(*wp);
+//                if(wp != working_points.rbegin())
+//                    region.SetUpperIso(*(--wp));
+//                break;
+//            }
+//        }
+
+//        return region;
+
         EventRegion region_tau1, region_tau2;
 
-        if(!event.GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) return EventRegion::Unknown();        
+        if(!event.GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) return EventRegion::Unknown();
 
         const bool os = !ana_setup.apply_os_cut || tau_1.GetCharge() * tau_2.GetCharge() == -1;
         region_tau1.SetCharge(os);

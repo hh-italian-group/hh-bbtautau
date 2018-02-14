@@ -39,7 +39,7 @@ std::map<Key, Value> CollectFutures(std::map<Key, std::future<Value>>& futures)
 }
 
 //Read a .csv file and return or bandwidth of JSDivergence
-NameElement Read_csvfile(const std::string& filecsv)
+NameElement Read_csvfile(const std::string& filecsv, const std::unordered_set<std::string>& disabled_vars)
 {
     NameElement bandwidth;
     std::ifstream file(filecsv);
@@ -53,7 +53,7 @@ NameElement Read_csvfile(const std::string& filecsv)
         while(std::getline(lineStream,cell,','))
         {
             bool check = TryParse(cell,value);
-            if (!check) name.insert(cell);
+            if (!check && !disabled_vars.count(cell)) name.insert(cell);
         }
         bandwidth[name] = value;
     }
@@ -71,12 +71,14 @@ inline NameElement OptimalBandwidth(const VarData& sample)
 }
 
 //Create elements of mutual information matrix for a single value o f mass
-inline NameElement Mutual(const VarData& sample_vars, const NameElement& bandwidth)
+inline NameElement Mutual(const VarData& sample_vars, NameElement& bandwidth)
 {
    NameElementFuture matrix_future;
    for(auto var_1 = sample_vars.begin(); var_1 != sample_vars.end(); ++var_1){
        for(auto var_2 = var_1; var_2 != sample_vars.end(); ++var_2) {
-            matrix_future[Name_ND{var_1->first, var_2->first}] = run::async(stat_estimators::ScaledMutualInformation<double>, std::cref(var_1->second),
+           if (bandwidth.at(Name_ND{var_1->first}) == 0) bandwidth[Name_ND{var_1->first}] = 0.0001;
+           if (bandwidth.at(Name_ND{var_2->first}) == 0) bandwidth[Name_ND{var_2->first}] = 0.0001;
+           matrix_future[Name_ND{var_1->first, var_2->first}] = run::async(stat_estimators::ScaledMutualInformation<double>, std::cref(var_1->second),
                                                                           std::cref(var_2->second), bandwidth.at(Name_ND{var_1->first}), bandwidth.at(Name_ND{var_2->first}));
         }
     }
@@ -208,7 +210,7 @@ inline NameElement JensenDivergenceSamples(const VarData& sample_signal, const V
         x.push_back(&sample_signal.at(entry_1->first));
         y.push_back(&sample_bkg.at(entry_1->first));
         band_x.push_back(bandwidth_signal.at(Name_ND{entry_1->first}));
-        band_y.push_back(bandwidth_bkg.at(Name_ND{entry_1->first}));
+        band_y.push_back(bandwidth_bkg.at(Name_ND{entry_1->first}));        
         JSDivergenceND_future[Name_ND{entry_1->first}] = run::async(stat_estimators::JensenShannonDivergence_ND<double>, x, y, band_x, band_y);
         for(auto entry_2 = std::next(entry_1); entry_2 != sample_signal.end(); ++entry_2) {
             x.push_back(&sample_signal.at(entry_2->first));
@@ -262,6 +264,7 @@ inline VectorName_ND CopySelectedVariables(const VectorName_ND& JSDivergence_vec
     }
     return copy;
 }
+
 
 class BDTData : public root_ext::AnalyzerData {
 public:

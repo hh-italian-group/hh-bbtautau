@@ -16,6 +16,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/ConfigReader.h"
 #include "h-tautau/Analysis/include/EventLoader.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
+#include "hh-bbtautau/Analysis/include/AnalysisCategories.h"
 
 struct Arguments {
     REQ_ARG(std::string, cfg);
@@ -149,15 +150,34 @@ public:
 
     void Run()
     {
+        std::set<std::string> successful_jobs, failed_jobs;
         for(const auto& job : jobs) {
             try {
                 std::cout << boost::format("Skimming job %1%...") % job.name << std::endl;
                 ProcessJob(job);
                 std::cout << "Job " << job.name << " has been skimmed." << std::endl;
+                successful_jobs.insert(job.name);
             } catch(std::exception& e) {
                 std::cerr << "\nEROOR: " << e.what() << "\nJob " <<job.name << " is failed." << std::endl;
+                failed_jobs.insert(job.name);
             }
         }
+        std::cout << "Summary:";
+        if(failed_jobs.empty())
+            std::cout << " all jobs has been successfully skimmed.";
+        std::cout << std::endl;
+
+        auto print_jobs = [](const std::set<std::string>& job_set, const std::string& name) {
+            if(!job_set.empty()) {
+                std::cout << name << " jobs:";
+                for(const auto& job : job_set)
+                    std::cout << " " << job;
+                std::cout << std::endl;
+            }
+        };
+
+        print_jobs(successful_jobs, "Successful");
+        print_jobs(failed_jobs, "Failed");
     }
 
 private:
@@ -187,6 +207,27 @@ private:
                     process_thread = std::make_shared<std::thread>(std::bind(&TupleSkimmer::ProcessThread, this));
                     writer_thread = std::make_shared<std::thread>(std::bind(&TupleSkimmer::WriteThread, this));
                     summary = std::shared_ptr<ProdSummary>();
+
+                    if(weighting_mode.count(mc_corrections::WeightType::BSM_to_SM)) {
+                        std::cout << "\tPreparing EFT weights" << std::endl;
+                        auto eft_weight_provider = eventWeights_HH->GetProviderT<NonResHH_EFT::WeightProvider>(
+                                    mc_corrections::WeightType::BSM_to_SM);
+                        ntuple::ExpressTuple express_tuple("all_events", outputFile.get(), false);
+                        for(auto desc_iter_2 = job.files.begin(); desc_iter_2 != job.files.end(); ++desc_iter_2) {
+                            if(desc_iter_2 != desc_iter && !job.ProduceMergedOutput()) continue;
+                            for(const auto& input : desc_iter_2->inputs) {
+                                auto file = root_ext::OpenRootFile(args.inputPath() + "/" + input);
+                                eft_weight_provider->AddFile(*file);
+                                ntuple::ExpressTuple file_events("all_events", file.get(), true);
+                                for(const auto& event : file_events) {
+                                    express_tuple() = event;
+                                    express_tuple.Fill();
+                                }
+                            }
+                        }
+                        express_tuple.Write();
+                        eft_weight_provider->CreatePdfs(outputFile.get());
+                    }
                 }
                 std::cout << "\tProcessing";
                 std::vector<std::shared_ptr<TFile>> inputFiles;
@@ -203,18 +244,32 @@ private:
                 else
                     summary = std::make_shared<ProdSummary>(desc_summary);
 
-                summary->file_desc_name.push_back(desc_iter->inputs.at(0));
-                summary->file_desc_id.push_back(desc_id);
+                for(unsigned n = 0; n < desc_iter->inputs.size() && (n == 0 || !desc_iter->first_input_is_ref); ++n) {
+                    const auto& input = desc_iter->inputs.at(n);
+                    summary->file_desc_name.push_back(input);
+                    summary->file_desc_id.push_back(n * 1000 + desc_id);
+                }
+
                 summary->n_splits = setup.n_splits;
                 summary->split_seed = setup.split_seed;
 
                 for(Channel channel : setup.channels) {
                     const std::string treeName = ToString(channel);
+
+                    using FullEventId = std::tuple<EventIdentifier, EventEnergyScale>;
+                    using FullEventIdSet = std::set<FullEventId>;
+
+                    FullEventIdSet processed_events;
+
                     for(size_t n = 0; n < desc_iter->inputs.size(); ++n) {
                         auto file = inputFiles.at(n);
                         std::cout << "\t\t" << desc_iter->inputs.at(n) << ":" << treeName << std::endl;
 
-                        if(channel == Channel::TauTau && (n == 0 || !desc_iter->first_input_is_ref)) {
+                        if(!desc_iter->first_input_is_ref)
+                            processed_events.clear();
+
+                        if(job.apply_dm_fix && channel == Channel::TauTau
+                                && (n == 0 || !desc_iter->first_input_is_ref)) {
                             std::cout << "\t\t\t" << "Loading tau decay modes... ";
                             dm_collection = std::make_shared<DecayModeCollection>(args.inputPath() + "/../Full_dm",
                                                                                   desc_iter->inputs.at(n), "tauTau");
@@ -232,6 +287,15 @@ private:
                         EventIdentifier prev_event_id = EventIdentifier::Undef_event();
                         unsigned split_id = 0;
                         for(const Event& event : *tuple) {
+                            const FullEventId fullId{EventIdentifier(event.run, event.lumi, event.evt),
+                                                     static_cast<EventEnergyScale>(event.eventEnergyScale)};
+                            if(processed_events.count(fullId)) {
+                                std::cout << "WARNING: duplicated event " << std::get<EventIdentifier>(fullId) << " "
+                                          << std::get<EventEnergyScale>(fullId) << std::endl;
+                                continue;
+                            }
+                            processed_events.insert(fullId);
+
                             auto event_ptr = std::make_shared<Event>(event);
                             event_ptr->weight_xs = weight_xs;
                             event_ptr->weight_xs_withTopPt = weight_xs_withTopPt;
@@ -245,7 +309,7 @@ private:
                                 split_id = event_ptr->split_id;
                             }
                             event_ptr->split_id = split_distr ? (*split_distr)(gen_map.at(channel)) : 0;
-                            if(channel == Channel::TauTau)
+                            if(job.apply_dm_fix && channel == Channel::TauTau)
                                 dm_collection->UpdateEvent(*event_ptr);
                             processQueue.Push(event_ptr);
                         }
@@ -322,45 +386,16 @@ private:
         }
     }
 
-    ProdSummary GetSummaryWithWeights(const std::shared_ptr<TFile>& file) const
-    {
-        using mc_corrections::WeightType;
-        using mc_corrections::WeightingMode;
-
-        static const WeightingMode shape_weights = { WeightType::PileUp, WeightType::BSM_to_SM, WeightType::DY,
-                                                   WeightType::TTbar, WeightType::Wjets};
-        static const WeightingMode shape_weights_withTopPt = shape_weights | WeightingMode({WeightType::TopPt});
-
-        auto summary_tuple = ntuple::CreateSummaryTuple("summary", file.get(), true, ntuple::TreeState::Full);
-        auto summary = ntuple::MergeSummaryTuple(*summary_tuple);
-        summary.totalShapeWeight = 0;
-        summary.totalShapeWeight_withTopPt = 0;
-
-        const auto mode = shape_weights & weighting_mode;
-        const auto mode_withTopPt = shape_weights_withTopPt & weighting_mode;
-        const bool calc_withTopPt = mode_withTopPt.count(WeightType::TopPt);
-        if(mode.size() || mode_withTopPt.size()) {
-            ExpressTuple all_events("all_events", file.get(), true);
-            for(const auto& event : all_events) {
-                summary.totalShapeWeight += eventWeights_HH->GetTotalWeight(event, mode);
-                if(calc_withTopPt)
-                    summary.totalShapeWeight_withTopPt +=
-                            eventWeights_HH->GetTotalWeight(event, mode_withTopPt);
-            }
-        }
-        return summary;
-    }
-
     ProdSummary GetCombinedSummary(const FileDescriptor& desc, const std::vector<std::shared_ptr<TFile>>& input_files,
                                    double& weight_xs, double& weight_xs_withTopPt)
     {
         if(!input_files.size())
             throw exception("Input files list is empty.");
         auto file_iter = input_files.begin();
-        auto summary = GetSummaryWithWeights(*file_iter++);
+        auto summary = eventWeights_HH->GetSummaryWithWeights(*file_iter++, weighting_mode);
         if(!desc.first_input_is_ref) {
             for(; file_iter != input_files.end(); ++file_iter) {
-                auto other_summary = GetSummaryWithWeights(*file_iter);
+                auto other_summary = eventWeights_HH->GetSummaryWithWeights(*file_iter, weighting_mode);
                 ntuple::MergeProdSummaries(summary, other_summary);
             }
         }
@@ -425,12 +460,30 @@ private:
                 || std::abs(full_event.jets_p4.at(0).eta()) >= cuts::btag_2016::eta
                 || std::abs(full_event.jets_p4.at(1).eta()) >= cuts::btag_2016::eta) return false;
 
-        const double m_bb = (full_event.jets_p4.at(0) + full_event.jets_p4.at(1)).mass();
-        const double m_tautau = full_event.SVfit_p4.mass();
-        if (setup.apply_mass_cut
-                && !(cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(m_tautau, m_bb, true) ||
-                     cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(m_tautau, m_bb, false)))
-            return false;
+        if (setup.apply_mass_cut){
+            bool pass_mass_cut = false;
+            const double mbb = (full_event.jets_p4.at(0) + full_event.jets_p4.at(1)).mass();
+            const double mtautau = (full_event.p4_1 + full_event.p4_2).mass();
+            pass_mass_cut = pass_mass_cut
+                    || cuts::hh_bbtautau_2016::hh_tag::IsInsideBoostedMassWindow(full_event.SVfit_p4.mass(),mbb);
+
+            if(setup.massWindowParams.count(SelectionCut::mh))
+                pass_mass_cut = pass_mass_cut || setup.massWindowParams.at(SelectionCut::mh)
+                        .IsInside(full_event.SVfit_p4.mass(),mbb);
+
+            if(setup.massWindowParams.count(SelectionCut::mhVis))
+                pass_mass_cut = pass_mass_cut || setup.massWindowParams.at(SelectionCut::mhVis)
+                        .IsInside(mtautau,mbb);
+
+            if(setup.massWindowParams.count(SelectionCut::mhMET))
+                pass_mass_cut = pass_mass_cut || setup.massWindowParams.at(SelectionCut::mhMET)
+                        .IsInside((full_event.p4_1 + full_event.p4_2 + full_event.pfMET_p4).mass(),mbb);
+
+            if(!pass_mass_cut)
+                return false;
+        }
+
+
 
         if (setup.apply_charge_cut && (full_event.q_1+full_event.q_2) != 0) return false;
 

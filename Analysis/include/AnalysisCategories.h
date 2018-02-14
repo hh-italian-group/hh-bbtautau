@@ -12,10 +12,10 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 namespace analysis {
 
-enum class SampleType { Data, MC, DY, QCD, TT };
+enum class SampleType { Data, MC, DY, QCD, TT, NonResHH };
 ENUM_NAMES(SampleType) = {
     { SampleType::Data, "Data" }, { SampleType::MC, "MC" }, { SampleType::DY, "DY" }, { SampleType::QCD, "QCD" },
-    { SampleType::TT, "TT" }
+    { SampleType::TT, "TT" }, { SampleType::NonResHH, "NonResHH" }
 };
 
 enum class DYFitModel { None = 0, NbjetBins = 1,NbjetBins_htBins = 2};
@@ -262,7 +262,7 @@ struct EventCategory {
         if(HasBtagConstraint()) {
             s << *n_btag;
             if(*btag_wp != DiscriminatorWP::Medium)
-                s << *btag_wp;
+                s << __DiscriminatorWP_short_names.EnumToString(*btag_wp);
             s << "btag";
         }
         if(HasBoostConstraint()) {
@@ -295,7 +295,7 @@ struct EventCategory {
             if(btag_pos == std::string::npos)
                 throw exception("");
             const DiscriminatorWP btag_wp = btag_wp_pos == btag_pos ? DiscriminatorWP::Medium
-                    : ::analysis::Parse<DiscriminatorWP>(str.substr(btag_wp_pos, btag_pos - btag_wp_pos));
+                    : __DiscriminatorWP_short_names.Parse(str.substr(btag_wp_pos, btag_pos - btag_wp_pos));
             const size_t boosted_pos = btag_pos + btag_suffix.size();
             if(str.size() == boosted_pos)
                 return EventCategory(n_jets, n_btag, btag_wp);
@@ -334,8 +334,8 @@ std::istream& operator>>(std::istream& is, EventCategory& eventCategory)
 #define DECL_MVA_SEL(z, n, first) MVA##n = n + first,
 #define MVA_CUT_LIST(first, count) BOOST_PP_REPEAT(count, DECL_MVA_SEL, first)
 
-enum class SelectionCut { mh = 0, KinematicFitConverged = 1, lowMET = 2, lowPt = 3, medPt = 4, highPt = 5,
-                          MVA_CUT_LIST(6, 100) MVA_first = MVA0, MVA_last = MVA99 };
+enum class SelectionCut { mh = 0, mhVis = 1, mhMET = 2, KinematicFitConverged = 3, lowMET = 4, lowPt = 5, medPt = 6, highPt = 7,
+                          MVA_CUT_LIST(8, 100) MVA_first = MVA0, MVA_last = MVA99 };
 
 #undef MVA_CUT_LIST
 #undef DECL_MVA_SEL
@@ -345,6 +345,8 @@ inline std::map<SelectionCut, std::string> CreateSelectionCutNames()
 {
     std::map<SelectionCut, std::string> names;
     names[SelectionCut::mh] = "mh";
+    names[SelectionCut::mhVis] = "mhVis";
+    names[SelectionCut::mhMET] = "mhMET";
     names[SelectionCut::KinematicFitConverged] = "KinematicFitConverged";
     names[SelectionCut::lowMET] = "lowMET";
     names[SelectionCut::lowPt] = "lowPt";
@@ -391,7 +393,7 @@ struct EventSubCategory {
     EventSubCategory& SetCutResult(SelectionCut cut, bool result)
     {
         if(HasCut(cut))
-            throw exception("Cut '%1%' is aready defined.") % cut;
+            throw exception("Cut '%1%' is already defined.") % cut;
         const size_t index = GetIndex(cut);
         const BitsContainer mask = BitsContainer(1) << index;
         results = (results & ~mask) | (BitsContainer(result) << index);
@@ -430,7 +432,7 @@ struct EventSubCategory {
         return true;
     }
 
-    std::string ToString() const
+    std::string ToString(const std::map<SelectionCut, std::string>& sel_aliases = {}) const
     {
         if(*this == NoCuts())
             return "NoCuts";
@@ -439,7 +441,12 @@ struct EventSubCategory {
             const BitsContainer mask = BitsContainer(1) << n;
             if((presence & mask) == BitsContainer(0)) continue;
             if((results & mask) == BitsContainer(0)) s << "not";
-            s << static_cast<SelectionCut>(n) << "_";
+            const SelectionCut cut = static_cast<SelectionCut>(n);
+            if(sel_aliases.count(cut))
+                s << sel_aliases.at(cut);
+            else
+                s << cut;
+            s << "_";
         }
         std::string str = s.str();
         if(str.size())

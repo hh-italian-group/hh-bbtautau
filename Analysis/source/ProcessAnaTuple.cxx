@@ -16,6 +16,7 @@ struct AnalyzerArguments : CoreAnalyzerArguments {
     OPT_ARG(bool, shapes, true);
     OPT_ARG(bool, draw, true);
     OPT_ARG(std::string, vars, "");
+    OPT_ARG(size_t, n_parallel, 10);
 };
 
 class ProcessAnaTuple : public EventAnalyzerCore {
@@ -29,48 +30,75 @@ public:
         tupleReader(args.input(), args.channel(), activeVariables),
         outputFile(root_ext::CreateRootFile(args.output() + "_full.root"))
     {
-        histConfig.Parse(ana_setup.hist_cfg);
+        histConfig.Parse(FullPath(ana_setup.hist_cfg));
+        if(!ana_setup.unc_cfg.empty()) {
+            ConfigReader config_reader;
+            unc_collection = std::make_shared<ModellingUncertaintyCollection>();
+            ModellingUncertaintyEntryReader unc_reader(*unc_collection);
+            config_reader.AddEntryReader("UNC", unc_reader, true);
+            config_reader.ReadConfig(FullPath(ana_setup.unc_cfg));
+        }
     }
 
     void Run()
     {
         const std::set<std::string> signal_names(ana_setup.signals.begin(), ana_setup.signals.end());
+        const std::set<std::string> bkg_names(ana_setup.backgrounds.begin(), ana_setup.backgrounds.end());
         const auto samplesToDraw = PlotsProducer::CreateOrderedSampleCollection(
                     ana_setup.draw_sequence, sample_descriptors, cmb_sample_descriptors, ana_setup.signals,
                     ana_setup.data, args.channel());
 
-        for(const auto& subCategory : sub_categories_to_process) {
-            std::cout << subCategory << std::endl;
+        std::ofstream qcd_out(args.output() +"_QCD.txt");
+
+        const std::vector<EventSubCategory> all_subCategories(sub_categories_to_process.begin(),
+                                                              sub_categories_to_process.end());
+
+        for(size_t n = 0; n * args.n_parallel() < all_subCategories.size(); ++n) {
             AnaDataCollection anaDataCollection(outputFile, channelId, &tupleReader.GetAnaTuple(), activeVariables,
-                                                histConfig.GetItems());
+                                                histConfig.GetItems(), bkg_names, unc_collection);
+            EventSubCategorySet subCategories;
+            for(size_t k = 0; k < args.n_parallel() && n * args.n_parallel() + k < all_subCategories.size(); ++k) {
+                const auto& subCategory = all_subCategories.at(n * args.n_parallel() + k);
+                subCategories.insert(subCategory);
+                std::cout << subCategory << " ";
+            }
+            std::cout << std::endl;
+
             std::cout << "\tCreating histograms..." << std::endl;
-            ProduceHistograms(anaDataCollection, subCategory);
-            std::cout << "\tProcessing combined samples... " << std::endl;
-            ProcessCombinedSamples(anaDataCollection, subCategory, ana_setup.cmb_samples);
-            for(const auto& sample : sample_descriptors) {
-                if(sample.second.sampleType == SampleType::QCD) {
-                    std::cout << "\tEstimating QCD..." << std::endl;
-                    EstimateQCD(anaDataCollection, subCategory, sample.second);
-                    break;
+            ProduceHistograms(anaDataCollection, subCategories);
+
+            std::cout << "\tProcessing combined samples and QCD... " << std::endl;
+            for(const auto& subCategory : subCategories) {
+                ProcessCombinedSamples(anaDataCollection, subCategory, ana_setup.cmb_samples);
+                for(const auto& sample : sample_descriptors) {
+                    if(sample.second.sampleType == SampleType::QCD) {
+                        EstimateQCD(anaDataCollection, subCategory, sample.second, qcd_out);
+                        break;
+                    }
                 }
             }
 
             if(args.shapes()) {
-                std::cout << "\tProducing inputs for limits..." << std::endl;
-                LimitsInputProducer limitsInputProducer(anaDataCollection, sample_descriptors, cmb_sample_descriptors);
+                std::cout << "\t\tProducing inputs for limits..." << std::endl;
+                LimitsInputProducer limitsInputProducer(anaDataCollection, sample_descriptors,
+                                                        cmb_sample_descriptors);
                 for(const std::string& hist_name : ana_setup.final_variables) {
                     if(!activeVariables.count(hist_name)) continue;
-                    limitsInputProducer.Produce(args.output(), hist_name, ana_setup.limit_categories, subCategory,
-                                                ana_setup.energy_scales, ana_setup.regions);
+                    for(const auto& subCategory : subCategories)
+                        limitsInputProducer.Produce(args.output(), hist_name, ana_setup.limit_categories, subCategory,
+                                                    ana_setup.energy_scales, ana_setup.regions, mva_sel_aliases);
                 }
             }
 
             if(args.draw()) {
-                std::cout << "\tCreating plots..." << std::endl;
-                PlotsProducer plotsProducer(anaDataCollection, samplesToDraw, false, true);
-                const std::string pdf_prefix = args.output() + "_" + ToString(subCategory);
+                std::cout << "\t\tCreating plots..." << std::endl;
+                PlotsProducer plotsProducer(anaDataCollection, samplesToDraw, FullPath(ana_setup.plot_cfg),
+                                            ana_setup.plot_page_opt);
+                std::string pdf_prefix = args.output();
+                if(n != 0)
+                    pdf_prefix += "_part" + ToString(n + 1);
                 plotsProducer.PrintStackedPlots(pdf_prefix, EventRegion::SignalRegion(), ana_setup.categories,
-                                                {subCategory}, signal_names);
+                                                subCategories, signal_names);
             }
         }
 
@@ -79,22 +107,22 @@ public:
 
 private:
 
-    void ProduceHistograms(AnaDataCollection& anaDataCollection, const EventSubCategory& subCategory)
+    void ProduceHistograms(AnaDataCollection& anaDataCollection, const EventSubCategorySet& subCategories)
     {
         auto& tuple = tupleReader.GetAnaTuple();
         for(Long64_t entryIndex = 0; entryIndex < tuple.GetEntries(); ++entryIndex) {
             tuple.GetEntry(entryIndex);
             for(size_t n = 0; n < tuple().dataIds.size(); ++n) {
                 const auto& dataId = tupleReader.GetDataIdByIndex(n);
-                if(dataId.Get<EventSubCategory>() != subCategory) continue;
-                tupleReader.UpdateSecondaryBranches(n);
+                if(!subCategories.count(dataId.Get<EventSubCategory>())) continue;
+                tupleReader.UpdateSecondaryBranches(dataId, n);
                 anaDataCollection.Fill(dataId, tuple().weight);
             }
         }
     }
 
     void EstimateQCD(AnaDataCollection& anaDataCollection, const EventSubCategory& subCategory,
-                     const SampleDescriptor& qcd_sample)
+                     const SampleDescriptor& qcd_sample, std::ostream& log)
     {
         static const EventRegionSet sidebandRegions = {
             EventRegion::OS_AntiIsolated(), EventRegion::SS_Isolated(), EventRegion::SS_AntiIsolated(),
@@ -132,40 +160,46 @@ private:
             auto& ssIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::SS_Isolated()));
             auto& ssLooseIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::SS_LooseIsolated()));
             auto& osAntiIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::OS_AntiIsolated()));
-            auto& ssAntiIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::OS_AntiIsolated()));
+            auto& ssAntiIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::SS_AntiIsolated()));
             for(const auto& sub_entry : ssIsoData.template GetEntriesEx<TH1D>()) {
                 auto& entry_osIso = osIsoData.template GetEntryEx<TH1D>(sub_entry.first);
                 auto& entry_ss_looseIso = ssLooseIsoData.template GetEntryEx<TH1D>(sub_entry.first);
                 auto& entry_osAntiIso = osAntiIsoData.template GetEntryEx<TH1D>(sub_entry.first);
                 auto& entry_ssAntiIso = ssAntiIsoData.template GetEntryEx<TH1D>(sub_entry.first);
                 for(const auto& hist : sub_entry.second->GetHistograms()) {
+                    log << anaDataId << ": " << sub_entry.first << " " << hist.first << "\n";
                     std::string debug_info, negative_bins_info;
-                    if(!FixNegativeContributions(*hist.second,debug_info, negative_bins_info)) continue;
-                    const auto osAntiIso_integral = analysis::Integral(entry_osAntiIso(hist.first), true);
-                    const auto ssAntiIso_integral = analysis::Integral(entry_ssAntiIso(hist.first), true);
-                    if (osAntiIso_integral.GetValue() <= 0){
-                        std::cout << "Warning: OS Anti Iso integral less or equal 0 for " << hist.first << std::endl;
+                    if(!FixNegativeContributions(*hist.second,debug_info, negative_bins_info)) {
+                        log << debug_info << "\n" << negative_bins_info << "\n";
+                        continue;
+                    }
+                    const auto osAntiIso_integral = Integral(entry_osAntiIso(hist.first), true);
+                    const auto ssAntiIso_integral = Integral(entry_ssAntiIso(hist.first), true);
+                    if (osAntiIso_integral.GetValue() <= 0 || osAntiIso_integral.IsCompatible(PhysicalValue::Zero)){
+                        log << "Warning: OS Anti Iso integral is too small " << hist.first << std::endl;
                         continue;
                     }
 
-                    if (ssAntiIso_integral.GetValue() <= 0){
-                        std::cout << "Warning: SS Anti Iso integral less or equal 0 for " << hist.first << std::endl;
+                    if (ssAntiIso_integral.GetValue() <= 0 || ssAntiIso_integral.IsCompatible(PhysicalValue::Zero)){
+                        log << "Warning: SS Anti Iso integral is too small " << hist.first << std::endl;
                         continue;
                     }
-                    const double k_factor = osAntiIso_integral.GetValue()/ssAntiIso_integral.GetValue();
+                    const auto k_factor = osAntiIso_integral / ssAntiIso_integral;
                     const auto ssIso_integral = analysis::Integral(*hist.second, true);
                     if (ssIso_integral.GetValue() <= 0){
-                        std::cout << "Warning: SS Iso integral less or equal 0 for " << hist.first << std::endl;
+                        log << "Warning: SS Iso integral less or equal 0 for " << hist.first << std::endl;
                         continue;
                     }
-                    const double total_yield = ssIso_integral.GetValue() * k_factor;
+                    const auto total_yield = ssIso_integral * k_factor;
+                    log << anaDataId << ": osAntiIso integral = " << osAntiIso_integral
+                        << ", ssAntiIso integral = " << ssAntiIso_integral << ", os/ss sf = " << k_factor
+                        << ", ssIso integral = " << ssIso_integral << ", total yield = " << total_yield << std::endl;
                     entry_osIso(hist.first).CopyContent(entry_ss_looseIso(hist.first));
-                    analysis::RenormalizeHistogram(entry_osIso(hist.first),total_yield,true);
-
-
+                    analysis::RenormalizeHistogram(entry_osIso(hist.first), total_yield.GetValue(), true);
                 }
             }
         }
+        log << std::endl;
     }
 
     void ProcessCombinedSamples(AnaDataCollection& anaDataCollection, const EventSubCategory& subCategory,
@@ -201,7 +235,7 @@ private:
                 for(const auto& sub_entry : subAnaData.GetEntriesEx<TH1D>()) {
                     auto& entry = anaData.GetEntryEx<TH1D>(sub_entry.first);
                     for(const auto& hist : sub_entry.second->GetHistograms()) {
-                        entry(hist.first).Add(hist.second.get(), 1);
+                        entry(hist.first).AddHistogram(*hist.second);
                     }
                 }
             }
@@ -220,6 +254,7 @@ private:
     bbtautau::AnaTupleReader tupleReader;
     std::shared_ptr<TFile> outputFile;
     PropertyConfigReader histConfig;
+    std::shared_ptr<ModellingUncertaintyCollection> unc_collection;
 };
 
 } // namespace analysis

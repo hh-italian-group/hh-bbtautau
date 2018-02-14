@@ -27,6 +27,7 @@ struct Arguments { // list of all program arguments
     REQ_ARG(std::string, optband_folder);
     REQ_ARG(std::string, jsd_folder);
     REQ_ARG(std::string, mutual_folder);
+    REQ_ARG(std::string, suffix);
     REQ_ARG(unsigned, number_threads);
     REQ_ARG(size_t, number_variables);
     OPT_ARG(Long64_t, number_events, 1000000);
@@ -55,7 +56,17 @@ public:
                                  {"muTau",bkg_spin}, {"eTau",bkg_spin}, {"tauTau",bkg_spin}};
 
     MvaClassification(const Arguments& _args): args(_args),
-        outfile(root_ext::CreateRootFile(args.output_file())), vars(args.number_sets(), args.seed(),{}, {"channel", "mass", "spin"}),
+        outfile(root_ext::CreateRootFile(args.output_file())), vars(args.number_sets(), args.seed(),{}, {"channel", "mass", "spin",
+//                                                                    "decayMode_1", "decayMode_2", "iso_1", "iso_2", "csv_1", "csv_2",
+                                                                    "costheta_l1l2METhh_sv","costheta_htautau_svhhMET","costheta_htautau_svhh_sv",
+                                                                    "costheta_htautau_svhh", "costheta_htautauhh_sv", "costheta_hbbhh_sv",
+                                                                    "costheta_METhtautau_sv", "costheta_l2htautau_sv", "costheta_l1htautau_sv",
+                                                                    "costheta_star_leptons_sv", "phi_2_sv", "phi_1_sv", "phi_sv", "mass_H_sv",
+                                                                    "MT_htautau_sv", "mass_htautau_sv", "dR_l1l2_boosted_sv", "dR_l1l2Pt_htautau_sv",
+                                                                    "dR_hbbhtautau_sv", "dR_METhtautau_sv", "deta_hbbhtautau_sv", "abs_deta_hbbhtautau_sv"
+                                                                    "deta_METhtautau_sv", "abs_deta_METhtautau_sv","dphi_hbbhtautau_sv", "abs_dphi_hbbhatutau_sv",
+                                                                    "dphi_hbbhtautau_sv", "abs_dphi_hbbhatutau_sv", "dphi_METhtautau_sv", "abs_dphi_METhtautau_sv"
+                                                                    "pt_htautau_sv"}),
         reporter(std::make_shared<TimeReporter>())
     {
         MvaSetupCollection setups;
@@ -82,7 +93,7 @@ public:
         else if (set.spin == SM_spin) spin = "SM";
         else spin = "Bkg";
         std::ofstream of("InformationTable_"+ToString(mass)+"_"+std::to_string(args.set())+"_"+std::to_string(args.number_sets())
-                         +set.channel+"_spin"+spin+".csv", std::ofstream::out);
+                         +set.channel+"_spin"+spin+args.suffix()+".csv", std::ofstream::out);
         of<<"Var_1"<<","<<"Var_2"<<","<<"JSD_ND"<<","<<"JSD_12-(JSD_1+JSD_2)"<<","<<"ScaledMI_Signal_12" <<","<<"ScaledMI_Bkg_12"<<","<<"selected"<<","<<","<<"eliminated by"<<std::endl;
         for(auto& entry : JSDivergenceSB.at(set).at(mass_entry)){
              histo->Fill(entry.second);
@@ -127,7 +138,7 @@ public:
                     continue;
                 SamplePair mass_pair(mass_entry_1->first,mass_entry_2->first);
                 JSDivergenceSS[mass_pair] = Read_csvfile(args.jsd_folder()+"/JensenShannonDivergenceSS"+ToString(mass_entry_1->first)
-                                                         +"_"+ToString(mass_entry_2->first)+"_"+set.channel+"_spin"+spin+".csv");
+                                                         +"_"+ToString(mass_entry_2->first)+"_"+set.channel+"_spin"+spin+args.suffix()+".csv", vars.GetDisabledVars());
             }
         }
         std::map<Name_ND, std::map<SamplePair,double>> histovalue;
@@ -183,7 +194,7 @@ public:
         VectorName_ND JSDivergence_vector(JSDivergenceND.begin(), JSDivergenceND.end());
 
         std::ofstream best_entries_file("Best_entries_"+ToString(mass)+"_"+std::to_string(args.set())+"_"
-                                        +std::to_string(args.number_sets())+set.channel+"_spin"+spin+".csv", std::ofstream::out);
+                                        +std::to_string(args.number_sets())+set.channel+"_spin"+spin+args.suffix()+".csv", std::ofstream::out);
         best_entries_file<<","<<","<<"JSD_sb"<<","<<"MI_sgn"<<","<<"Mi_bkg"<<std::endl;
 
         static const std::map<std::pair<size_t, size_t>, std::string> prefixes = {
@@ -238,7 +249,7 @@ public:
         ChannelSpin chsp_bkg(set.channel, bkg_spin);
         auto mass = ToString(mass_entry);
         std::ofstream of("InformationTable_"+ToString(mass)+"_"+std::to_string(args.set())+"_"+std::to_string(args.number_sets())
-                         +set.channel+"_spin"+spin+".csv", std::ofstream::out);
+                         +set.channel+"_spin"+spin+args.suffix()+".csv", std::ofstream::out);
         of<<"Var_1"<<","<<"Var_2"<<","<<"JSD_ND"<<","<<"JSD_12-(JSD_1+JSD_2)"<<","<<"ScaledMI_Signal_12" <<","<<"ScaledMI_Bkg_12"<<","<<"selected"<<","<<","<<"eliminated by"<<std::endl;
         for(auto& entry : JSDivergenceSB.at(set).at(mass_entry)){
              if (entry.first.size() == 1){
@@ -307,7 +318,7 @@ public:
         else if (set.spin == SM_spin) spin = "SM";
         else spin = "Bkg";
         std::ofstream ofs("SelectedVariable_"+std::to_string(args.set())+"_"+std::to_string(args.number_sets())
-                          +set.channel+"_spin"+spin+".csv", std::ofstream::out);
+                          +set.channel+"_spin"+spin+args.suffix()+".csv", std::ofstream::out);
         for (const auto& mass_entry : samples_mass.at(set)){
             if (mass_entry.first.IsBackground())
                 continue;
@@ -338,11 +349,17 @@ public:
             for(const Event& event : *tuple) {
                 if(tot_entries >= args.number_events()) break;
                 LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
-                if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(), bb.mass()))
-                    continue;
+                if (args.suffix() == "_ANcut"){
+                    if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(event.SVfit_p4.mass(),bb.mass())) continue;
+                }
                 if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
                 if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
-                vars.AddEvent(event, entry.id, entry.spin, set.channel, entry.weight);
+                auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(set.channel) ,event) ;
+                EventInfoBase& eventbase = *eventInfoPtr;
+                if (args.suffix() == "_newcut"){
+                    if (!cuts::hh_bbtautau_2016::hh_tag::new_m_hh_window().IsInside(eventbase.GetHiggsTTMomentum(false).M(),bb.mass())) continue;
+                }
+                vars.AddEvent(eventbase, entry.id, entry.spin, entry.weight);
                 tot_entries++;
             }
             std::cout << entry << " number of events: " << tot_entries << std::endl;
@@ -370,9 +387,9 @@ public:
                 std::stringstream ss;
                 ss << std::fixed << std::setprecision(0) << s.spin;
                 std::string spin = ss.str();
-                bandwidth[s][sample.first] = Read_csvfile(args.optband_folder()+"/OptimalBandwidth"+ToString(sample.first)+"_"+s.channel+"_spin"+spin+".csv");
-                mutual_matrix[s][sample.first] = Read_csvfile(args.mutual_folder()+"/MutualInformationDistance"+ToString(sample.first)+"_"+s.channel+"_spin"+spin+".csv");
-                JSDivergenceSB[s][sample.first] = Read_csvfile(args.jsd_folder()+"/JensenShannonDivergenceSB"+ToString(sample.first)+"_"+s.channel+"_spin"+spin+".csv");
+                bandwidth[s][sample.first] = Read_csvfile(args.optband_folder()+"/OptimalBandwidth"+ToString(sample.first)+"_"+s.channel+"_spin"+spin+args.suffix()+".csv", vars.GetDisabledVars());
+                mutual_matrix[s][sample.first] = Read_csvfile(args.mutual_folder()+"/MutualInformationDistance"+ToString(sample.first)+"_"+s.channel+"_spin"+spin+args.suffix()+".csv", vars.GetDisabledVars());
+                JSDivergenceSB[s][sample.first] = Read_csvfile(args.jsd_folder()+"/JensenShannonDivergenceSB"+ToString(sample.first)+"_"+s.channel+"_spin"+spin+args.suffix()+".csv", vars.GetDisabledVars());
             }
         }
 
