@@ -23,17 +23,10 @@ public:
     using PlotsProducer = ::analysis::StackedPlotsProducer;
 
     CreatePostFitPlots(const AnalyzerArguments& _args) :
-        EventAnalyzerCore(_args, _args.channel()), args(_args), activeVariables(args.var()),
+        EventAnalyzerCore(_args, _args.channel()), args(_args), activeVariables({args.var()}),
         outputFile(root_ext::CreateRootFile(args.output() + "_postfit.root"))
     {
         histConfig.Parse(FullPath(ana_setup.hist_cfg));
-        if(!ana_setup.unc_cfg.empty()) {
-            ConfigReader config_reader;
-            unc_collection = std::make_shared<ModellingUncertaintyCollection>();
-            ModellingUncertaintyEntryReader unc_reader(*unc_collection);
-            config_reader.AddEntryReader("UNC", unc_reader, true);
-            config_reader.ReadConfig(FullPath(ana_setup.unc_cfg));
-        }
     }
 
     void Run()
@@ -50,30 +43,39 @@ public:
                     ana_setup.draw_sequence, sample_descriptors, cmb_sample_descriptors, ana_setup.signals,
                     ana_setup.data, args.channel());
 
-        std::map<size_t,analysis::EventCategory> categories_map = {{ 0, EventCategory::TwoJets_OneBtag },
-                                                                   { 1, EventCategory::TwoJets_TwoBtag },
-                                                                   { 2, EventCategory::TwoJets_TwoLooseBtag_Boosted}};
+        std::map<analysis::EventCategory,size_t> categories_map = {{ analysis::EventCategory::TwoJets_OneBtag(), 0 },
+                                                                   { analysis::EventCategory::TwoJets_TwoBtag(), 1 },
+                                                                   { analysis::EventCategory::TwoJets_TwoLooseBtag_Boosted(), 2}};
 
         auto inputFile = root_ext::OpenRootFile(args.input());
         AnaDataCollection anaDataCollection(outputFile, channelId, nullptr, activeVariables,
-                                            histConfig.GetItems(), all_samples, unc_collection);
+                                            histConfig.GetItems(), all_samples, nullptr);
 
-        for(unsigned n = 0; n < categories_map.size(); ++n){
-            const auto category = categories_map.at(n);
-            for(const auto sample_name : all_samples){
+        for(const auto& category : ana_setup.categories){
+            if(!categories_map.count(category))
+                continue;
+            size_t n = categories_map.at(category);
+            for(const auto& sample_name : all_samples){
                 SampleDescriptor& sample = sample_descriptors.at(sample_name);
                 for(const SampleDescriptorBase::Point& item : sample.working_points){
                     for (const auto& subcategory : sub_categories_to_process){
 
                         const EventAnalyzerDataId anaDataId(category, subcategory, analysis::EventRegion::OS_Isolated(),
                                                             analysis::EventEnergyScale::Central, item.full_name);
-                        if(item.datacard_name != sample_name)
-                            std::cout << "WARNING! Datacard Name doesn't correspond to sample name" << std::endl;
-                        auto hist = std::shared_ptr<TH1D>
-                                (root_ext::ReadObject<TH1D>(*inputFile, "hh_ttbb_"+args.channel()+"_"+n+"_13TeV_postfit/"+sample_name));
+                        if(item.datacard_name.empty()) continue;
+
+                        const std::string hist_dir_name = "hh_ttbb_"+ToString(args.channel())+"_"+ToString(n)+"_13TeV_postfit/"+item.datacard_name;
+
+                        auto hist = std::shared_ptr<TH1>
+                                (root_ext::TryReadObject<TH1>(*inputFile,hist_dir_name));
+                        if (!hist){
+                            std::cout << "WARNING! Datacard Name doesn't correspond to sample name: " << anaDataId <<
+                                         ", hist dir name: "<< hist_dir_name <<  std::endl;
+                            continue;
+                        }
                         auto& histAnaData = anaDataCollection.Get(anaDataId);
-                        auto& histAnaData_entry = histAnaData.template GetEntriesEx<TH1D>();
-                        histAnaData_entry(sample_name).CopyContent(hist);
+                        auto& histAnaData_entry = histAnaData.GetEntryEx<TH1D>(args.var());
+                        histAnaData_entry().CopyContent(*hist);
 
                     }
                 }
@@ -92,7 +94,7 @@ public:
                                     ana_setup.plot_page_opt);
         std::string pdf_prefix = args.output();
         plotsProducer.PrintStackedPlots(pdf_prefix, EventRegion::SignalRegion(), ana_setup.categories,
-                                        sub_categories_to_process, signal_names, sample_descriptors.at("TotalBkg"));
+                                        sub_categories_to_process, signal_names, &sample_descriptors.at("TotalBkg"));
 
 
 

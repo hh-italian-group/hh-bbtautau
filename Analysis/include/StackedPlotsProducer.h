@@ -88,7 +88,7 @@ public:
     void PrintStackedPlots(const std::string& outputFileNamePrefix, const EventRegion& eventRegion,
                            const EventCategorySet& eventCategories,
                            const EventSubCategorySet& eventSubCategories, const std::set<std::string>& signals,
-                           std::shared_ptr<Sample> total_bkg = nullptr)
+                           const Sample* total_bkg = nullptr)
     {
         std::ostringstream outputFileName;
         outputFileName << outputFileNamePrefix << "_" << eventRegion << ".pdf";
@@ -139,8 +139,8 @@ public:
                             && std::next(hist_name_iter) == histogramNames.end()
                             && std::next(sub_category_iter) == eventSubCategories.end();
                     if(total_bkg){
-                        const auto hist_total_bkg = GetHistogram(anaDataMetaId, item_name, total_bkg->name);
-                        stackDescriptor.AddTotalBkgUnc(*hist_total_bkg);
+                        const auto hist_total_bkg = GetHistogram(anaDataMetaId, total_bkg->name, hist_name);
+                        stackDescriptor.SetTotalBkg(*hist_total_bkg);
                     }
                     printer.Print(ss_title.str(), stackDescriptor, is_last);
                 }
