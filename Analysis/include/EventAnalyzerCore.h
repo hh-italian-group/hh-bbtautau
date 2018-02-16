@@ -6,6 +6,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Run/include/program_main.h"
 #include "h-tautau/Analysis/include/EventInfo.h"
 #include "SampleDescriptorConfigEntryReader.h"
+#include "hh-bbtautau/Analysis/include/EventAnalyzerDataCollection.h"
 
 namespace analysis {
 
@@ -23,6 +24,8 @@ struct CoreAnalyzerArguments {
 
 class EventAnalyzerCore {
 public:
+    using AnaDataCollection = ::analysis::EventAnalyzerDataCollection;
+
     EventAnalyzerCore(const CoreAnalyzerArguments& args, Channel _channel) :
         channelId(_channel), working_path(args.working_path())
     {
@@ -114,6 +117,46 @@ public:
         analysis::RenormalizeHistogram(histogram, original_Integral.GetValue(), true);
         negative_bins_info = ss_negative.str();
         return true;
+    }
+
+    void ProcessCombinedSamples(AnaDataCollection& anaDataCollection, const EventSubCategory& subCategory,
+                                const std::vector<std::string>& sample_names)
+    {
+
+        for(const std::string& sample_name : sample_names) {
+            if(!cmb_sample_descriptors.count(sample_name))
+                throw exception("Combined sample '%1%' not found.") % sample_name;
+            CombinedSampleDescriptor& sample = cmb_sample_descriptors.at(sample_name);
+            if(sample.channels.size() && !sample.channels.count(channelId)) continue;
+            std::cout << "\t\t" << sample.name << std::endl;
+            for(const std::string& sub_sample_name : sample.sample_descriptors) {
+                if(!sample_descriptors.count(sub_sample_name))
+                    throw exception("Unable to create '%1%': sub-sample '%2%' not found.")
+                        % sample_name % sub_sample_name;
+                SampleDescriptor& sub_sample =  sample_descriptors.at(sub_sample_name);
+                AddSampleToCombined(anaDataCollection, subCategory, sample, sub_sample);
+            }
+        }
+    }
+
+    void AddSampleToCombined(AnaDataCollection& anaDataCollection, const EventSubCategory& subCategory,
+                             CombinedSampleDescriptor& sample, SampleDescriptor& sub_sample)
+    {
+        for(const EventAnalyzerDataId& metaDataId : EventAnalyzerDataId::MetaLoop(ana_setup.categories,
+                ana_setup.regions, ana_setup.energy_scales)) {
+            const auto anaDataId = metaDataId.Set(sample.name).Set(subCategory);
+            auto& anaData = anaDataCollection.Get(anaDataId);
+            for(const auto& sub_sample_wp : sub_sample.working_points) {
+                const auto subDataId = metaDataId.Set(sub_sample_wp.full_name).Set(subCategory);
+                auto& subAnaData = anaDataCollection.Get(subDataId);
+                for(const auto& sub_entry : subAnaData.GetEntriesEx<TH1D>()) {
+                    auto& entry = anaData.GetEntryEx<TH1D>(sub_entry.first);
+                    for(const auto& hist : sub_entry.second->GetHistograms()) {
+                        entry(hist.first).AddHistogram(*hist.second);
+                    }
+                }
+            }
+        }
     }
 
 private:
