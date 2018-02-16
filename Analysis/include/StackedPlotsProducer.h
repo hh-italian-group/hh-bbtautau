@@ -138,10 +138,12 @@ public:
                     const bool is_last = std::next(category_iter) == eventCategories.end()
                             && std::next(hist_name_iter) == histogramNames.end()
                             && std::next(sub_category_iter) == eventSubCategories.end();
+
                     if(total_bkg){
                         const auto hist_total_bkg = GetHistogram(anaDataMetaId, total_bkg->name, hist_name);
                         stackDescriptor.SetTotalBkg(*hist_total_bkg);
                     }
+
                     printer.Print(ss_title.str(), stackDescriptor, is_last);
                 }
             }

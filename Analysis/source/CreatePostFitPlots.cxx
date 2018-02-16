@@ -12,6 +12,7 @@ namespace analysis {
 struct AnalyzerArguments : CoreAnalyzerArguments {
     REQ_ARG(Channel, channel);
     REQ_ARG(std::string, input);
+    REQ_ARG(std::string, signal_name);
     REQ_ARG(std::string, output);
     OPT_ARG(std::string, var, "");
 };
@@ -64,7 +65,14 @@ public:
                                                             analysis::EventEnergyScale::Central, item.full_name);
                         if(item.datacard_name.empty()) continue;
 
-                        const std::string hist_dir_name = "hh_ttbb_"+ToString(args.channel())+"_"+ToString(n)+"_13TeV_postfit/"+item.datacard_name;
+                        if(ana_setup.IsSignal(sample.name) && item.full_name != args.signal_name()) {
+//                            std::cout << "Item full name: " << item.full_name << ", args: " << args.signal_name() << std::endl;
+                            continue;
+                        }
+
+                        const std::string hist_dir_name = ana_setup.IsSignal(sample.name) ?
+                                "hh_ttbb_"+ToString(args.channel())+"_"+ToString(n)+"_13TeV_postfit/"+sample.postfit_name :
+                                "hh_ttbb_"+ToString(args.channel())+"_"+ToString(n)+"_13TeV_postfit/"+item.datacard_name ;
 
                         auto hist = std::shared_ptr<TH1>
                                 (root_ext::TryReadObject<TH1>(*inputFile,hist_dir_name));

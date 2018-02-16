@@ -187,6 +187,7 @@ struct SampleDescriptorBase {
     std::set<Channel> channels;
     SampleType sampleType{SampleType::MC};
     std::string datacard_name;
+    std::string postfit_name;
 
     PointCollection working_points;
 

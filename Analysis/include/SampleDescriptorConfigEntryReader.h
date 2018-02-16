@@ -119,6 +119,7 @@ public:
         CheckReadParamCounts("channels", 1, Condition::less_equal);
         CheckReadParamCounts("sample_type", 1, Condition::less_equal);
         CheckReadParamCounts("datacard_name", 1, Condition::less_equal);
+        CheckReadParamCounts("postfit_name", 1, Condition::less_equal);
 
         this->current.CreateWorkingPoints();
         ConfigEntryReaderT<Descriptor>::EndEntry();
@@ -135,6 +136,7 @@ public:
         ParseEntryList("channels", this->current.channels);
         ParseEntry("sample_type", this->current.sampleType);
         ParseEntry("datacard_name", this->current.datacard_name);
+        ParseEntry("postfit_name", this->current.postfit_name);
     }
 };
 
