@@ -44,8 +44,8 @@ public:
                     ana_setup.draw_sequence, sample_descriptors, cmb_sample_descriptors, ana_setup.signals,
                     ana_setup.data, args.channel());
 
-        std::map<analysis::EventCategory,size_t> categories_map = {{ analysis::EventCategory::TwoJets_OneBtag(), 0 },
-                                                                   { analysis::EventCategory::TwoJets_TwoBtag(), 1 },
+        std::map<analysis::EventCategory,size_t> categories_map = {{ analysis::EventCategory::TwoJets_OneBtag_Resolved(), 0 },
+                                                                   { analysis::EventCategory::TwoJets_TwoBtag_Resolved(), 1 },
                                                                    { analysis::EventCategory::TwoJets_TwoLooseBtag_Boosted(), 2}};
 
         auto inputFile = root_ext::OpenRootFile(args.input());
@@ -81,6 +81,7 @@ public:
                                          ", hist dir name: "<< hist_dir_name <<  std::endl;
                             continue;
                         }
+                        std::cout << "Loading " << anaDataId << " ..." << std::endl;
                         auto& histAnaData = anaDataCollection.Get(anaDataId);
                         auto& histAnaData_entry = histAnaData.GetEntryEx<TH1D>(args.var());
                         histAnaData_entry().CopyContent(*hist);
