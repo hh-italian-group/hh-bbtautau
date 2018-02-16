@@ -65,10 +65,8 @@ public:
                                                             analysis::EventEnergyScale::Central, item.full_name);
                         if(item.datacard_name.empty()) continue;
 
-                        if(ana_setup.IsSignal(sample.name) && item.full_name != args.signal_name()) {
-//                            std::cout << "Item full name: " << item.full_name << ", args: " << args.signal_name() << std::endl;
+                        if(ana_setup.IsSignal(sample.name) && item.full_name != args.signal_name())
                             continue;
-                        }
 
                         const std::string hist_dir_name = ana_setup.IsSignal(sample.name) ?
                                 "hh_ttbb_"+ToString(args.channel())+"_"+ToString(n)+"_13TeV_postfit/"+sample.postfit_name :
@@ -105,58 +103,11 @@ public:
         plotsProducer.PrintStackedPlots(pdf_prefix, EventRegion::SignalRegion(), ana_setup.categories,
                                         sub_categories_to_process, signal_names, &sample_descriptors.at("TotalBkg"));
 
-
-
-        std::cout << "Saving output file..." << std::endl;
     }
 
-private:
+//private:
 
-    void ProcessCombinedSamples(AnaDataCollection& anaDataCollection, const EventSubCategory& subCategory,
-                                const std::vector<std::string>& sample_names)
-    {
 
-        for(const std::string& sample_name : sample_names) {
-            if(!cmb_sample_descriptors.count(sample_name))
-                throw exception("Combined sample '%1%' not found.") % sample_name;
-            CombinedSampleDescriptor& sample = cmb_sample_descriptors.at(sample_name);
-            if(sample.channels.size() && !sample.channels.count(channelId)) continue;
-            std::cout << "\t\t" << sample.name << std::endl;
-            for(const std::string& sub_sample_name : sample.sample_descriptors) {
-                if(!sample_descriptors.count(sub_sample_name))
-                    throw exception("Unable to create '%1%': sub-sample '%2%' not found.")
-                        % sample_name % sub_sample_name;
-                SampleDescriptor& sub_sample =  sample_descriptors.at(sub_sample_name);
-                AddSampleToCombined(anaDataCollection, subCategory, sample, sub_sample);
-            }
-        }
-    }
-
-    void AddSampleToCombined(AnaDataCollection& anaDataCollection, const EventSubCategory& subCategory,
-                             CombinedSampleDescriptor& sample, SampleDescriptor& sub_sample)
-    {
-        for(const EventAnalyzerDataId& metaDataId : EventAnalyzerDataId::MetaLoop(ana_setup.categories,
-                ana_setup.regions, ana_setup.energy_scales)) {
-            const auto anaDataId = metaDataId.Set(sample.name).Set(subCategory);
-            auto& anaData = anaDataCollection.Get(anaDataId);
-            for(const auto& sub_sample_wp : sub_sample.working_points) {
-                const auto subDataId = metaDataId.Set(sub_sample_wp.full_name).Set(subCategory);
-                auto& subAnaData = anaDataCollection.Get(subDataId);
-                for(const auto& sub_entry : subAnaData.GetEntriesEx<TH1D>()) {
-                    auto& entry = anaData.GetEntryEx<TH1D>(sub_entry.first);
-                    for(const auto& hist : sub_entry.second->GetHistograms()) {
-                        entry(hist.first).AddHistogram(*hist.second);
-                    }
-                }
-            }
-        }
-    }
-
-    static std::set<std::string> ParseVarSet(const std::string& active_vars_str)
-    {
-        const auto list = SplitValueList(active_vars_str, false, ", \t", true);
-        return std::set<std::string>(list.begin(), list.end());
-    }
 
 private:
     AnalyzerArguments args;
