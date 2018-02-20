@@ -57,6 +57,12 @@ public:
                         continue;
                     }
 
+                    std::string debug_info, negative_bins_info;
+                    if (bkg == "QCD" && !EventAnalyzerCore::FixNegativeContributions(*hist_bkg,debug_info,negative_bins_info)) {
+                        std::cout << "Negative QCD" << std::endl;
+                        continue;
+                    }
+
                     if(bkg_sum) {
                         bkg_sum->Add(hist_bkg.get(), 1.);
                     } else {
@@ -65,18 +71,23 @@ public:
 
                 }//loop bkgs
 
-                std::cout << "channel: " << channel << ", category: " << category << ", data entries: " << hist_data->GetEntries() <<
-                             ", sum bkg entries: " << bkg_sum->GetEntries() << std::endl;
+//                std::cout << "channel: " << channel << ", category: " << category << ", data entries: " << hist_data->GetEntries() <<
+//                             ", sum bkg entries: " << bkg_sum->GetEntries() << std::endl;
 
                 if (bkg_sum->GetNbinsX() != hist_data->GetNbinsX())
                     std::cout << "WARNING! bkg histogram has different binning from data histogram" <<  std::endl;
                 for(int n = 1; n <= bkg_sum->GetNbinsX(); ++n){
 //                    std::cout << "BKG - bin: " << n << ", content: " << bkg_sum->GetBinContent(n) << std::endl;
 //                    std::cout << "DATA - bin: " << n << ", content: " << hist_data->GetBinContent(n) << std::endl;
-                    if(bkg_sum->GetBinContent(n) == 0 && hist_data->GetBinContent(n) == 0)
-                        std::cout << "BAD - both bkg_sum and data are empty - bin: " << n << std::endl;
+                    if(bkg_sum->GetBinContent(n) == 0 && hist_data->GetBinContent(n) == 0){
+                        std::cout << "In file: "<< args.input() << ", channel: " << channel << ", category: " << category <<
+                                     ", BAD - both bkg_sum and data are empty - bin: [" << bkg_sum->GetBinLowEdge(n) <<
+                                  "," << bkg_sum->GetBinLowEdge(n+1) << "]" << std::endl;
+                    }
                     if(bkg_sum->GetBinContent(n) == 0 && hist_data->GetBinContent(n) != 0)
-                        std::cout << "CATASTROPHE - bkg_sum is empty and data NO - bin: " << n << ", data content: " <<
+                        std::cout << "In file: "<< args.input() << ", channel: " << channel << ", category: " << category <<
+                                     ", CATASTROPHE - bkg_sum is empty and data NO - bin: [" << bkg_sum->GetBinLowEdge(n) <<
+                                     "," << bkg_sum->GetBinLowEdge(n+1) << "]" << ", data content: " <<
                                   hist_data->GetBinContent(n) << std::endl;
                 }
 
