@@ -17,7 +17,7 @@ struct AnalyzerArguments {
 
 class BinSumBkg  {
 public:
-    using Hist = SmartHistogram<TH1D>;
+    using Hist = TH1D;
     using HistPtr = std::shared_ptr<Hist>;
 
     BinSumBkg(const AnalyzerArguments& _args) : args(_args)
@@ -44,12 +44,14 @@ public:
                     continue;
                 }
 
+                HistPtr bkg_sum;
+
                 for(const auto& bkg : backgrounds){
                     const std::string hist_dir_name = channel+"_"+category+"/"+bkg;
 
 
-                    auto hist_bkg = std::shared_ptr<TH1>
-                            (root_ext::TryReadObject<TH1>(*inputFile,hist_dir_name));
+                    auto hist_bkg = std::shared_ptr<TH1D>
+                            (root_ext::TryReadObject<TH1D>(*inputFile,hist_dir_name));
                     if (!hist_bkg){
                         std::cout << "WARNING! NO bkg histogram found for hist dir name: "<< hist_dir_name <<  std::endl;
                         continue;
@@ -66,6 +68,18 @@ public:
                 std::cout << "channel: " << channel << ", category: " << category << ", data entries: " << hist_data->GetEntries() <<
                              ", sum bkg entries: " << bkg_sum->GetEntries() << std::endl;
 
+                if (bkg_sum->GetNbinsX() != hist_data->GetNbinsX())
+                    std::cout << "WARNING! bkg histogram has different binning from data histogram" <<  std::endl;
+                for(int n = 1; n <= bkg_sum->GetNbinsX(); ++n){
+//                    std::cout << "BKG - bin: " << n << ", content: " << bkg_sum->GetBinContent(n) << std::endl;
+//                    std::cout << "DATA - bin: " << n << ", content: " << hist_data->GetBinContent(n) << std::endl;
+                    if(bkg_sum->GetBinContent(n) == 0 && hist_data->GetBinContent(n) == 0)
+                        std::cout << "BAD - both bkg_sum and data are empty - bin: " << n << std::endl;
+                    if(bkg_sum->GetBinContent(n) == 0 && hist_data->GetBinContent(n) != 0)
+                        std::cout << "CATASTROPHE - bkg_sum is empty and data NO - bin: " << n << ", data content: " <<
+                                  hist_data->GetBinContent(n) << std::endl;
+                }
+
             } //loop categories
         }//loop channels
 
@@ -77,7 +91,7 @@ public:
 
 private:
     AnalyzerArguments args;
-    HistPtr bkg_sum;
+
 
 };
 
