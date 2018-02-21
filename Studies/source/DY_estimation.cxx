@@ -80,9 +80,9 @@ struct CategoryModel{
 class DY_estimation {
 public:
     DY_estimation(const Arguments& _args) :
-        args(_args), input_file(root_ext::OpenRootFile(args.input_file())),
-        output_file(root_ext::CreateRootFile(args.output_file())),
-        x(args.var_name().c_str(), args.var_name().c_str(), args.fit_range().min(), args.fit_range().max())
+    args(_args), input_file(root_ext::OpenRootFile(args.input_file())),
+    output_file(root_ext::CreateRootFile(args.output_file())),
+    x(args.var_name().c_str(), args.var_name().c_str(), args.fit_range().min(), args.fit_range().max()),
     fit_model(args.fit_method())
     {
     }
