@@ -78,8 +78,8 @@ public:
         //unsigned int n_bJets = event->lhe_n_b_partons;
         unsigned int n_bJets = event->jets_nTotal_hadronFlavour_b;
         double lheHT = event->lhe_HT;
-        int ht_wp = GetHTWP(lheHT);
-        std::pair<size_t,size_t> p(std::min((unsigned int)2, n_bJets),ht_wp);
+        size_t ht_wp = GetHTWP(lheHT);
+        std::pair<size_t,size_t> p(std::min(static_cast<unsigned int> (2), n_bJets),ht_wp);
         std::map<std::pair<size_t,size_t>,SampleDescriptorBase::Point>::iterator it = working_points_map.find(p);
         if(it == working_points_map.end())
             throw exception("Unable to find WP for DY event with  jets_nTotal_hadronFlavour_b = %1%") % event->jets_nTotal_hadronFlavour_b;
