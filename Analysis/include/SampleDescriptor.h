@@ -17,7 +17,6 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisCategories.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
 #include "EventAnalyzerDataId.h"
-//#include "Studies/include/DYModel.h"
 
 namespace analysis {
 

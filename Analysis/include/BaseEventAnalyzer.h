@@ -86,7 +86,7 @@ public:
         for(auto& x: sample_descriptors) {
             SampleDescriptor& sample = x.second;
              if(sample.sampleType == SampleType::DY)
-                 dymod = std::make_shared<DYModel<FirstLeg,SecondLeg>>(sample);
+                 dymod = std::make_shared<DYModel>(sample);
         }
 
     }
@@ -277,46 +277,7 @@ protected:
                                      double shape_weight, bbtautau::AnaTupleWriter::DataIdMap& dataIds)
     {
         if(sample.sampleType == SampleType::DY) {
-             //DYModel<FirstLeg,SecondLeg> dymod(sample);
-             dymod->ProcessEvent(anaDataId,event,weight,dataIds);
-
-            /*static auto const find_b_index = [&]() {
-                const auto& param_names = sample.GetModelParameterNames();
-                const auto b_param_iter = param_names.find("b");
-                if(b_param_iter == param_names.end())
-                    throw exception("Unable to find b_parton WP for DY sample");
-                return b_param_iter->second;
-            };
-            static const size_t b_index = find_b_index();
-
-            bool wp_found = false;
-            //static constexpr double pt_cut =18, b_Flavour = 5;
-
-            for(const auto& sample_wp : sample.working_points) {
-                const size_t n_b_partons = static_cast<size_t>(sample_wp.param_values.at(b_index));*/
-                /*size_t n_genJets = 0;
-                for(const auto& b_Candidates : event.GetHiggsBB().GetDaughterMomentums()) {
-                    for(size_t i=0; i<event->genJets_p4.size(); i++){
-                        const auto& jet_p4 = event->genJets_p4.at(i);
-                        const auto& jet_hadronFlavour = event->genJets_hadronFlavour.at(i);
-                        double deltaR = ROOT::Math::VectorUtil::DeltaR(b_Candidates, jet_p4);
-                        if (jet_p4.Pt() <= pt_cut || jet_hadronFlavour != b_Flavour || deltaR >= 0.3) continue;
-                        n_genJets++;
-                    }
-                }*/
-                /*if(event->jets_nTotal_hadronFlavour_b == n_b_partons ||
-                        (n_b_partons == sample.GetNWorkingPoints() - 1
-                         && event->jets_nTotal_hadronFlavour_b > n_b_partons)) {
-                    std::cout<<sample_wp.full_name<<std::endl;
-                    const auto finalId = anaDataId.Set(sample_wp.full_name);
-                    dataIds[finalId] = std::make_tuple(weight * sample_wp.norm_sf, event.GetMvaScore());
-                    wp_found = true;
-                    break;
-                }
-            }
-            if(!wp_found)
-                throw exception("Unable to find WP for DY event with lhe_n_b_partons = %1%") % event->lhe_n_b_partons;
-            */
+            dymod->ProcessEvent(anaDataId,event,weight,dataIds);
         } else if(sample.sampleType == SampleType::TT) {
             dataIds[anaDataId] = std::make_tuple(weight, event.GetMvaScore());
             if(anaDataId.Get<EventEnergyScale>() == EventEnergyScale::Central) {
@@ -342,7 +303,7 @@ protected:
     mva_study::MvaReader mva_reader;
     std::shared_ptr<TFile> outputFile_sync;
     std::map<EventAnalyzerDataId, std::shared_ptr<htt_sync::SyncTuple>> syncTuple_map;
-    std::shared_ptr<DYModel<FirstLeg,SecondLeg>> dymod;
+    std::shared_ptr<DYModel> dymod;
     std::shared_ptr<NonResModel> nonResModel;
 };
 

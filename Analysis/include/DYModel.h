@@ -1,4 +1,8 @@
+/*! Definition of DYModel class, the class for DY estimation.
+This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
+
 #pragma once
+
 #include <iostream>
 #include <algorithm>
 #include <boost/format.hpp>
@@ -11,36 +15,26 @@
 
 namespace analysis{
 
-template<typename _FirstLeg, typename _SecondLeg>
-class DYModel { // simple analyzer definition
+class DYModel {
 public:
-    using FirstLeg = _FirstLeg;
-    using SecondLeg = _SecondLeg;
-    using EventInfo = ::analysis::EventInfo<FirstLeg, SecondLeg>;
     DYModel(const SampleDescriptor& sample)
     {
-        // Analyzer initialization (e.g. open input/output files, parse configs...)
-        std::cout<<"Name = "<<sample.name<<std::endl;
-        std::cout<<"Name suffix = "<<sample.name_suffix<<std::endl;
-
         const auto& param_names = sample.GetModelParameterNames();
         const auto b_param_iter = param_names.find("b");
         if(b_param_iter == param_names.end())
             throw exception("Unable to find b_parton WP for DY sample");
         b_index = b_param_iter->second;
 
-        std::string ht_suffix = "ht";
-        ht_found = sample.name_suffix.find(ht_suffix) != std::string::npos;
+        ht_found = sample.name_suffix.find(HT_suffix()) != std::string::npos;
 
         fit_method = sample.fit_method;
 
-        const auto ht_param_iter = param_names.find("ht");
+        const auto ht_param_iter = param_names.find(HT_suffix());
         if(ht_param_iter == param_names.end())
-        throw exception("Unable to find ht WP for DY smaple");
+            throw exception("Unable to find ht WP for DY smaple");
         ht_index = ht_param_iter->second;
 
         for(const auto& sample_wp : sample.working_points) {
-            std::cout<<" Working point names = "<<sample_wp.full_name<<std::endl;
             const size_t n_b_partons = static_cast<size_t>(sample_wp.param_values.at(b_index));
             const size_t ht_wp = static_cast<size_t>(sample_wp.param_values.at(ht_index));
             working_points_map[std::pair<size_t,size_t>(n_b_partons,ht_wp)] = sample_wp;
@@ -62,7 +56,7 @@ public:
             throw exception("Unable to find the fit method");
     }
 
-    void ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfo& event, double weight,
+    void ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& event, double weight,
                  bbtautau::AnaTupleWriter::DataIdMap& dataIds){
         //static constexpr double pt_cut =18, b_Flavour = 5;
         /*size_t n_genJets = 0;
@@ -92,13 +86,13 @@ public:
             norm_sf = scale_factor_maps.at(sample_wp.full_name);
         else if(fit_method == DYFitModel::NbjetBins_htBins){
             if(ht_found) norm_sf = scale_factor_maps.at(sample_wp.full_name);
-            else norm_sf = scale_factor_maps.at(sample_wp.full_name+"_"+ToString(ht_wp)+"ht");
+            else norm_sf = scale_factor_maps.at(sample_wp.full_name+"_"+ToString(ht_wp)+HT_suffix());
         }
         dataIds[finalId] = std::make_tuple(weight * norm_sf, event.GetMvaScore());
 
     }
 
-    size_t GetHTWP(double ht)
+    size_t GetHTWP(double ht) const
     {
         auto prev = ht_wp_set.begin();
         for(auto iter = std::next(prev); iter != ht_wp_set.end() && *iter < ht; ++iter) {
@@ -115,5 +109,6 @@ private:
     DYFitModel fit_method;
     bool ht_found;
     std::set<size_t> ht_wp_set;
+    static const std::string& HT_suffix() { static const std::string s = "ht"; return s; }
 };
 }

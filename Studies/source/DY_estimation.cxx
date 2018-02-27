@@ -31,6 +31,8 @@ struct Arguments {
     OPT_ARG(std::string, histo_name, "m_tt_vis");
     OPT_ARG(analysis::Range<double>, scale_factor_range, analysis::Range<double>(0.1, 2));
     OPT_ARG(analysis::DYFitModel, fit_method,analysis::DYFitModel::NbjetBins);
+    OPT_ARG(int, med_ht, 80);
+    OPT_ARG(int, high_ht, 150);
 };
 namespace analysis {
 using namespace RooFit;
@@ -89,7 +91,7 @@ public:
 
     void Run()
     {
-        if(fit_model == DYFitModel::NbjetBins){
+        /*if(fit_model == DYFitModel::NbjetBins){
             subCategories = {EventSubCategory().SetCutResult(SelectionCut::mh, true)
                                             .SetCutResult(SelectionCut::lowMET,true)};
             contribution_names = {"DY_MC_0b","DY_MC_1b","DY_MC_2b","other_bkg_muMu"};
@@ -108,6 +110,30 @@ public:
                                   "DY_MC_1b_0ht","DY_MC_1b_80ht","DY_MC_1b_150ht",
                                   "DY_MC_2b_0ht","DY_MC_2b_80ht","DY_MC_2b_150ht",
                                   "other_bkg_muMu"};
+        }*/
+
+        static const std::string dy_contrib_prefix = "DY_MC";
+        auto base_sub_category = EventSubCategory().SetCutResult(SelectionCut::mh, true)
+                                                         .SetCutResult(SelectionCut::lowMET,true);
+        const std::vector<int> ht_points = { 0, args.med_ht(), args.high_ht() };
+        static const size_t max_n_b = 2;
+        if(fit_model == DYFitModel::NbjetBins) {
+            subCategories = { base_sub_category };
+            for(size_t nb = 0; nb <= max_n_b; ++nb) {
+                const std::string name = boost::str(boost::format("%1%_%2%b") % dy_contrib_prefix % nb);
+                contribution_names.push_back(name);
+            }
+
+        } else {
+            subCategories = { base_sub_category.SetCutResult(SelectionCut::lowPt, true),
+                              base_sub_category.SetCutResult(SelectionCut::medPt, true),
+                              base_sub_category.SetCutResult(SelectionCut::highPt, true)};
+            for(size_t nb = 0; nb <= max_n_b; ++nb) {
+                for(int ht : ht_points) {
+                    const std::string name = boost::str(boost::format("%1%_%2%b_%3%ht") % dy_contrib_prefix % nb % ht);
+                    contribution_names.push_back(name);
+                }
+            }
         }
 
         std::map<std::string, std::shared_ptr<RooRealVar>> scale_factor_map;
@@ -125,14 +151,14 @@ public:
 
         for(const EventCategory& cat : eventCategories ){
             for (const EventSubCategory& subCategory : subCategories){
-                EventAnalyzerDataId metaId{subCategory,EventRegion::SignalRegion(),EventEnergyScale::Central};
-                EventAnalyzerDataId catId = metaId.Set(cat);
+                EventAnalyzerDataId catId{cat,subCategory,EventRegion::SignalRegion(),EventEnergyScale::Central};
                 std::string category = ToString(catId.Get<EventCategory>());
                 std::string subcategory= ToString(catId.Get<EventSubCategory>());
-                categories[category+subcategory] = std::make_shared<CategoryModel>(input_file,catId,contribution_names,args.histo_name()
-                                                                   ,x,scale_factor_map);
+                categories[category+subcategory] = std::make_shared<CategoryModel>(input_file,catId,contribution_names,
+                                                                                   args.histo_name(),x,scale_factor_map);
                 EventAnalyzerDataId dataId = catId.Set(data_folder);
-                dataCategories[category+subcategory] = root_ext::ReadObject<TH1>(*input_file,dataId.GetName()+ "/" + args.histo_name());
+                dataCategories[category+subcategory] = root_ext::ReadObject<TH1>(*input_file,dataId.GetName()+ "/" +
+                                                                                 args.histo_name());
 
                 rooCategories.defineType((category+subcategory).c_str()) ;
                 simPdf.addPdf(*(categories[category+subcategory]->sum_pdf),(category+subcategory).c_str());
@@ -198,7 +224,7 @@ public:
                             Components((static_cast<std::string>("expdf_")+ToString(cat)+"_"+ToString(sub_cat)+
                                         static_cast<std::string>("_other_bkg_muMu")).c_str() ),
                             ProjWData(rooCategories,combData),LineStyle(kDashed)) ;
-                gPad->SetLeftMargin(0.15) ; frame->GetYaxis()->SetTitleOffset(1.4) ; frame->Draw() ;
+                gPad->SetLeftMargin(0.15) ; frame->GetYaxis()->SetTitleOffset(static_cast<float>(1.4)) ; frame->Draw() ;
                 c->Write();
             }
         }
@@ -210,15 +236,11 @@ private:
     //X axis
     RooRealVar x;
 
-    //EventSubCategory subCategory;  = EventSubCategory().SetCutResult(SelectionCut::mh, true)
-    //                                .SetCutResult(SelectionCut::lowMET,true);
-    //EventAnalyzerDataId metaId{subCategory,EventRegion::SignalRegion(),EventEnergyScale::Central};
-
     std::vector<EventCategory> eventCategories{EventCategory::TwoJets_ZeroBtag(),
                 EventCategory::TwoJets_OneBtag(),EventCategory::TwoJets_TwoBtag()};
     std::vector<EventSubCategory> subCategories;
 
-    std::vector<std::string> contribution_names; //{"DY_MC_0b","DY_MC_1b","DY_MC_2b","other_bkg_muMu"};
+    std::vector<std::string> contribution_names;
     DYFitModel fit_model;
 };
 
