@@ -91,27 +91,6 @@ public:
 
     void Run()
     {
-        /*if(fit_model == DYFitModel::NbjetBins){
-            subCategories = {EventSubCategory().SetCutResult(SelectionCut::mh, true)
-                                            .SetCutResult(SelectionCut::lowMET,true)};
-            contribution_names = {"DY_MC_0b","DY_MC_1b","DY_MC_2b","other_bkg_muMu"};
-        }
-        else if(fit_model == DYFitModel::NbjetBins_htBins){
-            subCategories = {EventSubCategory().SetCutResult(SelectionCut::mh, true)
-                                            .SetCutResult(SelectionCut::lowMET,true)
-                                            .SetCutResult(SelectionCut::lowPt,true),
-                             EventSubCategory().SetCutResult(SelectionCut::mh, true)
-                                            .SetCutResult(SelectionCut::lowMET,true)
-                                            .SetCutResult(SelectionCut::medPt,true),
-                             EventSubCategory().SetCutResult(SelectionCut::mh, true)
-                                            .SetCutResult(SelectionCut::lowMET,true)
-                                            .SetCutResult(SelectionCut::highPt,true)};
-            contribution_names = {"DY_MC_0b_0ht","DY_MC_0b_80ht","DY_MC_0b_150ht",
-                                  "DY_MC_1b_0ht","DY_MC_1b_80ht","DY_MC_1b_150ht",
-                                  "DY_MC_2b_0ht","DY_MC_2b_80ht","DY_MC_2b_150ht",
-                                  "other_bkg_muMu"};
-        }*/
-
         static const std::string dy_contrib_prefix = "DY_MC";
         auto base_sub_category = EventSubCategory().SetCutResult(SelectionCut::mh, true)
                                                          .SetCutResult(SelectionCut::lowMET,true);
@@ -125,9 +104,9 @@ public:
             }
 
         } else {
-            subCategories = { base_sub_category.SetCutResult(SelectionCut::lowPt, true),
-                              base_sub_category.SetCutResult(SelectionCut::medPt, true),
-                              base_sub_category.SetCutResult(SelectionCut::highPt, true)};
+            subCategories = { EventSubCategory(base_sub_category).SetCutResult(SelectionCut::lowPt, true),
+                              EventSubCategory(base_sub_category).SetCutResult(SelectionCut::medPt, true),
+                              EventSubCategory(base_sub_category).SetCutResult(SelectionCut::highPt, true)};
             for(size_t nb = 0; nb <= max_n_b; ++nb) {
                 for(int ht : ht_points) {
                     const std::string name = boost::str(boost::format("%1%_%2%b_%3%ht") % dy_contrib_prefix % nb % ht);
@@ -135,6 +114,7 @@ public:
                 }
             }
         }
+        contribution_names.push_back("other_bkg_muMu");
 
         std::map<std::string, std::shared_ptr<RooRealVar>> scale_factor_map;
         for (const std::string& contrib_name: contribution_names){
