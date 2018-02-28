@@ -30,10 +30,13 @@ struct Arguments {
     OPT_ARG(std::string, var_name, "mass");
     OPT_ARG(std::string, histo_name, "m_tt_vis");
     OPT_ARG(analysis::Range<double>, scale_factor_range, analysis::Range<double>(0.1, 2));
+    OPT_ARG(analysis::DYFitModel, fit_method,analysis::DYFitModel::NbjetBins);
+    OPT_ARG(int, med_ht, 80);
+    OPT_ARG(int, high_ht, 150);
 };
-
-using namespace RooFit;
 namespace analysis {
+using namespace RooFit;
+
 struct Contribution{
     std::string name;
     std::shared_ptr<TH1D> histogram;
@@ -45,7 +48,8 @@ struct Contribution{
 
     Contribution(std::shared_ptr<TFile> input_file, const EventAnalyzerDataId& dataId, const std::string& hist_name,
                  const RooRealVar& x, const RooRealVar& scale_factor) :
-    name(boost::str(boost::format("%1%_%2%") % dataId.Get<EventCategory>() % dataId.Get<std::string>())),
+    name(boost::str(boost::format("%1%_%2%_%3%") % dataId.Get<EventCategory>() % dataId.Get<EventSubCategory>()
+                    % dataId.Get<std::string>())),
     histogram(root_ext::ReadObject<TH1D>(*input_file, dataId.GetName()+ "/" + hist_name)),
     norm(("norm_"+name).c_str(),("norm for "+name).c_str(),histogram->Integral()),
     fraction(("frac_"+name).c_str(),("fraction of "+name).c_str(),"@0*@1",RooArgList(scale_factor,norm)),
@@ -61,9 +65,9 @@ struct CategoryModel{
     std::string name;
     std::shared_ptr<RooAddPdf> sum_pdf;
     CategoryModel(std::shared_ptr<TFile> input_file, const EventAnalyzerDataId& catId,
-                  const std::set<std::string>& contribution_names,const std::string& hist_name, const RooRealVar& x,
+                  const std::vector<std::string>& contribution_names,const std::string& hist_name, const RooRealVar& x,
                   const std::map<std::string,std::shared_ptr<RooRealVar>>& scale_factor_map) :
-    name(ToString(catId.Get<EventCategory>()))
+    name(ToString(catId.Get<EventCategory>())+"_"+ToString(catId.Get<EventSubCategory>()))
     {
         RooArgList pdf_list;
         for(const std::string& contrib_name : contribution_names){
@@ -78,19 +82,45 @@ struct CategoryModel{
 class DY_estimation {
 public:
     DY_estimation(const Arguments& _args) :
-        args(_args), input_file(root_ext::OpenRootFile(args.input_file())),
-        output_file(root_ext::CreateRootFile(args.output_file())),
-        x(args.var_name().c_str(), args.var_name().c_str(), args.fit_range().min(), args.fit_range().max())
+    args(_args), input_file(root_ext::OpenRootFile(args.input_file())),
+    output_file(root_ext::CreateRootFile(args.output_file())),
+    x(args.var_name().c_str(), args.var_name().c_str(), args.fit_range().min(), args.fit_range().max()),
+    fit_model(args.fit_method())
     {
     }
 
     void Run()
     {
+        static const std::string dy_contrib_prefix = "DY_MC";
+        auto base_sub_category = EventSubCategory().SetCutResult(SelectionCut::mh, true)
+                                                         .SetCutResult(SelectionCut::lowMET,true);
+        const std::vector<int> ht_points = { 0, args.med_ht(), args.high_ht() };
+        static const size_t max_n_b = 2;
+        if(fit_model == DYFitModel::NbjetBins) {
+            subCategories = { base_sub_category };
+            for(size_t nb = 0; nb <= max_n_b; ++nb) {
+                const std::string name = boost::str(boost::format("%1%_%2%b") % dy_contrib_prefix % nb);
+                contribution_names.push_back(name);
+            }
+
+        } else {
+            subCategories = { EventSubCategory(base_sub_category).SetCutResult(SelectionCut::lowPt, true),
+                              EventSubCategory(base_sub_category).SetCutResult(SelectionCut::medPt, true),
+                              EventSubCategory(base_sub_category).SetCutResult(SelectionCut::highPt, true)};
+            for(size_t nb = 0; nb <= max_n_b; ++nb) {
+                for(int ht : ht_points) {
+                    const std::string name = boost::str(boost::format("%1%_%2%b_%3%ht") % dy_contrib_prefix % nb % ht);
+                    contribution_names.push_back(name);
+                }
+            }
+        }
+        contribution_names.push_back("other_bkg_muMu");
+
         std::map<std::string, std::shared_ptr<RooRealVar>> scale_factor_map;
         for (const std::string& contrib_name: contribution_names){
             scale_factor_map[contrib_name] = std::make_shared<RooRealVar>
-                    (("sf_"+contrib_name).c_str(),("Scale Factor for contribution "+contrib_name).c_str(),1,
-                     args.scale_factor_range().min(),args.scale_factor_range().max());
+                        (("sf_"+contrib_name).c_str(),("Scale Factor for contribution "+contrib_name).c_str(),1,
+                        args.scale_factor_range().min(),args.scale_factor_range().max());
         }
         std::string data_folder = "Data_SingleMuon";
         std::map<std::string,TH1*> dataCategories;
@@ -100,15 +130,19 @@ public:
         RooSimultaneous simPdf("simPdf","simultaneous pdf",rooCategories) ;
 
         for(const EventCategory& cat : eventCategories ){
-            EventAnalyzerDataId catId = metaId.Set(cat);
-            std::string category = ToString(catId.Get<EventCategory>());
-            categories[category] = std::make_shared<CategoryModel>(input_file,catId,contribution_names,args.histo_name()
-                                                                   ,x,scale_factor_map);
-            EventAnalyzerDataId dataId = catId.Set(data_folder);
-            dataCategories[category] = root_ext::ReadObject<TH1>(*input_file,dataId.GetName()+ "/" + args.histo_name());
+            for (const EventSubCategory& subCategory : subCategories){
+                EventAnalyzerDataId catId{cat,subCategory,EventRegion::SignalRegion(),EventEnergyScale::Central};
+                std::string category = ToString(catId.Get<EventCategory>());
+                std::string subcategory= ToString(catId.Get<EventSubCategory>());
+                categories[category+subcategory] = std::make_shared<CategoryModel>(input_file,catId,contribution_names,
+                                                                                   args.histo_name(),x,scale_factor_map);
+                EventAnalyzerDataId dataId = catId.Set(data_folder);
+                dataCategories[category+subcategory] = root_ext::ReadObject<TH1>(*input_file,dataId.GetName()+ "/" +
+                                                                                 args.histo_name());
 
-            rooCategories.defineType(category.c_str()) ;
-            simPdf.addPdf(*(categories[category]->sum_pdf),category.c_str());
+                rooCategories.defineType((category+subcategory).c_str()) ;
+                simPdf.addPdf(*(categories[category+subcategory]->sum_pdf),(category+subcategory).c_str());
+            }
         }
 
         // Construct combined dataset in (x,rooCategories)
@@ -118,16 +152,17 @@ public:
         RooFitResult* result = simPdf.fitTo(combData,Extended(kTRUE),Save()) ;
 
         //Saving Results
-        output_file->cd();
+        output_file->mkdir(ToString(fit_model).c_str());
+        output_file->cd(ToString(fit_model).c_str());
 
         const TMatrixDSym& correaltion_matrix = result->correlationMatrix();
         const TMatrixDSym& covariance_matrix = result->covarianceMatrix();
         int nRows = covariance_matrix.GetNrows();
         int nColumns = covariance_matrix.GetNcols();
         auto cov_hist = std::make_shared<TH2D>("covariance_matrix","covariance matrix",
-                                                                        nRows,0.5,0.5+nRows,nColumns,0.5,0.5+nRows);
+                                                                        nRows,0.5,0.5+nRows,nColumns,0.5,0.5+nColumns);
         auto cor_hist = std::make_shared<TH2D>("correlation_matrix","correlation matrix",
-                                                                        nRows,0.5,0.5+nRows,nColumns,0.5,0.5+nRows);
+                                                                        nRows,0.5,0.5+nRows,nColumns,0.5,0.5+nColumns);
         for(int i = 0; i<nRows;i++){
             for(int j = 0; j<nColumns;j++){
                 double cov = covariance_matrix[i][j];
@@ -157,18 +192,21 @@ public:
 
         //Plotting
         for(const EventCategory& cat : eventCategories ){
-            TCanvas* c = new TCanvas(("fit_"+ToString(cat)).c_str(),
+            for(const EventSubCategory& sub_cat: subCategories){
+                TCanvas* c = new TCanvas(("fit_"+ToString(cat)+"_"+ToString(sub_cat)).c_str(),
                                      ("fit in eventCategory " + ToString(cat)).c_str(),800,400) ;
-            RooPlot* frame = x.frame() ;
-            combData.plotOn(frame,Cut(("rooCategories==rooCategories::" + ToString(cat)).c_str())) ;
-            simPdf.plotOn(frame,Slice(rooCategories,ToString(cat).c_str()),ProjWData(rooCategories,combData)) ;
-            simPdf.plotOn(frame,Slice(rooCategories,ToString(cat).c_str()),
-                      Components(("expdf_" + ToString(cat) + "_other_bkg_muMu").c_str() ),
-                      ProjWData(rooCategories,combData),LineStyle(kDashed)) ;
-             gPad->SetLeftMargin(0.15f);
-             frame->GetYaxis()->SetTitleOffset(1.4f);
-             frame->Draw();
-             c->Write();
+                RooPlot* frame = x.frame() ;
+                combData.plotOn(frame,Cut((static_cast<std::string>("rooCategories==rooCategories::")+
+                                    ToString(cat)+ToString(sub_cat)).c_str())) ;
+                simPdf.plotOn(frame,Slice(rooCategories,(ToString(cat)+ToString(sub_cat)).c_str()),
+                                  ProjWData(rooCategories,combData)) ;
+                simPdf.plotOn(frame,Slice(rooCategories,(ToString(cat)+ToString(sub_cat)).c_str()),
+                            Components((static_cast<std::string>("expdf_")+ToString(cat)+"_"+ToString(sub_cat)+
+                                        static_cast<std::string>("_other_bkg_muMu")).c_str() ),
+                            ProjWData(rooCategories,combData),LineStyle(kDashed)) ;
+                gPad->SetLeftMargin(0.15) ; frame->GetYaxis()->SetTitleOffset(static_cast<float>(1.4)) ; frame->Draw() ;
+                c->Write();
+            }
         }
   }
 
@@ -178,14 +216,12 @@ private:
     //X axis
     RooRealVar x;
 
-    EventSubCategory subCategory = EventSubCategory().SetCutResult(SelectionCut::mh, true)
-                                    .SetCutResult(SelectionCut::lowMET,true);
-    EventAnalyzerDataId metaId{subCategory,EventRegion::SignalRegion(),EventEnergyScale::Central};
-
-    EventCategorySet eventCategories{EventCategory::TwoJets_ZeroBtag(),
+    std::vector<EventCategory> eventCategories{EventCategory::TwoJets_ZeroBtag(),
                 EventCategory::TwoJets_OneBtag(),EventCategory::TwoJets_TwoBtag()};
+    std::vector<EventSubCategory> subCategories;
 
-    std::set<std::string> contribution_names{"DY_MC_0b","DY_MC_1b","DY_MC_2b","other_bkg_muMu"};
+    std::vector<std::string> contribution_names;
+    DYFitModel fit_model;
 };
 
 } // namesapce analysis

@@ -188,6 +188,8 @@ struct SampleDescriptorBase {
     SampleType sampleType{SampleType::MC};
     std::string datacard_name;
     std::string postfit_name;
+    std::string norm_sf_file;
+    DYFitModel fit_method{DYFitModel::None};
 
     PointCollection working_points;
 

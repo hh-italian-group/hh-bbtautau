@@ -120,6 +120,8 @@ public:
         CheckReadParamCounts("sample_type", 1, Condition::less_equal);
         CheckReadParamCounts("datacard_name", 1, Condition::less_equal);
         CheckReadParamCounts("postfit_name", 1, Condition::less_equal);
+        CheckReadParamCounts("norm_sf_file", 1, Condition::less_equal);
+        CheckReadParamCounts("fit_method", 1, Condition::less_equal);
 
         this->current.CreateWorkingPoints();
         ConfigEntryReaderT<Descriptor>::EndEntry();
@@ -137,6 +139,8 @@ public:
         ParseEntry("sample_type", this->current.sampleType);
         ParseEntry("datacard_name", this->current.datacard_name);
         ParseEntry("postfit_name", this->current.postfit_name);
+        ParseEntry("norm_sf_file", this->current.norm_sf_file);
+        ParseEntry("fit_method", this->current.fit_method);
     }
 };
 
