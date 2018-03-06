@@ -15,6 +15,16 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 namespace analysis{
 
+
+struct isHigherPt
+{
+    inline bool operator() (const LorentzVectorE_Float& vec1, const LorentzVectorE_Float& vec2)
+    {
+        return (vec1.Pt() > vec2.Pt());
+    }
+};
+
+
 class DYModel {
 public:
     DYModel(const SampleDescriptor& sample)
@@ -71,8 +81,32 @@ public:
         }*/
         //unsigned int n_bJets = event->lhe_n_b_partons;
         unsigned int n_bJets = event->jets_nTotal_hadronFlavour_b;
-        double lheHT = event->lhe_HT;
-        size_t ht_wp = GetHTWP(lheHT);
+        //double lheHT = event->lhe_HT;
+
+        static constexpr double b_Flavour = 5;
+        std::vector<LorentzVectorE_Float> genBJets_p4;
+        std::vector<LorentzVectorE_Float> genOtherJets_p4;
+        for(size_t i=0; i<event->genJets_p4.size(); i++){
+            const auto& jet_p4 = event->genJets_p4.at(i);
+            const auto& jet_hadronFlavour = event->genJets_hadronFlavour.at(i);
+            if(jet_hadronFlavour == b_Flavour) genBJets_p4.push_back(jet_p4);
+            else genOtherJets_p4.push_back(jet_p4);
+        }
+
+        std::sort(genBJets_p4.begin(),genBJets_p4.end(),isHigherPt());
+        std::sort(genOtherJets_p4.begin(),genOtherJets_p4.end(),isHigherPt());
+
+        if(genBJets_p4.size()<2){
+            for(size_t i=0;i<genOtherJets_p4.size();i++){
+                const auto& jet_p4 = genOtherJets_p4.at(i);
+                genBJets_p4.push_back(jet_p4);
+                if(genBJets_p4.size()==2) break;
+            }
+        }
+
+        double lheHT_otherjets = event->lhe_HT - genBJets_p4.at(0).Pt() - genBJets_p4.at(1).Pt();
+        
+        size_t ht_wp = GetHTWP(lheHT_otherjets);
         std::pair<size_t,size_t> p(std::min(static_cast<unsigned int> (2), n_bJets),ht_wp);
         std::map<std::pair<size_t,size_t>,SampleDescriptorBase::Point>::iterator it = working_points_map.find(p);
         if(it == working_points_map.end())
@@ -100,6 +134,8 @@ public:
         }
         return (*prev);
     }
+    
+    
 
 private:
     std::map<std::string,double> scale_factor_maps;
