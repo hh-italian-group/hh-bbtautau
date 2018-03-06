@@ -15,16 +15,6 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 namespace analysis{
 
-
-struct isHigherPt
-{
-    inline bool operator() (const LorentzVectorE_Float& vec1, const LorentzVectorE_Float& vec2)
-    {
-        return (vec1.Pt() > vec2.Pt());
-    }
-};
-
-
 class DYModel {
 public:
     DYModel(const SampleDescriptor& sample)
@@ -82,29 +72,7 @@ public:
         //unsigned int n_bJets = event->lhe_n_b_partons;
         unsigned int n_bJets = event->jets_nTotal_hadronFlavour_b;
         //double lheHT = event->lhe_HT;
-
-        static constexpr double b_Flavour = 5;
-        std::vector<LorentzVectorE_Float> genBJets_p4;
-        std::vector<LorentzVectorE_Float> genOtherJets_p4;
-        for(size_t i=0; i<event->genJets_p4.size(); i++){
-            const auto& jet_p4 = event->genJets_p4.at(i);
-            const auto& jet_hadronFlavour = event->genJets_hadronFlavour.at(i);
-            if(jet_hadronFlavour == b_Flavour) genBJets_p4.push_back(jet_p4);
-            else genOtherJets_p4.push_back(jet_p4);
-        }
-
-        std::sort(genBJets_p4.begin(),genBJets_p4.end(),isHigherPt());
-        std::sort(genOtherJets_p4.begin(),genOtherJets_p4.end(),isHigherPt());
-
-        if(genBJets_p4.size()<2){
-            for(size_t i=0;i<genOtherJets_p4.size();i++){
-                const auto& jet_p4 = genOtherJets_p4.at(i);
-                genBJets_p4.push_back(jet_p4);
-                if(genBJets_p4.size()==2) break;
-            }
-        }
-
-        double lheHT_otherjets = event->lhe_HT - genBJets_p4.at(0).Pt() - genBJets_p4.at(1).Pt();
+        double lheHT_otherjets = CalculateGenHT(event,2);
         
         size_t ht_wp = GetHTWP(lheHT_otherjets);
         std::pair<size_t,size_t> p(std::min(static_cast<unsigned int> (2), n_bJets),ht_wp);
@@ -134,7 +102,28 @@ public:
         }
         return (*prev);
     }
-    
+
+    static double CalculateGenHT(EventInfoBase& event, size_t first_jet_id = 0)
+    {
+        auto cmp_jets = [&](size_t a, size_t b) {
+            const int hf_a = event->genJets_hadronFlavour.at(a);
+            const int hf_b = event->genJets_hadronFlavour.at(b);
+            const double pt_a = event->genJets_p4.at(a).pt();
+            const double pt_b = event->genJets_p4.at(b).pt();
+            if(hf_a == b_Flavour && hf_b != b_Flavour) return true;
+            if(hf_a != b_Flavour && hf_b == b_Flavour) return false;
+            return pt_a > pt_b;
+        };
+
+        std::vector<size_t> genJetIds(event->genJets_p4.size());
+        std::iota(genJetIds.begin(), genJetIds.end(), 0);
+        std::sort(genJetIds.begin(), genJetIds.end(), cmp_jets);
+
+        double HT = 0;
+        for(size_t n = first_jet_id; n < genJetIds.size(); ++n)
+            HT += event->genJets_p4.at(genJetIds.at(n)).pt();
+        return HT;
+    }
     
 
 private:
@@ -146,5 +135,6 @@ private:
     bool ht_found;
     std::set<size_t> ht_wp_set;
     static const std::string& HT_suffix() { static const std::string s = "ht"; return s; }
+    static constexpr double b_Flavour = 5;
 };
 }
