@@ -27,7 +27,8 @@ namespace analysis {
              pt_H_tt_MET, pt_1, eta_1, iso_1, mt_1, pt_2, eta_2, iso_2, mt_2, dR_l1l2, abs_dphi_l1MET, \
              dphi_htautauMET, dR_l1l2MET, dR_l1l2Pt_htautau, mass_l1l2MET, pt_l1l2MET, MT_htautau, npv, MET, phiMET, \
              pt_MET, m_bb, pt_H_bb, pt_b1, eta_b1, csv_b1, pt_b2, eta_b2, csv_b2, costheta_METhbb, dR_b1b2, \
-             dR_b1b2_boosted, HT_otherjets, mass_top1, mass_top2, p_zeta, p_zetavisible, HT_total) \
+             dR_b1b2_boosted, HT_otherjets, mass_top1, mass_top2, p_zeta, p_zetavisible, HT_total, HT_otherjets_gen,\
+             HT_total_gen) \
     /**/
 
 #define VAR(type, name) DECLARE_BRANCH_VARIABLE(type, name)
@@ -167,6 +168,8 @@ public:
         tuple().mt_tot = static_cast<float>(Calculate_TotalMT(t1.GetMomentum(),t2.GetMomentum(),
                                                               event.GetMET().GetMomentum()));
         tuple().HT_otherjets = event->ht_other_jets;
+        tuple().HT_otherjets_gen = static_cast<float>(event.CalculateGenHT(2));
+        tuple().HT_total_gen = static_cast<float>(event.CalculateGenHT(0));
 
         if(event.HasBjetPair()) {
             const auto& Hbb = event.GetHiggsBB();

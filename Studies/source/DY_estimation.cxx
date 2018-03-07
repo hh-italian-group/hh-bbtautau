@@ -194,7 +194,7 @@ public:
         for(const EventCategory& cat : eventCategories ){
             for(const EventSubCategory& sub_cat: subCategories){
                 TCanvas* c = new TCanvas(("fit_"+ToString(cat)+"_"+ToString(sub_cat)).c_str(),
-                                     ("fit in eventCategory " + ToString(cat)).c_str(),800,400) ;
+                                     ("fit in eventCategory " + ToString(cat) + ToString(sub_cat)).c_str(),800,400) ;
                 RooPlot* frame = x.frame() ;
                 combData.plotOn(frame,Cut((static_cast<std::string>("rooCategories==rooCategories::")+
                                     ToString(cat)+ToString(sub_cat)).c_str())) ;
