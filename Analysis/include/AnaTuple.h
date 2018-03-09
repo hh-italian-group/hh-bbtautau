@@ -28,7 +28,8 @@ namespace analysis {
              dphi_htautauMET, dR_l1l2MET, dR_l1l2Pt_htautau, mass_l1l2MET, pt_l1l2MET, MT_htautau, npv, MET, phiMET, \
              pt_MET, m_bb, pt_H_bb, pt_b1, eta_b1, csv_b1, pt_b2, eta_b2, csv_b2, costheta_METhbb, dR_b1b2, \
              dR_b1b2_boosted, HT_otherjets, mass_top1, mass_top2, p_zeta, p_zetavisible, HT_total, HT_otherjets_gen,\
-             HT_total_gen) \
+             HT_total_gen, n_selected_gen_jets, n_selected_gen_bjets, n_selected_gen_notbjets, genJets_nTotal, \
+             jets_nTotal_hadronFlavour_b, jets_nTotal_hadronFlavour_c) \
     /**/
 
 #define VAR(type, name) DECLARE_BRANCH_VARIABLE(type, name)
@@ -170,6 +171,20 @@ public:
         tuple().HT_otherjets = event->ht_other_jets;
         tuple().HT_otherjets_gen = static_cast<float>(event.CalculateGenHT(2));
         tuple().HT_total_gen = static_cast<float>(event.CalculateGenHT(0));
+
+        tuple().n_selected_gen_jets =  event->genJets_p4.size();
+        int n_bflavour=0;
+        int n_otherflavour=0;
+        static constexpr double b_Flavour = 5;
+        for(size_t i=0;i<event->genJets_hadronFlavour.size();i++){
+            if(event->genJets_hadronFlavour.at(i)==b_Flavour) n_bflavour++;
+            else n_otherflavour++;
+        }
+        tuple().n_selected_gen_bjets = n_bflavour;
+        tuple().n_selected_gen_notbjets = n_otherflavour;
+        tuple().genJets_nTotal = event->genJets_nTotal;
+        tuple().jets_nTotal_hadronFlavour_b = event->jets_nTotal_hadronFlavour_b;
+        tuple().jets_nTotal_hadronFlavour_c = event->jets_nTotal_hadronFlavour_c;
 
         if(event.HasBjetPair()) {
             const auto& Hbb = event.GetHiggsBB();

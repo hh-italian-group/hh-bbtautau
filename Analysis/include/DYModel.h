@@ -29,18 +29,37 @@ public:
 
         fit_method = sample.fit_method;
 
-        const auto ht_param_iter = param_names.find(HT_suffix());
-        if(ht_param_iter == param_names.end())
-            throw exception("Unable to find ht WP for DY smaple");
-        ht_index = ht_param_iter->second;
+        if(ht_found){
+            const auto ht_param_iter = param_names.find(HT_suffix());
+            if(ht_param_iter == param_names.end())
+                throw exception("Unable to find ht WP for DY smaple");
+            ht_index = ht_param_iter->second;
+        }
+
+        jet_found = sample.name_suffix.find(NJet_suffix()) != std::string::npos;
+        if(jet_found){
+            const auto njet_param_iter = param_names.find(NJet_suffix());
+            if(njet_param_iter == param_names.end())
+                throw exception("Unable to find njet WP for DY smaple");
+            njet_index = njet_param_iter->second;
+        }
 
         for(const auto& sample_wp : sample.working_points) {
             const size_t n_b_partons = static_cast<size_t>(sample_wp.param_values.at(b_index));
-            const size_t ht_wp = static_cast<size_t>(sample_wp.param_values.at(ht_index));
-            working_points_map[std::pair<size_t,size_t>(n_b_partons,ht_wp)] = sample_wp;
-            ht_wp_set.insert(ht_wp);
+            if(ht_found){
+                const size_t ht_wp = static_cast<size_t>(sample_wp.param_values.at(ht_index));
+                working_points_map[std::pair<size_t,size_t>(n_b_partons,ht_wp)] = sample_wp;
+                ht_wp_set.insert(ht_wp);
+            }
+            else if(jet_found){
+                const size_t njet_wp = static_cast<size_t>(sample_wp.param_values.at(njet_index));
+                working_points_map[std::pair<size_t,size_t>(n_b_partons,njet_wp)] = sample_wp;
+                ht_wp_set.insert(njet_wp);
+            }
+            else working_points_map[std::pair<size_t,size_t>(n_b_partons,0)] = sample_wp;
         }
-        if(fit_method == DYFitModel::NbjetBins || fit_method == DYFitModel::NbjetBins_htBins){
+        if(fit_method == DYFitModel::NbjetBins || fit_method == DYFitModel::NbjetBins_htBins ||
+                fit_method == DYFitModel::NbjetBins_NjetBins){
             auto input_file = root_ext::OpenRootFile(sample.norm_sf_file);
             auto scale_factor_histo =  std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*input_file,ToString(fit_method)
                                                                                     +"/scale_factors"));
@@ -70,12 +89,29 @@ public:
             }
         }*/
         //unsigned int n_bJets = event->lhe_n_b_partons;
-        unsigned int n_bJets = event->jets_nTotal_hadronFlavour_b;
-        double lheHT = event->lhe_HT;
-        //double lheHT_otherjets = CalculateGenHT(event,2);
-        
-        size_t ht_wp = GetHTWP(lheHT);
-        std::pair<size_t,size_t> p(std::min(static_cast<unsigned int> (2), n_bJets),ht_wp);
+        //unsigned int n_bJets = event->jets_nTotal_hadronFlavour_b;
+        //double lheHT = event->lhe_HT;
+        double lheHT_otherjets = event.CalculateGenHT(2);
+
+
+        auto n_selected_gen_jets =  event->genJets_p4.size();
+        unsigned int n_selected_gen_bjets=0;
+        for(size_t i=0;i<event->genJets_hadronFlavour.size();i++){
+            if(event->genJets_hadronFlavour.at(i)==b_Flavour) n_selected_gen_bjets++;
+        }
+        unsigned int n_bJets = n_selected_gen_bjets;
+
+        std::pair<size_t,size_t> p;
+        if(ht_found){
+            size_t ht_wp = Get2WP(lheHT_otherjets,ht_wp_set);
+            p = std::make_pair(std::min(static_cast<unsigned int> (2), n_bJets),ht_wp);
+        }
+        else if(jet_found){
+            size_t njet_wp = Get2WP(static_cast<double>(n_selected_gen_jets),njet_wp_set);
+            p = std::make_pair(std::min(static_cast<unsigned int> (2), n_bJets),njet_wp);
+        }
+        else p = std::make_pair(std::min(static_cast<unsigned int> (2), n_bJets),0);
+
         std::map<std::pair<size_t,size_t>,SampleDescriptorBase::Point>::iterator it = working_points_map.find(p);
         if(it == working_points_map.end())
             throw exception("Unable to find WP for DY event with  jets_nTotal_hadronFlavour_b = %1%") % event->jets_nTotal_hadronFlavour_b;
@@ -88,16 +124,20 @@ public:
             norm_sf = scale_factor_maps.at(sample_wp.full_name);
         else if(fit_method == DYFitModel::NbjetBins_htBins){
             if(ht_found) norm_sf = scale_factor_maps.at(sample_wp.full_name);
-            else norm_sf = scale_factor_maps.at(sample_wp.full_name+"_"+ToString(ht_wp)+HT_suffix());
+            else norm_sf = scale_factor_maps.at(sample_wp.full_name+"_"+ToString(it->first.second)+HT_suffix());
+        }
+        else if(fit_method == DYFitModel::NbjetBins_NjetBins){
+            if(ht_found) norm_sf = scale_factor_maps.at(sample_wp.full_name);
+            else norm_sf = scale_factor_maps.at(sample_wp.full_name+"_"+ToString(it->first.second)+NJet_suffix());
         }
         dataIds[finalId] = std::make_tuple(weight * norm_sf, event.GetMvaScore());
 
     }
 
-    size_t GetHTWP(double ht) const
+    size_t Get2WP(double value, std::set<size_t> wp_set) const
     {
-        auto prev = ht_wp_set.begin();
-        for(auto iter = std::next(prev); iter != ht_wp_set.end() && *iter < ht; ++iter) {
+        auto prev = wp_set.begin();
+        for(auto iter = std::next(prev); iter != wp_set.end() && *iter < value; ++iter) {
             prev = iter;
         }
         return (*prev);
@@ -130,11 +170,16 @@ private:
     std::map<std::string,double> scale_factor_maps;
     size_t b_index;
     size_t ht_index;
+    size_t njet_index;
     std::map<std::pair<size_t,size_t>,SampleDescriptorBase::Point> working_points_map;
     DYFitModel fit_method;
     bool ht_found;
     std::set<size_t> ht_wp_set;
     static const std::string& HT_suffix() { static const std::string s = "ht"; return s; }
+    bool jet_found;
+    std::set<size_t> njet_wp_set;
+    static const std::string& NJet_suffix() { static const std::string s = "Jet"; return s; }
+
     static constexpr double b_Flavour = 5;
 };
 }
