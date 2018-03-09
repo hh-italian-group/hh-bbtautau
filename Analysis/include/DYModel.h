@@ -54,7 +54,7 @@ public:
             else if(jet_found){
                 const size_t njet_wp = static_cast<size_t>(sample_wp.param_values.at(njet_index));
                 working_points_map[std::pair<size_t,size_t>(n_b_partons,njet_wp)] = sample_wp;
-                ht_wp_set.insert(njet_wp);
+                njet_wp_set.insert(njet_wp);
             }
             else working_points_map[std::pair<size_t,size_t>(n_b_partons,0)] = sample_wp;
         }
@@ -91,30 +91,25 @@ public:
         //unsigned int n_bJets = event->lhe_n_b_partons;
         //unsigned int n_bJets = event->jets_nTotal_hadronFlavour_b;
         //double lheHT = event->lhe_HT;
-        double lheHT_otherjets = event.CalculateGenHT(2);
-
 
         auto n_selected_gen_jets =  event->genJets_p4.size();
-        unsigned int n_selected_gen_bjets=0;
-        for(size_t i=0;i<event->genJets_hadronFlavour.size();i++){
-            if(event->genJets_hadronFlavour.at(i)==b_Flavour) n_selected_gen_bjets++;
-        }
-        unsigned int n_bJets = n_selected_gen_bjets;
-
-        std::pair<size_t,size_t> p;
+        size_t n_bJets =  static_cast<size_t>(std::count(event->genJets_hadronFlavour.begin(),
+                                                         event->genJets_hadronFlavour.end(), b_Flavour));
+        std::pair<size_t,size_t> p(std::min<size_t>(2,n_bJets),0);
         if(ht_found){
+            double lheHT_otherjets = event.CalculateGenHT(2);
             size_t ht_wp = Get2WP(lheHT_otherjets,ht_wp_set);
-            p = std::make_pair(std::min(static_cast<unsigned int> (2), n_bJets),ht_wp);
+            p.second = ht_wp;
         }
         else if(jet_found){
-            size_t njet_wp = Get2WP(static_cast<double>(n_selected_gen_jets),njet_wp_set);
-            p = std::make_pair(std::min(static_cast<unsigned int> (2), n_bJets),njet_wp);
+            size_t njet_wp = Get2WP(n_selected_gen_jets,njet_wp_set);
+            p.second = njet_wp;
         }
-        else p = std::make_pair(std::min(static_cast<unsigned int> (2), n_bJets),0);
 
         std::map<std::pair<size_t,size_t>,SampleDescriptorBase::Point>::iterator it = working_points_map.find(p);
         if(it == working_points_map.end())
-            throw exception("Unable to find WP for DY event with  jets_nTotal_hadronFlavour_b = %1%") % event->jets_nTotal_hadronFlavour_b;
+            throw exception("Unable to find WP for DY event with  n_selected_bjet = %1%") % n_bJets;
+            //throw exception("Unable to find WP for DY event with  jets_nTotal_hadronFlavour_b = %1%") % event->jets_nTotal_hadronFlavour_b;
            // throw exception("Unable to find WP for DY event with lhe_n_b_partons = %1%") % event->lhe_n_b_partons;
 
         auto sample_wp = it->second;
@@ -127,7 +122,7 @@ public:
             else norm_sf = scale_factor_maps.at(sample_wp.full_name+"_"+ToString(it->first.second)+HT_suffix());
         }
         else if(fit_method == DYFitModel::NbjetBins_NjetBins){
-            if(ht_found) norm_sf = scale_factor_maps.at(sample_wp.full_name);
+            if(jet_found) norm_sf = scale_factor_maps.at(sample_wp.full_name);
             else norm_sf = scale_factor_maps.at(sample_wp.full_name+"_"+ToString(it->first.second)+NJet_suffix());
         }
         dataIds[finalId] = std::make_tuple(weight * norm_sf, event.GetMvaScore());
@@ -143,28 +138,6 @@ public:
         return (*prev);
     }
 
-    /*static double CalculateGenHT(EventInfoBase& event, size_t first_jet_id = 0)
-    {
-        auto cmp_jets = [&](size_t a, size_t b) {
-            const int hf_a = event->genJets_hadronFlavour.at(a);
-            const int hf_b = event->genJets_hadronFlavour.at(b);
-            const double pt_a = event->genJets_p4.at(a).pt();
-            const double pt_b = event->genJets_p4.at(b).pt();
-            if(hf_a == b_Flavour && hf_b != b_Flavour) return true;
-            if(hf_a != b_Flavour && hf_b == b_Flavour) return false;
-            return pt_a > pt_b;
-        };
-
-        std::vector<size_t> genJetIds(event->genJets_p4.size());
-        std::iota(genJetIds.begin(), genJetIds.end(), 0);
-        std::sort(genJetIds.begin(), genJetIds.end(), cmp_jets);
-
-        double HT = 0;
-        for(size_t n = first_jet_id; n < genJetIds.size(); ++n)
-            HT += event->genJets_p4.at(genJetIds.at(n)).pt();
-        return HT;
-    }*/
-    
 
 private:
     std::map<std::string,double> scale_factor_maps;
@@ -180,6 +153,7 @@ private:
     std::set<size_t> njet_wp_set;
     static const std::string& NJet_suffix() { static const std::string s = "Jet"; return s; }
 
-    static constexpr double b_Flavour = 5;
+    //static constexpr double b_Flavour = 5;
+    int b_Flavour=5;
 };
 }
