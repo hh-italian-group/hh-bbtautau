@@ -33,6 +33,8 @@ struct Arguments {
     OPT_ARG(analysis::DYFitModel, fit_method,analysis::DYFitModel::NbjetBins);
     OPT_ARG(int, med_ht, 80);
     OPT_ARG(int, high_ht, 150);
+    OPT_ARG(int, low_nJet, 0);
+    OPT_ARG(int, high_nJet, 4);
 };
 namespace analysis {
 using namespace RooFit;
@@ -95,6 +97,7 @@ public:
         auto base_sub_category = EventSubCategory().SetCutResult(SelectionCut::mh, true)
                                                          .SetCutResult(SelectionCut::lowMET,true);
         const std::vector<int> ht_points = { 0, args.med_ht(), args.high_ht() };
+        const std::vector<int> nJet_points = {args.low_nJet(), args.high_nJet() };
         static const size_t max_n_b = 2;
         if(fit_model == DYFitModel::NbjetBins) {
             subCategories = { base_sub_category };
@@ -108,9 +111,17 @@ public:
                               EventSubCategory(base_sub_category).SetCutResult(SelectionCut::medPt, true),
                               EventSubCategory(base_sub_category).SetCutResult(SelectionCut::highPt, true)};
             for(size_t nb = 0; nb <= max_n_b; ++nb) {
-                for(int ht : ht_points) {
-                    const std::string name = boost::str(boost::format("%1%_%2%b_%3%ht") % dy_contrib_prefix % nb % ht);
-                    contribution_names.push_back(name);
+                if(fit_model==DYFitModel::NbjetBins_htBins){
+                    for(int ht : ht_points) {
+                        const std::string name = boost::str(boost::format("%1%_%2%b_%3%ht") % dy_contrib_prefix % nb % ht);
+                        contribution_names.push_back(name);
+                    }
+                }
+                else if(fit_model==DYFitModel::NbjetBins_NjetBins){
+                    for(int nJet : nJet_points) {
+                        const std::string name = boost::str(boost::format("%1%_%2%b_%3%Jet") % dy_contrib_prefix % nb % nJet);
+                        contribution_names.push_back(name);
+                    }
                 }
             }
         }

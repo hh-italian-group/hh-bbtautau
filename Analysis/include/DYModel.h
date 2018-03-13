@@ -129,7 +129,8 @@ public:
 
     }
 
-    size_t Get2WP(double value, std::set<size_t> wp_set) const
+    template<typename T>
+    static size_t Get2WP(T value, std::set<size_t>& wp_set)
     {
         auto prev = wp_set.begin();
         for(auto iter = std::next(prev); iter != wp_set.end() && *iter < value; ++iter) {
