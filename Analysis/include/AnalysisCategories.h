@@ -334,7 +334,7 @@ std::istream& operator>>(std::istream& is, EventCategory& eventCategory)
 #define DECL_MVA_SEL(z, n, first) MVA##n = n + first,
 #define MVA_CUT_LIST(first, count) BOOST_PP_REPEAT(count, DECL_MVA_SEL, first)
 
-enum class SelectionCut { mh = 0, mhVis = 1, mhMET = 2, KinematicFitConverged = 3, lowMET = 4, lowPt = 5, medPt = 6, highPt = 7,
+enum class SelectionCut { mh = 0, mhVis = 1, mhMET = 2, KinematicFitConverged = 3, lowMET = 4, lowHT = 5, medHT = 6, highHT = 7,
                           MVA_CUT_LIST(8, 100) MVA_first = MVA0, MVA_last = MVA99 };
 
 #undef MVA_CUT_LIST
@@ -349,9 +349,9 @@ inline std::map<SelectionCut, std::string> CreateSelectionCutNames()
     names[SelectionCut::mhMET] = "mhMET";
     names[SelectionCut::KinematicFitConverged] = "KinematicFitConverged";
     names[SelectionCut::lowMET] = "lowMET";
-    names[SelectionCut::lowPt] = "lowPt";
-    names[SelectionCut::medPt] = "medPt";
-    names[SelectionCut::highPt] = "highPt";
+    names[SelectionCut::lowHT] = "lowHT";
+    names[SelectionCut::medHT] = "medHT";
+    names[SelectionCut::highHT] = "highHT";
     const size_t MVA_first_index = static_cast<size_t>(SelectionCut::MVA_first);
     const size_t MVA_last_index = static_cast<size_t>(SelectionCut::MVA_last);
     const size_t n_mva_cuts = MVA_last_index - MVA_first_index + 1;
