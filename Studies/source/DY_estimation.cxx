@@ -59,7 +59,7 @@ struct Contribution{
     RooExtendPdf expdf;
 
     Contribution(std::shared_ptr<TFile> input_file, const EventAnalyzerDataId& dataId, const std::string& hist_name,
-                 const RooRealVar& x, const RooRealVar& scale_factor, const RooArgList& param_list) :
+                  RooRealVar& x, const RooRealVar& scale_factor, const RooArgList& param_list) :
     name(boost::str(boost::format("%1%_%2%_%3%") % dataId.Get<EventCategory>() % dataId.Get<EventSubCategory>()
                     % dataId.Get<std::string>())),
     histogram(root_ext::ReadObject<TH1D>(*input_file, dataId.GetName()+ "/" + hist_name)),
@@ -79,7 +79,7 @@ struct CategoryModel{
     std::string name;
     std::shared_ptr<RooAddPdf> sum_pdf;
     CategoryModel(std::shared_ptr<TFile> input_file, const EventAnalyzerDataId& catId,
-                  const std::vector<std::string>& contribution_names,const std::string& hist_name, const RooRealVar& x,
+                  const std::vector<std::string>& contribution_names,const std::string& hist_name, RooRealVar& x,
                   const std::map<std::string,RooPair>& scale_factor_map) :
     name(ToString(catId.Get<EventCategory>())+"_"+ToString(catId.Get<EventSubCategory>()))
     {
@@ -153,7 +153,7 @@ public:
                     args.scale_factor_range().min(),args.scale_factor_range().max());
 
             RooVect params;
-            for(size_t i=0;i<=args.ndf_polynomial();i++){
+            for(size_t i=0;i<args.ndf_polynomial();i++){
                 RooReal y = std::make_shared<RooRealVar>(("param"+ToString(i)+"_"+contrib_name).c_str(),
                                                  ("parameter"+ToString(i)+" "+contrib_name).c_str(),0,-10,10);
                 params.push_back(y);
