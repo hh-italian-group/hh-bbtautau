@@ -23,7 +23,9 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "RooPlot.h"
 #include "RooFitResult.h"
 #include "RooBernstein.h"
+#include "RooChebychev.h"
 #include "RooProdPdf.h"
+#include "RooNumIntConfig.h"
 
 
 struct Arguments {
@@ -55,6 +57,7 @@ struct Contribution{
     RooDataHist rooHistogram;
     RooHistPdf pdf;
     RooBernstein bernstein_pdf;
+    RooChebychev chebychev_pdf;
     RooProdPdf prod_pdf;
     RooExtendPdf expdf;
 
@@ -67,8 +70,9 @@ struct Contribution{
     fraction(("frac_"+name).c_str(),("fraction of "+name).c_str(),"@0*@1",RooArgList(scale_factor,norm)),
     rooHistogram(("rooHistogram_"+name).c_str(),("RooHistogram for "+name).c_str(),x,Import(*histogram)),
     pdf(("pdf_"+name).c_str(),("Pdf for "+name).c_str(),x,rooHistogram),
-    bernstein_pdf(("BernStein_"+name).c_str(),("BerStein Pdf for "+name).c_str(),x,param_list),
-    prod_pdf(("prod_pdf_"+name).c_str(),("Product pdf for "+name).c_str(),RooArgList(pdf,bernstein_pdf)),
+    //bernstein_pdf(("BernStein_"+name).c_str(),("BerStein Pdf for "+name).c_str(),x,param_list),
+    chebychev_pdf(("Chebychev_"+name).c_str(),("Chebychev Pdf for "+name).c_str(),x,param_list),
+    prod_pdf(("prod_pdf_"+name).c_str(),("Product pdf for "+name).c_str(),RooArgList(pdf,chebychev_pdf)),
     expdf(("expdf_"+name).c_str(),("Extended pdf for "+name).c_str(),prod_pdf,fraction)
     {
     }
@@ -112,6 +116,10 @@ public:
 
     void Run()
     {
+
+        RooAbsReal::defaultIntegratorConfig()->setEpsRel(1e-4) ;
+        RooAbsReal::defaultIntegratorConfig()->getConfigSection("RooIntegrator1D").setRealValue("maxSteps",100) ;
+        RooAbsReal::defaultIntegratorConfig()->Print("v") ;
         static const std::string dy_contrib_prefix = "DY_MC";
         auto base_sub_category = EventSubCategory().SetCutResult(SelectionCut::mh, true)
                                                          .SetCutResult(SelectionCut::lowMET,true);
@@ -146,6 +154,18 @@ public:
         }
         contribution_names.push_back("other_bkg_muMu");
 
+        std::vector<std::string>pol_param_strings = {"0Jet","4Jet","other_bkg_muMu"};
+        std::map<std::string,RooVect>pol_params;
+        for(const std::string& param_string:pol_param_strings){
+            RooVect params;
+            for(size_t i=0;i<args.ndf_polynomial();i++){
+                RooReal y = std::make_shared<RooRealVar>(("param"+ToString(i)+"_"+param_string).c_str(),
+                                                 ("parameter"+ToString(i)+" "+param_string).c_str(),0,-0.5,0.5);
+                params.push_back(y);
+            }
+            pol_params[param_string] = params;
+        }
+
         std::map<std::string, RooPair> scale_factor_map;
         for (const std::string& contrib_name: contribution_names){
             RooReal scale_factor = std::make_shared<RooRealVar>
@@ -153,11 +173,9 @@ public:
                     args.scale_factor_range().min(),args.scale_factor_range().max());
 
             RooVect params;
-            for(size_t i=0;i<args.ndf_polynomial();i++){
-                RooReal y = std::make_shared<RooRealVar>(("param"+ToString(i)+"_"+contrib_name).c_str(),
-                                                 ("parameter"+ToString(i)+" "+contrib_name).c_str(),0,-10,10);
-                params.push_back(y);
-            }
+            if(contrib_name.find("0Jet") != std::string::npos) params = pol_params["0Jet"];
+            if(contrib_name.find("4Jet") != std::string::npos) params = pol_params["4Jet"];
+            if(contrib_name.find("other_bkg_muMu") != std::string::npos) params = pol_params["other_bkg_muMu"];
             scale_factor_map[contrib_name] = std::make_pair(scale_factor,params);
 
         }
@@ -189,7 +207,7 @@ public:
         RooDataHist combData("combData","combined data",x,rooCategories,dataCategories);
 
         // Perform simultaneous fit
-        RooFitResult* result = simPdf.fitTo(combData,Extended(kTRUE),Save()) ;
+        RooFitResult* result = simPdf.fitTo(combData,Strategy(2),Extended(kTRUE),Save(),Verbose(true),PrintLevel(3)) ;
 
         //Saving Results
         output_file->mkdir(ToString(fit_model).c_str());
