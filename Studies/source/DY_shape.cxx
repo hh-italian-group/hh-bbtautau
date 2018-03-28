@@ -71,9 +71,9 @@ struct Contribution{
     fraction(("frac_"+name).c_str(),("fraction of "+name).c_str(),"@0*@1",RooArgList(scale_factor,norm)),
     rooHistogram(("rooHistogram_"+name).c_str(),("RooHistogram for "+name).c_str(),x,Import(*histogram)),
     pdf(("pdf_"+name).c_str(),("Pdf for "+name).c_str(),x,rooHistogram),
-    //bernstein_pdf(("BernStein_"+name).c_str(),("BerStein Pdf for "+name).c_str(),x,param_list),
-    chebychev_pdf(("Chebychev_"+name).c_str(),("Chebychev Pdf for "+name).c_str(),x,param_list),
-    prod_pdf(("prod_pdf_"+name).c_str(),("Product pdf for "+name).c_str(),RooArgList(pdf,chebychev_pdf)),
+    bernstein_pdf(("BernStein_"+name).c_str(),("BerStein Pdf for "+name).c_str(),x,param_list),
+    //chebychev_pdf(("Chebychev_"+name).c_str(),("Chebychev Pdf for "+name).c_str(),x,param_list),
+    prod_pdf(("prod_pdf_"+name).c_str(),("Product pdf for "+name).c_str(),RooArgList(pdf,bernstein_pdf)),
     expdf(("expdf_"+name).c_str(),("Extended pdf for "+name).c_str(),prod_pdf,fraction)
     {
     }
@@ -182,7 +182,7 @@ public:
             RooVect params;
             for(size_t i=0;i<args.ndf_polynomial();i++){
                 RooReal y = std::make_shared<RooRealVar>(("param"+ToString(i)+"_"+contrib_name).c_str(),
-                                                 ("parameter"+ToString(i)+" "+contrib_name).c_str(),0,-0.5,0.5);
+                                                 ("parameter"+ToString(i)+" "+contrib_name).c_str(),0.01,0,10);
                 params.push_back(y);
             }
 
