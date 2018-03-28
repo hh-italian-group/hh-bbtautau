@@ -1,38 +1,32 @@
-#include <boost/format.hpp>
+/*! Study of the efficiency of the cuts made to the events at baseline selection.
+This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
+
 #include "AnalysisTools/Run/include/program_main.h"
-#include "AnalysisTools/Core/include/ConfigReader.h"
-#include "AnalysisTools/Core/include/RootExt.h"
-#include "h-tautau/Analysis/include/EventInfo.h"
-#include "AnalysisTools/Core/include/NumericPrimitives.h"
-#include "Instruments/include/SampleDescriptor.h"
-#include "AnalysisTools/Core/include/AnalyzerData.h"
-#include "AnalysisTools/Core/include/PropertyConfigReader.h"
 #include "TEfficiency.h"
 #include <TCanvas.h>
 #include <exception.h>
 #include "AnalysisTools/Print/include/PdfPrinter.h"
 
 struct Arguments {
-        run::Argument<std::string> channel_name{"channel_name", "channel on which we work"};
         run::Argument<std::string> input_file{"input_file", "Input file of the samples"};
         run::Argument<std::string> output_file{"output_file", "Output pdf file"};
    };
 
+namespace analysis {
 
- namespace analysis {
-
-
- class EffiencyStudy {
+class EffiencyStudy {
  public:
 
      struct ChannelDesc {
          std::string channel;
          std::vector<std::string> histograms;
+         std::vector<bool> divideOrNot;
          double branching_ratio;
 
+
          ChannelDesc() {}
-         ChannelDesc(const std::string& _channel, const std::vector<std::string>& _histograms, double br)
-            : channel(_channel), histograms(_histograms), branching_ratio(br) {}
+         ChannelDesc(const std::string& _channel, const std::vector<std::string>& _histograms, const std::vector<bool>& _divideOrNot,double br)
+            : channel(_channel), histograms(_histograms), divideOrNot(_divideOrNot) ,branching_ratio(br){}
      };
 
      EffiencyStudy(const Arguments& _args) :
@@ -47,8 +41,11 @@ struct Arguments {
     void CreateEfficiency(const TH1& passed, const TH1& total, const std::string& prefix, const std::string& channel,
                           const std::string& hist_name)
     {
+        TH1D empty_hist("", "", passed.GetNbinsX(), passed.GetBinLowEdge(1),
+                        passed.GetBinLowEdge(passed.GetNbinsX()+1));
+
         if(!TEfficiency::CheckConsistency(passed, total))
-            throw analysis::exception("passed TEfficiency objects do not have consistent bin contents");
+            throw exception("passed TEfficiency objects do not have consistent bin contents");
 
         TEfficiency eff(passed, total);
 
@@ -61,8 +58,7 @@ struct Arguments {
 
         eff.SetTitle(name.c_str());
         canvas.Clear();
-        TH1D empty_hist("", "", passed.GetNbinsX(), passed.GetBinLowEdge(1),
-                        passed.GetBinLowEdge(passed.GetNbinsX()+1));
+
         double min = 1, max = 0;
         for(int n = 1; n <= passed.GetNbinsX(); ++n) {
             min = std::min(eff.GetEfficiency(n), min);
@@ -72,15 +68,13 @@ struct Arguments {
         }
 
         static const double range_sf = 1.1;
-        if(min <= 0.2){
-            empty_hist.GetYaxis()->SetRangeUser(0, max * range_sf);
-        }
-        else{
-            empty_hist.GetYaxis()->SetRangeUser(min / range_sf, max * range_sf);
-        }
+
+        min = min > 0.2 ? min / range_sf : 0;
+        empty_hist.GetYaxis()->SetRangeUser(min, max * range_sf);
         empty_hist.Draw();
         eff.Draw("SAME P");
-        LaTeXDraw(eff, empty_hist);
+        int nbins = passed.GetNbinsX();
+        LaTeXDraw(eff, nbins, max);
         empty_hist.SetTitle(name.c_str());
 
 
@@ -93,59 +87,47 @@ struct Arguments {
     {
         int N = selection_hist.GetNbinsX()-shift;
         TH1D deno("", "", N, 0, N);
-        TH1D nume(deno), total(deno), empty(deno);
+        TH1D nume(deno), total(deno)/*, empty(deno)*/;
 
         for(int n = 1; n <= N; ++n){
             double totalWithWeight = std::ceil(selection_hist.GetBinContent(1)*sf);
 
-            deno.SetBinContent(n, selection_hist.GetBinContent(n));
-            deno.SetBinError(n, selection_hist.GetBinError(n));
+            deno.SetBinContent(n, selection_hist.GetBinContent(n + (shift -1)));
+            deno.SetBinError(n, selection_hist.GetBinError(n + (shift -1)));
             nume.SetBinContent(n, selection_hist.GetBinContent(n+shift));
             nume.SetBinError(n, selection_hist.GetBinError(n+shift));
             total.SetBinContent(n, totalWithWeight);
             total.SetBinError(n, std::sqrt(totalWithWeight));
             nume.GetXaxis()->SetBinLabel(n, selection_hist.GetXaxis()->GetBinLabel(n+shift));
-            empty.GetXaxis()->SetBinLabel(n, selection_hist.GetXaxis()->GetBinLabel(n+shift));
 
         }
         CreateEfficiency(nume, total, "eff_abs", channel, hist_name);
         if(create_relative)
-        CreateEfficiency(nume, deno, "eff_rel", channel, hist_name);
-       }
+            CreateEfficiency(nume, deno, "eff_rel", channel, hist_name);
+    }
 
      void Run()
      {
          auto file = root_ext::OpenRootFile(args.input_file());
 
          std::vector<ChannelDesc> Channels = {
-             ChannelDesc("eTau", {"events","SignalElectrons_Central", "SignalTaus_Central", "jets_Central" }, 0.23),
-             ChannelDesc("muTau", {"events","SignalMuons_Central", "SignalTaus_Central", "jets_Central"}, 0.23),
-             ChannelDesc("tauTau", {"events","SignalTaus_Central", "jets_Central"}, 0.54),
+             ChannelDesc("eTau", {"events","SignalElectrons_Central", "SignalTaus_Central", "jets_Central"},
+                         {true, false, false, false}, 0.231),
+             ChannelDesc("muTau", {"events","SignalMuons_Central", "SignalTaus_Central", "jets_Central"},
+                         {true, false, false, false}, 0.225),
+             ChannelDesc("tauTau", {"events","SignalTaus_Central", "jets_Central"},
+                         {true, false, false}, 0.420)
          };
 
-         //Creating the efficiency histogrmas after events
-
-        for(const auto& entry : Channels) {
-            const std::string& channel_name = entry.channel;
-            const std::vector<std::string> hist_name = entry.histograms;
-            const double divide_by_br = entry.branching_ratio;
-
-            for(unsigned long i = 1; i < hist_name.size(); i++){
-
-                const std::string full_hist_name = channel_name + "_stat/Selection_" + hist_name.at(i);
+         for(const auto& desc : Channels) {
+            for(size_t i = 0; i < desc.histograms.size(); i++){
+                const std::string full_hist_name = desc.channel + "_stat/Selection_" + desc.histograms.at(i);
                 auto selection_hist = std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*file, full_hist_name));
-                    
-                CreateEfficiencies(*selection_hist, channel_name, hist_name.at(i), 1, true, 1);
-
+                CreateEfficiencies(*selection_hist, desc.channel, desc.histograms.at(i), 1, true, 1);
+                if(desc.divideOrNot.at(i))
+                    CreateEfficiencies(*selection_hist, desc.channel, desc.histograms.at(i) + "BR", 2, false,
+                                       desc.branching_ratio);
             }
-
-            //Creating the efficiency histogrmas for events
-
-            const std::string Events = channel_name + "_stat/Selection_" + hist_name.at(0);
-            auto selection_events = std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*file, Events));
-
-            CreateEfficiencies(*selection_events, channel_name, hist_name.at(0), 1, true, 1);
-            CreateEfficiencies(*selection_events, channel_name, hist_name.at(0) + "BR" , 2, false, divide_by_br);
         }
 
 
@@ -153,41 +135,32 @@ struct Arguments {
      }
     private:
 
-     void LaTeXDraw(TEfficiency eff, TH1D empty_histo){
-         TLatex latex;
-         latex.SetTextSize(0.024f);
-         latex.SetTextAlign(13);
+    void LaTeXDraw(const TEfficiency& eff, int nBins, double maxSize){
+        TLatex latex;
+        latex.SetTextSize(0.024f);
+        latex.SetTextAlign(13);
 
-         for(int n = 1; n <= empty_histo.GetNbinsX(); ++n){
+        for(int n = 1; n <= nBins; ++n){
 
-             std::ostringstream ss_GetEfficiency;
-             double Efficiency= ((eff.GetEfficiency(n))*100);
+            std::ostringstream ss_GetEfficiency;
+            double Efficiency= ((eff.GetEfficiency(n))*100);
+            double ErrorUp= ((eff.GetEfficiencyErrorUp(n))*100);
+            double ErrorLow= ((eff.GetEfficiencyErrorLow(n))*100);
 
-              double ErrorUp= ((eff.GetEfficiencyErrorUp(n))*100);
-              double ErrorLow= ((eff.GetEfficiencyErrorLow(n))*100);
-
-            ss_GetEfficiency << std::setprecision(3) << Efficiency << "^{+"
+            ss_GetEfficiency << std::fixed << std::setprecision(1) << Efficiency << "^{+"
                              << std::fixed << std::setprecision(1) << ErrorUp
-                              << "}_{-" << std::setprecision(1) << ErrorLow << "}"
+                              << "}_{-" << std::fixed << std::setprecision(1) << ErrorLow << "}"
                               << "%" ;
             std::string GetEfficiency = ss_GetEfficiency.str();
+            latex.DrawLatex(n - 0.8, maxSize*1.09, GetEfficiency.c_str() );
+        }
 
-            double max = eff.GetEfficiency(1);
-            max = std::max(eff.GetEfficiency(n), max);
-
-            latex.DrawLatex(n - 0.8, max*1.09, GetEfficiency.c_str() );
-         }
-
-     }
+    }
  private:
 
      Arguments args;
-     std::shared_ptr<TFile> output;
      TCanvas canvas;
-     };
-
-
- } //namespace analysis
-
+};
+}
  PROGRAM_MAIN(analysis::EffiencyStudy, Arguments)
 
