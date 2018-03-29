@@ -10,6 +10,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 struct Arguments {
         run::Argument<std::string> input_file{"input_file", "Input file of the samples"};
         run::Argument<std::string> output_file{"output_file", "Output pdf file"};
+        run::Argument<std::string> channels{"channels", "channels on which we work", "eTau,muTau,tauTau"};
    };
 
 namespace analysis {
@@ -36,11 +37,16 @@ class EffiencyStudy {
          canvas.SetGrid();
          canvas.Print((args.output_file() + ".pdf[").c_str());
          canvas.Draw();
+         auto channel_list = SplitValueList(args.channels(), false, ", ");
+         active_channels.insert(channel_list.begin(), channel_list.end());
      }
 
     void CreateEfficiency(const TH1& passed, const TH1& total, const std::string& prefix, const std::string& channel,
                           const std::string& hist_name)
     {
+        constexpr static double range_sf = 1.1;
+        constexpr static double oneSigma = 0.682689492137;
+
         TH1D empty_hist("", "", passed.GetNbinsX(), passed.GetBinLowEdge(1),
                         passed.GetBinLowEdge(passed.GetNbinsX()+1));
 
@@ -49,7 +55,7 @@ class EffiencyStudy {
 
         TEfficiency eff(passed, total);
 
-        eff.SetConfidenceLevel(0.682689492137);
+        eff.SetConfidenceLevel(oneSigma);
         eff.SetStatisticOption(TEfficiency::kFCP);
 
         std::ostringstream ss_name;
@@ -67,8 +73,6 @@ class EffiencyStudy {
             empty_hist.SetLabelSize(0.04f);
         }
 
-        static const double range_sf = 1.1;
-
         min = min > 0.2 ? min / range_sf : 0;
         empty_hist.GetYaxis()->SetRangeUser(min, max * range_sf);
         empty_hist.Draw();
@@ -76,7 +80,6 @@ class EffiencyStudy {
         int nbins = passed.GetNbinsX();
         LaTeXDraw(eff, nbins, max);
         empty_hist.SetTitle(name.c_str());
-
 
         canvas.Print((args.output_file()+".pdf").c_str(), ("Title:"+name).c_str());
         canvas.Clear();
@@ -120,6 +123,7 @@ class EffiencyStudy {
          };
 
          for(const auto& desc : Channels) {
+             if(!active_channels.count(desc.channel)) continue;
             for(size_t i = 0; i < desc.histograms.size(); i++){
                 const std::string full_hist_name = desc.channel + "_stat/Selection_" + desc.histograms.at(i);
                 auto selection_hist = std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*file, full_hist_name));
@@ -135,7 +139,8 @@ class EffiencyStudy {
      }
     private:
 
-    void LaTeXDraw(const TEfficiency& eff, int nBins, double maxSize){
+    void LaTeXDraw(const TEfficiency& eff, int nBins, double maxSize) const
+    {
         TLatex latex;
         latex.SetTextSize(0.024f);
         latex.SetTextAlign(13);
@@ -148,18 +153,15 @@ class EffiencyStudy {
             double ErrorLow= ((eff.GetEfficiencyErrorLow(n))*100);
 
             ss_GetEfficiency << std::fixed << std::setprecision(1) << Efficiency << "^{+"
-                             << std::fixed << std::setprecision(1) << ErrorUp
-                              << "}_{-" << std::fixed << std::setprecision(1) << ErrorLow << "}"
-                              << "%" ;
+                              << ErrorUp << "}_{-" << ErrorLow << "}" << "%" ;
             std::string GetEfficiency = ss_GetEfficiency.str();
             latex.DrawLatex(n - 0.8, maxSize*1.09, GetEfficiency.c_str() );
         }
-
     }
  private:
-
      Arguments args;
      TCanvas canvas;
+     std::set<std::string> active_channels;
 };
 }
  PROGRAM_MAIN(analysis::EffiencyStudy, Arguments)
