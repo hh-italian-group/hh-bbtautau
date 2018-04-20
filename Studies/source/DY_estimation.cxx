@@ -169,7 +169,7 @@ public:
         std::map<std::string, RooPair> scale_factor_map;
         for (const std::string& contrib_name: contribution_names){
             RooReal scale_factor = std::make_shared<RooRealVar>
-                    (("sf_"+contrib_name).c_str(),("Scale Factor for contribution "+contrib_name).c_str(),1,
+                        (("sf_"+contrib_name).c_str(),("Scale Factor for contribution "+contrib_name).c_str(),1,
                     args.scale_factor_range().min(),args.scale_factor_range().max());
 
             RooVect params;
