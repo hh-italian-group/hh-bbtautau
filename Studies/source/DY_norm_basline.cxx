@@ -49,7 +49,7 @@ struct Contribution{
     RooExtendPdf expdf;
 
     Contribution(std::shared_ptr<TFile> input_file, const EventAnalyzerDataId& dataId, const std::string& hist_name,
-                 const RooRealVar& x, const RooAbsReal& scale_factor) :
+                 const RooRealVar& x, const RooRealVar& scale_factor) :
     name(boost::str(boost::format("%1%_%2%_%3%") % dataId.Get<EventCategory>() % dataId.Get<EventSubCategory>()
                     % dataId.Get<std::string>())),
     histogram(root_ext::ReadObject<TH1D>(*input_file, dataId.GetName()+ "/" + hist_name)),
@@ -68,7 +68,7 @@ struct CategoryModel{
     std::shared_ptr<RooAddPdf> sum_pdf;
     CategoryModel(std::shared_ptr<TFile> input_file, const EventAnalyzerDataId& catId,
                   const std::vector<std::string>& contribution_names,const std::string& hist_name, const RooRealVar& x,
-                  const std::map<std::string,std::shared_ptr<RooAbsReal>>& scale_factor_map) :
+                  const std::map<std::string,std::shared_ptr<RooRealVar>>& scale_factor_map) :
     name(ToString(catId.Get<EventCategory>())+"_"+ToString(catId.Get<EventSubCategory>()))
     {
         RooArgList pdf_list;
@@ -125,17 +125,17 @@ public:
                 }
             }
         }
-        //contribution_names.push_back("other_bkg_muMu");
-        contribution_names.push_back("WW");
-        contribution_names.push_back("WZ");
-        contribution_names.push_back("Wjets");
-        contribution_names.push_back("tW");
-        contribution_names.push_back("EWK");
-        contribution_names.push_back("ZH");
-        contribution_names.push_back("ZZ");
-        contribution_names.push_back("TT");
+        contribution_names.push_back("other_bkg_muMu");
+        //contribution_names.push_back("WW");
+        //contribution_names.push_back("WZ");
+        //contribution_names.push_back("Wjets");
+        //contribution_names.push_back("tW");
+        //contribution_names.push_back("EWK");
+        //contribution_names.push_back("ZH");
+        //contribution_names.push_back("ZZ");
+        //contribution_names.push_back("TT");
 
-        std::map<std::string,std::pair<double,double>>scale_factor_values =
+        /*std::map<std::string,std::pair<double,double>>scale_factor_values =
                                                           {{"DY_MC_0b_0Jet",{1.09725,2.37998e-03}} ,
                                                            {"DY_MC_0b_4Jet",{0.806768,8.59454e-03}} ,
                                                            {"DY_MC_1b_0Jet",{1.15362,2.37680e-02}} ,
@@ -149,23 +149,23 @@ public:
                                                            {"EWK",{1.0, 0 }},
                                                            {"ZH",{1.0, 0 }},
                                                            {"ZZ",{1.0, 0 }},
-                                                           {"TT",{1.0, 0 }},};
+                                                           {"TT",{1.0, 0 }},};*/
 
 
-        std::map<std::string, std::shared_ptr<RooAbsReal>> scale_factor_map;
+        std::map<std::string, std::shared_ptr<RooRealVar>> scale_factor_map;
         for (const std::string& contrib_name: contribution_names){
-            //if(contrib_name.find("DY") != std::string::npos){
-                double value = scale_factor_values[contrib_name].first;
+            if(contrib_name.find("DY") != std::string::npos){
+            //    double value = scale_factor_values[contrib_name].first;
             //    double error = scale_factor_values[contrib_name].second;
                 scale_factor_map[contrib_name] = std::make_shared<RooRealVar>
                     (("sf_"+contrib_name).c_str(),("Scale Factor for contribution "+contrib_name).c_str(),
-                    value,args.scale_factor_range().min(),args.scale_factor_range().max());
-            //}
-            //else{
-            //    scale_factor_map[contrib_name] = std::make_shared<RooRealVar>
-            //            (("sf_"+contrib_name).c_str(),("Scale Factor for contribution "+contrib_name).c_str(),
-            //             scale_factor_values[contrib_name].first,0.1,10);
-            //}
+                    1,args.scale_factor_range().min(),args.scale_factor_range().max());
+            }
+           else{
+                scale_factor_map[contrib_name] = std::make_shared<RooRealVar>
+                        (("sf_"+contrib_name).c_str(),("Scale Factor for contribution "+contrib_name).c_str(),
+                         1.0);
+            }
         }
         std::string data_folder = "Data_SingleMuon";
         std::map<std::string,TH1*> dataCategories;
@@ -218,10 +218,10 @@ public:
         }
 
         auto scale_factors_hist = std::make_shared<TH1D>("scale_factors","Scale factors afte the fit",
-                                                                     nRows,0.5,0.5+nRows);
+                                                                     nRows+1,0.5,0.5+nRows+1);
         int i=1;
         for (const std::string& contrib_name: contribution_names){
-            if(contrib_name == "other_bkg_muMu") continue;
+            //  if(contrib_name == "other_bkg_muMu") continue;
             cov_hist->GetXaxis()->SetBinLabel(i,contrib_name.c_str());
             cov_hist->GetYaxis()->SetBinLabel(i,contrib_name.c_str());
             cor_hist->GetXaxis()->SetBinLabel(i,contrib_name.c_str());
@@ -229,7 +229,7 @@ public:
 
             scale_factors_hist->GetXaxis()->SetBinLabel(i,contrib_name.c_str());
             scale_factors_hist->SetBinContent(i,scale_factor_map[contrib_name]->getValV());
-            //scale_factors_hist->SetBinError(i,scale_factor_map[contrib_name]->getError());
+            scale_factors_hist->SetBinError(i,scale_factor_map[contrib_name]->getError());
             i++;
         }
         cov_hist->Write();
@@ -237,7 +237,7 @@ public:
         scale_factors_hist->Write();
 
         //Plotting
-        for(const EventCategory& cat : eventCategories ){
+        /*for(const EventCategory& cat : eventCategories ){
             for(const EventSubCategory& sub_cat: subCategories){
                 TCanvas* c = new TCanvas(("fit_"+ToString(cat)+"_"+ToString(sub_cat)).c_str(),
                                      ("fit in eventCategory " + ToString(cat) + ToString(sub_cat)).c_str(),800,400) ;
@@ -253,7 +253,7 @@ public:
                 gPad->SetLeftMargin(0.15) ; frame->GetYaxis()->SetTitleOffset(static_cast<float>(1.4)) ; frame->Draw() ;
                 c->Write();
             }
-        }
+        }*/
   }
 
 private:

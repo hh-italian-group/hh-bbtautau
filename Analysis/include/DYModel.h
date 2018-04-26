@@ -92,6 +92,25 @@ public:
         //unsigned int n_bJets = event->jets_nTotal_hadronFlavour_b;
         //double lheHT = event->lhe_HT;
 
+        /*double gen_Zpt=-99.9;
+        for(size_t i=0;i<event->genParticles_pdg.size();i++){
+            float pdgId = event->genParticles_pdg.at(i);
+            std::cout<<i<<" PdgId = "<<pdgId<<std::endl;
+            if(pdgId != 23) continue;
+            gen_Zpt = event->genParticles_p4.at(i).Pt();
+        }
+        double gen_weight_NLO = 0;
+        double gen_weight_LO = 0;
+        if(gen_Zpt != -99.9){
+            gen_weight_NLO = (0.876979+gen_Zpt*(4.11598e-03)-(2.35520e-05)*gen_Zpt*gen_Zpt)*
+                               (1.10211 * (0.958512 - 0.131835*TMath::Erf((gen_Zpt-14.1972)/10.1525)))*(gen_Zpt<140)
+                               +0.891188*(gen_Zpt>=140);
+            gen_weight_LO = (8.61313e-01+gen_Zpt*4.46807e-03-1.52324e-05*gen_Zpt*gen_Zpt)*
+                                         (1.08683 * (0.95 - 0.0657370*TMath::Erf((gen_Zpt-11.)/5.51582)))*(gen_Zpt<140)
+                                         +1.141996*(gen_Zpt>=140);
+        }*/
+
+
         auto n_selected_gen_jets =  event->genJets_p4.size();
         size_t n_bJets =  static_cast<size_t>(std::count(event->genJets_hadronFlavour.begin(),
                                                          event->genJets_hadronFlavour.end(), b_Flavour));
@@ -105,6 +124,7 @@ public:
             size_t njet_wp = Get2WP(n_selected_gen_jets,njet_wp_set);
             p.second = njet_wp;
         }
+
 
         std::map<std::pair<size_t,size_t>,SampleDescriptorBase::Point>::iterator it = working_points_map.find(p);
         if(it == working_points_map.end())
