@@ -17,7 +17,6 @@ public:
     {
         CheckReadParamCounts("energy_scales", 1, Condition::less_equal);
         CheckReadParamCounts("channels", 1, Condition::less_equal);
-        CheckReadParamCounts("tau_ids", 1, Condition::less_equal);
         CheckReadParamCounts("period", 1, Condition::less_equal);
         CheckReadParamCounts("btag_wp", 1, Condition::less_equal);
         CheckReadParamCounts("common_weights", 1, Condition::less_equal);
@@ -29,10 +28,10 @@ public:
         CheckReadParamCounts("keep_genJets", 1, Condition::less_equal);
         CheckReadParamCounts("keep_genParticles", 1, Condition::less_equal);
         CheckReadParamCounts("keep_MET_cov",1,Condition::less_equal);
-        CheckReadParamCounts("tau_iso", 1, Condition::less_equal);
+        CheckReadParamCounts("tau_id_cuts", 1, Condition::less_equal);
         CheckReadParamCounts("massWindowParams", 0, Condition::greater_equal);
 
-
+        current.UpdateTauIdIndices();
         ConfigEntryReaderT<Setup>::EndEntry();
     }
 
@@ -41,7 +40,6 @@ public:
     {
         ParseEnumList("energy_scales", current.energy_scales);
         ParseEnumList("channels", current.channels);
-        ParseEntryList("tau_ids", current.tau_ids);
         ParseEntry("period", current.period);
         ParseEntry("btag_wp", current.btag_wp);
         ParseEntryList("common_weights", current.common_weights);
@@ -53,7 +51,7 @@ public:
         ParseEntry("keep_genJets", current.keep_genJets);
         ParseEntry("keep_genParticles", current.keep_genParticles);
         ParseEntry("keep_MET_cov",current.keep_MET_cov);
-        ParseEntry("tau_id_cut", current.tau_id_cut);
+        ParseEntryList("tau_id_cuts", current.tau_id_cuts);
         ParseEntry("massWindowParams", current.massWindowParams);
     }
 };

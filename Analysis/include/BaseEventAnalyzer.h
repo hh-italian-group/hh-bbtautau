@@ -78,7 +78,7 @@ public:
         if(ana_setup.syncDataIds.size()){
             outputFile_sync = root_ext::CreateRootFile(args.output_sync());
             for(unsigned n = 0; n < ana_setup.syncDataIds.size(); ++n){
-                const EventAnalyzerDataId dataId = ana_setup.syncDataIds.at(n);                
+                const EventAnalyzerDataId dataId = ana_setup.syncDataIds.at(n);
                 syncTuple_map[dataId] = std::make_shared<htt_sync::SyncTuple>(dataId.GetName("_"),outputFile_sync.get(),false);
             }
 
@@ -267,7 +267,7 @@ protected:
             anaTupleWriter.AddEvent(event, dataIds);
             for (auto& sync_iter : syncTuple_map) {
                 if(!dataIds.count(sync_iter.first)) continue;
-                htt_sync::FillSyncTuple(event,*sync_iter.second);
+                htt_sync::FillSyncTuple(event, *sync_iter.second, ana_setup.period);
             }
         }
     }
