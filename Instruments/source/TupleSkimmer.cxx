@@ -98,7 +98,7 @@ public:
     using EventPtr = std::shared_ptr<Event>;
     using EventTuple = ntuple::EventTuple;
     using EventQueue = run::EntryQueue<EventPtr>;
-	
+
 	using ExpressTuple = ntuple::ExpressTuple;
 	using ExpressEvent = ntuple::ExpressEvent;
     using SummaryTuple = ntuple::SummaryTuple;
@@ -126,7 +126,6 @@ public:
         if(!setups.count(args.setup_name()))
             throw exception("Tuple skimmer setup not found.");
         setup = setups.at(args.setup_name());
-        setup.UpdateTauIdHashes();
 
         std::cout << "done.\nLoading weights... " << std::flush;
         eventWeights_HH = std::make_shared<mc_corrections::EventWeights_HH>(setup.period, setup.btag_wp,
@@ -412,28 +411,11 @@ private:
         return summary;
     }
 
-    void SkimTauIds(std::vector<uint32_t>& tauId_keys, std::vector<float>& tauId_values) const
+    bool ApplyTauIdCut(TauIdResults::BitsContainer id_bits) const
     {
-        std::vector<uint32_t> skimmed_keys;
-        std::vector<float> skimmed_values;
-        if(tauId_keys.size() != tauId_values.size())
-            throw exception("Inconsistent tauId information.");
-        for(size_t n = 0; n < tauId_keys.size(); ++n) {
-            if(setup.tau_id_hashes.count(tauId_keys.at(n))) {
-                skimmed_keys.push_back(tauId_keys.at(n));
-                skimmed_values.push_back(tauId_values.at(n));
-            }
-        }
-
-        tauId_keys = std::move(skimmed_keys);
-        tauId_values = std::move(skimmed_values);
-    }
-
-    bool ApplyTauIdCut(const std::vector<uint32_t>& tauId_keys, const std::vector<float>& tauId_values) const
-    {
-        for(size_t n = 0; n < tauId_keys.size(); ++n) {
-            if(setup.tau_id_cut_hashes.count(tauId_keys.at(n)) &&
-                    tauId_values.at(n) < setup.tau_id_cut_hashes.at(tauId_keys.at(n)))
+        const TauIdResults id_results(id_bits);
+        for(size_t index : setup.tau_id_cut_indices) {
+            if(!id_results.Result(index))
                 return false;
         }
         return true;
@@ -483,19 +465,15 @@ private:
                 return false;
         }
 
-
-
         if (setup.apply_charge_cut && (full_event.q_1+full_event.q_2) != 0) return false;
 
-        if(!ApplyTauIdCut(full_event.tauId_keys_1, full_event.tauId_values_1) ||
-                !ApplyTauIdCut(full_event.tauId_keys_2, full_event.tauId_values_2)) return false;
+        if(setup.ApplyTauIdCuts()) {
+            const Channel channel = static_cast<Channel>(event.channelId);
+            const auto leg_types = GetChannelLegTypes(channel);
+            if(leg_types.first == LegType::tau && !ApplyTauIdCut(full_event.tauId_flags_1)) return false;
+            if(leg_types.second == LegType::tau && !ApplyTauIdCut(full_event.tauId_flags_2)) return false;
+        }
 
-        if(storage_mode.IsPresent(EventPart::FirstTauIds))
-            SkimTauIds(event.tauId_keys_1, event.tauId_values_1);
-
-        if(storage_mode.IsPresent(EventPart::SecondTauIds))
-            SkimTauIds(event.tauId_keys_2, event.tauId_values_2);
-	
         event.n_jets = static_cast<unsigned>(full_event.jets_p4.size());
         event.ht_other_jets = static_cast<float>(
                     Calculate_HT(full_event.jets_p4.begin() + 2, full_event.jets_p4.end()));
@@ -551,7 +529,7 @@ private:
             event.jets_partonFlavour.resize(2);
             event.jets_hadronFlavour.resize(2);
         }
-		
+
         if(!setup.keep_genJets) {
             event.genJets_p4.clear();
             event.genJets_hadronFlavour.clear();
@@ -582,8 +560,6 @@ private:
     std::shared_ptr<mc_corrections::EventWeights_HH> eventWeights_HH;
 	std::shared_ptr<TFile> outputFile;
     mc_corrections::WeightingMode weighting_mode;
-
-
 };
 
 } // namespace tuple_skimmer

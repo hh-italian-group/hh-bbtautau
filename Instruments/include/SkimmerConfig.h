@@ -16,32 +16,30 @@ struct Setup {
     std::string name;
     std::set<EventEnergyScale> energy_scales;
     std::set<Channel> channels;
-    std::set<std::string> tau_ids;
     Period period;
     DiscriminatorWP btag_wp;
     mc_corrections::WeightingMode common_weights;
     unsigned n_splits{0};
     unsigned split_seed{0};
 
-    std::set<uint32_t> tau_id_hashes;
-
-    //light setup
     bool apply_mass_cut{false};
     bool apply_charge_cut{false};
     bool keep_genJets{false}, keep_genParticles{false}, keep_MET_cov{false};
-    std::map<std::string, double> tau_id_cut;
-    std::map<uint32_t, double> tau_id_cut_hashes;
+    std::set<std::string> tau_id_cuts;
+    std::set<size_t> tau_id_cut_indices;
 
     std::map<SelectionCut,analysis::EllipseParameters> massWindowParams;
 
-    void UpdateTauIdHashes()
+    bool ApplyTauIdCuts() const { return !tau_id_cuts.empty(); }
+    void UpdateTauIdIndices()
     {
-        tau_id_hashes.clear();
-        for(const auto& id : tau_ids)
-            tau_id_hashes.insert(tools::hash(id));
-        tau_id_cut_hashes.clear();
-        for(const auto& id_cut: tau_id_cut)
-            tau_id_cut_hashes[tools::hash(id_cut.first)] = id_cut.second;
+        tau_id_cut_indices.clear();
+        const auto& bit_refs = TauIdResults::GetBitRefsByName();
+        for(const auto& cut_name : tau_id_cuts) {
+            if(!bit_refs.count(cut_name))
+                throw exception("Unknown tau ID '%1%'") % cut_name;
+            tau_id_cut_indices.insert(bit_refs.at(cut_name));
+        }
     }
 };
 

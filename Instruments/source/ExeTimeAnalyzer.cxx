@@ -23,14 +23,14 @@ public:
 
     void Run()
     {
-        auto inputFile = root_ext::OpenRootFile(args.input());      
-        auto summaryTuple = ntuple::CreateSummaryTuple("summary", inputFile.get(), true, ntuple::TreeState::Full, true);
+        auto inputFile = root_ext::OpenRootFile(args.input());
+        auto summaryTuple = ntuple::CreateSummaryTuple("summary", inputFile.get(), true, ntuple::TreeState::Full);
 
         auto n_process_event = std::make_shared<TH1F>("n_process_event","number processed events",50000,-0.5,50000-0.5);
         auto exeTime = std::make_shared<TH1F>("exeTime","exeTime",10000,-0.5,100000-0.5);
         auto time_per_event = std::make_shared<TH1F>("time_per_event","time_per_event",10000,-0.5,100000-0.5);
 
-        for(const auto& summary : *summaryTuple) {            
+        for(const auto& summary : *summaryTuple) {
             n_process_event->Fill(summary.numberOfProcessedEvents);
             exeTime->Fill(summary.exeTime);
             if(summary.numberOfProcessedEvents == 0) continue;
