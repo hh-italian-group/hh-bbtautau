@@ -30,6 +30,8 @@ public:
         CheckReadParamCounts("keep_genParticles", 1, Condition::less_equal);
         CheckReadParamCounts("keep_MET_cov",1,Condition::less_equal);
         CheckReadParamCounts("tau_iso", 1, Condition::less_equal);
+        CheckReadParamCounts("massWindowParams", 0, Condition::greater_equal);
+
 
         ConfigEntryReaderT<Setup>::EndEntry();
     }
@@ -52,6 +54,7 @@ public:
         ParseEntry("keep_genParticles", current.keep_genParticles);
         ParseEntry("keep_MET_cov",current.keep_MET_cov);
         ParseEntry("tau_id_cut", current.tau_id_cut);
+        ParseEntry("massWindowParams", current.massWindowParams);
     }
 };
 

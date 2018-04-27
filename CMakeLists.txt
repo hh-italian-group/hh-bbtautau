@@ -13,6 +13,7 @@ add_library(HHKinFit2 STATIC ${HH_KINFIT2_SRC})
 target_include_directories(HHKinFit2 PRIVATE "${CMSSW_BASE_SRC}/HHKinFit2/HHKinFit2/interface")
 set_source_files_properties(${HH_KINFIT2_SRC} PROPERTIES COMPILE_FLAGS "-w")
 
+#[[
 set(PrecompHeader "${PROJECT_SOURCE_DIR}/Run/include/Precompiled.h")
 set(PrecompHeaderOut "${PROJECT_SOURCE_DIR}/Run/include/Precompiled.h.pch")
 string (REPLACE " " ";" PchFlags ${CMAKE_CXX_FLAGS})
@@ -26,14 +27,14 @@ add_custom_command(OUTPUT "${PrecompHeaderOut}"
                    IMPLICIT_DEPENDS CXX "${PrecompHeader}"
                    VERBATIM)
 add_custom_target(GeneratePch DEPENDS "${PrecompHeaderOut}")
-
+]]
 foreach(exe_name ${EXE_LIST})
     target_link_libraries("${exe_name}" HTT-utilities HHKinFit2)
-    add_dependencies("${exe_name}" GeneratePch)
-    target_compile_options("${exe_name}" BEFORE PRIVATE "-include;${PrecompHeader}")
+#    add_dependencies("${exe_name}" GeneratePch)
+#    target_compile_options("${exe_name}" BEFORE PRIVATE "-include;${PrecompHeader}")
 endforeach()
 
-set_target_properties(LimitConfigurationProducer BjetSelectionStudy BjetEffSF KinFitStudy PROPERTIES EXCLUDE_FROM_ALL 1)
+set_target_properties(LimitConfigurationProducer BjetSelectionStudy BjetEffSF KinFitStudy SMWeight_t PROPERTIES EXCLUDE_FROM_ALL 1)
 
 add_library("hh-bbtautau" OBJECT ${HEADER_LIST} ${SOURCE_LIST} ${EXE_SOURCE_LIST} ${SCRIPT_LIST} ${CONFIG_LIST})
 set_target_properties("hh-bbtautau" PROPERTIES EXCLUDE_FROM_ALL 1)

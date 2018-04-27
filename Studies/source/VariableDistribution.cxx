@@ -21,6 +21,7 @@ struct Arguments { // list of all program arguments
     REQ_ARG(std::string, tree_name);
     REQ_ARG(int, spin);
     REQ_ARG(bool, skimmed);
+    REQ_ARG(std::string, suffix);
 };
 
 namespace analysis {
@@ -47,7 +48,6 @@ public:
         configReader.ReadConfig(args.cfg_file());
 
         samples = samples_list.at("Samples").files;
-
     }
 
     void Histo1D(const VarData& sample, TDirectory* directory)
@@ -68,7 +68,7 @@ public:
     {
         for(auto var_1 = sample.begin(); var_1 != sample.end(); ++var_1){
             for(auto var_2 = var_1; var_2 != sample.end(); ++var_2) {
-                auto histo_pair = std::make_shared<TH2D>((var_1->first+"_"+var_2->first).c_str(), (var_1->first+"_"+var_2->first).c_str(), 25,0,200,25,0,200);
+                auto histo_pair = std::make_shared<TH2D>((var_1->first+"_"+var_2->first).c_str(), (var_1->first+"_"+var_2->first).c_str(), 60,0,300,60,0,300);
                 histo_pair->SetCanExtend(TH1::kAllAxes);
                 histo_pair->SetXTitle((var_1->first).c_str());
                 histo_pair->SetYTitle((var_2->first).c_str());
@@ -90,7 +90,16 @@ public:
             auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
             auto tuple = ntuple::CreateEventTuple(args.tree_name(), input_file.get(), true, ntuple::TreeState::Skimmed);
             for(const Event& event : *tuple) {
-                vars.AddEvent(event, entry.id, entry.spin, args.tree_name(), entry.weight);
+                LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
+                if (args.suffix() == "_ANcut"){
+                    if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(event.SVfit_p4.mass(),bb.mass())) continue;
+                }
+                auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(args.tree_name()) ,event) ;
+                EventInfoBase& eventbase = *eventInfoPtr;
+                if (args.suffix() == "_newcut"){
+                    if (!cuts::hh_bbtautau_2016::hh_tag::new_m_hh_window().IsInside(eventbase.GetHiggsTTMomentum(false).M(),bb.mass())) continue;
+                }
+                vars.AddEvent(eventbase, entry.id, entry.spin, entry.weight);
             }
             std::cout << entry << " number of events: " << tuple->size() << std::endl;
         }
@@ -113,11 +122,12 @@ public:
                     continue;
 
                 LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
-                if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(), bb.mass()))
-                    continue;
+                if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(event.SVfit_p4.mass(),bb.mass())) continue;
                 if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
                 if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
-                vars.AddEvent(event, entry.id, entry.spin, args.tree_name(), entry.weight);
+                auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(args.tree_name()) ,event) ;
+                EventInfoBase& eventbase = *eventInfoPtr;
+                vars.AddEvent(eventbase, entry.id, entry.spin, entry.weight);
             }
             std::cout << entry << " number of events: " << tuple->size() << "  spin:" << entry.spin << "    " << entry.weight << std::endl;
         }

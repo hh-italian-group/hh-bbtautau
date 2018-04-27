@@ -16,6 +16,7 @@ public:
     virtual void EndEntry() override
     {
         CheckReadParamCounts("int_lumi", 1, Condition::less_equal);
+        CheckReadParamCounts("period", 1, Condition::less_equal);
         CheckReadParamCounts("final_variables", 1, Condition::less_equal);
         CheckReadParamCounts("apply_mass_cut", 1, Condition::less_equal);
         CheckReadParamCounts("apply_os_cut", 1, Condition::less_equal);
@@ -33,6 +34,10 @@ public:
         CheckReadParamCounts("mva_setup", 1, Condition::less_equal);
         CheckReadParamCounts("hist_cfg", 1, Condition::less_equal);
         CheckReadParamCounts("syncDataIds", 1, Condition::less_equal);
+        CheckReadParamCounts("plot_cfg", 1, Condition::less_equal);
+        CheckReadParamCounts("plot_page_opt", 1, Condition::less_equal);
+        CheckReadParamCounts("massWindowParams", 0, Condition::greater_equal);
+        CheckReadParamCounts("unc_cfg", 1, Condition::less_equal);
 
         ConfigEntryReaderT<AnalyzerSetup>::EndEntry();
     }
@@ -41,6 +46,7 @@ public:
                                std::istringstream& /*ss*/) override
     {
         ParseEntry("int_lumi", current.int_lumi);
+        ParseEntry("period", current.period);
         ParseEntryList("final_variables", current.final_variables);
         ParseEntry("apply_mass_cut", current.apply_mass_cut);
         ParseEntry("apply_os_cut", current.apply_os_cut);
@@ -58,6 +64,10 @@ public:
         ParseEntry("mva_setup", current.mva_setup);
         ParseEntry("hist_cfg", current.hist_cfg);
         ParseEntryList("syncDataIds", current.syncDataIds);
+        ParseEntry("plot_cfg", current.plot_cfg);
+        ParseEntry("plot_page_opt", current.plot_page_opt);
+        ParseEntry("massWindowParams", current.massWindowParams);
+        ParseEntry("unc_cfg", current.unc_cfg);
     }
 };
 
@@ -109,6 +119,9 @@ public:
         CheckReadParamCounts("channels", 1, Condition::less_equal);
         CheckReadParamCounts("sample_type", 1, Condition::less_equal);
         CheckReadParamCounts("datacard_name", 1, Condition::less_equal);
+        CheckReadParamCounts("postfit_name", 1, Condition::less_equal);
+        CheckReadParamCounts("norm_sf_file", 1, Condition::less_equal);
+        CheckReadParamCounts("fit_method", 1, Condition::less_equal);
 
         this->current.CreateWorkingPoints();
         ConfigEntryReaderT<Descriptor>::EndEntry();
@@ -125,6 +138,9 @@ public:
         ParseEntryList("channels", this->current.channels);
         ParseEntry("sample_type", this->current.sampleType);
         ParseEntry("datacard_name", this->current.datacard_name);
+        ParseEntry("postfit_name", this->current.postfit_name);
+        ParseEntry("norm_sf_file", this->current.norm_sf_file);
+        ParseEntry("fit_method", this->current.fit_method);
     }
 };
 
@@ -189,6 +205,41 @@ public:
 
 private:
     const SampleDescriptorCollection* sampleDescriptorCollection;
+};
+
+class ModellingUncertaintyEntryReader : public ConfigEntryReader {
+public:
+    ModellingUncertaintyEntryReader(ModellingUncertaintyCollection& _items) : items(&_items) {}
+
+    virtual void StartEntry(const std::string& name, const std::string& reference_name) override
+    {
+        ConfigEntryReader::StartEntry(name, reference_name);
+        current = ModellingUncertainty();
+        current_name = name;
+    }
+
+    virtual void EndEntry() override
+    {
+        CheckReadParamCounts("unc", 1, Condition::less_equal);
+        CheckReadParamCounts("sf", 1, Condition::less_equal);
+        CheckReadParamCounts("ref_category", 1, Condition::less_equal);
+
+        current.CreateSampleUncMap();
+        items->Add(current_name, current);
+    }
+
+    virtual void ReadParameter(const std::string& /*param_name*/, const std::string& /*param_value*/,
+                               std::istringstream& /*ss*/) override
+    {
+        ParseEntry("unc", current.uncertainties);
+        ParseEntry("sf", current.scale_factors);
+        ParseEntry("ref_category", current.ref_category);
+    }
+
+private:
+    std::string current_name;
+    ModellingUncertainty current;
+    ModellingUncertaintyCollection* items;
 };
 
 } // namespace analysis

@@ -37,7 +37,8 @@ public:
                     ana_setup.draw_sequence, sample_descriptors, cmb_sample_descriptors, ana_setup.signals,
                     ana_setup.data, channelId);
 
-        PlotsProducer plotsProducer(*anaDataCollection, samplesToDraw, false, true, vars);
+        PlotsProducer plotsProducer(*anaDataCollection, samplesToDraw, ana_setup.plot_cfg, ana_setup.plot_page_opt,
+                                    vars);
         plotsProducer.PrintStackedPlots(args.output(), EventRegion::SignalRegion(), ana_setup.categories,
                                         sub_categories_to_process, signal_names);
     }

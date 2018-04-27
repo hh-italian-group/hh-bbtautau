@@ -7,8 +7,6 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "MvaVariables.h"
 #include "AnalysisTools/Core/include/NumericPrimitives.h"
 
-
-
 namespace analysis {
 namespace mva_study{
 
@@ -52,7 +50,6 @@ public:
     }
 
     virtual std::shared_ptr<TMVA::Reader> GetReader() override { return reader;}
-
 };
 
 class LegacyMvaVariables : public MvaVariablesBase {
@@ -84,19 +81,29 @@ public:
         reader->BookMVA(method_name, bdt_weights);
     }
 
-    virtual void AddEvent(const ntuple::Event& event, const SampleId& /*mass*/ , int /* spin*/, std::string /*channel*/, double /*sample_weight*/, int /*which_test*/) override
+    virtual void AddEvent(analysis::EventInfoBase& eventbase, const SampleId& /*mass*/ , int /* spin*/, double /*sample_weight*/, int /*which_test*/) override
     {
-        auto bb = event.jets_p4[0] + event.jets_p4[1];
-        dphi_mumet = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.p4_1, event.pfMET_p4));
-        dphi_metsv = std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.SVfit_p4, event.pfMET_p4));
-        dR_bb = std::abs(ROOT::Math::VectorUtil::DeltaR(event.jets_p4[0], event.jets_p4[1]));
-        dR_bbbb = ROOT::Math::VectorUtil::DeltaR(event.jets_p4[0], event.jets_p4[1])*bb.Pt();
-        dR_taumu = std::abs(ROOT::Math::VectorUtil::DeltaR(event.p4_1, event.p4_2));
-        dR_taumusvfit = ROOT::Math::VectorUtil::DeltaR(event.p4_1, event.p4_2)*event.SVfit_p4.Pt();
-        mT1 = static_cast<float>(Calculate_MT(event.p4_1,event.pfMET_p4));
-        mT2 = static_cast<float>(Calculate_MT(event.p4_2,event.pfMET_p4));
-        dphi_bbmet = std::abs(ROOT::Math::VectorUtil::DeltaPhi(bb, event.pfMET_p4));
-        dphi_bbsv = std::abs(ROOT::Math::VectorUtil::DeltaPhi(bb, event.SVfit_p4));
+        const auto& Htt = eventbase.GetHiggsTTMomentum(false);
+        const auto& Htt_sv = eventbase.GetHiggsTTMomentum(true);
+        const auto& t1 = eventbase.GetLeg(1);
+        const auto& t2 = eventbase.GetLeg(2);
+
+        const auto& Hbb = eventbase.GetHiggsBB();
+        const auto& b1 = Hbb.GetFirstDaughter();
+        const auto& b2 = Hbb.GetSecondDaughter();
+
+        const auto& met = eventbase.GetMET();
+
+        dphi_mumet = static_cast<float>(std::abs(ROOT::Math::VectorUtil::DeltaPhi(t1.GetMomentum(), met.GetMomentum())));
+        dphi_metsv = static_cast<float>(std::abs(ROOT::Math::VectorUtil::DeltaPhi(Htt_sv, met.GetMomentum())));
+        dR_bb = static_cast<float>(std::abs(ROOT::Math::VectorUtil::DeltaR(b1.GetMomentum(), b2.GetMomentum())));
+        dR_bbbb = static_cast<float>(ROOT::Math::VectorUtil::DeltaR(b1.GetMomentum(), b2.GetMomentum())*Hbb.GetMomentum().Pt());
+        dR_taumu = static_cast<float>(std::abs(ROOT::Math::VectorUtil::DeltaR(t1.GetMomentum(), t2.GetMomentum())));
+        dR_taumusvfit = static_cast<float>(ROOT::Math::VectorUtil::DeltaR(t1.GetMomentum(), t2.GetMomentum())*Htt.Pt());
+        mT1 = static_cast<float>(Calculate_MT(t1.GetMomentum(), met.GetMomentum()));
+        mT2 = static_cast<float>(Calculate_MT(t2.GetMomentum(), met.GetMomentum()));
+        dphi_bbmet = static_cast<float>(std::abs(ROOT::Math::VectorUtil::DeltaPhi(Hbb.GetMomentum(), met.GetMomentum())));
+        dphi_bbsv = static_cast<float>(std::abs(ROOT::Math::VectorUtil::DeltaPhi(Hbb.GetMomentum(), Htt_sv)));
     }
     virtual double Evaluate() override { return reader->EvaluateMVA(method_name); }
 
@@ -108,47 +115,37 @@ class MvaReader {
 public:
     using Vars = MvaVariablesBase;
     using VarsPtr = std::shared_ptr<Vars>;
-    using Range = ::analysis::Range<int>;
 
-    struct VarRange { Range range; VarsPtr vars; };
-    using VarRangeMap = std::map<int, VarRange>;
-    using MethodRanges = std::map<std::string, VarRangeMap>;
+    struct MvaKey {
+        std::string method_name;
+        int mass, spin;
 
-    VarsPtr AddRange(const Range& mass_range, const std::string& method_name, const std::string& bdt_weights,
-                  const std::unordered_set<std::string>& enabled_vars, bool is_legacy = false, bool is_Low = true)
-    {
-        if(method_vars.count(method_name))
-            throw exception("MVA method with name '%1%' already exists.") % method_name;
-
-        auto& vars = method_vars[method_name];
-        auto bound = vars.lower_bound(mass_range.min());
-        for(size_t n = 0; n < 2 && bound != vars.end() && bound->second.range != mass_range; ++n, ++bound) {
-            if(bound->second.range.Overlaps(mass_range, false))
-                throw exception("Overlapping ranges.");
+        bool operator<(const MvaKey& other) const
+        {
+            if(method_name != other.method_name) return method_name < other.method_name;
+            if(mass != other.mass) return mass < other.mass;
+            return spin < other.spin;
         }
+    };
 
-        vars[mass_range.max()].range = mass_range;
-        return vars[mass_range.max()].vars = CreateMvaVariables(method_name, bdt_weights, enabled_vars, is_legacy,
-                                                                is_Low);
+    using MethodMap = std::map<MvaKey, VarsPtr>;
+
+    VarsPtr Add(const MvaKey& key, const std::string& bdt_weights, const std::unordered_set<std::string>& enabled_vars,
+                bool is_legacy = false, bool is_Low = true)
+    {
+        if(methods.count(key))
+            throw exception("MVA method with (name, mass, spin) = '%1%, %2%, %3%' already exists.")
+                % key.method_name % key.mass % key.spin;
+
+        return methods[key] = CreateMvaVariables(key.method_name, bdt_weights, enabled_vars, is_legacy, is_Low);
     }
 
-    double Evaluate(const ntuple::Event& event, int mass, const std::string& method_name = "", const int spin = 0,
-                    const std::string channel = "")
+    double Evaluate(const MvaKey& key, EventInfoBase* event)
     {
-        auto& vars = FindMvaVariables(mass, method_name);
-        vars.AddEvent(event, SampleId(SampleType::Sgn_Res, mass), spin, channel);
-        return vars.Evaluate();
-    }
-
-    Vars& FindMvaVariables(int mass, const std::string& method_name = "")
-    {
-        if(!method_vars.count(method_name))
-            throw exception("Method '%1%' not found.") % method_name;
-        const auto& vars = method_vars.at(method_name);
-        auto low_bound = vars.lower_bound(mass);
-        if(low_bound == vars.end() || !low_bound->second.range.Contains(mass))
-            throw exception("Range not found for method = '%1%' for mass = %2%.") % method_name % mass;
-        return *low_bound->second.vars;
+        auto iter = methods.find(key);
+        if(iter == methods.end())
+            throw exception("Method '%1%' not found.") % key.method_name;
+        return iter->second->AddAndEvaluate(*event, SampleId(SampleType::Sgn_Res, key.mass), key.spin);
     }
 
 private:
@@ -160,7 +157,7 @@ private:
     }
 
 private:
-    MethodRanges method_vars;
+    MethodMap methods;
 };
 
 }
