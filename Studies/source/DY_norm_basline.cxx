@@ -221,11 +221,12 @@ public:
                                                                      nRows+1,0.5,0.5+nRows+1);
         int i=1;
         for (const std::string& contrib_name: contribution_names){
-            //  if(contrib_name == "other_bkg_muMu") continue;
-            cov_hist->GetXaxis()->SetBinLabel(i,contrib_name.c_str());
-            cov_hist->GetYaxis()->SetBinLabel(i,contrib_name.c_str());
-            cor_hist->GetXaxis()->SetBinLabel(i,contrib_name.c_str());
-            cor_hist->GetYaxis()->SetBinLabel(i,contrib_name.c_str());
+            if(contrib_name != "other_bkg_muMu"){
+                cov_hist->GetXaxis()->SetBinLabel(i,contrib_name.c_str());
+                cov_hist->GetYaxis()->SetBinLabel(i,contrib_name.c_str());
+                cor_hist->GetXaxis()->SetBinLabel(i,contrib_name.c_str());
+                cor_hist->GetYaxis()->SetBinLabel(i,contrib_name.c_str());
+            }
 
             scale_factors_hist->GetXaxis()->SetBinLabel(i,contrib_name.c_str());
             scale_factors_hist->SetBinContent(i,scale_factor_map[contrib_name]->getValV());
@@ -237,7 +238,7 @@ public:
         scale_factors_hist->Write();
 
         //Plotting
-        /*for(const EventCategory& cat : eventCategories ){
+        for(const EventCategory& cat : eventCategories ){
             for(const EventSubCategory& sub_cat: subCategories){
                 TCanvas* c = new TCanvas(("fit_"+ToString(cat)+"_"+ToString(sub_cat)).c_str(),
                                      ("fit in eventCategory " + ToString(cat) + ToString(sub_cat)).c_str(),800,400) ;
@@ -253,7 +254,7 @@ public:
                 gPad->SetLeftMargin(0.15) ; frame->GetYaxis()->SetTitleOffset(static_cast<float>(1.4)) ; frame->Draw() ;
                 c->Write();
             }
-        }*/
+        }
   }
 
 private:
