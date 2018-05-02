@@ -138,26 +138,34 @@ class EffiencyStudy {
         canvas.Print((args.output_file() + ".pdf]").c_str());
      }
     private:
+        void LaTeXDraw(const TEfficiency& eff, int nBins, double maxSize) const
+       {
+           TLatex latex;
+           latex.SetTextSize(0.020f);
+           latex.SetTextAlign(23);
 
-    void LaTeXDraw(const TEfficiency& eff, int nBins, double maxSize) const
-    {
-        TLatex latex;
-        latex.SetTextSize(0.024f);
-        latex.SetTextAlign(13);
+           for(int n = 1; n <= nBins; ++n){
 
-        for(int n = 1; n <= nBins; ++n){
+               std::ostringstream ss_GetEfficiency;
+               double Efficiency= ((eff.GetEfficiency(n))*100);
+               double ErrorUp= ((eff.GetEfficiencyErrorUp(n))*100);
+               double ErrorLow= ((eff.GetEfficiencyErrorLow(n))*100);
 
-            std::ostringstream ss_GetEfficiency;
-            double Efficiency= ((eff.GetEfficiency(n))*100);
-            double ErrorUp= ((eff.GetEfficiencyErrorUp(n))*100);
-            double ErrorLow= ((eff.GetEfficiencyErrorLow(n))*100);
+               const analysis::StVariable stValue(Efficiency, ErrorUp, ErrorLow);
+               std::string GetEfficiency = stValue.ToLatexString();
 
-            ss_GetEfficiency << std::fixed << std::setprecision(1) << Efficiency << "^{+"
-                              << ErrorUp << "}_{-" << ErrorLow << "}" << "%" ;
-            std::string GetEfficiency = ss_GetEfficiency.str();
-            latex.DrawLatex(n - 0.8, maxSize*1.09, GetEfficiency.c_str() );
-        }
-    }
+               int decimals_to_print = stValue.decimals_to_print();
+
+
+                if (decimals_to_print <= 3){
+                   latex.SetTextAngle(0);
+               }
+               else if(decimals_to_print > 3){
+                   latex.SetTextAngle(35);
+               }
+               latex.DrawLatex(n - 0.5, maxSize*1.09, GetEfficiency.c_str() );
+           }
+       }
  private:
      Arguments args;
      TCanvas canvas;
@@ -165,4 +173,3 @@ class EffiencyStudy {
 };
 }
  PROGRAM_MAIN(analysis::EffiencyStudy, Arguments)
-
