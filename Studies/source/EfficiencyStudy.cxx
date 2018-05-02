@@ -114,12 +114,13 @@ class EffiencyStudy {
          auto file = root_ext::OpenRootFile(args.input_file());
 
          std::vector<ChannelDesc> Channels = {
-             ChannelDesc("eTau", {"events","SignalElectrons_Central", "SignalTaus_Central", "jets_Central"},
-                         {true, false, false, false}, 0.231),
-             ChannelDesc("muTau", {"events","SignalMuons_Central", "SignalTaus_Central", "jets_Central"},
-                         {true, false, false, false}, 0.225),
-             ChannelDesc("tauTau", {"events","SignalTaus_Central", "jets_Central"},
-                         {true, false, false}, 0.420)
+         ChannelDesc("eTau", {"events", "SignalTaus_Central"},
+                     {false, false, false, false}, 0.231),
+         ChannelDesc("muTau", {"events", "SignalTaus_Central"},
+                     {false, false, false, false}, 0.225),
+         ChannelDesc("tauTau", {"events","SignalTaus_Central"},
+                     {false, false, false}, 0.420)
+
          };
 
          for(const auto& desc : Channels) {
@@ -142,8 +143,8 @@ class EffiencyStudy {
     void LaTeXDraw(const TEfficiency& eff, int nBins, double maxSize) const
     {
         TLatex latex;
-        latex.SetTextSize(0.024f);
-        latex.SetTextAlign(13);
+        latex.SetTextSize(0.020f);
+        latex.SetTextAlign(23);
 
         for(int n = 1; n <= nBins; ++n){
 
@@ -152,10 +153,19 @@ class EffiencyStudy {
             double ErrorUp= ((eff.GetEfficiencyErrorUp(n))*100);
             double ErrorLow= ((eff.GetEfficiencyErrorLow(n))*100);
 
-            ss_GetEfficiency << std::fixed << std::setprecision(1) << Efficiency << "^{+"
-                              << ErrorUp << "}_{-" << ErrorLow << "}" << "%" ;
-            std::string GetEfficiency = ss_GetEfficiency.str();
-            latex.DrawLatex(n - 0.8, maxSize*1.09, GetEfficiency.c_str() );
+            const analysis::StVariable stValue(Efficiency, ErrorUp, ErrorLow);
+            std::string GetEfficiency = stValue.ToLatexString();
+
+            int decimals_to_print = stValue.decimals_to_print();
+
+
+             if (decimals_to_print <= 3){
+                latex.SetTextAngle(0);
+            }
+            else if(decimals_to_print > 3){
+                latex.SetTextAngle(35);
+            }
+            latex.DrawLatex(n - 0.5, maxSize*1.09, GetEfficiency.c_str() );
         }
     }
  private:
@@ -165,4 +175,3 @@ class EffiencyStudy {
 };
 }
  PROGRAM_MAIN(analysis::EffiencyStudy, Arguments)
-
