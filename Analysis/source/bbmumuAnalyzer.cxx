@@ -7,37 +7,53 @@ namespace analysis {
 
 class bbmumuAnalyzer : public BaseEventAnalyzer<MuonCandidate, MuonCandidate> {
 public:
+
     using Base = BaseEventAnalyzer<MuonCandidate, MuonCandidate>;
     using Base::BaseEventAnalyzer;
-
+    using HiggsBBCandidate = EventInfoBase::HiggsBBCandidate;
 protected:
     virtual EventRegion DetermineEventRegion(EventInfo& event, EventCategory /*eventCategory*/) override
     {
+        static const std::vector<std::string> trigger_patterns = {
+            "HLT_IsoMu22_v"
+        };
+
         const MuonCandidate& muon1 = event.GetFirstLeg();
         const MuonCandidate& muon2 = event.GetSecondLeg();
+//        const HiggsBBCandidate& jets  = event.GetHiggsBB();
+
+        if(!event.GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) return EventRegion::Unknown();
 
         EventRegion region;
         const bool os = !ana_setup.apply_os_cut || muon1.GetCharge() * muon2.GetCharge() == -1;
         region.SetCharge(os);
         region.SetLowerIso(DiscriminatorWP::Medium);
+
         return region;
     }
 
-    virtual const EventRegionSet& EventRegionsToProcess() const override
+    virtual EventSubCategory DetermineEventSubCategory(EventInfo& event, const EventCategory& /*category*/,
+                                                       std::map<SelectionCut, double>& /*mva_scores*/) override
     {
-        static const EventRegionSet regions = {
-            EventRegion::OS_Isolated()
-        };
-        return regions;
+        double mass_muMu = event.GetHiggsTTMomentum(false).M();
+        double mass_jj = event.GetHiggsBB().GetMomentum().M();
+        const bool jetMass = mass_jj > 80 && mass_jj < 160;
+        const bool muonMass= mass_muMu > 60;
+        double pt_jets = event.GetHiggsBB().GetFirstDaughter().GetMomentum().Pt()
+                        + event.GetHiggsBB().GetSecondDaughter().GetMomentum().Pt()
+                        + event->ht_other_jets;
+
+
+        EventSubCategory sub_category;
+        sub_category.SetCutResult(SelectionCut::mh, jetMass && muonMass);
+        sub_category.SetCutResult(SelectionCut::lowMET,event.GetMET().GetMomentum().Pt() < 45);
+        sub_category.SetCutResult(SelectionCut::lowPt, pt_jets <= 80);
+        sub_category.SetCutResult(SelectionCut::medPt,pt_jets > 80 && pt_jets <= 150);
+        sub_category.SetCutResult(SelectionCut::highPt,pt_jets > 150);
+
+        return sub_category;
     }
 
-    virtual const EventSubCategorySet& EventSubCategoriesToProcess() const override
-    {
-        static const EventSubCategorySet sub_categories = {
-            EventSubCategory().SetCutResult(SelectionCut::mh, true)
-        };
-        return sub_categories;
-    }
 };
 
 } // namespace analysis

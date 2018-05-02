@@ -5,6 +5,7 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 
 #include "AnalysisTools/Core/include/AnalyzerData.h"
 #include "AnaTuple.h"
+#include "SampleDescriptor.h"
 
 namespace analysis {
 
@@ -17,16 +18,20 @@ public:
     using HistContainer = std::map<std::string, EntrySource>;
     using HistDesc = PropertyConfigReader::Item;
     using HistDescCollection = PropertyConfigReader::ItemCollection;
+    using SampleUnc = ModellingUncertainty::SampleUnc;
 
     EventAnalyzerData(std::shared_ptr<TFile> outputFile, const std::string& directoryName, Channel channel,
                       const EventAnalyzerDataId& dataId, const bbtautau::AnaTuple* anaTuple,
-                      const std::set<std::string>& histogram_names, const HistDescCollection& descriptors) :
+                      const std::set<std::string>& histogram_names, const HistDescCollection& descriptors,
+                      const SampleUnc& sample_unc) :
         AnalyzerData(outputFile, directoryName, anaTuple == nullptr)
     {
         for(const auto& h_name : histogram_names) {
             const auto& desc = FindDescriptor(h_name, channel, dataId, descriptors);
             auto entry_ptr = std::make_shared<Entry>(h_name, this, desc);
             const auto branch_ptr = anaTuple ? &anaTuple->get<ValueType>(h_name) : nullptr;
+            (*entry_ptr)().SetSystematicUncertainty(sample_unc.unc);
+            (*entry_ptr)().SetPostfitScaleFactor(sample_unc.sf);
             histograms[h_name] = EntrySource(entry_ptr, branch_ptr);
         }
     }

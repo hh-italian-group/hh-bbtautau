@@ -22,6 +22,7 @@ struct Arguments { // list of all program arguments
     REQ_ARG(std::string, input_path);
     REQ_ARG(std::string, cfg_file);
     REQ_ARG(std::string, optband_folder);
+    REQ_ARG(std::string, suffix);
     REQ_ARG(unsigned, number_threads);
     REQ_ARG(bool, range);
     OPT_ARG(int, which_range, 0);
@@ -39,7 +40,7 @@ public:
     using Event = ntuple::Event;
     using EventTuple = ntuple::EventTuple;
 
-    std::vector<ChannelSpin> set_SM{{"tauTau",SM_spin}, {"muTau",SM_spin}, {"eTau",SM_spin},
+    std::vector<ChannelSpin> set_SM{{"tauTau",SM_spin},{"muTau",SM_spin}, {"eTau",SM_spin},
                                  {"muTau",bkg_spin}, {"eTau",bkg_spin}, {"tauTau",bkg_spin}};
     std::vector<ChannelSpin> set_R{{"tauTau",0}, {"muTau",0}, {"eTau",0},
                                    {"tauTau",2}, {"muTau",2}, {"eTau",2},
@@ -75,11 +76,18 @@ public:
                 for(const Event& event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
                     LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
-                    if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(), bb.mass()))
-                        continue;
+                    if (args.suffix() == "_ANcut"){
+                        if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(event.SVfit_p4.mass(),bb.mass())) continue;
+                    }
                     if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
                     if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
-                    vars.AddEvent(event, entry.id, entry.spin, s.channel, entry.weight);
+                    auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(s.channel) ,event) ;
+                    EventInfoBase& eventbase = *eventInfoPtr;
+                    if (args.suffix() == "_newcut"){
+                        if (!cuts::hh_bbtautau_2016::hh_tag::new_m_hh_window().IsInside(eventbase.GetHiggsTTMomentum(false).M(),bb.mass()))
+                            continue;
+                    }
+                    vars.AddEvent(eventbase, entry.id, entry.spin, entry.weight);
                     tot_entries++;
                 }
                 std::cout << entry << " number of events: " << tot_entries << std::endl;
@@ -137,9 +145,10 @@ public:
                 ss << std::fixed << std::setprecision(0) << s.spin;
                 std::string spin = ss.str();
                 bandwidth[s][sample.first] = Read_csvfile(args.optband_folder()+file_name_prefix_bandwidth+ToString(sample.first)+"_"+
-                                                          s.channel+"_spin"+spin+".csv");
+                                                          s.channel+"_spin"+spin+args.suffix()+".csv", {});
+
                 mutualmatrix[s][sample.first] = Mutual(sample.second, bandwidth.at(s).at(sample.first));
-                std::ofstream ListMID(file_name_prefix+ToString(sample.first)+"_"+s.channel+"_spin"+spin+".csv", std::ofstream::out);
+                std::ofstream ListMID(file_name_prefix+ToString(sample.first)+"_"+s.channel+"_spin"+spin+args.suffix()+".csv", std::ofstream::out);
                 for(const auto& value: mutualmatrix[s][sample.first]){
                    for(const auto& var_name: value.first)
                    {

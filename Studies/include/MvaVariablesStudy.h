@@ -34,6 +34,7 @@ private:
 
 public:
     using MvaVariables::MvaVariables;
+
     virtual void SetValue(const std::string& name, double value, char /*type = 'F'*/) override
     {
         variables[name] = value;
@@ -55,10 +56,12 @@ public:
         if(set >= all_variables.size())
             throw exception("Sample part is out of range.");
         ChannelSpin chsp(channel,spin);
+        std::cout<<chsp.channel<<"  "<<chsp.spin<<" "<<set<<std::endl;
         return all_variables.at(chsp).at(set);
     }
 
     virtual std::shared_ptr<TMVA::Reader> GetReader() override {throw exception ("GetReader not supported.");}
+
 };
 
 

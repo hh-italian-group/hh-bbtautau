@@ -393,5 +393,8 @@ using SampleEntryListCollection = std::unordered_map<std::string, SampleEntryLis
 static const Range<int> low_mass(250, 320), medium_mass(340, 400), high_mass(450,900);
 static const std::vector<Range<int>> ranges{low_mass, medium_mass, high_mass};
 
+//static const Range<int> all_mass(250, 900);
+//static const std::vector<Range<int>> ranges{all_mass};
+
 }
 }

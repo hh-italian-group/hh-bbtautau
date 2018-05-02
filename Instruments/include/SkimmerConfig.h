@@ -7,6 +7,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/Tools.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
 #include "h-tautau/McCorrections/include/WeightingMode.h"
+#include "hh-bbtautau/Analysis/include/AnalysisCategories.h"
 
 namespace analysis {
 namespace tuple_skimmer {
@@ -30,6 +31,8 @@ struct Setup {
     bool keep_genJets{false}, keep_genParticles{false}, keep_MET_cov{false};
     std::map<std::string, double> tau_id_cut;
     std::map<uint32_t, double> tau_id_cut_hashes;
+
+    std::map<SelectionCut,analysis::EllipseParameters> massWindowParams;
 
     void UpdateTauIdHashes()
     {
@@ -71,6 +74,7 @@ struct SkimJob {
     std::string merged_output;
     std::vector<FileDescriptor> files;
     bool apply_common_weights{true};
+    bool apply_dm_fix{true};
     mc_corrections::WeightingMode weights;
 
     bool ProduceMergedOutput() const { return merged_output.size(); }

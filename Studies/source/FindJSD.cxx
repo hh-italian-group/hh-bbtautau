@@ -22,12 +22,15 @@ struct Arguments { // list of all program arguments
     REQ_ARG(std::string, input_path);
     REQ_ARG(std::string, cfg_file);
     REQ_ARG(std::string, optband_folder);
+    REQ_ARG(std::string, suffix);
     REQ_ARG(unsigned, number_threads);
     REQ_ARG(bool, range);
     OPT_ARG(int, which_range, 0);
     OPT_ARG(Long64_t, number_events, 15000);
     OPT_ARG(bool, is_SM, false);
     OPT_ARG(bool, bkg_vs_sgn, true);
+    REQ_ARG(std::string, channel);
+    REQ_ARG(int, spin);
 
 };
 
@@ -60,12 +63,16 @@ public:
         configReader.AddEntryReader("FILES", sampleReader, false);
         configReader.ReadConfig(args.cfg_file());
 
-        set = args.is_SM() ? set_SM : set_R;
+        set.emplace_back(args.channel(), args.spin());
+        set.emplace_back(args.channel(), bkg_spin);
+        std::cout<<"set size "<<set.size()<<std::endl;
+//        set = args.is_SM() ? set_SM : set_R;
         samples = samples_list.at("Samples").files;
     }
 
     void LoadSkimmedData()
     {
+
         for (const auto& s: set){
             std::cout << s.channel << s.spin <<std::endl;
             for(const SampleEntry& entry:samples)
@@ -77,11 +84,19 @@ public:
                 for(const Event& event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
                     LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
-                    if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(), bb.mass()))
-                        continue;
+                    if (args.suffix() == "_ANcut"){
+                        if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(event.SVfit_p4.mass(),bb.mass())) continue;
+                    }
                     if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
                     if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
-                    vars.AddEvent(event, entry.id, entry.spin, s.channel, entry.weight);
+                    auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(s.channel) ,event) ;
+                    EventInfoBase& eventbase = *eventInfoPtr;
+                    if (args.suffix() == "_newcut"){
+                        if (!cuts::hh_bbtautau_2016::hh_tag::new_m_hh_window().IsInside(eventbase.GetHiggsTTMomentum(false).M(),bb.mass()))
+                            continue;
+
+                    }
+                    vars.AddEvent(eventbase, entry.id, entry.spin, entry.weight);
                     tot_entries++;
                 }
                 std::cout << entry << " number of events: " << tuple->size() << std::endl;
@@ -173,16 +188,25 @@ public:
             std::string spin = ss.str();
             for (const auto& sample: samples_mass[s]){
                 std::cout<<"----"<<ToString(sample.first)<<"----"<<" entries: "<<sample.second.at("pt_l1").size()<<std::endl;
+                std::cout<<args.optband_folder()+"/OptimalBandwidth"+ToString(sample.first)+"_"+s.channel+
+                           "_spin"+spin+args.suffix()+".csv"<<std::endl;
                 bandwidth[s][sample.first] = Read_csvfile(args.optband_folder()+"/OptimalBandwidth"+ToString(sample.first)+"_"+s.channel+
-                                                          "_spin"+spin+".csv");
+                                                          "_spin"+spin+args.suffix()+".csv", {});
+                std::cout<<bandwidth[s][sample.first].size()<<std::endl;
+                for (auto& el : bandwidth[s][sample.first])
+                    if (el.second == 0) el.second = 0.0001;
                 if(args.range()){
                     bandwidth_range[s][sample.first] = Read_csvfile(args.optband_folder()+"/OptimalBandwidthRange"+ToString(sample.first)+
-                                                                    "_"+s.channel+"_spin"+spin+".csv");
+                                                                    "_"+s.channel+"_spin"+spin+args.suffix()+".csv", {});
+                    for (auto& el : bandwidth_range[s][sample.first])
+                        if (el.second == 0) el.second = 0.0001;
                 }
             }
-            bandwidth[s][SampleType::Bkg_TTbar] = Read_csvfile(args.optband_folder()+"/OptimalBandwidthTT_"+s.channel+"_spin"+spin+".csv");
-        }
+            bandwidth[s][SampleType::Bkg_TTbar] = Read_csvfile(args.optband_folder()+"/OptimalBandwidthTT_"+s.channel+"_spin"+spin+args.suffix()+".csv", {});
+            for (auto& el : bandwidth[s][SampleType::Bkg_TTbar])
+                if (el.second == 0) el.second = 0.0001;
 
+        }
 
         if (args.bkg_vs_sgn()){
             std::cout<<"SIGNAL-BACKGROUND"<<std::endl;
@@ -200,10 +224,11 @@ public:
                     ChannelSpin chsp_bkg(s.channel,-1);
 
                     const auto& sgn_band_ptr = args.range() ? bandwidth_range.at(s).at(sample.first) : bandwidth.at(s).at(sample.first);
+
                     JSDivergenceSB[s][sample.first] = JensenDivergenceSamples(sample.second, samples_mass.at(chsp_bkg).at(SampleType::Bkg_TTbar),
                                                                          sgn_band_ptr, bandwidth.at(chsp_bkg).at(SampleType::Bkg_TTbar));
 
-                    std::ofstream ListJSD(file_name_prefix_JSDSB+ToString(sample.first)+"_"+s.channel+"_spin"+spin+".csv", std::ofstream::out);
+                    std::ofstream ListJSD(file_name_prefix_JSDSB+ToString(sample.first)+"_"+s.channel+"_spin"+spin+args.suffix()+".csv", std::ofstream::out);
                     std::cout<<"list"<<std::endl;
                     for(const auto& value: JSDivergenceSB[s][sample.first]){
                        for(const auto& var_name: value.first)
@@ -229,7 +254,7 @@ public:
                     ss << std::fixed << std::setprecision(0) << entry.first.spin;
                     std::string spin = ss.str();
                     std::ofstream ListJSD(file_name_prefix_JSDSS+ToString(sample.first.first)+"_"+ToString(sample.first.second)+"_"+
-                                          entry.first.channel+"_spin"+spin+".csv", std::ofstream::out);
+                                          entry.first.channel+"_spin"+spin+args.suffix()+".csv", std::ofstream::out);
                     for (const auto& value: sample.second){
                         for (const auto& var: value.first){
                             ListJSD << var << "," ;

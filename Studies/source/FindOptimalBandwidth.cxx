@@ -24,8 +24,10 @@ struct Arguments { // list of all program arguments
     REQ_ARG(unsigned, number_threads);
     REQ_ARG(bool, range);
     REQ_ARG(int, which_range);
+    REQ_ARG(std::string, suffix);
     OPT_ARG(Long64_t, number_events, 15000);
     OPT_ARG(bool, is_SM, false);
+
 
 };
 
@@ -43,7 +45,7 @@ public:
                                  {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
     std::vector<ChannelSpin> set_R{{"tauTau",0}, {"muTau",0},{"eTau",0},
                                    {"tauTau",2}, {"muTau",2},{"eTau",2},
-                                 {"muTau",bkg_spin},{"eTau",bkg_spin}, {"tauTau",bkg_spin}};
+                                   {"muTau",bkg_spin},{"eTau",bkg_spin},{"tauTau",bkg_spin}};
     std::vector<ChannelSpin> set;
 
     FindOptimalBandwidth(const Arguments& _args): args(_args), vars(1, 12345678,{}, {"channel", "mass", "spin"}),
@@ -76,11 +78,18 @@ public:
                 for(const Event& event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
                     LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
-                    if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(), bb.mass()))
-                        continue;
+                    if (args.suffix() == "_ANcut"){
+                        if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(event.SVfit_p4.mass(),bb.mass())) continue;
+                    }
                     if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
                     if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
-                    vars.AddEvent(event, entry.id, entry.spin, s.channel, entry.weight);
+                    auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(s.channel) ,event) ;
+                    EventInfoBase& eventbase = *eventInfoPtr;
+                    if (args.suffix() == "_newcut"){
+                        if (!cuts::hh_bbtautau_2016::hh_tag::new_m_hh_window().IsInside(eventbase.GetHiggsTTMomentum(false).M(),bb.mass()))
+                            continue;
+                    }
+                    vars.AddEvent(eventbase, entry.id, entry.spin, entry.weight);
                     tot_entries++;
                 }
                 std::cout << entry << " number of events: " << tot_entries << std::endl;
@@ -135,7 +144,7 @@ public:
                 std::stringstream ss;
                 ss << std::fixed << std::setprecision(0) << s.spin;
                 std::string spin = ss.str();
-                std::ofstream ListOptimalBandwidth(file_name_prefix+ToString(sample.first)+"_"+s.channel+"_spin"+spin+".csv", std::ofstream::out);
+                std::ofstream ListOptimalBandwidth(file_name_prefix+ToString(sample.first)+"_"+s.channel+"_spin"+spin+args.suffix()+".csv", std::ofstream::out);
                 for(const auto& value: bandwidth[s][sample.first]){
                    for(const auto& var_name: value.first)
                    {

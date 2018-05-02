@@ -17,6 +17,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, output_file);  
     OPT_ARG(std::string, apply_pu_id_cut,"no");
+    OPT_ARG(unsigned, n_threads, 1);
     REQ_ARG(std::vector<std::string>, input_file); 
 };
 
@@ -38,9 +39,13 @@ public:
     using Event = ntuple::Event;
     using EventTuple = ntuple::EventTuple;
 
-    BTagEfficiency(const Arguments& _args) : args(_args), 
-    outfile(root_ext::CreateRootFile(args.output_file()))
+    BTagEfficiency(const Arguments& _args) :
+        args(_args), outfile(root_ext::CreateRootFile(args.output_file()))
     {
+        ROOT::EnableThreadSafety();
+        if(args.n_threads() > 1)
+            ROOT::EnableImplicitMT(args.n_threads());
+
         anaDataMap["All"+eff] = std::make_shared<BTagData>(outfile,tools::FullPath({"All",effMap[eff]}));
         anaDataMap["All"+valCha] = std::make_shared<BTagData>(outfile,tools::FullPath({"All",valMap[valCha]}));
         for(const auto& tau_sign : tau_signs){
@@ -73,6 +78,13 @@ public:
         flavour_names.insert(flavour_all);
         static const std::string num = "Num", denom = "Denom";
 
+        static const std::set<std::string> disabled_branches;
+        static const std::set<std::string> enabled_branches = {
+            "jets_p4", "SVfit_p4", "extramuon_veto", "extraelec_veto", "q_1", "q_2", "tauId_keys_1", "tauId_values_1",
+            "tauId_keys_2", "tauId_values_2", "jets_mva", "jets_csv", "jets_hadronFlavour"
+        };
+
+
         bool apply_pu_id_cut = args.apply_pu_id_cut() != "no";
         DiscriminatorWP pu_wp = DiscriminatorWP::Medium;
         if(apply_pu_id_cut) pu_wp = analysis::Parse<DiscriminatorWP>(args.apply_pu_id_cut());
@@ -82,11 +94,14 @@ public:
                 std::shared_ptr<TFile> in_file(root_ext::OpenRootFile(name));
                 std::shared_ptr<EventTuple> tuple;
                 try {
-                    tuple = ntuple::CreateEventTuple(channel, in_file.get(), true, ntuple::TreeState::Full);
+                    tuple = std::make_shared<EventTuple>(channel, in_file.get(), true, disabled_branches,
+                                                         enabled_branches);
                 } catch(std::exception&) {
                     std::cerr << "WARNING: tree "<<channel<<" not found in file"<<name<< std::endl;
                     continue;
                 }
+
+                std::cout << "Processing " << name << "/" << channel << std::endl;
 
                 for(const Event& event : *tuple){
                     const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
@@ -96,7 +111,7 @@ public:
                             || std::abs(event.jets_p4.at(1).eta()) >= cuts::btag_2016::eta) continue;
 
                     auto bb = event.jets_p4.at(0) + event.jets_p4.at(1);
-                    if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(),bb.mass())) continue;
+                    if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(event.SVfit_p4.mass(),bb.mass())) continue;
 
                     std::string tau_sign = (event.q_1+event.q_2) == 0 ? "OS" : "SS";
 
@@ -109,8 +124,9 @@ public:
                                         tau_iso_disc_hash, tau_iso_cut);
                     std::string tau_iso = passTauId ? "Iso" : "NonIso";
 
-                    for (size_t i=0; i<2; i++){
+                    for (size_t i = 0; i < event.jets_p4.size(); ++i){
                         const auto& jet = event.jets_p4.at(i);
+                        if(std::abs(jet.eta()) >= cuts::btag_2016::eta) continue;
 
                         //PU correction
                         if(apply_pu_id_cut){
