@@ -20,17 +20,8 @@ namespace analysis {
 class EffiencyStudy {
  public:
 
-     struct EffValue {
-         double value, error_up, error_low;
-
-         EffValue() : value(0), error_up(0), error_low(0) {}
-         EffValue(const TEfficiency& eff, int bin) :
-            value(eff.GetEfficiency(bin)), error_up(eff.GetEfficiencyErrorUp(bin)),
-            error_low(eff.GetEfficiencyErrorLow(bin)) {}
-     };
-
      using TEffPtr = std::shared_ptr<TEfficiency>;
-     using EffDesc = std::map<std::string, EffValue>;
+     using EffDesc = std::map<std::string,analysis::StVariable>;
      using FileDescCollection = std::map<std::string, EffDesc>;
 
      struct ChannelDesc {
@@ -136,7 +127,10 @@ class EffiencyStudy {
                         throw exception("Bin '%1%' not found.") % desc.binNames.at(i);
                     for(auto eff : eff_vec) {
 
-                        fileInformation[eff->GetTitle()][Cut] = EffValue(*eff, bin_id);
+                             double value = eff->GetEfficiency(bin_id);
+                              double error_up = eff->GetEfficiencyErrorUp(bin_id);
+                              double error_low = eff->GetEfficiencyErrorLow(bin_id);
+                        fileInformation[eff->GetTitle()][Cut] = analysis::StVariable(value, error_up, error_low);
 
                     }
                 }
@@ -146,37 +140,37 @@ class EffiencyStudy {
     }
 
     private:
+
     void PrintValues(const FileDescCollection& fileInformation) const
     {
         std::cout << " \\begin{table}\n";
-        std::cout << "  " << " \\begin{center}\n";
-        std::cout << "  "  << "  "  << " \\begin{tabular}{|c|c|c|c|c|c|}   \\hline\n";
+        std::cout << "      \\begin{center}\n";
+        std::cout << "          \\begin{tabular}{|c|c|c|c|c|c|}   \\hline\n";
 
         for(size_t n = 0; n < args.Cuts().size(); n++){
-          std::cout << "  "  << "  "  << "&" << args.Cuts().at(n);
+          std::cout << "    &"<< args.Cuts().at(n);
         }
          std::cout << " \\\\ \\hline \\hline\n";
-         std::cout << "  "  << "  "  <<  "\\textbf{SM} & &  &  & &  \\\\ \n";
+         std::cout << "    \\textbf{SM} & &  &  & &  \\\\ \n";
          for(const auto& item: fileInformation) {
              const std::string& hist_name = item.first;
              std::string result = boost::replace_all_copy(hist_name, "_", "\\_");
-             std::cout << "  " << "  "  << result;
+             std::cout << "    " << result;
              for(size_t cutId = 0; cutId < args.Cuts().size(); cutId++){
                  const std::string& Cut = args.Cuts().at(cutId);
                  const auto& eff = item.second.at(Cut);
 
                  const analysis::StVariable stValue(eff.value*100, eff.error_up*100, eff.error_low*100);
                  std::string GetEfficiency = stValue.ToLatexString();
-                 std::cout << " & "<< "$" << " " <<GetEfficiency
-                              << "\\%" << " " << "$" ;
+                 std::cout << " &   $ " <<GetEfficiency << "\\% $" ;
             }
              std::cout << " \\\\"<< '\n';
          }
-         std::cout << "  "  << "  "  << "\\hline \\hline" << '\n';
-         std::cout << "  "  << "  "  << " \\end{tabular}" << '\n';
-         std::cout << "  "  << "  "  << "  \\caption{ Channel: eTau}" << '\n';
-         std::cout << "  "  << " \\end{center}" << '\n';
-         std::cout << "\\end{table}" << '\n';
+         std::cout << "    \\hline \\hline \n";
+         std::cout << "          \\end{tabular}\n" ;
+         std::cout << "          \\caption{ Channel: eTau} \n" ;
+         std::cout << "      \\end{center}\n" ;
+         std::cout << "\\end{table}\n" ;
      }
 
     private:
@@ -185,4 +179,4 @@ class EffiencyStudy {
         std::set<std::string> active_channels;
 };
 }
- PROGRAM_MAIN(analysis::EfficiencyCuts, Arguments)
+ PROGRAM_MAIN(analysis::EffiencyStudy, Arguments)
