@@ -22,11 +22,6 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "TAxis.h"
 #include "RooPlot.h"
 #include "RooFitResult.h"
-#include "RooBernstein.h"
-#include "RooChebychev.h"
-#include "RooProdPdf.h"
-#include "RooNumIntConfig.h"
-
 
 struct Arguments {
     REQ_ARG(std::string, input_file);
@@ -40,14 +35,9 @@ struct Arguments {
     OPT_ARG(int, high_ht, 150);
     OPT_ARG(int, low_nJet, 0);
     OPT_ARG(int, high_nJet, 4);
-    OPT_ARG(size_t, ndf_polynomial, 2);
-    OPT_ARG(analysis::Range<double>, parameter_range, analysis::Range<double>(-10,10));
 };
 namespace analysis {
 using namespace RooFit;
-using RooReal = std::shared_ptr<RooRealVar>;
-using RooVect = std::vector<RooReal>;
-using RooPair = std::pair<RooReal,RooVect>;
 
 struct Contribution{
     std::string name;
@@ -56,13 +46,10 @@ struct Contribution{
     RooFormulaVar fraction;
     RooDataHist rooHistogram;
     RooHistPdf pdf;
-    RooBernstein bernstein_pdf;
-    RooChebychev chebychev_pdf;
-    RooProdPdf prod_pdf;
     RooExtendPdf expdf;
 
     Contribution(std::shared_ptr<TFile> input_file, const EventAnalyzerDataId& dataId, const std::string& hist_name,
-                  RooRealVar& x, const RooRealVar& scale_factor, const RooArgList& param_list) :
+                 const RooRealVar& x, const RooRealVar& scale_factor) :
     name(boost::str(boost::format("%1%_%2%_%3%") % dataId.Get<EventCategory>() % dataId.Get<EventSubCategory>()
                     % dataId.Get<std::string>())),
     histogram(root_ext::ReadObject<TH1D>(*input_file, dataId.GetName()+ "/" + hist_name)),
@@ -70,10 +57,7 @@ struct Contribution{
     fraction(("frac_"+name).c_str(),("fraction of "+name).c_str(),"@0*@1",RooArgList(scale_factor,norm)),
     rooHistogram(("rooHistogram_"+name).c_str(),("RooHistogram for "+name).c_str(),x,Import(*histogram)),
     pdf(("pdf_"+name).c_str(),("Pdf for "+name).c_str(),x,rooHistogram),
-    //bernstein_pdf(("BernStein_"+name).c_str(),("BerStein Pdf for "+name).c_str(),x,param_list),
-    chebychev_pdf(("Chebychev_"+name).c_str(),("Chebychev Pdf for "+name).c_str(),x,param_list),
-    prod_pdf(("prod_pdf_"+name).c_str(),("Product pdf for "+name).c_str(),RooArgList(pdf,chebychev_pdf)),
-    expdf(("expdf_"+name).c_str(),("Extended pdf for "+name).c_str(),prod_pdf,fraction)
+    expdf(("expdf_"+name).c_str(),("Extended pdf for "+name).c_str(),pdf,fraction)
     {
     }
 };
@@ -83,43 +67,32 @@ struct CategoryModel{
     std::string name;
     std::shared_ptr<RooAddPdf> sum_pdf;
     CategoryModel(std::shared_ptr<TFile> input_file, const EventAnalyzerDataId& catId,
-                  const std::vector<std::string>& contribution_names,const std::string& hist_name, RooRealVar& x,
-                  const std::map<std::string,RooPair>& scale_factor_map) :
+                  const std::vector<std::string>& contribution_names,const std::string& hist_name, const RooRealVar& x,
+                  const std::map<std::string,std::shared_ptr<RooRealVar>>& scale_factor_map) :
     name(ToString(catId.Get<EventCategory>())+"_"+ToString(catId.Get<EventSubCategory>()))
     {
         RooArgList pdf_list;
         for(const std::string& contrib_name : contribution_names){
-            RooReal scale_factor = scale_factor_map.at(contrib_name).first;
-            RooVect params = scale_factor_map.at(contrib_name).second;
-            RooArgList param_list;
-            for(auto& param: params) param_list.add(*param);
             EventAnalyzerDataId dataId = catId.Set(contrib_name);
-            std::string subcategory = ToString(catId.Get<EventSubCategory>());
-            mc_contributions[contrib_name] = std::make_shared<Contribution>(input_file,dataId,hist_name,x,
-                                                                             *scale_factor,param_list);
-            pdf_list.add(mc_contributions[contrib_name]->expdf);
+             mc_contributions[contrib_name] = std::make_shared<Contribution>(input_file,dataId,hist_name,x,
+                                                                             *(scale_factor_map.at(contrib_name)));
+             pdf_list.add(mc_contributions[contrib_name]->expdf);
         }
         sum_pdf = std::make_shared<RooAddPdf>(("sumpdf_"+name).c_str(),("Total Pdf for "+name).c_str(),pdf_list);
     }
 };
-class DY_estimation {
+class DY_norm_baseline {
 public:
-    DY_estimation(const Arguments& _args) :
+    DY_norm_baseline(const Arguments& _args) :
     args(_args), input_file(root_ext::OpenRootFile(args.input_file())),
     output_file(root_ext::CreateRootFile(args.output_file())),
-    x(args.var_name().c_str(), args.var_name().c_str(),args.fit_range().min(), args.fit_range().max()),
+    x(args.var_name().c_str(), args.var_name().c_str(), args.fit_range().min(), args.fit_range().max()),
     fit_model(args.fit_method())
     {
-        //x.setRange("FIT_RANGE",args.fit_range().min(),args.fit_range().max());
-
     }
 
     void Run()
     {
-
-        RooAbsReal::defaultIntegratorConfig()->setEpsRel(1e-4) ;
-        RooAbsReal::defaultIntegratorConfig()->getConfigSection("RooIntegrator1D").setRealValue("maxSteps",100) ;
-        RooAbsReal::defaultIntegratorConfig()->Print("v") ;
         static const std::string dy_contrib_prefix = "DY_MC";
         auto base_sub_category = EventSubCategory().SetCutResult(SelectionCut::mh, true)
                                                          .SetCutResult(SelectionCut::lowMET,true);
@@ -153,33 +126,47 @@ public:
             }
         }
         contribution_names.push_back("other_bkg_muMu");
+        //contribution_names.push_back("WW");
+        //contribution_names.push_back("WZ");
+        //contribution_names.push_back("Wjets");
+        //contribution_names.push_back("tW");
+        //contribution_names.push_back("EWK");
+        //contribution_names.push_back("ZH");
+        //contribution_names.push_back("ZZ");
+        //contribution_names.push_back("TT");
 
-        std::vector<std::string>pol_param_strings = {"0Jet","4Jet","other_bkg_muMu"};
-        std::map<std::string,RooVect>pol_params;
-        for(const std::string& param_string:pol_param_strings){
-            RooVect params;
-            for(size_t i=0;i<args.ndf_polynomial();i++){
-                RooReal y = std::make_shared<RooRealVar>(("param"+ToString(i)+"_"+param_string).c_str(),
-                                                 ("parameter"+ToString(i)+" "+param_string).c_str(),0,-0.5,0.5);
-                params.push_back(y);
-            }
-            pol_params[param_string] = params;
-        }
+        /*std::map<std::string,std::pair<double,double>>scale_factor_values =
+                                                          {{"DY_MC_0b_0Jet",{1.09725,2.37998e-03}} ,
+                                                           {"DY_MC_0b_4Jet",{0.806768,8.59454e-03}} ,
+                                                           {"DY_MC_1b_0Jet",{1.15362,2.37680e-02}} ,
+                                                           {"DY_MC_1b_4Jet",{1.06926,7.12087e-02}} ,
+                                                           {"DY_MC_2b_0Jet",{1.2323,5.77241e-02}} ,
+                                                           {"DY_MC_2b_4Jet",{0.962531,6.87868e-02}} ,
+                                                           {"WW",{1.0, 0 }},
+                                                           {"WZ",{1.0, 0 }},
+                                                           {"Wjets",{1.0, 0 }},
+                                                           {"tW",{1.0, 0 }},
+                                                           {"EWK",{1.0, 0 }},
+                                                           {"ZH",{1.0, 0 }},
+                                                           {"ZZ",{1.0, 0 }},
+                                                           {"TT",{1.0, 0 }},};*/
 
-        std::map<std::string, RooPair> scale_factor_map;
+
+        std::map<std::string, std::shared_ptr<RooRealVar>> scale_factor_map;
         for (const std::string& contrib_name: contribution_names){
-            RooReal scale_factor = std::make_shared<RooRealVar>
-                        (("sf_"+contrib_name).c_str(),("Scale Factor for contribution "+contrib_name).c_str(),1,
-                    args.scale_factor_range().min(),args.scale_factor_range().max());
-
-            RooVect params;
-            if(contrib_name.find("0Jet") != std::string::npos) params = pol_params["0Jet"];
-            if(contrib_name.find("4Jet") != std::string::npos) params = pol_params["4Jet"];
-            if(contrib_name.find("other_bkg_muMu") != std::string::npos) params = pol_params["other_bkg_muMu"];
-            scale_factor_map[contrib_name] = std::make_pair(scale_factor,params);
-
+            if(contrib_name.find("DY") != std::string::npos){
+            //    double value = scale_factor_values[contrib_name].first;
+            //    double error = scale_factor_values[contrib_name].second;
+                scale_factor_map[contrib_name] = std::make_shared<RooRealVar>
+                    (("sf_"+contrib_name).c_str(),("Scale Factor for contribution "+contrib_name).c_str(),
+                    1,args.scale_factor_range().min(),args.scale_factor_range().max());
+            }
+           else{
+                scale_factor_map[contrib_name] = std::make_shared<RooRealVar>
+                        (("sf_"+contrib_name).c_str(),("Scale Factor for contribution "+contrib_name).c_str(),
+                         1.0);
+            }
         }
-
         std::string data_folder = "Data_SingleMuon";
         std::map<std::string,TH1*> dataCategories;
         std::map<std::string,std::shared_ptr<CategoryModel>> categories;
@@ -207,7 +194,7 @@ public:
         RooDataHist combData("combData","combined data",x,rooCategories,dataCategories);
 
         // Perform simultaneous fit
-        RooFitResult* result = simPdf.fitTo(combData,Strategy(2),Extended(kTRUE),Save(),Verbose(true),PrintLevel(3)) ;
+        RooFitResult* result = simPdf.fitTo(combData,Extended(kTRUE),Save(),Verbose(true),PrintLevel(3)) ;
 
         //Saving Results
         output_file->mkdir(ToString(fit_model).c_str());
@@ -231,17 +218,19 @@ public:
         }
 
         auto scale_factors_hist = std::make_shared<TH1D>("scale_factors","Scale factors afte the fit",
-                                                                     nRows,0.5,0.5+nRows);
+                                                                     nRows+1,0.5,0.5+nRows+1);
         int i=1;
         for (const std::string& contrib_name: contribution_names){
-            cov_hist->GetXaxis()->SetBinLabel(i,contrib_name.c_str());
-            cov_hist->GetYaxis()->SetBinLabel(i,contrib_name.c_str());
-            cor_hist->GetXaxis()->SetBinLabel(i,contrib_name.c_str());
-            cor_hist->GetYaxis()->SetBinLabel(i,contrib_name.c_str());
+            if(contrib_name != "other_bkg_muMu"){
+                cov_hist->GetXaxis()->SetBinLabel(i,contrib_name.c_str());
+                cov_hist->GetYaxis()->SetBinLabel(i,contrib_name.c_str());
+                cor_hist->GetXaxis()->SetBinLabel(i,contrib_name.c_str());
+                cor_hist->GetYaxis()->SetBinLabel(i,contrib_name.c_str());
+            }
 
             scale_factors_hist->GetXaxis()->SetBinLabel(i,contrib_name.c_str());
-            scale_factors_hist->SetBinContent(i,scale_factor_map[contrib_name].first->getValV());
-            scale_factors_hist->SetBinError(i,scale_factor_map[contrib_name].first->getError());
+            scale_factors_hist->SetBinContent(i,scale_factor_map[contrib_name]->getValV());
+            scale_factors_hist->SetBinError(i,scale_factor_map[contrib_name]->getError());
             i++;
         }
         cov_hist->Write();
@@ -280,10 +269,7 @@ private:
 
     std::vector<std::string> contribution_names;
     DYFitModel fit_model;
-
-    std::vector<std::shared_ptr<RooRealVar>> params;
 };
 
 } // namesapce analysis
-PROGRAM_MAIN(analysis::DY_estimation, Arguments) // definition of the main program function
-
+PROGRAM_MAIN(analysis::DY_norm_baseline, Arguments) // definition of the main program function
