@@ -73,6 +73,23 @@ public:
         }
         else if(fit_method != DYFitModel::None)
             throw exception("Unable to find the fit method");
+
+        fractional_weight_map["0Jet"] = 1.36;
+        fractional_weight_map["1Jet_0bJet"] = 1.50;
+        fractional_weight_map["1Jet_1bJet"] = 2.02;
+        fractional_weight_map["2Jet_0bJet"] = 0.7;
+        fractional_weight_map["2Jet_1bJet"] = 0.86;
+        fractional_weight_map["2Jet_2bJet"] = 0.59;
+
+        auto NLO_weight_file = (root_ext::OpenRootFile("hh-bbtautau/McCorrections/data/comp_LO_NLO_5.root"));
+        std::string histo_name = "h_ratio";
+        pt_weight_histo_map["0Jet"] = std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*NLO_weight_file,histo_name+"0Jet"));
+        pt_weight_histo_map["1Jet_0bJet"] = std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*NLO_weight_file,histo_name+"1Jet_0bJet"));
+        pt_weight_histo_map["1Jet_1bJet"] = std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*NLO_weight_file,histo_name+"1Jet_1bJet"));
+        pt_weight_histo_map["2Jet_0bJet"] = std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*NLO_weight_file,histo_name+"2Jet_0bJet"));
+        pt_weight_histo_map["2Jet_1bJet"] = std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*NLO_weight_file,histo_name+"2Jet_1bJet"));
+        pt_weight_histo_map["2Jet_2bJet"] = std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*NLO_weight_file,histo_name+"2Jet_2bJet"));
+
     }
 
     void ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& event, double weight,
@@ -88,7 +105,39 @@ public:
                 n_genJets++;
             }
         }*/
-        //unsigned int n_bJets = event->lhe_n_b_partons;
+        unsigned int lhe_n_partons = event->lhe_n_partons;
+        unsigned int lhe_n_b_partons = event->lhe_n_b_partons;
+        std::string lhe_category = "";
+        if(lhe_n_partons==0){
+            lhe_category = "0Jet";
+        }
+        else if (lhe_n_partons == 1){
+            if(lhe_n_b_partons==0){
+                lhe_category= "1Jet_0bJet";
+            }
+            else if (lhe_n_b_partons==1){
+                lhe_category="1Jet_1bJet";
+            }
+        }
+        else if (lhe_n_partons>=2){
+            if(lhe_n_b_partons==0){
+                lhe_category="2Jet_0bJet";
+            }
+            else if(lhe_n_b_partons==1){
+                lhe_category="2Jet_1bJet";
+            }
+            else if (lhe_n_b_partons>=2){
+                lhe_category="2Jet_2bJet";
+            }
+        }
+        double fractional_weight = fractional_weight_map[lhe_category];
+        double pt_weight =1;
+        for(size_t i=0;i<event->genParticles_p4.size();i++){
+            double pt = event->genParticles_p4.at(i).Pt();
+            pt_weight = pt_weight_histo_map[lhe_category]->GetBinContent(pt_weight_histo_map[lhe_category]->FindBin(pt));
+        }
+
+
         //unsigned int n_bJets = event->jets_nTotal_hadronFlavour_b;
         //double lheHT = event->lhe_HT;
 
@@ -145,8 +194,7 @@ public:
             if(jet_found) norm_sf = scale_factor_maps.at(sample_wp.full_name);
             else norm_sf = scale_factor_maps.at(sample_wp.full_name+"_"+ToString(it->first.second)+NJet_suffix());
         }
-        dataIds[finalId] = std::make_tuple(weight * norm_sf, event.GetMvaScore());
-
+        dataIds[finalId] = std::make_tuple(weight * fractional_weight * pt_weight * norm_sf, event.GetMvaScore());
     }
 
     template<typename T>
@@ -176,5 +224,9 @@ private:
 
     //static constexpr double b_Flavour = 5;
     int b_Flavour=5;
+
+    std::map<std::string, std::shared_ptr<TH1D>> pt_weight_histo_map;
+    std::map<std::string, double>  fractional_weight_map;
+
 };
 }
