@@ -130,11 +130,17 @@ public:
                 lhe_category="2Jet_2bJet";
             }
         }
-        double fractional_weight = fractional_weight_map[lhe_category];
-        double pt_weight =1;
-        for(size_t i=0;i<event->genParticles_p4.size();i++){
-            double pt = event->genParticles_p4.at(i).Pt();
-            pt_weight = pt_weight_histo_map[lhe_category]->GetBinContent(pt_weight_histo_map[lhe_category]->FindBin(pt));
+        std::cout<<" Category = "<<lhe_category<<std::endl;
+        double fractional_weight = 0;
+        double pt_weight =0;
+        if (lhe_n_partons <= 2){
+            fractional_weight = fractional_weight_map[lhe_category];
+
+            for(size_t i=0;i<event->genParticles_p4.size();i++){
+                double pt = event->genParticles_p4.at(i).Pt();
+                pt_weight = pt_weight_histo_map[lhe_category]->GetBinContent(pt_weight_histo_map[lhe_category]->FindBin(pt));
+                std::cout<<"got pt weight"<<std::endl;
+            }
         }
 
 
@@ -194,9 +200,7 @@ public:
             if(jet_found) norm_sf = scale_factor_maps.at(sample_wp.full_name);
             else norm_sf = scale_factor_maps.at(sample_wp.full_name+"_"+ToString(it->first.second)+NJet_suffix());
         }
-        double final_weight = 0;
-        if(lhe_n_partons <= 2) final_weight = fractional_weight*pt_weight;
-        dataIds[finalId] = std::make_tuple(weight * final_weight* norm_sf, event.GetMvaScore());
+        dataIds[finalId] = std::make_tuple(weight * fractional_weight * pt_weight * norm_sf, event.GetMvaScore());
     }
 
     template<typename T>
