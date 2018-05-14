@@ -74,15 +74,15 @@ public:
         else if(fit_method != DYFitModel::None)
             throw exception("Unable to find the fit method");
 
-        fractional_weight_map["0Jet"] = 1.36;
-        fractional_weight_map["1Jet_0bJet"] = 1.50;
-        fractional_weight_map["1Jet_1bJet"] = 2.02;
-        fractional_weight_map["2Jet_0bJet"] = 0.7;
-        fractional_weight_map["2Jet_1bJet"] = 0.86;
-        fractional_weight_map["2Jet_2bJet"] = 0.59;
+        fractional_weight_map["0Jet"] = 0.93;
+        fractional_weight_map["1Jet_0bJet"] = 1.02;
+        fractional_weight_map["1Jet_1bJet"] = 1.38;
+        fractional_weight_map["2Jet_0bJet"] = 0.99;
+        fractional_weight_map["2Jet_1bJet"] = 1.15;
+        fractional_weight_map["2Jet_2bJet"] = 1.39;
 
-        auto NLO_weight_file = (root_ext::OpenRootFile("hh-bbtautau/McCorrections/data/comp_LO_NLO_5.root"));
-        std::string histo_name = "h_ratio";
+        auto NLO_weight_file = (root_ext::OpenRootFile("hh-bbtautau/McCorrections/data/comp_LO_NLO_8.root"));
+        std::string histo_name = "h_ratio_pt";
         pt_weight_histo_map["0Jet"] = std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*NLO_weight_file,histo_name+"0Jet"));
         pt_weight_histo_map["1Jet_0bJet"] = std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*NLO_weight_file,histo_name+"1Jet_0bJet"));
         pt_weight_histo_map["1Jet_1bJet"] = std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*NLO_weight_file,histo_name+"1Jet_1bJet"));
@@ -119,14 +119,14 @@ public:
                 lhe_category="1Jet_1bJet";
             }
         }
-        else if (lhe_n_partons>=2){
+        else if (lhe_n_partons==2){
             if(lhe_n_b_partons==0){
                 lhe_category="2Jet_0bJet";
             }
             else if(lhe_n_b_partons==1){
                 lhe_category="2Jet_1bJet";
             }
-            else if (lhe_n_b_partons>=2){
+            else if (lhe_n_b_partons==2){
                 lhe_category="2Jet_2bJet";
             }
         }
@@ -194,7 +194,9 @@ public:
             if(jet_found) norm_sf = scale_factor_maps.at(sample_wp.full_name);
             else norm_sf = scale_factor_maps.at(sample_wp.full_name+"_"+ToString(it->first.second)+NJet_suffix());
         }
-        dataIds[finalId] = std::make_tuple(weight * fractional_weight * pt_weight * norm_sf, event.GetMvaScore());
+        double final_weight = 0;
+        if(lhe_n_partons <= 2) final_weight = fractional_weight*pt_weight;
+        dataIds[finalId] = std::make_tuple(weight * final_weight* norm_sf, event.GetMvaScore());
     }
 
     template<typename T>
