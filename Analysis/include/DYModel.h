@@ -131,8 +131,8 @@ public:
             }
         }
         std::cout<<" Category = "<<lhe_category<<std::endl;
-        double fractional_weight = 0;
-        double pt_weight =0;
+        double fractional_weight = 1;
+        double pt_weight =1;
         if (lhe_n_partons <= 2){
             fractional_weight = fractional_weight_map[lhe_category];
 
