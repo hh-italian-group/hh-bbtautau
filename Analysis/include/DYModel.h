@@ -166,9 +166,12 @@ public:
         }*/
 
 
-        auto n_selected_gen_jets =  event->genJets_p4.size();
+        /*auto n_selected_gen_jets =  event->genJets_p4.size();
         size_t n_bJets =  static_cast<size_t>(std::count(event->genJets_hadronFlavour.begin(),
-                                                         event->genJets_hadronFlavour.end(), b_Flavour));
+                                                         event->genJets_hadronFlavour.end(), b_Flavour));*/
+        auto n_selected_gen_jets = event->lhe_n_partons;
+        size_t n_bJets = event->lhe_n_b_partons;
+
         std::pair<size_t,size_t> p(std::min<size_t>(2,n_bJets),0);
         if(ht_found){
             double lheHT_otherjets = event.CalculateGenHT(2);
