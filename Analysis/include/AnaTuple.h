@@ -124,12 +124,12 @@ public:
 
         if(event.HasBjetPair()) {
             tuple().m_ttbb = static_cast<float>(event.GetResonanceMomentum(true, false).M());
-            const auto& kinfit = event.GetKinFitResults();
-            tuple().m_ttbb_kinfit = kinfit.HasValidMass() ? static_cast<float>(kinfit.mass) : def_val;
+            /*const auto& kinfit = event.GetKinFitResults();
+            tuple().m_ttbb_kinfit = kinfit.HasValidMass() ? static_cast<float>(kinfit.mass) : def_val;*/
             tuple().MT2 = static_cast<float>(event.GetMT2());
         } else {
             tuple().m_ttbb = def_val;
-            tuple().m_ttbb_kinfit = def_val;
+            //tuple().m_ttbb_kinfit = def_val;
             tuple().MT2 = def_val;
         }
 
