@@ -102,10 +102,10 @@ public:
         if(fit_model == DYFitModel::NbjetBins) {
             subCategories = { base_sub_category };
             for(size_t nb = 0; nb <= max_n_b; ++nb) {
-                for(int nJet : nJet_points){
-                    const std::string name = boost::str(boost::format("%1%_%2%b_%3%Jet") % dy_contrib_prefix % nb % nJet);
+                //for(int nJet : nJet_points){
+                    const std::string name = boost::str(boost::format("%1%_%2%b") % dy_contrib_prefix % nb);
                     contribution_names.push_back(name);
-                }
+                //}
             }
 
         } else {
@@ -166,7 +166,7 @@ public:
            else{
                 scale_factor_map[contrib_name] = std::make_shared<RooRealVar>
                         (("sf_"+contrib_name).c_str(),("Scale Factor for contribution "+contrib_name).c_str(),
-                         1.0);//,args.scale_factor_range().min(),args.scale_factor_range().max());
+                         1.0,args.scale_factor_range().min(),args.scale_factor_range().max());
             }
         }
         std::string data_folder = "Data_SingleMuon";
@@ -223,7 +223,7 @@ public:
                                                                      nRows,0.5,0.5+nRows);
         int i=1;
         for (const std::string& contrib_name: contribution_names){
-            if(contrib_name != "other_bkg_muMu"){
+            //if(contrib_name != "other_bkg_muMu"){
                 cov_hist->GetXaxis()->SetBinLabel(i,contrib_name.c_str());
                 cov_hist->GetYaxis()->SetBinLabel(i,contrib_name.c_str());
                 cor_hist->GetXaxis()->SetBinLabel(i,contrib_name.c_str());
@@ -234,7 +234,7 @@ public:
             scale_factors_hist->SetBinContent(i,scale_factor_map[contrib_name]->getValV());
             scale_factors_hist->SetBinError(i,scale_factor_map[contrib_name]->getError());
             i++;
-            }
+            //}
         }
         cov_hist->Write();
         cor_hist->Write();
