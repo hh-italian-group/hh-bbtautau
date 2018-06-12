@@ -12,13 +12,15 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "Analysis/include/SampleDescriptor.h"
 #include "Analysis/include/AnaTuple.h"
 #include "Analysis/include/EventAnalyzerDataId.h"
+#include "Analysis/include/EventAnalyzerCore.h"
 
 namespace analysis{
 
 class DYModel {
 public:
-    DYModel(const SampleDescriptor& sample)
+    DYModel(const SampleDescriptor& sample, const CoreAnalyzerArguments& args)
     {
+        sampleOrder = sample.sampleOrder;
         const auto& param_names = sample.GetModelParameterNames();
         const auto b_param_iter = param_names.find("b");
         if(b_param_iter == param_names.end())
@@ -60,7 +62,7 @@ public:
         }
         if(fit_method == DYFitModel::NbjetBins || fit_method == DYFitModel::NbjetBins_htBins ||
                 fit_method == DYFitModel::NbjetBins_NjetBins){
-            auto input_file = root_ext::OpenRootFile(sample.norm_sf_file);
+            auto input_file = root_ext::OpenRootFile(args.working_path()+sample.norm_sf_file);
             auto scale_factor_histo =  std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*input_file,ToString(fit_method)
                                                                                     +"/scale_factors"));
             int nbins = scale_factor_histo->GetNbinsX();
@@ -74,21 +76,23 @@ public:
         else if(fit_method != DYFitModel::None)
             throw exception("Unable to find the fit method");
 
-        fractional_weight_map["0Jet"] = 0.93;
-        fractional_weight_map["1Jet_0bJet"] = 1.02;
-        fractional_weight_map["1Jet_1bJet"] = 1.38;
-        fractional_weight_map["2Jet_0bJet"] = 0.99;
-        fractional_weight_map["2Jet_1bJet"] = 1.15;
-        fractional_weight_map["2Jet_2bJet"] = 1.39;
+        if(sampleOrder == "LO"){
+            fractional_weight_map["0Jet"] = 0.93;
+            fractional_weight_map["1Jet_0bJet"] = 1.02;
+            fractional_weight_map["1Jet_1bJet"] = 1.38;
+            fractional_weight_map["2Jet_0bJet"] = 0.99;
+            fractional_weight_map["2Jet_1bJet"] = 1.15;
+            fractional_weight_map["2Jet_2bJet"] = 1.39;
 
-        auto NLO_weight_file = (root_ext::OpenRootFile("hh-bbtautau/McCorrections/data/comp_LO_NLO_8.root"));
-        std::string histo_name = "h_ratio_pt";
-        pt_weight_histo_map["0Jet"] = std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*NLO_weight_file,histo_name+"0Jet"));
-        pt_weight_histo_map["1Jet_0bJet"] = std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*NLO_weight_file,histo_name+"1Jet_0bJet"));
-        pt_weight_histo_map["1Jet_1bJet"] = std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*NLO_weight_file,histo_name+"1Jet_1bJet"));
-        pt_weight_histo_map["2Jet_0bJet"] = std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*NLO_weight_file,histo_name+"2Jet_0bJet"));
-        pt_weight_histo_map["2Jet_1bJet"] = std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*NLO_weight_file,histo_name+"2Jet_1bJet"));
-        pt_weight_histo_map["2Jet_2bJet"] = std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*NLO_weight_file,histo_name+"2Jet_2bJet"));
+            auto NLO_weight_file = (root_ext::OpenRootFile(args.working_path()+sample.NLO_weight_file));
+            std::string histo_name = "h_ratio_pt";
+            pt_weight_histo_map["0Jet"] = std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*NLO_weight_file,histo_name+"0Jet"));
+            pt_weight_histo_map["1Jet_0bJet"] = std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*NLO_weight_file,histo_name+"1Jet_0bJet"));
+            pt_weight_histo_map["1Jet_1bJet"] = std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*NLO_weight_file,histo_name+"1Jet_1bJet"));
+            pt_weight_histo_map["2Jet_0bJet"] = std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*NLO_weight_file,histo_name+"2Jet_0bJet"));
+            pt_weight_histo_map["2Jet_1bJet"] = std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*NLO_weight_file,histo_name+"2Jet_1bJet"));
+            pt_weight_histo_map["2Jet_2bJet"] = std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*NLO_weight_file,histo_name+"2Jet_2bJet"));
+        }
 
     }
 
@@ -105,42 +109,34 @@ public:
                 n_genJets++;
             }
         }*/
-        unsigned int lhe_n_partons = event->lhe_n_partons;
-        unsigned int lhe_n_b_partons = event->lhe_n_b_partons;
-        std::string lhe_category = "";
-        if(lhe_n_partons==0){
-            lhe_category = "0Jet";
-        }
-        else if (lhe_n_partons == 1){
-            if(lhe_n_b_partons==0){
-                lhe_category= "1Jet_0bJet";
-            }
-            else if (lhe_n_b_partons==1){
-                lhe_category="1Jet_1bJet";
-            }
-        }
-        else if (lhe_n_partons==2){
-            if(lhe_n_b_partons==0){
-                lhe_category="2Jet_0bJet";
-            }
-            else if(lhe_n_b_partons==1){
-                lhe_category="2Jet_1bJet";
-            }
-            else if (lhe_n_b_partons==2){
-                lhe_category="2Jet_2bJet";
-            }
-        }
-        std::cout<<" Category = "<<lhe_category<<std::endl;
-        double fractional_weight = 1;
-        double pt_weight =1;
-        if (lhe_n_partons <= 2){
-            fractional_weight = fractional_weight_map[lhe_category];
 
-            for(size_t i=0;i<event->genParticles_p4.size();i++){
-                double pt = event->genParticles_p4.at(i).Pt();
-                pt_weight = pt_weight_histo_map[lhe_category]->GetBinContent(pt_weight_histo_map[lhe_category]->FindBin(pt));
-                std::cout<<"got pt weight"<<std::endl;
+        auto n_selected_gen_jets = event->lhe_n_partons;
+        size_t n_bJets = event->lhe_n_b_partons;
+
+        if(sampleOrder == "LO"){
+            std::string lhe_category = "";
+            if(n_selected_gen_jets==0) lhe_category = "0Jet";
+            else if (n_selected_gen_jets == 1){
+                if(n_bJets==0) lhe_category= "1Jet_0bJet";
+                else if (n_bJets==1) lhe_category="1Jet_1bJet";
             }
+            else if (n_selected_gen_jets==2){
+                if(n_bJets==0) lhe_category="2Jet_0bJet";
+                else if(n_bJets==1) lhe_category="2Jet_1bJet";
+                else if (n_bJets==2) lhe_category="2Jet_2bJet";
+            }
+
+            double fractional_weight = 1;
+            double pt_weight =1;
+            if (n_selected_gen_jets <= 2){
+                fractional_weight = fractional_weight_map[lhe_category];
+
+                for(size_t i=0;i<event->genParticles_p4.size();i++){
+                    double pt = event->genParticles_p4.at(i).Pt();
+                    pt_weight = pt_weight_histo_map[lhe_category]->GetBinContent(pt_weight_histo_map[lhe_category]->FindBin(pt));
+                }
+            }
+            weight = weight*fractional_weight*pt_weight;
         }
 
 
@@ -169,8 +165,7 @@ public:
         /*auto n_selected_gen_jets =  event->genJets_p4.size();
         size_t n_bJets =  static_cast<size_t>(std::count(event->genJets_hadronFlavour.begin(),
                                                          event->genJets_hadronFlavour.end(), b_Flavour));*/
-        auto n_selected_gen_jets = event->lhe_n_partons;
-        size_t n_bJets = event->lhe_n_b_partons;
+
 
         std::pair<size_t,size_t> p(std::min<size_t>(2,n_bJets),0);
         if(ht_found){
@@ -193,6 +188,7 @@ public:
         auto sample_wp = it->second;
         const auto finalId = anaDataId.Set(sample_wp.full_name);
         double norm_sf = 1;
+
         if(fit_method == DYFitModel::NbjetBins)
             norm_sf = scale_factor_maps.at(sample_wp.full_name);
         else if(fit_method == DYFitModel::NbjetBins_htBins){
@@ -203,7 +199,7 @@ public:
             if(jet_found) norm_sf = scale_factor_maps.at(sample_wp.full_name);
             else norm_sf = scale_factor_maps.at(sample_wp.full_name+"_"+ToString(it->first.second)+NJet_suffix());
         }
-        dataIds[finalId] = std::make_tuple(weight * fractional_weight * pt_weight * norm_sf, event.GetMvaScore());
+        dataIds[finalId] = std::make_tuple(weight * norm_sf, event.GetMvaScore());
     }
 
     template<typename T>
@@ -236,6 +232,7 @@ private:
 
     std::map<std::string, std::shared_ptr<TH1D>> pt_weight_histo_map;
     std::map<std::string, double>  fractional_weight_map;
+    std::string sampleOrder;
 
 };
 }
