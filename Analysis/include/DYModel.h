@@ -18,7 +18,7 @@ namespace analysis{
 
 class DYModel {
 public:
-    DYModel(const SampleDescriptor& sample, const CoreAnalyzerArguments& args)
+    DYModel(const SampleDescriptor& sample, std::string working_path)
     {
         sampleOrder = sample.sampleOrder;
         const auto& param_names = sample.GetModelParameterNames();
@@ -62,7 +62,7 @@ public:
         }
         if(fit_method == DYFitModel::NbjetBins || fit_method == DYFitModel::NbjetBins_htBins ||
                 fit_method == DYFitModel::NbjetBins_NjetBins){
-            auto input_file = root_ext::OpenRootFile(args.working_path()+sample.norm_sf_file);
+            auto input_file = root_ext::OpenRootFile(working_path+sample.norm_sf_file);
             auto scale_factor_histo =  std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*input_file,ToString(fit_method)
                                                                                     +"/scale_factors"));
             int nbins = scale_factor_histo->GetNbinsX();
@@ -84,7 +84,7 @@ public:
             fractional_weight_map["2Jet_1bJet"] = 1.15;
             fractional_weight_map["2Jet_2bJet"] = 1.39;
 
-            auto NLO_weight_file = (root_ext::OpenRootFile(args.working_path()+sample.NLO_weight_file));
+            auto NLO_weight_file = (root_ext::OpenRootFile(working_path+sample.NLO_weight_file));
             std::string histo_name = "h_ratio_pt";
             pt_weight_histo_map["0Jet"] = std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*NLO_weight_file,histo_name+"0Jet"));
             pt_weight_histo_map["1Jet_0bJet"] = std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*NLO_weight_file,histo_name+"1Jet_0bJet"));
@@ -228,7 +228,7 @@ private:
     static const std::string& NJet_suffix() { static const std::string s = "Jet"; return s; }
 
     //static constexpr double b_Flavour = 5;
-    int b_Flavour=5;
+    //int b_Flavour=5;
 
     std::map<std::string, std::shared_ptr<TH1D>> pt_weight_histo_map;
     std::map<std::string, double>  fractional_weight_map;

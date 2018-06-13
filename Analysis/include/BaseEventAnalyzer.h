@@ -86,7 +86,7 @@ public:
         for(auto& x: sample_descriptors) {
             SampleDescriptor& sample = x.second;
              if(sample.sampleType == SampleType::DY)
-                 dymod = std::make_shared<DYModel>(sample,args);
+                 dymod = std::make_shared<DYModel>(sample,args.working_path());
         }
 
     }

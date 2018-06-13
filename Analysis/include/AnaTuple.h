@@ -120,16 +120,16 @@ public:
         tuple().weight = def_val;
         tuple().mva_score = def_val;
         tuple().has_2jets = event.HasBjetPair();
-        tuple().m_sv = static_cast<float>(event.GetHiggsTTMomentum(false).M());
+        tuple().m_sv = static_cast<float>(event.GetHiggsTTMomentum(true).M());
 
         if(event.HasBjetPair()) {
-            tuple().m_ttbb = static_cast<float>(event.GetResonanceMomentum(false, false).M());
-            //const auto& kinfit = event.GetKinFitResults();
-            //tuple().m_ttbb_kinfit = kinfit.HasValidMass() ? static_cast<float>(kinfit.mass) : def_val;*/
+            tuple().m_ttbb = static_cast<float>(event.GetResonanceMomentum(true, false).M());
+            const auto& kinfit = event.GetKinFitResults();
+            tuple().m_ttbb_kinfit = kinfit.HasValidMass() ? static_cast<float>(kinfit.mass) : def_val;
             tuple().MT2 = static_cast<float>(event.GetMT2());
         } else {
             tuple().m_ttbb = def_val;
-            //tuple().m_ttbb_kinfit = def_val;
+            tuple().m_ttbb_kinfit = def_val;
             tuple().MT2 = def_val;
         }
 
@@ -150,14 +150,14 @@ public:
         tuple().mt_2 = static_cast<float>(Calculate_MT(t2.GetMomentum(), event.GetMET().GetMomentum()));
         tuple().dR_l1l2 = static_cast<float>(DeltaR(t1.GetMomentum(),t2.GetMomentum()));
         tuple().abs_dphi_l1MET = static_cast<float>(std::abs(DeltaPhi(t1.GetMomentum(), event.GetMET().GetMomentum())));
-        tuple().dphi_htautauMET = static_cast<float>(DeltaPhi(event.GetHiggsTTMomentum(false),
+        tuple().dphi_htautauMET = static_cast<float>(DeltaPhi(event.GetHiggsTTMomentum(true),
                                                               event.GetMET().GetMomentum()));
         tuple().dR_l1l2MET = static_cast<float>(DeltaR(event.GetHiggsTTMomentum(false), event.GetMET().GetMomentum()));
         tuple().dR_l1l2Pt_htautau = static_cast<float>(DeltaR(t1.GetMomentum(), t2.GetMomentum())
-                                                       * event.GetHiggsTTMomentum(false).pt());
+                                                       * event.GetHiggsTTMomentum(true).pt());
         tuple().mass_l1l2MET = static_cast<float>((event.GetHiggsTTMomentum(false) + event.GetMET().GetMomentum()).M());
         tuple().pt_l1l2MET = static_cast<float>((event.GetHiggsTTMomentum(false) + event.GetMET().GetMomentum()).pt());
-        tuple().MT_htautau = static_cast<float>(Calculate_MT(event.GetHiggsTTMomentum(false),
+        tuple().MT_htautau = static_cast<float>(Calculate_MT(event.GetHiggsTTMomentum(true),
                                                              event.GetMET().GetMomentum()));
         tuple().npv = event->npv;
         tuple().MET = static_cast<float>(event.GetMET().GetMomentum().Pt());
@@ -199,8 +199,8 @@ public:
             tuple().pt_b2 = static_cast<float>(b2.GetMomentum().Pt());
             tuple().eta_b2 = static_cast<float>(b2.GetMomentum().Eta());
             tuple().csv_b2 = b2->csv();
-            tuple().dphi_hbbhtautau = static_cast<float>(DeltaPhi(Hbb.GetMomentum(), event.GetHiggsTTMomentum(false)));
-            tuple().deta_hbbhtautau = static_cast<float>((Hbb.GetMomentum()-event.GetHiggsTTMomentum(false)).Eta());
+            tuple().dphi_hbbhtautau = static_cast<float>(DeltaPhi(Hbb.GetMomentum(), event.GetHiggsTTMomentum(true)));
+            tuple().deta_hbbhtautau = static_cast<float>((Hbb.GetMomentum()-event.GetHiggsTTMomentum(true)).Eta());
             tuple().costheta_METhbb = static_cast<float>(four_bodies::Calculate_cosTheta_2bodies(
                                                              event.GetMET().GetMomentum(), Hbb.GetMomentum()));
             tuple().dR_b1b2 = static_cast<float>(DeltaR(b1.GetMomentum(), b2.GetMomentum()));
