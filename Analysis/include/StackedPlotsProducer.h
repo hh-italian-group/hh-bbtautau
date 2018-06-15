@@ -91,7 +91,7 @@ public:
                            const Sample* total_bkg = nullptr)
     {
         std::ostringstream outputFileName;
-        outputFileName << outputFileNamePrefix << "_" << eventRegion << ".ps";
+        outputFileName << outputFileNamePrefix << "_" << eventRegion << ".pdf";
         root_ext::PdfPrinter printer(outputFileName.str(), plot_cfg, page_opt);
 
         std::vector<std::pair<std::string, StackedPlotDescriptor>> descriptors;
