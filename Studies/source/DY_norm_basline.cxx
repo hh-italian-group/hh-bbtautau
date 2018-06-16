@@ -102,8 +102,10 @@ public:
         if(fit_model == DYFitModel::NbjetBins) {
             subCategories = { base_sub_category };
             for(size_t nb = 0; nb <= max_n_b; ++nb) {
-                const std::string name = boost::str(boost::format("%1%_%2%b") % dy_contrib_prefix % nb);
-                contribution_names.push_back(name);
+                for(int nJet : nJet_points){
+                    const std::string name = boost::str(boost::format("%1%_%2%b_%3%Jet") % dy_contrib_prefix % nb % nJet);
+                    contribution_names.push_back(name);
+                }
             }
 
         } else {
@@ -125,15 +127,15 @@ public:
                 }
             }
         }
-        contribution_names.push_back("other_bkg_muMu");
-        //contribution_names.push_back("WW");
-        //contribution_names.push_back("WZ");
-        //contribution_names.push_back("Wjets");
-        //contribution_names.push_back("tW");
-        //contribution_names.push_back("EWK");
-        //contribution_names.push_back("ZH");
-        //contribution_names.push_back("ZZ");
-        //contribution_names.push_back("TT");
+        //contribution_names.push_back("other_bkg_muMu");
+        contribution_names.push_back("WW");
+        contribution_names.push_back("WZ");
+        contribution_names.push_back("Wjets");
+        contribution_names.push_back("tW");
+        contribution_names.push_back("EWK");
+        contribution_names.push_back("ZH");
+        contribution_names.push_back("ZZ");
+        contribution_names.push_back("TT");
 
         /*std::map<std::string,std::pair<double,double>>scale_factor_values =
                                                           {{"DY_MC_0b_0Jet",{1.09725,2.37998e-03}} ,
@@ -154,18 +156,18 @@ public:
 
         std::map<std::string, std::shared_ptr<RooRealVar>> scale_factor_map;
         for (const std::string& contrib_name: contribution_names){
-            if(contrib_name.find("DY") != std::string::npos){
+            //if(contrib_name.find("DY") != std::string::npos){
             //    double value = scale_factor_values[contrib_name].first;
             //    double error = scale_factor_values[contrib_name].second;
                 scale_factor_map[contrib_name] = std::make_shared<RooRealVar>
                     (("sf_"+contrib_name).c_str(),("Scale Factor for contribution "+contrib_name).c_str(),
                     1,args.scale_factor_range().min(),args.scale_factor_range().max());
-            }
-           else{
-                scale_factor_map[contrib_name] = std::make_shared<RooRealVar>
-                        (("sf_"+contrib_name).c_str(),("Scale Factor for contribution "+contrib_name).c_str(),
-                         1.0);
-            }
+            //}
+           //else{
+           //     scale_factor_map[contrib_name] = std::make_shared<RooRealVar>
+           //             (("sf_"+contrib_name).c_str(),("Scale Factor for contribution "+contrib_name).c_str(),
+           //              1.0,args.scale_factor_range().min(),args.scale_factor_range().max());
+           // }
         }
         std::string data_folder = "Data_SingleMuon";
         std::map<std::string,TH1*> dataCategories;
@@ -218,20 +220,21 @@ public:
         }
 
         auto scale_factors_hist = std::make_shared<TH1D>("scale_factors","Scale factors afte the fit",
-                                                                     nRows+1,0.5,0.5+nRows+1);
+                                                                     nRows,0.5,0.5+nRows);
         int i=1;
         for (const std::string& contrib_name: contribution_names){
-            if(contrib_name != "other_bkg_muMu"){
+            //if(contrib_name != "other_bkg_muMu"){
                 cov_hist->GetXaxis()->SetBinLabel(i,contrib_name.c_str());
                 cov_hist->GetYaxis()->SetBinLabel(i,contrib_name.c_str());
                 cor_hist->GetXaxis()->SetBinLabel(i,contrib_name.c_str());
                 cor_hist->GetYaxis()->SetBinLabel(i,contrib_name.c_str());
-            }
+            //}
 
             scale_factors_hist->GetXaxis()->SetBinLabel(i,contrib_name.c_str());
             scale_factors_hist->SetBinContent(i,scale_factor_map[contrib_name]->getValV());
             scale_factors_hist->SetBinError(i,scale_factor_map[contrib_name]->getError());
             i++;
+            //}
         }
         cov_hist->Write();
         cor_hist->Write();
