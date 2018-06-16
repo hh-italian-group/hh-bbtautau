@@ -12,13 +12,12 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "Analysis/include/SampleDescriptor.h"
 #include "Analysis/include/AnaTuple.h"
 #include "Analysis/include/EventAnalyzerDataId.h"
-#include "Analysis/include/EventAnalyzerCore.h"
 
 namespace analysis{
 
 class DYModel {
 public:
-    DYModel(const SampleDescriptor& sample, std::string working_path)
+    DYModel(const SampleDescriptor& sample,const std::string& working_path)
     {
         sampleOrder = sample.sampleOrder;
         const auto& param_names = sample.GetModelParameterNames();
@@ -62,7 +61,7 @@ public:
         }
         if(fit_method == DYFitModel::NbjetBins || fit_method == DYFitModel::NbjetBins_htBins ||
                 fit_method == DYFitModel::NbjetBins_NjetBins){
-            auto input_file = root_ext::OpenRootFile(working_path+sample.norm_sf_file);
+            auto input_file = root_ext::OpenRootFile(working_path+"/"+sample.norm_sf_file);
             auto scale_factor_histo =  std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*input_file,ToString(fit_method)
                                                                                     +"/scale_factors"));
             int nbins = scale_factor_histo->GetNbinsX();
@@ -84,7 +83,7 @@ public:
             fractional_weight_map["2Jet_1bJet"] = 1.15;
             fractional_weight_map["2Jet_2bJet"] = 1.39;
 
-            auto NLO_weight_file = (root_ext::OpenRootFile(working_path+sample.NLO_weight_file));
+            auto NLO_weight_file = (root_ext::OpenRootFile(working_path+"/"+sample.NLO_weight_file));
             std::string histo_name = "h_ratio_pt";
             pt_weight_histo_map["0Jet"] = std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*NLO_weight_file,histo_name+"0Jet"));
             pt_weight_histo_map["1Jet_0bJet"] = std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*NLO_weight_file,histo_name+"1Jet_0bJet"));
