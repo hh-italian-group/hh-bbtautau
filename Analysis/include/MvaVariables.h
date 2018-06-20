@@ -183,7 +183,7 @@ public:
         VAR("pt_htautau", (Htt+met).Pt());
         VAR("pt_htautau_sv", Htt_sv.Pt());
         VAR("pt_MET", met.Pt());
-        VAR("HT_otherjets", eventbase->ht_other_jets);
+        VAR("HT_otherjets", eventbase.GetHT(false, true));
         VAR("p_zeta", Calculate_Pzeta(t1, t2,  met));
         VAR("p_zetavisible", Calculate_visiblePzeta(t1, t2));
 
