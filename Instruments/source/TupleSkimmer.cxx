@@ -437,13 +437,15 @@ private:
             event.storageMode = static_cast<UInt_t>(storage_mode.Mode());
         }
 
-        if (!setup.energy_scales.count(es) || full_event.jets_p4.size() < 2 || full_event.extraelec_veto
-                || full_event.extramuon_veto
-                || std::abs(full_event.jets_p4.at(0).eta()) >= cuts::btag_2016::eta
-                || std::abs(full_event.jets_p4.at(1).eta()) >= cuts::btag_2016::eta) return false;
+        if(!setup.energy_scales.count(es) || full_event.extraelec_veto || full_event.extramuon_veto) return false;
 
-        if (setup.apply_mass_cut){
+        if(setup.apply_bb_cut && (full_event.jets_p4.size() < 2
+                || std::abs(full_event.jets_p4.at(0).eta()) >= cuts::btag_2016::eta
+                || std::abs(full_event.jets_p4.at(1).eta()) >= cuts::btag_2016::eta)) return false;
+
+        if(setup.apply_mass_cut) {
             bool pass_mass_cut = false;
+            if(full_event.jets_p4.size() < 2) return false;
             const double mbb = (full_event.jets_p4.at(0) + full_event.jets_p4.at(1)).mass();
             const double mtautau = (full_event.p4_1 + full_event.p4_2).mass();
             pass_mass_cut = pass_mass_cut
@@ -473,10 +475,16 @@ private:
             if(leg_types.first == LegType::tau && !ApplyTauIdCut(full_event.tauId_flags_1)) return false;
             if(leg_types.second == LegType::tau && !ApplyTauIdCut(full_event.tauId_flags_2)) return false;
         }
+        
+        if(storage_mode.IsPresent(EventPart::FirstTauIds))
+            SkimTauIds(event.tauId_keys_1, event.tauId_values_1);
+
+        if(storage_mode.IsPresent(EventPart::SecondTauIds))
+            SkimTauIds(event.tauId_keys_2, event.tauId_values_2);
 
         event.n_jets = static_cast<unsigned>(full_event.jets_p4.size());
-        event.ht_other_jets = static_cast<float>(
-                    Calculate_HT(full_event.jets_p4.begin() + 2, full_event.jets_p4.end()));
+        event.ht_other_jets = full_event.jets_p4.size() > 2
+                ? static_cast<float>(Calculate_HT(full_event.jets_p4.begin() + 2, full_event.jets_p4.end())) : 0;
 
         event.weight_pu = weighting_mode.count(WeightType::PileUp)
                         ? eventWeights_HH->GetWeight(full_event, WeightType::PileUp) : 1;
@@ -521,7 +529,7 @@ private:
             event.weight_total_withTopPt = 0;
         }
 
-        if(storage_mode.IsPresent(EventPart::Jets)) {
+        if(setup.apply_bb_cut && storage_mode.IsPresent(EventPart::Jets)) {
             event.jets_csv.resize(2);
             event.jets_rawf.resize(2);
             event.jets_mva.resize(2);

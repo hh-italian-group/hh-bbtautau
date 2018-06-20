@@ -22,8 +22,8 @@ struct Setup {
     unsigned n_splits{0};
     unsigned split_seed{0};
 
-    bool apply_mass_cut{false};
-    bool apply_charge_cut{false};
+    //light setup
+    bool apply_mass_cut{false}, apply_charge_cut{false}, apply_bb_cut{true};
     bool keep_genJets{false}, keep_genParticles{false}, keep_MET_cov{false};
     std::set<std::string> tau_id_cuts;
     std::set<size_t> tau_id_cut_indices;

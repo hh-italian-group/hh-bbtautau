@@ -189,6 +189,8 @@ struct SampleDescriptorBase {
     std::string datacard_name;
     std::string postfit_name;
     std::string norm_sf_file;
+    std::string NLO_weight_file;
+    std::string sampleOrder{"LO"};
     DYFitModel fit_method{DYFitModel::None};
 
     PointCollection working_points;
