@@ -26,8 +26,7 @@ struct Setup {
     std::set<uint32_t> tau_id_hashes;
 
     //light setup
-    bool apply_mass_cut{false};
-    bool apply_charge_cut{false};
+    bool apply_mass_cut{false}, apply_charge_cut{false}, apply_bb_cut{true};
     bool keep_genJets{false}, keep_genParticles{false}, keep_MET_cov{false};
     std::map<std::string, double> tau_id_cut;
     std::map<uint32_t, double> tau_id_cut_hashes;
