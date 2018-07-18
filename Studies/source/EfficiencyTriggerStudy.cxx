@@ -111,55 +111,43 @@ public:
         pad1.SetGridx(1);
         pad1.SetLeftMargin(0.15f);
 
-        if(trigger_descs.size() == 1) {
-
-            auto graph = gr.at(0);
-            graph->Draw("ALP");
-            graph->GetYaxis()->SetTitle("Efficiency");
-            graph->GetXaxis()->SetTitle("mass (GeV)");
-            graph->SetTitle((trigger_descs.at(0).title).c_str());
-            graph->SetMarkerColor(trigger_descs.at(0).color.GetColor_t());
-            graph->SetLineColor(trigger_descs.at(0).color.GetColor_t());
-            graph->SetMarkerStyle(7);
-            pad1.BuildLegend(0.65, 0.7, 0.9, 0.9, "", "lep");
-
-            canvas.Print((args.output_file()+".pdf").c_str());
-            canvas.Clear();
+        auto mg = std::make_shared<TMultiGraph>();
+        for (size_t i = 0; i < gr.size(); i++) {
+            const auto& single_graph = gr.at(i);
+            single_graph->SetTitle((trigger_descs.at(i).title).c_str());
+            single_graph->SetName("gr");
+            single_graph->SetMarkerColor(trigger_descs.at(i).color.GetColor_t());
+            single_graph->SetMarkerStyle(7);
+            single_graph->SetLineColor(trigger_descs.at(i).color.GetColor_t());
+            mg->Add(single_graph.get());
         }
 
-        else {
+        mg->Draw("ALP");
+        mg->SetTitle("");
+        mg->GetYaxis()->SetTitle("Efficiency");
+        mg->GetYaxis()->SetTitleOffset(1.8f);
 
-            auto mg = std::make_shared<TMultiGraph>();
-            for (size_t i = 0; i < gr.size(); i++) {
-                const auto& single_graph = gr.at(i);
-                single_graph->SetTitle((trigger_descs.at(i).title).c_str());
-                single_graph->SetName("gr");
-                single_graph->SetMarkerColor(trigger_descs.at(i).color.GetColor_t());
-                single_graph->SetMarkerStyle(7);
-                single_graph->SetLineColor(trigger_descs.at(i).color.GetColor_t());
-                mg->Add(single_graph.get());
-            }
-
-
-            mg->Draw("ALP");
-            mg->SetTitle("");
-            mg->GetYaxis()->SetTitle("Efficiency");
-            mg->GetYaxis()->SetTitleOffset(1.8f);
+        if (trigger_descs.size() > 1){
             mg->GetXaxis()->SetLabelSize(0.25f);
             mg->GetYaxis()->SetLabelSize(0.03f);
+        }
 
-            auto legend = pad1.BuildLegend(0.55, 0.7, 0.9, 0.9, "", "lep");
-            legend->SetTextSize(0.03f);
+        auto legend = pad1.BuildLegend(0.55, 0.7, 0.9, 0.9, "", "lep");
+        legend->SetTextSize(0.03f);
+
+        std::shared_ptr<TPad> pad2;
+        std::shared_ptr<TMultiGraph> mgRatio;
+        if (trigger_descs.size() > 1){
 
             canvas.cd();
-            TPad pad2("ratio", "ratio", 0, 0.0, 1, 0.252);
-            pad2.Draw();
-            pad2.cd();
-            pad2.SetGridy(1);
-            pad2.SetLeftMargin(static_cast<float>(0.15));
-            pad2.SetBottomMargin(0.25);
+            pad2 = std::make_shared<TPad>("ratio", "ratio", 0, 0.0, 1, 0.252);
+            pad2->Draw();
+            pad2->cd();
+            pad2->SetGridy(1);
+            pad2->SetLeftMargin(static_cast<float>(0.15));
+            pad2->SetBottomMargin(0.25);
 
-            auto mgRatio = std::make_shared<TMultiGraph>();
+            mgRatio = std::make_shared<TMultiGraph>();
 
             for (size_t i = 0; i < ratioGraphs.size(); ++i) {
                 auto single_RatioGraph = ratioGraphs.at(i);
@@ -181,10 +169,11 @@ public:
             mgRatio->GetYaxis()->SetTitleSize(0.1f);
             mgRatio->GetYaxis()->SetLabelSize(0.09f);
             mgRatio->GetYaxis()->SetLabelOffset(0.015f);
-
-            canvas.Print((args.output_file()+".pdf").c_str());
-            canvas.Clear();
         }
+
+        canvas.Print((args.output_file()+".pdf").c_str());
+        canvas.Clear();
+
     }
 
     void Run()
@@ -337,4 +326,4 @@ private:
     SampleDesc sample_desc;
 };
 }
-PROGRAM_MAIN(analysis::EfficiencyStudy, Arguments) 
+PROGRAM_MAIN(analysis::EfficiencyStudy, Arguments)
