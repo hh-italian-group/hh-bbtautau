@@ -337,4 +337,4 @@ private:
     SampleDesc sample_desc;
 };
 }
-PROGRAM_MAIN(analysis::EfficiencyStudy, Arguments)
+PROGRAM_MAIN(analysis::EfficiencyStudy, Arguments) 
