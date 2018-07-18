@@ -1,3 +1,5 @@
+/*! Study of the efficiency of the triggers made to the events at baseline selection.
+This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include <algorithm>
 #include <boost/algorithm/string.hpp>
 #include "AnalysisTools/Run/include/program_main.h"
@@ -23,7 +25,6 @@ namespace analysis {
 
 class EfficiencyStudy{
 public:
-    using Channel = analysis::Channel;
 
     struct SampleDesc {
         std::vector<double> points_list;
@@ -37,20 +38,19 @@ public:
         std::vector<std::string> trigger;
         std::string title;
         root_ext::Color color;
-        analysis::TauIdDiscriminator tauId;
+        TauIdDiscriminator tauId;
         DiscriminatorWP tauIdWP;
-
-       };
+    };
 
     EfficiencyStudy(const Arguments& _args) :
-      args(_args), canvas("","", 600, 600)
+        args(_args), canvas("","", 600, 600)
     {
-      gStyle->SetOptStat(0);
-      canvas.SetGrid();
-      canvas.Print((args.output_file() + ".pdf[").c_str());
-      canvas.Draw();
+        gStyle->SetOptStat(0);
+        canvas.SetGrid();
+        canvas.Print((args.output_file() + ".pdf[").c_str());
+        canvas.Draw();
 
-      sample_desc = LoadConfig(trigger_descs);
+        sample_desc = LoadConfig(trigger_descs);
     }
 
     static TEfficiency CreateEfficiency(const TH1D& passed, const TH1& total)
@@ -102,15 +102,16 @@ public:
     void PrintTGraph(const std::vector<std::shared_ptr<TGraphAsymmErrors>>& gr,
                      const std::vector<std::shared_ptr<TGraph>>& ratioGraphs)
     {
-        if(trigger_descs.size() == 1) {
+        canvas.cd();
 
-            canvas.cd();
-            TPad pad1("pad1", "", 0, 0, 1, 1);
-            pad1.Draw();
-            pad1.cd();
-            pad1.SetLeftMargin(0.15f);
-            pad1.SetGridy(1);
-            pad1.SetGridx(1);
+        TPad pad1("pad1", "", 0, 0.18, 1, 1);
+        pad1.Draw();
+        pad1.cd();
+        pad1.SetGridy(1);
+        pad1.SetGridx(1);
+        pad1.SetLeftMargin(0.15f);
+
+        if(trigger_descs.size() == 1) {
 
             auto graph = gr.at(0);
             graph->Draw("ALP");
@@ -139,13 +140,6 @@ public:
                 mg->Add(single_graph.get());
             }
 
-            canvas.cd();
-            TPad pad1("pad1", "", 0, 0.18, 1, 1);
-            pad1.Draw();
-            pad1.cd();
-            pad1.SetGridy(1);
-            pad1.SetGridx(1);
-            pad1.SetLeftMargin(0.15f);
 
             mg->Draw("ALP");
             mg->SetTitle("");
@@ -190,8 +184,8 @@ public:
 
             canvas.Print((args.output_file()+".pdf").c_str());
             canvas.Clear();
+        }
     }
-}
 
     void Run()
     {
@@ -226,7 +220,7 @@ public:
             const Channel channel = args.channel();
 
             deno.SetBinContent(static_cast<int>(fileID + 1), summary.numberOfProcessedEvents);
-            deno.SetBinError(static_cast<int>(fileID + 1), (std::sqrt(summary.numberOfProcessedEvents)));
+            deno.SetBinError(static_cast<int>(fileID + 1), std::sqrt(summary.numberOfProcessedEvents));
 
             std::vector<size_t> passed(trigger_descs.size(), 0);
             for(const auto& event : *originalTuple) {
@@ -271,15 +265,10 @@ public:
         }
 
         std::vector<std::shared_ptr<TGraph>> graphsRatio;
-        if(trigger_descs.size() == 1)
-            PrintTGraph(graphs, graphsRatio);
+        for(size_t desc_id = 1; desc_id < trigger_descs.size(); ++desc_id)
+            graphsRatio.emplace_back(CreateRatio(*graphs.at(desc_id), *graphs.at(0)));
 
-        else {
-            for(size_t desc_id = 1; desc_id < trigger_descs.size(); ++desc_id)
-                graphsRatio.emplace_back(CreateRatio(*graphs.at(desc_id), *graphs.at(0)));
-
-            PrintTGraph(graphs, graphsRatio);
-        }
+        PrintTGraph(graphs, graphsRatio);
         canvas.Print((args.output_file() + ".pdf]").c_str());
     }
 
@@ -310,7 +299,7 @@ private:
             auto trigger_path = params.properties.GetList<>("trigger_paths", false);
             auto title_name = params.Get<>("title");
             auto color = params.Get<root_ext::Color>("color");
-            analysis::TauIdDiscriminator tauId = params.Get<analysis::TauIdDiscriminator>("tauId");
+            TauIdDiscriminator tauId = params.Get<TauIdDiscriminator>("tauId");
             DiscriminatorWP tauIdWP = params.Get<DiscriminatorWP>("tauIdWP");
 
             trigger_descs.emplace_back(TriggerDesc{trigger_path, title_name, color, tauId, tauIdWP });
