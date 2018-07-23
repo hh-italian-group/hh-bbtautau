@@ -131,6 +131,7 @@ public:
                 fractional_weight = fractional_weight_map[lhe_category];
 
                 for(size_t i=0;i<event->genParticles_p4.size();i++){
+                    if(event->genParticles_pdg.at(i) != 23) continue;
                     double pt = event->genParticles_p4.at(i).Pt();
                     pt_weight = pt_weight_histo_map[lhe_category]->GetBinContent(pt_weight_histo_map[lhe_category]->FindBin(pt));
                 }
