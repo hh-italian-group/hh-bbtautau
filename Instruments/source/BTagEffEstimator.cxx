@@ -113,7 +113,7 @@ public:
                             || std::abs(event.jets_p4.at(1).eta()) >= cuts::btag_2017::eta) continue;
 
                     auto bb = event.jets_p4.at(0) + event.jets_p4.at(1);
-                    if (!cuts::hh_bbtautau_2017::hh_tag::m_hh_window().IsInside(event.SVfit_p4.mass(),bb.mass())) continue;
+                    if (!cuts::hh_bbtautau_2017::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(),bb.mass())) continue;
 
                     std::string tau_sign = (event.q_1+event.q_2) == 0 ? "OS" : "SS";
 
@@ -125,7 +125,7 @@ public:
 
                     for (size_t i = 0; i < event.jets_p4.size(); ++i){
                         const auto& jet = event.jets_p4.at(i);
-                        if(std::abs(jet.eta()) >= cuts::btag_2016::eta) continue;
+                        if(std::abs(jet.eta()) >= cuts::btag_2017::eta) continue;
 
                         //PU correction
                         if(apply_pu_id_cut){
