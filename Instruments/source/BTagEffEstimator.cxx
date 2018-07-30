@@ -9,8 +9,8 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Analysis/include/EventTuple.h"
 #include "AnalysisTools/Core/include/AnalyzerData.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
-#include "h-tautau/Cuts/include/Btag_2016.h"
-#include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
+#include "h-tautau/Cuts/include/Btag_2017.h"
+#include "h-tautau/Cuts/include/hh_bbtautau_2017.h"
 #include "AnalysisTools/Core/include/Tools.h"
 #include "AnalysisTools/Core/include/TextIO.h"
 #include "h-tautau/Analysis/include/TauIdResults.h"
@@ -70,8 +70,8 @@ public:
         std::string channel_all = "all";
         std::set<std::string> channel_names = channels;
         channel_names.insert(channel_all);
-        static const std::map<std::string, double> btag_working_points = { { "L", cuts::btag_2016::CSVv2L },
-            { "M", cuts::btag_2016::CSVv2M }, { "T", cuts::btag_2016::CSVv2T} };
+        static const std::map<std::string, double> btag_working_points = { { "L", cuts::btag_2017::CSVv2L },
+            { "M", cuts::btag_2017::CSVv2M }, { "T", cuts::btag_2017::CSVv2T} };
         static const std::string btag_wp_all = "all";
         static const std::map<int, std::string> flavours = { { 5, "b" }, { 4, "c" }, { 0, "udsg" } };
         static const std::string flavour_all = "all";
@@ -109,11 +109,11 @@ public:
                     const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
                     if (es != EventEnergyScale::Central || event.jets_p4.size() < 2 || event.extraelec_veto
                             || event.extramuon_veto
-                            || std::abs(event.jets_p4.at(0).eta()) >= cuts::btag_2016::eta
-                            || std::abs(event.jets_p4.at(1).eta()) >= cuts::btag_2016::eta) continue;
+                            || std::abs(event.jets_p4.at(0).eta()) >= cuts::btag_2017::eta
+                            || std::abs(event.jets_p4.at(1).eta()) >= cuts::btag_2017::eta) continue;
 
                     auto bb = event.jets_p4.at(0) + event.jets_p4.at(1);
-                    if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(event.SVfit_p4.mass(),bb.mass())) continue;
+                    if (!cuts::hh_bbtautau_2017::hh_tag::m_hh_window().IsInside(event.SVfit_p4.mass(),bb.mass())) continue;
 
                     std::string tau_sign = (event.q_1+event.q_2) == 0 ? "OS" : "SS";
 
