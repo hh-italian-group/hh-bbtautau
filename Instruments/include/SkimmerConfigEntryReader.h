@@ -54,7 +54,7 @@ public:
         ParseEntry("keep_genJets", current.keep_genJets);
         ParseEntry("keep_genParticles", current.keep_genParticles);
         ParseEntry("keep_MET_cov",current.keep_MET_cov);
-        ParseEntryList("tau_id_cuts", current.rawtau_id_cuts);
+        ParseEntryList("tau_id_cuts", current.raw_tau_id_cuts);
         ParseEntryList("raw_tau_id_cuts", current.raw_tau_id_cuts);
         ParseEntry("massWindowParams", current.massWindowParams);
     }
