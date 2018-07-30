@@ -466,13 +466,6 @@ private:
             if(leg_types.second == LegType::tau && !ApplyTauIdCut(full_event.tauId_flags_2)) return false;
         }
         
-        if(setup.ApplyRauTauIdCuts()) {
-            const Channel channel = static_cast<Channel>(event.channelId);
-            const auto leg_types = GetChannelLegTypes(channel);
-            if(leg_types.first == LegType::tau && !ApplyTauIdCut(full_event.tauId_flags_1)) return false;
-            if(leg_types.second == LegType::tau && !ApplyTauIdCut(full_event.tauId_flags_2)) return false;
-        }
-
         event.n_jets = static_cast<unsigned>(full_event.jets_p4.size());
         event.ht_other_jets = full_event.jets_p4.size() > 2
                 ? static_cast<float>(Calculate_HT(full_event.jets_p4.begin() + 2, full_event.jets_p4.end())) : 0;
