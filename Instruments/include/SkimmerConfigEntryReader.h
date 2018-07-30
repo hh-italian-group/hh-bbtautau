@@ -66,7 +66,6 @@ public:
     {
         CheckReadParamCounts("merged_output", 1, Condition::less_equal);
         CheckReadParamCounts("apply_common_weights", 1, Condition::less_equal);
-        CheckReadParamCounts("apply_dm_fix", 1, Condition::less_equal);
         CheckReadParamCounts("weights", 1, Condition::less_equal);
 
         const size_t n_files = GetReadParamCounts("file");
@@ -88,7 +87,6 @@ public:
         ParseEntry("merged_output", current.merged_output);
         ParseFileDescriptor(param_name, param_value);
         ParseEntry("apply_common_weights", current.apply_common_weights);
-        ParseEntry("apply_dm_fix", current.apply_dm_fix);
         ParseEntryList("weights", current.weights);
     }
 
@@ -100,7 +98,7 @@ private:
             inputs = SplitValueList(param_value, false);
             current.files.emplace_back(inputs);
         } else if(param_name == "file_ex") {
-            auto columns = SplitValueList(param_value, false);
+            auto columns = SplitValueList(param_value, true);
             if(columns.size() < 2)
                 throw exception("Invalid extended file description.");
             inputs.insert(inputs.end(), columns.begin() + 1, columns.end());

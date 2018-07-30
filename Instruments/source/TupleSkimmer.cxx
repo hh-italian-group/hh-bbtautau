@@ -267,14 +267,6 @@ private:
                         if(!desc_iter->first_input_is_ref)
                             processed_events.clear();
 
-                        if(job.apply_dm_fix && channel == Channel::TauTau
-                                && (n == 0 || !desc_iter->first_input_is_ref)) {
-                            std::cout << "\t\t\t" << "Loading tau decay modes... ";
-                            dm_collection = std::make_shared<DecayModeCollection>(args.inputPath() + "/../Full_dm",
-                                                                                  desc_iter->inputs.at(n), "tauTau");
-                            std::cout << "done." << std::endl;
-                        }
-
                         std::shared_ptr<EventTuple> tuple;
                         try {
                             tuple = ntuple::CreateEventTuple(treeName, file.get(), true, ntuple::TreeState::Full);
@@ -308,8 +300,6 @@ private:
                                 split_id = event_ptr->split_id;
                             }
                             event_ptr->split_id = split_distr ? (*split_distr)(gen_map.at(channel)) : 0;
-                            if(job.apply_dm_fix && channel == Channel::TauTau)
-                                dm_collection->UpdateEvent(*event_ptr);
                             processQueue.Push(event_ptr);
                         }
                     }
@@ -476,11 +466,11 @@ private:
             if(leg_types.second == LegType::tau && !ApplyTauIdCut(full_event.tauId_flags_2)) return false;
         }
         
-        if(storage_mode.IsPresent(EventPart::FirstTauIds))
-            SkimTauIds(event.tauId_keys_1, event.tauId_values_1);
+//        if(storage_mode.IsPresent(EventPart::FirstTauIds))
+//            SkimTauIds(event.tauId_keys_1, event.tauId_values_1);
 
-        if(storage_mode.IsPresent(EventPart::SecondTauIds))
-            SkimTauIds(event.tauId_keys_2, event.tauId_values_2);
+//        if(storage_mode.IsPresent(EventPart::SecondTauIds))
+//            SkimTauIds(event.tauId_keys_2, event.tauId_values_2);
 
         event.n_jets = static_cast<unsigned>(full_event.jets_p4.size());
         event.ht_other_jets = full_event.jets_p4.size() > 2
@@ -532,16 +522,14 @@ private:
         if(setup.apply_bb_cut && storage_mode.IsPresent(EventPart::Jets)) {
             event.jets_csv.resize(2);
             event.jets_rawf.resize(2);
-            event.jets_mva.resize(2);
+            event.jets_pu_id.resize(2);
             event.jets_p4.resize(2);
-            event.jets_partonFlavour.resize(2);
             event.jets_hadronFlavour.resize(2);
         }
 
         if(!setup.keep_genJets) {
             event.genJets_p4.clear();
             event.genJets_hadronFlavour.clear();
-            event.genJets_partonFlavour.clear();
         }
 
         if(!setup.keep_genParticles){
