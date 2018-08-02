@@ -129,10 +129,9 @@ public:
 
                         //PU correction
                         if(apply_pu_id_cut){
-                            double jet_mva = event.jets_mva.at(i);
-                            if(!PassJetPuId(jet.Pt(),jet_mva,pu_wp)) continue;
+                            if((event.jets_pu_id.at(i) & 2) == 0) continue;
                         }
-
+                   
                         double jet_csv = event.jets_csv.at(i);
                         int jet_hadronFlavour = event.jets_hadronFlavour.at(i);
                         const std::string& jet_flavour = flavours.at(jet_hadronFlavour);
