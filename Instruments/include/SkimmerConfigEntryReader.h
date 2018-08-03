@@ -30,7 +30,6 @@ public:
         CheckReadParamCounts("keep_genParticles", 1, Condition::less_equal);
         CheckReadParamCounts("keep_MET_cov",1,Condition::less_equal);
         CheckReadParamCounts("tau_id_cuts", 1, Condition::less_equal);
-        CheckReadParamCounts("raw_tau_id_cuts", 1, Condition::less_equal);
         CheckReadParamCounts("massWindowParams", 0, Condition::greater_equal);
 
         current.UpdateTauIdIndices();
@@ -54,8 +53,7 @@ public:
         ParseEntry("keep_genJets", current.keep_genJets);
         ParseEntry("keep_genParticles", current.keep_genParticles);
         ParseEntry("keep_MET_cov",current.keep_MET_cov);
-        ParseEntryList("tau_id_cuts", current.raw_tau_id_cuts);
-        ParseEntryList("raw_tau_id_cuts", current.raw_tau_id_cuts);
+        ParseEntryList("tau_id_cuts", current.tau_id_cuts);
         ParseEntry("massWindowParams", current.massWindowParams);
     }
 };

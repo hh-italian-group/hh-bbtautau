@@ -244,6 +244,7 @@ private:
                     summary = std::make_shared<ProdSummary>(desc_summary);
 
                 for(unsigned n = 0; n < desc_iter->inputs.size() && (n == 0 || !desc_iter->first_input_is_ref); ++n) {
+                    if (desc_iter->input_is_partial.size() && desc_iter->input_is_partial.at(n) == true) continue;
                     const auto& input = desc_iter->inputs.at(n);
                     summary->file_desc_name.push_back(input);
                     summary->file_desc_id.push_back(n * 1000 + desc_id);
@@ -264,7 +265,7 @@ private:
                         auto file = inputFiles.at(n);
                         std::cout << "\t\t" << desc_iter->inputs.at(n) << ":" << treeName << std::endl;
 
-                        if(!desc_iter->first_input_is_ref)
+                        if(!desc_iter->first_input_is_ref && (!desc_iter->input_is_partial.size() || desc_iter->input_is_partial.at(n) == false))
                             processed_events.clear();
 
                         std::shared_ptr<EventTuple> tuple;

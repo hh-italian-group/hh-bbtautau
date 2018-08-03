@@ -25,13 +25,13 @@ struct Setup {
     //light setup
     bool apply_mass_cut{false}, apply_charge_cut{false}, apply_bb_cut{true};
     bool keep_genJets{false}, keep_genParticles{false}, keep_MET_cov{false};
-    std::set<std::string> tau_id_cuts, raw_tau_id_cuts;
-    std::set<size_t> tau_id_cut_indices, raw_tau_id_cut_indices;
+    std::set<std::string> tau_id_cuts;
+    std::set<size_t> tau_id_cut_indices;
 
     std::map<SelectionCut,analysis::EllipseParameters> massWindowParams;
 
     bool ApplyTauIdCuts() const { return !tau_id_cuts.empty(); }
-    bool ApplyRauTauIdCuts() const { return !raw_tau_id_cuts.empty(); }
+
     void UpdateTauIdIndices()
     {
         tau_id_cut_indices.clear();
@@ -42,16 +42,7 @@ struct Setup {
             tau_id_cut_indices.insert(bit_refs.at(cut_name));
         }
     }
-    void UpdateRawTauIdIndices()
-    {
-        raw_tau_id_cut_indices.clear();
-        const auto& bit_refs = TauIdResults::GetBitRefsByName();
-        for(const auto& cut_name : tau_id_cuts) {
-            if(!bit_refs.count(cut_name))
-                throw exception("Unknown tau ID '%1%'") % cut_name;
-            tau_id_cut_indices.insert(bit_refs.at(cut_name));
-        }
-    }
+
 };
 
 using SetupCollection = std::unordered_map<std::string, Setup>;
@@ -61,6 +52,7 @@ struct FileDescriptor {
     std::string output;
     double cross_section;
     bool first_input_is_ref;
+    std::vector<bool> input_is_partial;
 
     FileDescriptor(const std::vector<std::string>& _inputs = {}) :
         inputs(_inputs), output(inputs.size() ? inputs.front() : ""),
@@ -71,8 +63,16 @@ struct FileDescriptor {
         first_input_is_ref(false) {}
 
     FileDescriptor(const std::vector<std::string>& _inputs, double _cross_section) :
-        inputs(_inputs), output(inputs.size() ? inputs.front() : ""), cross_section(_cross_section),
-        first_input_is_ref(false) {}
+        output(inputs.size() ? inputs.front() : ""), cross_section(_cross_section),
+        first_input_is_ref(false) {
+            for(unsigned n=0; n == _inputs.size(); n++){
+                std::size_t pos = _inputs.at(n).find(":");
+                std::string partial = _inputs.at(n).substr(0,pos);
+                if (partial == "part:") input_is_partial[n] = true;
+                std::string str = _inputs.at(n).substr(pos+1);
+                inputs.emplace_back(str);
+            }
+    }
 
     bool HasCrossSection() const { return !std::isnan(cross_section); }
     double GetCrossSectionWeight() const { return HasCrossSection() ? cross_section : 1; }
@@ -83,7 +83,6 @@ struct SkimJob {
     std::string merged_output;
     std::vector<FileDescriptor> files;
     bool apply_common_weights{true};
-    bool apply_dm_fix{true};
     mc_corrections::WeightingMode weights;
 
     bool ProduceMergedOutput() const { return merged_output.size(); }
