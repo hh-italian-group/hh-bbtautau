@@ -19,6 +19,7 @@ struct Arguments { // list of all program arguments
     REQ_ARG(std::string, output_file);
     OPT_ARG(std::string, apply_pu_id_cut,"no");
     OPT_ARG(unsigned, n_threads, 1);
+    OPT_ARG(std::string, deep_csv,"yes");
     REQ_ARG(std::vector<std::string>, input_file);
 };
 
@@ -35,12 +36,12 @@ public:
     TH2D_ENTRY_CUSTOM(val_check,x_bins,y_bins)
 };
 
-class BTagEfficiency {
+class BTagEffEstimator {
 public:
     using Event = ntuple::Event;
     using EventTuple = ntuple::EventTuple;
 
-    BTagEfficiency(const Arguments& _args) :
+    BTagEffEstimator(const Arguments& _args) :
         args(_args), outfile(root_ext::CreateRootFile(args.output_file()))
     {
         ROOT::EnableThreadSafety();
@@ -70,8 +71,14 @@ public:
         std::string channel_all = "all";
         std::set<std::string> channel_names = channels;
         channel_names.insert(channel_all);
-        static const std::map<std::string, double> btag_working_points = { { "L", cuts::btag_2017::CSVv2L },
-            { "M", cuts::btag_2017::CSVv2M }, { "T", cuts::btag_2017::CSVv2T} };
+        if(args.deep_csv()== "yes"){
+            btag_working_points = { { "L", cuts::btag_2017::deepCSVv2L },
+                                    { "M", cuts::btag_2017::deepCSVv2M }, { "T", cuts::btag_2017::deepCSVv2T} };
+        }
+        else{
+            btag_working_points = { { "L", cuts::btag_2017::CSVv2L },
+                                    { "M", cuts::btag_2017::CSVv2M }, { "T", cuts::btag_2017::CSVv2T} };
+        }
         static const std::string btag_wp_all = "all";
         static const std::map<int, std::string> flavours = { { 5, "b" }, { 4, "c" }, { 0, "udsg" } };
         static const std::string flavour_all = "all";
@@ -132,7 +139,9 @@ public:
                             if((event.jets_pu_id.at(i) & 2) == 0) continue;
                         }
                    
-                        double jet_csv = event.jets_csv.at(i);
+                        double jet_csv;
+                        if(args.deep_csv() == "yes") jet_csv = event.jets_deepCsv_BvsAll.at(i);
+                        else jet_csv = event.jets_csv.at(i);
                         int jet_hadronFlavour = event.jets_hadronFlavour.at(i);
                         const std::string& jet_flavour = flavours.at(jet_hadronFlavour);
 
@@ -308,6 +317,7 @@ private:
     std::string valCha = "valCha", valIso = "valIso", valQ = "valQ";
     std::map<std::string,std::string> valMap = { {"valCha","ValidationChannel"} , {"valIso","ValidationIsolation"},
                                                  {"valQ","ValidationCharge"} };
+    std::map<std::string, double> btag_working_points;
 
     static bool PassTauIdCut(TauIdResults::BitsContainer id_bits)
     {
@@ -362,4 +372,4 @@ private:
 
 } // namespace analysis
 
-PROGRAM_MAIN(analysis::BTagEfficiency, Arguments) // definition of the main program function
+PROGRAM_MAIN(analysis::BTagEffEstimator, Arguments) // definition of the main program function
