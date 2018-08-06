@@ -278,6 +278,7 @@ private:
                         if(!tuple) continue;
                         EventIdentifier prev_event_id = EventIdentifier::Undef_event();
                         unsigned split_id = 0;
+
                         for(const Event& event : *tuple) {
                             const FullEventId fullId{EventIdentifier(event.run, event.lumi, event.evt),
                                                      static_cast<EventEnergyScale>(event.eventEnergyScale)};
