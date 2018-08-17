@@ -89,13 +89,14 @@ public:
         static const std::set<std::string> disabled_branches;
         static const std::set<std::string> enabled_branches = {
             "jets_p4", "SVfit_p4", "extramuon_veto", "extraelec_veto", "q_1", "q_2", "tauId_keys_1", "tauId_values_1",
-            "tauId_keys_2", "tauId_values_2", "jets_mva", "jets_csv", "jets_deepCsv_BvsAll", "jets_hadronFlavour"
+            "tauId_keys_2", "tauId_values_2", "jets_mva", "jets_csv", "jets_deepCsv_BvsAll", "jets_hadronFlavour",
+            "jets_pu_id"
         };
 
 
         bool apply_pu_id_cut = args.apply_pu_id_cut() != "no";
-        DiscriminatorWP pu_wp = DiscriminatorWP::Medium;
-        if(apply_pu_id_cut) pu_wp = analysis::Parse<DiscriminatorWP>(args.apply_pu_id_cut());
+        //DiscriminatorWP pu_wp = DiscriminatorWP::Medium;
+        //if(apply_pu_id_cut) pu_wp = analysis::Parse<DiscriminatorWP>(args.apply_pu_id_cut());
 
         for(const auto& channel : channels) {
             const auto leg_types = GetChannelLegTypes(analysis::Parse<Channel>(channel));
@@ -136,6 +137,7 @@ public:
 
                         //PU correction
                         if(apply_pu_id_cut){
+
                             if((event.jets_pu_id.at(i) & 2) == 0) continue;
                         }
                    
