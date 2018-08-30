@@ -385,12 +385,15 @@ private:
         auto file_iter = input_files.begin();
         auto summary = eventWeights_HH->GetSummaryWithWeights(*file_iter++, weighting_mode);
         if(!desc.first_input_is_ref) {
+            int n=-1;
             for(; file_iter != input_files.end(); ++file_iter) {
+                n++;
+                if (desc.input_is_partial.size() && desc.input_is_partial.at(n) == true) continue;
                 auto other_summary = eventWeights_HH->GetSummaryWithWeights(*file_iter, weighting_mode);
                 ntuple::MergeProdSummaries(summary, other_summary);
+
             }
         }
-
         if(desc.HasCrossSection()) {
             weight_xs = desc.GetCrossSectionWeight() / summary.totalShapeWeight;
             summary.totalShapeWeight = desc.GetCrossSectionWeight();

@@ -65,14 +65,13 @@ struct FileDescriptor {
     FileDescriptor(const std::vector<std::string>& _inputs, double _cross_section) :
         output(inputs.size() ? inputs.front() : ""), cross_section(_cross_section),
         first_input_is_ref(false) {
-            unsigned n = 0;
             for(const auto& entry: _inputs){
                 std::size_t pos = entry.find(":");
                 std::string partial = entry.substr(0,pos);
-                if (partial == "part:") input_is_partial[n] = true;
+                if (partial == "part") input_is_partial.emplace_back(true);
+                else input_is_partial.emplace_back(false);
                 std::string str = entry.substr(pos+1);
                 inputs.emplace_back(str);
-                n++;
             }
     }
 
