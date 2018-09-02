@@ -19,26 +19,24 @@ struct Arguments { // list of all program arguments
 namespace analysis {
 
 
-namespace fs = boost::filesystem;
-class ReadingTimeAnalyzer {
+class ReadingTimeAnalyzer{
 public:
 
     ReadingTimeAnalyzer(const Arguments& _args): args(_args) {}
 
     void Run()
     {
-            for (const auto & entry : fs::directory_iterator(args.input_path())){
-                auto file = entry.path().string();
-
-                std::size_t pos = file.find(".");
-                std::string partial = file.substr(pos,pos+5);
-                std::cout<<partial<<std::endl;
-                if (partial != ".root") continue;
-                auto inputFile = root_ext::OpenRootFile(file);
-                auto tuple = ntuple::CreateEventTuple("muMu", inputFile.get(), true, ntuple::TreeState::Full);
-                std::cout << entry << " number of events: " << tuple->size() << std::endl;
-            }
-
+        namespace fs = boost::filesystem;
+        for (const auto & entry : fs::directory_iterator(args.input_path())){
+            auto file = entry.path().string();
+            std::size_t pos = file.find(".");
+            std::string partial = file.substr(pos,pos+5);
+            std::cout<<partial<<std::endl;
+            if (partial != ".root") continue;
+            auto inputFile = root_ext::OpenRootFile(file);
+            auto tuple = ntuple::CreateEventTuple("muMu", inputFile.get(), true, ntuple::TreeState::Full);
+            std::cout << entry << " number of events: " << tuple->size() << std::endl;
+        }
     }
 
 private:
