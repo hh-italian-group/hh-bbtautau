@@ -158,7 +158,7 @@ public:
                 std::cout << "Job " << job.name << " has been skimmed." << std::endl;
                 successful_jobs.insert(job.name);
             } catch(std::exception& e) {
-                std::cerr << "\nEROOR: " << e.what() << "\nJob " <<job.name << " is failed." << std::endl;
+                std::cerr << "\nERROR: " << e.what() << "\nJob " <<job.name << " is failed." << std::endl;
                 failed_jobs.insert(job.name);
             }
         }
@@ -253,7 +253,6 @@ private:
                     ntuple::MergeProdSummaries(*summary, desc_summary);
                 else
                     summary = std::make_shared<ProdSummary>(desc_summary);
-
 
 //                for(unsigned n = 0; n < desc_iter->inputs.size() && (n == 0 || !desc_iter->first_input_is_ref); ++n) {
 //                    if (desc_iter->input_is_partial.size() && desc_iter->input_is_partial.at(n) == true) continue;
@@ -397,12 +396,12 @@ private:
         auto file_iter = input_files.begin();
         auto summary = eventWeights_HH->GetSummaryWithWeights(*file_iter++, weighting_mode);
         if(!desc.first_input_is_ref) {
-            unsigned n=0;
-            for(; file_iter != input_files.end(); ++file_iter) {
-                if (desc.input_is_partial.size() && desc.input_is_partial.at(n) == true) continue;
+            unsigned n=1;
+            for(; file_iter != input_files.end(); ++file_iter, ++n) {
+                if (desc.input_is_partial.size() && desc.input_is_partial.at(n) == true)
+                    continue;
                 auto other_summary = eventWeights_HH->GetSummaryWithWeights(*file_iter, weighting_mode);
                 ntuple::MergeProdSummaries(summary, other_summary);
-                n++;
             }
         }
         if(desc.HasCrossSection()) {
