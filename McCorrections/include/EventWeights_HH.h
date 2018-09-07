@@ -49,8 +49,19 @@ public:
         const auto mode_withTopPt = shape_weights_withTopPt & weighting_mode;
         const bool calc_withTopPt = mode_withTopPt.count(WeightType::TopPt);
         if(mode.size() || mode_withTopPt.size()) {
-            ntuple::ExpressTuple all_events("all_events", file.get(), true);
-            for(const auto& event : all_events) {
+            auto all_events = ntuple::CreateExpressTuple("all_events", file.get(), true,
+                                                           ntuple::TreeState::Full);
+
+            using EventIdSet = std::set<EventIdentifier>;
+            EventIdSet processed_events;
+            for(const auto& event : *all_events) {
+                const EventIdentifier Id(event.run, event.lumi, event.evt);
+                if(processed_events.count(Id)) {
+//                    std::cout << "WARNING: duplicated express event " << Id << std::endl;
+                    continue;
+                }
+                processed_events.insert(Id);
+
                 summary.totalShapeWeight += GetTotalWeight(event, mode);
                 if(calc_withTopPt)
                     summary.totalShapeWeight_withTopPt += GetTotalWeight(event, mode_withTopPt);
