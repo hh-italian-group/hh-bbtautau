@@ -17,6 +17,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Analysis/include/EventLoader.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
 #include "hh-bbtautau/Analysis/include/AnalysisCategories.h"
+#include "h-tautau/Analysis/include/MetFilters.h"
 
 struct Arguments {
     REQ_ARG(std::string, cfg);
@@ -157,7 +158,7 @@ public:
                 std::cout << "Job " << job.name << " has been skimmed." << std::endl;
                 successful_jobs.insert(job.name);
             } catch(std::exception& e) {
-                std::cerr << "\nEROOR: " << e.what() << "\nJob " <<job.name << " is failed." << std::endl;
+                std::cerr << "\nERROR: " << e.what() << "\nJob " <<job.name << " is failed." << std::endl;
                 failed_jobs.insert(job.name);
             }
         }
@@ -192,7 +193,6 @@ private:
 
         try {
             weighting_mode = job.apply_common_weights ? job.weights | setup.common_weights : job.weights;
-            std::shared_ptr<DecayModeCollection> dm_collection;
             for(auto desc_iter = job.files.begin(); desc_iter != job.files.end(); ++desc_iter, ++desc_id) {
                 if(desc_iter == job.files.begin() || !job.ProduceMergedOutput()) {
                     for (Channel channel : setup.channels){
@@ -211,20 +211,31 @@ private:
                         std::cout << "\tPreparing EFT weights" << std::endl;
                         auto eft_weight_provider = eventWeights_HH->GetProviderT<NonResHH_EFT::WeightProvider>(
                                     mc_corrections::WeightType::BSM_to_SM);
-                        ntuple::ExpressTuple express_tuple("all_events", outputFile.get(), false);
+                        auto express_tuple = ntuple::CreateExpressTuple("all_events", outputFile.get(), false,
+                                                                       ntuple::TreeState::Full);
+
                         for(auto desc_iter_2 = job.files.begin(); desc_iter_2 != job.files.end(); ++desc_iter_2) {
                             if(desc_iter_2 != desc_iter && !job.ProduceMergedOutput()) continue;
                             for(const auto& input : desc_iter_2->inputs) {
                                 auto file = root_ext::OpenRootFile(args.inputPath() + "/" + input);
                                 eft_weight_provider->AddFile(*file);
                                 ntuple::ExpressTuple file_events("all_events", file.get(), true);
+
+                                using EventIdSet = std::set<EventIdentifier>;
+                                EventIdSet processed_events;
                                 for(const auto& event : file_events) {
-                                    express_tuple() = event;
-                                    express_tuple.Fill();
+                                    (*express_tuple)() = event;
+                                    const EventIdentifier Id(event.run, event.lumi, event.evt);
+                                    if(processed_events.count(Id)) {
+                                        std::cout << "WARNING: duplicated express event " << Id << std::endl;
+                                        continue;
+                                    }
+                                    processed_events.insert(Id);
+                                    express_tuple->Fill();
                                 }
                             }
                         }
-                        express_tuple.Write();
+                        express_tuple->Write();
                         eft_weight_provider->CreatePdfs(outputFile.get());
                     }
                 }
@@ -243,11 +254,12 @@ private:
                 else
                     summary = std::make_shared<ProdSummary>(desc_summary);
 
-                for(unsigned n = 0; n < desc_iter->inputs.size() && (n == 0 || !desc_iter->first_input_is_ref); ++n) {
-                    const auto& input = desc_iter->inputs.at(n);
-                    summary->file_desc_name.push_back(input);
-                    summary->file_desc_id.push_back(n * 1000 + desc_id);
-                }
+//                for(unsigned n = 0; n < desc_iter->inputs.size() && (n == 0 || !desc_iter->first_input_is_ref); ++n) {
+//                    if (desc_iter->input_is_partial.size() && desc_iter->input_is_partial.at(n) == true) continue;
+//                    const auto& input = desc_iter->inputs.at(n);
+//                    summary->file_desc_name.push_back(input);
+//                    summary->file_desc_id.push_back(n * 1000 + desc_id);
+//                }
 
                 summary->n_splits = setup.n_splits;
                 summary->split_seed = setup.split_seed;
@@ -264,16 +276,8 @@ private:
                         auto file = inputFiles.at(n);
                         std::cout << "\t\t" << desc_iter->inputs.at(n) << ":" << treeName << std::endl;
 
-                        if(!desc_iter->first_input_is_ref)
+                        if(!desc_iter->first_input_is_ref && (!desc_iter->input_is_partial.size() || desc_iter->input_is_partial.at(n) == false))
                             processed_events.clear();
-
-                        if(job.apply_dm_fix && channel == Channel::TauTau
-                                && (n == 0 || !desc_iter->first_input_is_ref)) {
-                            std::cout << "\t\t\t" << "Loading tau decay modes... ";
-                            dm_collection = std::make_shared<DecayModeCollection>(args.inputPath() + "/../Full_dm",
-                                                                                  desc_iter->inputs.at(n), "tauTau");
-                            std::cout << "done." << std::endl;
-                        }
 
                         std::shared_ptr<EventTuple> tuple;
                         try {
@@ -285,6 +289,7 @@ private:
                         if(!tuple) continue;
                         EventIdentifier prev_event_id = EventIdentifier::Undef_event();
                         unsigned split_id = 0;
+
                         for(const Event& event : *tuple) {
                             const FullEventId fullId{EventIdentifier(event.run, event.lumi, event.evt),
                                                      static_cast<EventEnergyScale>(event.eventEnergyScale)};
@@ -308,8 +313,6 @@ private:
                                 split_id = event_ptr->split_id;
                             }
                             event_ptr->split_id = split_distr ? (*split_distr)(gen_map.at(channel)) : 0;
-                            if(job.apply_dm_fix && channel == Channel::TauTau)
-                                dm_collection->UpdateEvent(*event_ptr);
                             processQueue.Push(event_ptr);
                         }
                     }
@@ -393,12 +396,14 @@ private:
         auto file_iter = input_files.begin();
         auto summary = eventWeights_HH->GetSummaryWithWeights(*file_iter++, weighting_mode);
         if(!desc.first_input_is_ref) {
-            for(; file_iter != input_files.end(); ++file_iter) {
+            unsigned n=1;
+            for(; file_iter != input_files.end(); ++file_iter, ++n) {
+                if (desc.input_is_partial.size() && desc.input_is_partial.at(n) == true)
+                    continue;
                 auto other_summary = eventWeights_HH->GetSummaryWithWeights(*file_iter, weighting_mode);
                 ntuple::MergeProdSummaries(summary, other_summary);
             }
         }
-
         if(desc.HasCrossSection()) {
             weight_xs = desc.GetCrossSectionWeight() / summary.totalShapeWeight;
             summary.totalShapeWeight = desc.GetCrossSectionWeight();
@@ -424,12 +429,15 @@ private:
     bool ProcessEvent(Event& event, const std::shared_ptr<Event>& prev_event, ntuple::StorageMode& storage_mode,
                       bool prev_event_stored)
     {
-        using EventPart = ntuple::StorageMode::EventPart;
+//        using EventPart = ntuple::StorageMode::EventPart;
         using WeightType = mc_corrections::WeightType;
         using WeightingMode = mc_corrections::WeightingMode;
 
         Event full_event = event;
+
         storage_mode = ntuple::EventLoader::Load(full_event, prev_event.get());
+        auto eventInfo = MakeEventInfo(static_cast<Channel>(full_event.channelId), full_event, setup.period, setup.jet_ordering);
+
         const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
         if(!prev_event_stored) {
             event = full_event;
@@ -437,16 +445,17 @@ private:
             event.storageMode = static_cast<UInt_t>(storage_mode.Mode());
         }
 
+
+        if (!ntuple::MetFilters(full_event.metFilters).PassAll()) return false;
+
         if(!setup.energy_scales.count(es) || full_event.extraelec_veto || full_event.extramuon_veto) return false;
 
-        if(setup.apply_bb_cut && (full_event.jets_p4.size() < 2
-                || std::abs(full_event.jets_p4.at(0).eta()) >= cuts::btag_2016::eta
-                || std::abs(full_event.jets_p4.at(1).eta()) >= cuts::btag_2016::eta)) return false;
+        if(setup.apply_bb_cut && !eventInfo->HasBjetPair()) return false;
 
         if(setup.apply_mass_cut) {
             bool pass_mass_cut = false;
-            if(full_event.jets_p4.size() < 2) return false;
-            const double mbb = (full_event.jets_p4.at(0) + full_event.jets_p4.at(1)).mass();
+            if (!eventInfo->HasBjetPair()) return false;
+            const double mbb = eventInfo->GetHiggsBB().GetMomentum().mass();
             const double mtautau = (full_event.p4_1 + full_event.p4_2).mass();
             pass_mass_cut = pass_mass_cut
                     || cuts::hh_bbtautau_2016::hh_tag::IsInsideBoostedMassWindow(full_event.SVfit_p4.mass(),mbb);
@@ -476,15 +485,7 @@ private:
             if(leg_types.second == LegType::tau && !ApplyTauIdCut(full_event.tauId_flags_2)) return false;
         }
         
-        if(storage_mode.IsPresent(EventPart::FirstTauIds))
-            SkimTauIds(event.tauId_keys_1, event.tauId_values_1);
-
-        if(storage_mode.IsPresent(EventPart::SecondTauIds))
-            SkimTauIds(event.tauId_keys_2, event.tauId_values_2);
-
-        event.n_jets = static_cast<unsigned>(full_event.jets_p4.size());
-        event.ht_other_jets = full_event.jets_p4.size() > 2
-                ? static_cast<float>(Calculate_HT(full_event.jets_p4.begin() + 2, full_event.jets_p4.end())) : 0;
+        event.ht_other_jets = (eventInfo->HasBjetPair()) ? static_cast<Float_t>(eventInfo->GetHT(false,true)) : 0;
 
         event.weight_pu = weighting_mode.count(WeightType::PileUp)
                         ? eventWeights_HH->GetWeight(full_event, WeightType::PileUp) : 1;
@@ -529,19 +530,17 @@ private:
             event.weight_total_withTopPt = 0;
         }
 
-        if(setup.apply_bb_cut && storage_mode.IsPresent(EventPart::Jets)) {
-            event.jets_csv.resize(2);
-            event.jets_rawf.resize(2);
-            event.jets_mva.resize(2);
-            event.jets_p4.resize(2);
-            event.jets_partonFlavour.resize(2);
-            event.jets_hadronFlavour.resize(2);
-        }
+//        if(setup.apply_bb_cut && storage_mode.IsPresent(EventPart::Jets)) {
+//            event.jets_csv.resize(2);
+//            event.jets_rawf.resize(2);
+//            event.jets_pu_id.resize(2);
+//            event.jets_p4.resize(2);
+//            event.jets_hadronFlavour.resize(2);
+//        }
 
         if(!setup.keep_genJets) {
             event.genJets_p4.clear();
             event.genJets_hadronFlavour.clear();
-            event.genJets_partonFlavour.clear();
         }
 
         if(!setup.keep_genParticles){
