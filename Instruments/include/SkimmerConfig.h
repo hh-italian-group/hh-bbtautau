@@ -8,6 +8,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
 #include "h-tautau/McCorrections/include/WeightingMode.h"
 #include "hh-bbtautau/Analysis/include/AnalysisCategories.h"
+#include "h-tautau/Analysis/include/EventInfo.h"
 
 namespace analysis {
 namespace tuple_skimmer {
@@ -19,6 +20,7 @@ struct Setup {
     Period period;
     DiscriminatorWP btag_wp;
     mc_corrections::WeightingMode common_weights;
+    JetOrdering jet_ordering;
     unsigned n_splits{0};
     unsigned split_seed{0};
 
@@ -70,7 +72,7 @@ struct FileDescriptor {
                 std::string partial = entry.substr(0,pos);
                 if (partial == "part") input_is_partial.emplace_back(true);
                 else input_is_partial.emplace_back(false);
-                std::string str = entry.substr(pos+1);
+                std::string str = pos == std::string::npos ? entry : entry.substr(pos+1);
                 inputs.emplace_back(str);
             }
     }

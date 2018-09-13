@@ -16,7 +16,6 @@ public:
     EventWeights_HH(Period period, DiscriminatorWP btag_wp, bool use_LLR_weights, WeightingMode mode = {}) :
         EventWeights(period, btag_wp, mode)
     {
-        std::cout<<ToString(period)<<std::endl;
         if (period == Period::Run2016){
             std::string dy_weights =
                     use_LLR_weights ? Full_Cfg_Name("dyjets_weights_LLR.cfg") : Full_Cfg_Name("dyjets_weights.cfg");

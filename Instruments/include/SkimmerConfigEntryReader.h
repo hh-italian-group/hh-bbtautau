@@ -22,6 +22,7 @@ public:
         CheckReadParamCounts("common_weights", 1, Condition::less_equal);
         CheckReadParamCounts("n_splits", 1, Condition::less_equal);
         CheckReadParamCounts("split_seed", 1, Condition::less_equal);
+        CheckReadParamCounts("jet_ordering", 1, Condition::less_equal);
 
         CheckReadParamCounts("apply_mass_cut", 1, Condition::less_equal);
         CheckReadParamCounts("apply_charge_cut", 1, Condition::less_equal);
@@ -46,6 +47,7 @@ public:
         ParseEntryList("common_weights", current.common_weights);
         ParseEntry("n_splits", current.n_splits);
         ParseEntry("split_seed", current.split_seed);
+        ParseEntry("jet_ordering", current.jet_ordering);
 
         ParseEntry("apply_mass_cut", current.apply_mass_cut);
         ParseEntry("apply_charge_cut", current.apply_charge_cut);

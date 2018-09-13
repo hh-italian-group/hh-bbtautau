@@ -225,13 +225,13 @@ private:
                                 EventIdSet processed_events;
                                 for(const auto& event : file_events) {
                                     (*express_tuple)() = event;
-                                    express_tuple->Fill();
                                     const EventIdentifier Id(event.run, event.lumi, event.evt);
                                     if(processed_events.count(Id)) {
                                         std::cout << "WARNING: duplicated express event " << Id << std::endl;
                                         continue;
                                     }
                                     processed_events.insert(Id);
+                                    express_tuple->Fill();
                                 }
                             }
                         }
@@ -435,13 +435,9 @@ private:
 
         Event full_event = event;
 
-        const Period run_period = setup.period;
-        const JetOrdering jet_ordering = run_period == Period::Run2017
-                                       ? JetOrdering::DeepCSV : JetOrdering::CSV;
-
-        auto eventInfo = MakeEventInfo(static_cast<Channel>(event.channelId), event, setup.period, jet_ordering);
-
         storage_mode = ntuple::EventLoader::Load(full_event, prev_event.get());
+        auto eventInfo = MakeEventInfo(static_cast<Channel>(full_event.channelId), full_event, setup.period, setup.jet_ordering);
+
         const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
         if(!prev_event_stored) {
             event = full_event;
@@ -450,13 +446,11 @@ private:
         }
 
 
-        if (!ntuple::MetFilters(event.metFilters).PassAll()) return false;
+        if (!ntuple::MetFilters(full_event.metFilters).PassAll()) return false;
 
         if(!setup.energy_scales.count(es) || full_event.extraelec_veto || full_event.extramuon_veto) return false;
 
-        if(setup.apply_bb_cut && (!eventInfo->HasBjetPair()
-                || std::abs(eventInfo->GetHiggsBB().GetFirstDaughter()->p4().eta()) >= cuts::btag_2016::eta
-                || std::abs(eventInfo->GetHiggsBB().GetSecondDaughter()->p4().eta()) >= cuts::btag_2016::eta)) return false;
+        if(setup.apply_bb_cut && !eventInfo->HasBjetPair()) return false;
 
         if(setup.apply_mass_cut) {
             bool pass_mass_cut = false;
