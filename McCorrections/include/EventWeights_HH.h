@@ -16,21 +16,24 @@ public:
     EventWeights_HH(Period period, DiscriminatorWP btag_wp, bool use_LLR_weights, WeightingMode mode = {}) :
         EventWeights(period, btag_wp, mode)
     {
-        if(period != Period::Run2016)
+        if (period == Period::Run2016){
+            std::string dy_weights =
+                    use_LLR_weights ? Full_Cfg_Name("dyjets_weights_LLR.cfg") : Full_Cfg_Name("dyjets_weights.cfg");
+            if(mode.empty() || mode.count(WeightType::DY))
+                providers[WeightType::DY] = std::make_shared<NJets_HT_weight>("DY", dy_weights);
+            if(mode.empty() || mode.count(WeightType::TTbar))
+                providers[WeightType::TTbar] = std::make_shared<TTbar_weight>(Full_Cfg_Name("ttbar_weights_full.cfg"));
+            if(mode.empty() || mode.count(WeightType::BSM_to_SM))
+                providers[WeightType::BSM_to_SM] = std::make_shared<NonResHH_EFT::WeightProvider>(
+                            FullBSMtoSM_Name("coefficientsByBin_extended_3M_costHHSim_19-4.txt"));
+            std::string wjet_weights =
+                    use_LLR_weights ? Full_Cfg_Name("wjets_weights_LLR.cfg") : Full_Cfg_Name("wjets_weights.cfg");
+            if(mode.empty() || mode.count(WeightType::Wjets))
+                providers[WeightType::Wjets] = std::make_shared<NJets_HT_weight>("Wjets", wjet_weights);
+        }
+        else if (period == Period::Run2017){ }
+        else
             throw exception("Period %1% is not supported.") % period;
-        std::string dy_weights =
-                use_LLR_weights ? Full_Cfg_Name("dyjets_weights_LLR.cfg") : Full_Cfg_Name("dyjets_weights.cfg");
-        if(mode.empty() || mode.count(WeightType::DY))
-            providers[WeightType::DY] = std::make_shared<NJets_HT_weight>("DY", dy_weights);
-        if(mode.empty() || mode.count(WeightType::TTbar))
-            providers[WeightType::TTbar] = std::make_shared<TTbar_weight>(Full_Cfg_Name("ttbar_weights_full.cfg"));
-        if(mode.empty() || mode.count(WeightType::BSM_to_SM))
-            providers[WeightType::BSM_to_SM] = std::make_shared<NonResHH_EFT::WeightProvider>(
-                        FullBSMtoSM_Name("coefficientsByBin_extended_3M_costHHSim_19-4.txt"));
-        std::string wjet_weights =
-                use_LLR_weights ? Full_Cfg_Name("wjets_weights_LLR.cfg") : Full_Cfg_Name("wjets_weights.cfg");
-        if(mode.empty() || mode.count(WeightType::Wjets))
-            providers[WeightType::Wjets] = std::make_shared<NJets_HT_weight>("Wjets", wjet_weights);
     }
 
     ntuple::ProdSummary GetSummaryWithWeights(const std::shared_ptr<TFile>& file,
@@ -48,9 +51,21 @@ public:
         const auto mode = shape_weights & weighting_mode;
         const auto mode_withTopPt = shape_weights_withTopPt & weighting_mode;
         const bool calc_withTopPt = mode_withTopPt.count(WeightType::TopPt);
+
         if(mode.size() || mode_withTopPt.size()) {
-            ntuple::ExpressTuple all_events("all_events", file.get(), true);
-            for(const auto& event : all_events) {
+            auto all_events = ntuple::CreateExpressTuple("all_events", file.get(), true,
+                                                           ntuple::TreeState::Full);
+
+            using EventIdSet = std::set<EventIdentifier>;
+            EventIdSet processed_events;
+            for(const auto& event : *all_events) {
+                const EventIdentifier Id(event.run, event.lumi, event.evt);
+                if(processed_events.count(Id)) {
+//                    std::cout << "WARNING: duplicated express event " << Id << std::endl;
+                    continue;
+                }
+                processed_events.insert(Id);
+
                 summary.totalShapeWeight += GetTotalWeight(event, mode);
                 if(calc_withTopPt)
                     summary.totalShapeWeight_withTopPt += GetTotalWeight(event, mode_withTopPt);
