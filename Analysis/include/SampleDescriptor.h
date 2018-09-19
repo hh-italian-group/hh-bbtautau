@@ -17,6 +17,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisCategories.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
 #include "EventAnalyzerDataId.h"
+#include "h-tautau/Analysis/include/EventInfo.h"
 
 namespace analysis {
 
@@ -36,6 +37,7 @@ struct AnalyzerSetup {
     std::string mva_setup, hist_cfg;
     std::vector<EventAnalyzerDataId> syncDataIds;
     std::string plot_cfg, plot_page_opt, unc_cfg;
+    JetOrdering jet_ordering;
 
     std::map<SelectionCut,analysis::EllipseParameters> massWindowParams;
 

@@ -221,7 +221,7 @@ protected:
                 prevFullEvent = tupleEvent;
                 prevFullEventPtr = &prevFullEvent;
             }
-            EventInfo event(tupleEvent, ntuple::JetPair{0, 1}, &summary);
+            EventInfo event(tupleEvent, ana_setup.period, ana_setup.jet_ordering, &summary);
             if(!ana_setup.energy_scales.count(event.GetEnergyScale())) continue;
 
             bbtautau::AnaTupleWriter::DataIdMap dataIds;

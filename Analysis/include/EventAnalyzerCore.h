@@ -13,7 +13,6 @@ namespace analysis {
 struct CoreAnalyzerArguments {
     REQ_ARG(std::string, sources);
     REQ_ARG(std::string, setup);
-    OPT_ARG(std::string, period, "");
     OPT_ARG(std::string, mva_setup, "");
     OPT_ARG(std::string, mva_config, "");
     OPT_ARG(std::string, working_path, "./");
@@ -35,8 +34,7 @@ public:
         if(args.n_threads() > 1)
             ROOT::EnableImplicitMT(args.n_threads());
 
-        ConfigReader config_reader;
-        ConfigReader mvaconfig_reader;
+        ConfigReader config_reader, mvaconfig_reader;
 
         AnalyzerSetupCollection ana_setup_collection;
         AnalyzerConfigEntryReader ana_entry_reader(ana_setup_collection);
@@ -52,8 +50,11 @@ public:
         CombinedSampleDescriptorConfigEntryReader combined_entry_reader(cmb_sample_descriptors, sample_descriptors);
         config_reader.AddEntryReader("SAMPLE_CMB", combined_entry_reader, false);
 
+        std::cout<<"ciao1"<<std::endl;
         config_reader.ReadConfig(args.sources());
+        std::cout<<"ciao2"<<std::endl;
         mvaconfig_reader.ReadConfig(args.mva_config());
+        std::cout<<"ciao3"<<std::endl;
 
         if(!ana_setup_collection.count(args.setup()))
             throw exception("Setup '%1%' not found in the configuration file '%2%'.") % args.setup() % args.sources();
