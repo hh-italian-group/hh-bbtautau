@@ -206,6 +206,7 @@ protected:
                     std::cout << "done." << std::endl;
                 }
                 ProcessDataSource(sample, sample_wp, tuple, prod_summary);
+
                 processed_files.insert(sample_wp.file_path);
             }
         }
@@ -223,7 +224,6 @@ protected:
             }
             EventInfo event(tupleEvent, ana_setup.period, ana_setup.jet_ordering, &summary);
             if(!ana_setup.energy_scales.count(event.GetEnergyScale())) continue;
-
             bbtautau::AnaTupleWriter::DataIdMap dataIds;
             const auto eventCategories = DetermineEventCategories(event);
             for(auto eventCategory : eventCategories) {
@@ -231,7 +231,6 @@ protected:
                 const EventRegion eventRegion = DetermineEventRegion(event, eventCategory);
                 for(const auto& region : ana_setup.regions){
                     if(!eventRegion.Implies(region)) continue;
-
                     std::map<SelectionCut, double> mva_scores;
                     const auto eventSubCategory = DetermineEventSubCategory(event, eventCategory, mva_scores);
                     for(const auto& subCategory : sub_categories_to_process) {

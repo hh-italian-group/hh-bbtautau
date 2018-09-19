@@ -34,7 +34,6 @@ public:
         using Event = ntuple::Event;
         using EventTuple = ntuple::EventTuple;
 
-        std::cout<<"ciao"<<std::endl;
         namespace fs = boost::filesystem;
         for (const auto & entry : fs::directory_iterator(args.input_path())){
             auto file = entry.path().string();
@@ -52,7 +51,10 @@ public:
             TObject *key = iter->Next();
             while (key) {
                std::string avoid=key->GetName();
-               if (avoid == "summary") continue;
+               if (avoid == "summary") {
+                   key = iter->Next();
+                continue;
+               }
                tree = key->GetName();
                std::cout<<tree<<std::endl;
                key = iter->Next();

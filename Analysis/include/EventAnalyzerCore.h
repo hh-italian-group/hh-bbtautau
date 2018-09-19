@@ -34,7 +34,7 @@ public:
         if(args.n_threads() > 1)
             ROOT::EnableImplicitMT(args.n_threads());
 
-        ConfigReader config_reader, mvaconfig_reader;
+        ConfigReader config_reader;
 
         AnalyzerSetupCollection ana_setup_collection;
         AnalyzerConfigEntryReader ana_entry_reader(ana_setup_collection);
@@ -42,7 +42,7 @@ public:
 
         MvaReaderSetupCollection mva_setup_collection;
         MvaReaderSetupEntryReader mva_entry_reader(mva_setup_collection);
-        mvaconfig_reader.AddEntryReader("MVA", mva_entry_reader, false);
+        config_reader.AddEntryReader("MVA", mva_entry_reader, false);
 
         SampleDescriptorConfigEntryReader sample_entry_reader(sample_descriptors);
         config_reader.AddEntryReader("SAMPLE", sample_entry_reader, true);
@@ -50,11 +50,7 @@ public:
         CombinedSampleDescriptorConfigEntryReader combined_entry_reader(cmb_sample_descriptors, sample_descriptors);
         config_reader.AddEntryReader("SAMPLE_CMB", combined_entry_reader, false);
 
-        std::cout<<"ciao1"<<std::endl;
         config_reader.ReadConfig(args.sources());
-        std::cout<<"ciao2"<<std::endl;
-        mvaconfig_reader.ReadConfig(args.mva_config());
-        std::cout<<"ciao3"<<std::endl;
 
         if(!ana_setup_collection.count(args.setup()))
             throw exception("Setup '%1%' not found in the configuration file '%2%'.") % args.setup() % args.sources();
