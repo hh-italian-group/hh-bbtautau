@@ -15,7 +15,7 @@ protected:
     virtual EventRegion DetermineEventRegion(EventInfo& event, EventCategory /*eventCategory*/) override
     {
         static const std::vector<std::string> trigger_patterns = {
-            "HLT_DoubleMediumChargedIsoPFTau35_Trk1_TightID_eta2p1_Reg_v", "HLT_DoubleTightChargedIsoPFTau35_Trk1_TightID_eta2p1_Reg_v"
+            "HLT_DoubleMediumIsoPFTau35_Trk1_eta2p1_Reg_v", "HLT_DoubleMediumCombinedIsoPFTau35_Trk1_eta2p1_Reg_v"
         };
 
         static const std::vector<DiscriminatorWP> working_points = {

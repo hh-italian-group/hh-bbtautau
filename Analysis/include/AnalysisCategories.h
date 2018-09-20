@@ -312,7 +312,7 @@ struct EventCategory {
 private:
     boost::optional<size_t> n_jets, n_btag;
     boost::optional<DiscriminatorWP> btag_wp;
-    boost::optional<bool> boosted;
+    boost::optional<bool> boosted, is_strict, is_VBF;
 };
 
 #undef DEF_ES
