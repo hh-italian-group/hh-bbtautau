@@ -13,8 +13,8 @@ namespace mc_corrections {
 
 class EventWeights_HH : public EventWeights {
 public:
-    EventWeights_HH(Period period, DiscriminatorWP btag_wp, bool use_LLR_weights, WeightingMode mode = {}) :
-        EventWeights(period, btag_wp, mode)
+    EventWeights_HH(Period period, JetOrdering jet_ordering, DiscriminatorWP btag_wp, bool use_LLR_weights, WeightingMode mode = {}) :
+        EventWeights(period, jet_ordering, btag_wp, mode)
     {
         if (period == Period::Run2016){
             std::string dy_weights =
@@ -23,9 +23,6 @@ public:
                 providers[WeightType::DY] = std::make_shared<NJets_HT_weight>("DY", dy_weights);
             if(mode.empty() || mode.count(WeightType::TTbar))
                 providers[WeightType::TTbar] = std::make_shared<TTbar_weight>(Full_Cfg_Name("weights_2016/ttbar_weights_full.cfg"));
-            if(mode.empty() || mode.count(WeightType::BSM_to_SM))
-                providers[WeightType::BSM_to_SM] = std::make_shared<NonResHH_EFT::WeightProvider>(
-                            FullBSMtoSM_Name("coefficientsByBin_extended_3M_costHHSim_19-4.txt"));
             std::string wjet_weights =
                     use_LLR_weights ? Full_Cfg_Name("weights_2016/wjets_weights_LLR.cfg") : Full_Cfg_Name("weights_2016/wjets_weights.cfg");
             if(mode.empty() || mode.count(WeightType::Wjets))
@@ -42,6 +39,10 @@ public:
         }
         else
             throw exception("Period %1% is not supported.") % period;
+
+        if(mode.empty() || mode.count(WeightType::BSM_to_SM))
+            providers[WeightType::BSM_to_SM] = std::make_shared<NonResHH_EFT::WeightProvider>(
+                        FullBSMtoSM_Name("coefficientsByBin_extended_3M_costHHSim_19-4.txt"));
     }
 
     ntuple::ProdSummary GetSummaryWithWeights(const std::shared_ptr<TFile>& file,
