@@ -14,9 +14,7 @@ public:
 protected:
     virtual EventRegion DetermineEventRegion(EventInfo& event, EventCategory /*eventCategory*/) override
     {
-        static const std::vector<std::string> trigger_patterns = {
-            "HLT_IsoMu22_v"
-        };
+        static const std::vector<std::string> trigger_patterns = ana_setup.trigger.at(ChannelId());
 
         const MuonCandidate& muon1 = event.GetFirstLeg();
         const MuonCandidate& muon2 = event.GetSecondLeg();

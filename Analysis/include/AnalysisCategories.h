@@ -190,10 +190,12 @@ struct EventCategory {
     DEF_ES(TwoJets_ZeroLooseBtag, 2, 0, DiscriminatorWP::Loose)
     DEF_ES(TwoJets_OneLooseBtag, 2, 1, DiscriminatorWP::Loose)
     DEF_ES(TwoJets_TwoLooseBtag, 2, 2, DiscriminatorWP::Loose)
-    DEF_ES(TwoJets_ZeroBtag_Resolved, 2, 0, DiscriminatorWP::Medium, false)
-    DEF_ES(TwoJets_OneBtag_Resolved, 2, 1, DiscriminatorWP::Medium, false)
-    DEF_ES(TwoJets_TwoBtag_Resolved, 2, 2, DiscriminatorWP::Medium, false)
-    DEF_ES(TwoJets_TwoLooseBtag_Boosted, 2, 2, DiscriminatorWP::Loose, true)
+    DEF_ES(TwoJets_ZeroBtag_Resolved_noVBF, 2, 0, true, DiscriminatorWP::Medium, false, false)
+    DEF_ES(TwoJets_OneBtag_Resolved_noVBF, 2, 1, true, DiscriminatorWP::Medium, false, false)
+    DEF_ES(TwoJets_TwoBtagPlus_Resolved_noVBF, 2, 2, false, DiscriminatorWP::Medium, false, false)
+    DEF_ES(TwoJets_TwoLooseBtagPlus_Boosted_noVBF, 2, 2, false, DiscriminatorWP::Loose, true, false)
+    DEF_ES(TwoJets_OneBtagPlus_VBF, 2, 1, false, DiscriminatorWP::Medium, boost::optional<bool>(), true)
+
 
     EventCategory() {}
     explicit EventCategory(size_t _n_jets) : n_jets(_n_jets) {}
@@ -204,8 +206,8 @@ struct EventCategory {
             throw exception("Number of btag can't be greater than number of jets");
     }
 
-    EventCategory(size_t _n_jets, size_t _n_btag, DiscriminatorWP _btag_wp, bool _boosted) :
-        n_jets(_n_jets), n_btag(_n_btag), btag_wp(_btag_wp), boosted(_boosted)
+    EventCategory(size_t _n_jets, size_t _n_btag, bool _strict_n_btag, DiscriminatorWP _btag_wp,
+                  boost::optional<bool> _boosted, bool _is_vbf)
     {
         if(n_btag > n_jets)
             throw exception("Number of btag can't be greater than number of jets");

@@ -13,9 +13,9 @@ public:
 protected:
     virtual EventRegion DetermineEventRegion(EventInfo& event, EventCategory /*eventCategory*/) override
     {
-        static const std::vector<std::string> trigger_patterns = {
-            "HLT_Ele25_eta2p1_WPTight_Gsf_v"
-        };
+
+
+        static const std::vector<std::string> trigger_patterns = ana_setup.trigger.at(ChannelId());
 
         static const std::vector<DiscriminatorWP> working_points = {
             DiscriminatorWP::VLoose, DiscriminatorWP::Loose, DiscriminatorWP::Medium
