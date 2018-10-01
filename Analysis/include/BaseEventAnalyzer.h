@@ -36,13 +36,26 @@ public:
 
     static constexpr Channel ChannelId() { return ChannelInfo::IdentifyChannel<FirstLeg, SecondLeg>(); }
 
-    static EventCategorySet DetermineEventCategories(EventInfo& event)
+    EventCategorySet DetermineEventCategories(EventInfo& event)
     {
 
-        static const std::map<DiscriminatorWP, double> btag_working_points = {
+        static const std::map<DiscriminatorWP, double> btag_working_points_2016 = {
             { DiscriminatorWP::Loose, cuts::btag_2016::CSVv2L },
             { DiscriminatorWP::Medium, cuts::btag_2016::CSVv2M }
         };
+        static const std::map<DiscriminatorWP, double> btag_working_points_2017 = {
+            { DiscriminatorWP::Loose, cuts::btag_2017::deepCSVv2L },
+            { DiscriminatorWP::Medium, cuts::btag_2017::deepCSVv2M },
+            { DiscriminatorWP::Tight, cuts::btag_2017::deepCSVv2T}
+        };
+
+        std::map<DiscriminatorWP, double>  btag_working_points;
+        if ( ana_setup.period == analysis::Period::Run2016 && ana_setup.jet_ordering == JetOrdering::CSV )
+            btag_working_points = btag_working_points_2016;
+        else if ( ana_setup.period == Period::Run2017 && ana_setup.jet_ordering == JetOrdering::DeepCSV )
+            btag_working_points = btag_working_points_2017;
+        else
+            throw exception("Jet ordering or btag working points not supported for '%1%' period") %ana_setup.period;
 
 
         EventCategorySet categories;
