@@ -65,7 +65,7 @@ protected:
         using analysis::EventCategory;
         static const analysis::EventCategorySet categoriesToProcess = {
             EventCategory::TwoJets_Inclusive, EventCategory::TwoJets_ZeroBtag,
-            EventCategory::TwoJets_OneBtag, EventCategory::TwoJets_TwoBtag
+            EventCategory::TwoJets_OneBtag, EventCategory::TwoJets_TwoBtagPlus
         };
 
         return categoriesToProcess;
