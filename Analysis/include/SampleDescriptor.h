@@ -17,6 +17,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisCategories.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
 #include "EventAnalyzerDataId.h"
+#include "h-tautau/Analysis/include/EventInfo.h"
 
 namespace analysis {
 
@@ -36,6 +37,8 @@ struct AnalyzerSetup {
     std::string mva_setup, hist_cfg;
     std::vector<EventAnalyzerDataId> syncDataIds;
     std::string plot_cfg, plot_page_opt, unc_cfg;
+    JetOrdering jet_ordering;
+    std::map<Channel, std::vector<std::string>> trigger;
 
     std::map<SelectionCut,analysis::EllipseParameters> massWindowParams;
 
@@ -171,7 +174,7 @@ using MvaReaderSetupCollection = std::unordered_map<std::string, MvaReaderSetup>
 
 struct SampleDescriptorBase {
     struct Point {
-        std::string name, full_name, title, file_path, datacard_name;
+        std::string name, full_name, title, file_path, datacard_name, trigger;
         SampleType sampleType;
         double norm_sf{1}, datacard_sf{1}, draw_sf{1};
         bool draw{false};

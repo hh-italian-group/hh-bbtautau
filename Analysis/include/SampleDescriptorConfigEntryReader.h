@@ -37,7 +37,9 @@ public:
         CheckReadParamCounts("plot_cfg", 1, Condition::less_equal);
         CheckReadParamCounts("plot_page_opt", 1, Condition::less_equal);
         CheckReadParamCounts("massWindowParams", 0, Condition::greater_equal);
+        CheckReadParamCounts("trigger", 0, Condition::greater_equal);
         CheckReadParamCounts("unc_cfg", 1, Condition::less_equal);
+        CheckReadParamCounts("jet_ordering", 1, Condition::less_equal);
 
         ConfigEntryReaderT<AnalyzerSetup>::EndEntry();
     }
@@ -67,7 +69,9 @@ public:
         ParseEntry("plot_cfg", current.plot_cfg);
         ParseEntry("plot_page_opt", current.plot_page_opt);
         ParseEntry("massWindowParams", current.massWindowParams);
+        ParseMappedEntryList("trigger", current.trigger,false);
         ParseEntry("unc_cfg", current.unc_cfg);
+        ParseEntry("jet_ordering", current.jet_ordering);
     }
 };
 
