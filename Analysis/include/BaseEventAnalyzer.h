@@ -8,6 +8,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "SampleDescriptorConfigEntryReader.h"
 #include "h-tautau/Cuts/include/Btag_2016.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
+#include "h-tautau/Cuts/include/hh_bbtautau_2017.h"
 #include "h-tautau/Analysis/include/EventLoader.h"
 #include "h-tautau/Analysis/include/SyncTupleHTT.h"
 #include "MvaReader.h"
@@ -35,6 +36,7 @@ public:
     using EventInfo = ::analysis::EventInfo<FirstLeg, SecondLeg>;
 
     static constexpr Channel ChannelId() { return ChannelInfo::IdentifyChannel<FirstLeg, SecondLeg>(); }
+    const std::vector<std::string> trigger_patterns = ana_setup.trigger.at(ChannelId());
 
     EventCategorySet DetermineEventCategories(EventInfo& event)
     {
@@ -69,13 +71,12 @@ public:
             const auto m_jj = event.GetHiggsBB().GetMomentum().M();
             const auto deta_jj = event.GetHiggsBB().GetMomentum().eta();
 
-            if(event.HasBjetPair() || (event.HasVBFjetPair() && m_jj>650 && deta_jj>2)) {
+            if(event.HasBjetPair() || (event.HasVBFjetPair() && m_jj>cuts::hh_bbtautau_2017::VBF::mass_jj && deta_jj>cuts::hh_bbtautau_2017::VBF::deltaeta_jj)) {
                 categories.insert(EventCategory::TwoJets_Inclusive());
                 const std::vector<const JetCandidate*> jets = {
                     &event.GetHiggsBB().GetFirstDaughter(), &event.GetHiggsBB().GetSecondDaughter(),
                 };
                 bool is_VBF = event.HasVBFjetPair() ? true : false;
-                size_t n_jets = is_VBF ? 4 :2;
                 std::map<DiscriminatorWP, size_t> bjet_counts;
                 for(const auto& jet : jets) {
                     for(const auto& btag_wp : btag_working_points) {
@@ -83,13 +84,15 @@ public:
                             ++bjet_counts[btag_wp.first];
                     }
                 }
-                for(const auto& wp_entry : btag_working_points) {
-                    bool strict = true;
-                    if (bjet_counts[wp_entry.first] == 2 || n_jets == 4) strict = false;
-                    categories.emplace(2, bjet_counts[wp_entry.first], strict, wp_entry.first);
-                    categories.emplace(n_jets, bjet_counts[wp_entry.first], strict, wp_entry.first, is_boosted, is_VBF);
-                    if (is_VBF)
-                        categories.emplace(n_jets, bjet_counts[wp_entry.first], strict, wp_entry.first, !is_boosted, is_VBF);
+                for(size_t n_jets = 2; n_jets <= event.GetNJets(); ++n_jets) {
+                    for(const auto& wp_entry : btag_working_points) {
+                        categories.emplace(n_jets, bjet_counts[wp_entry.first], true, wp_entry.first);
+                        categories.emplace(n_jets, bjet_counts[wp_entry.first], true, wp_entry.first, is_boosted, is_VBF);
+                        for(size_t b_jets = 2; b_jets <= bjet_counts[wp_entry.first]; ++b_jets) {
+                            categories.emplace(n_jets, b_jets, false, wp_entry.first);
+                            categories.emplace(n_jets, b_jets, false, wp_entry.first, is_boosted, is_VBF);
+                        }
+                    }
                 }
             }
         }

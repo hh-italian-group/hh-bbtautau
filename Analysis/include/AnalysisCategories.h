@@ -236,10 +236,9 @@ struct EventCategory {
         return *btag_wp;
     }
 
-    bool HasStrictBtagConstraint() const { return strict_n_btag.is_initialized(); }
     bool IsN_btagStrict() const
     {
-        if(!HasStrictBtagConstraint())
+        if(!strict_n_btag.is_initialized())
             throw exception("Strict Btag constraint is not defined.");
         return *strict_n_btag;
     }
@@ -277,13 +276,12 @@ struct EventCategory {
     {
         if(*this == Inclusive()) return "Inclusive";
         std::ostringstream s;
+        s << *n_jets << "j";
         if(HasBtagConstraint()) {
             s << *n_btag;
             if(*btag_wp != DiscriminatorWP::Medium)
                 s << __DiscriminatorWP_short_names.EnumToString(*btag_wp);
             s << "b";
-        }
-        if(HasStrictBtagConstraint()) {
             const std::string stricbtag_str = IsN_btagStrict() ? "+" : "";
             s << stricbtag_str;
         }
