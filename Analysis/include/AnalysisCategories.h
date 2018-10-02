@@ -281,6 +281,7 @@ struct EventCategory {
         return is_VBF < ec.is_VBF;
     }
 
+
     std::string ToString() const
     {
         if(*this == Inclusive()) return "Inclusive";
@@ -354,9 +355,9 @@ struct EventCategory {
     }
 
 private:
-    boost::optional<size_t> n_jets, n_btag, strict_n_btag, is_VBF;
+    boost::optional<size_t> n_jets, n_btag, strict_n_btag;
     boost::optional<DiscriminatorWP> btag_wp;
-    boost::optional<bool> boosted;
+    boost::optional<bool> boosted, is_strict, is_VBF;
 };
 
 #undef DEF_ES
