@@ -268,15 +268,17 @@ struct EventCategory {
 
     bool operator ==(const EventCategory& ec) const
     {
-        return n_jets == ec.n_jets && n_btag == ec.n_btag && btag_wp == ec.btag_wp && boosted == ec.boosted;
+        return n_jets == ec.n_jets && n_btag == ec.n_btag && strict_n_btag == ec.strict_n_btag && btag_wp == ec.btag_wp && boosted == ec.boosted && is_VBF == ec.isVBF();
     }
     bool operator !=(const EventCategory& ec) const { return !(*this == ec); }
     bool operator <(const EventCategory& ec) const
     {
         if(n_jets != ec.n_jets) return n_jets < ec.n_jets;
         if(n_btag != ec.n_btag) return n_btag < ec.n_btag;
+        if (strict_n_btag != ec.strict_n_btag) return strict_n_btag < ec.strict_n_btag;
         if(btag_wp != ec.btag_wp) return btag_wp < ec.btag_wp;
-        return boosted < ec.boosted;
+        if (boosted != ec.boosted) return boosted < ec.boosted;
+        return is_VBF < ec.is_VBF;
     }
 
     std::string ToString() const
@@ -352,9 +354,9 @@ struct EventCategory {
     }
 
 private:
-    boost::optional<size_t> n_jets, n_btag, strict_n_btag;
+    boost::optional<size_t> n_jets, n_btag, strict_n_btag, is_VBF;
     boost::optional<DiscriminatorWP> btag_wp;
-    boost::optional<bool> boosted, is_strict, is_VBF;
+    boost::optional<bool> boosted;
 };
 
 #undef DEF_ES
