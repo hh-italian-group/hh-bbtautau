@@ -206,6 +206,13 @@ struct EventCategory {
             throw exception("Number of btag can't be greater than number of jets");
     }
 
+    EventCategory(size_t _n_jets, size_t _n_btag, bool _strict_n_btag, DiscriminatorWP _btag_wp, bool _boosted):
+        n_jets(_n_jets), n_btag(_n_btag), strict_n_btag(_strict_n_btag), btag_wp(_btag_wp), boosted(_boosted)
+    {
+        if(n_btag > n_jets)
+            throw exception("Number of btag can't be greater than number of jets");
+    }
+
     EventCategory(size_t _n_jets, size_t _n_btag, bool _strict_n_btag, DiscriminatorWP _btag_wp,
                   boost::optional<bool> _boosted, bool _is_VBF):
         n_jets(_n_jets), n_btag(_n_btag), strict_n_btag(_strict_n_btag), btag_wp(_btag_wp), boosted(_boosted), is_VBF(_is_VBF)

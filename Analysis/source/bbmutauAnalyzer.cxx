@@ -23,8 +23,6 @@ protected:
 
         EventRegion region;
 
-        if(!event.GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) return region;
-
         const bool os = !ana_setup.apply_os_cut || muon.GetCharge() * tau.GetCharge() == -1;
         region.SetCharge(os);
 

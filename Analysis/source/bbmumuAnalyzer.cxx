@@ -19,8 +19,6 @@ protected:
         const MuonCandidate& muon2 = event.GetSecondLeg();
 //        const HiggsBBCandidate& jets  = event.GetHiggsBB();
 
-        if(!event.GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) return EventRegion::Unknown();
-
         EventRegion region;
         const bool os = !ana_setup.apply_os_cut || muon1.GetCharge() * muon2.GetCharge() == -1;
         region.SetCharge(os);
