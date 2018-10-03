@@ -116,7 +116,7 @@ private:
         static const std::map<std::string, EventCategory> category_name_map = {
             { "2jet0tag", EventCategory::TwoJets_ZeroBtag },
             { "2jet1tag", EventCategory::TwoJets_OneBtag },
-            { "2jet2tag", EventCategory::TwoJets_TwoBtag }
+            { "2jet2tag", EventCategory::TwoJets_TwoBtagPlus }
         };
         const EventCategory eventCategory = category_name_map.at(categoryDescriptor.category_name);
 

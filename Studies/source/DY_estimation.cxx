@@ -275,7 +275,7 @@ private:
     RooRealVar x;
 
     std::vector<EventCategory> eventCategories{EventCategory::TwoJets_ZeroBtag(),
-                EventCategory::TwoJets_OneBtag(),EventCategory::TwoJets_TwoBtag()};
+                EventCategory::TwoJets_OneBtag(),EventCategory::TwoJets_TwoBtagPlus()};
     std::vector<EventSubCategory> subCategories;
 
     std::vector<std::string> contribution_names;

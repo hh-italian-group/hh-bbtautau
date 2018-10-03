@@ -184,28 +184,38 @@ inline std::ostream& operator<<(std::ostream& os, const EventRegion& eventRegion
 struct EventCategory {
     static const EventCategory& Inclusive() { static const EventCategory ec; return ec; }
     DEF_ES(TwoJets_Inclusive, 2)
-    DEF_ES(TwoJets_ZeroBtag, 2, 0, DiscriminatorWP::Medium)
-    DEF_ES(TwoJets_OneBtag, 2, 1, DiscriminatorWP::Medium)
-    DEF_ES(TwoJets_TwoBtag, 2, 2, DiscriminatorWP::Medium)
-    DEF_ES(TwoJets_ZeroLooseBtag, 2, 0, DiscriminatorWP::Loose)
-    DEF_ES(TwoJets_OneLooseBtag, 2, 1, DiscriminatorWP::Loose)
-    DEF_ES(TwoJets_TwoLooseBtag, 2, 2, DiscriminatorWP::Loose)
-    DEF_ES(TwoJets_ZeroBtag_Resolved, 2, 0, DiscriminatorWP::Medium, false)
-    DEF_ES(TwoJets_OneBtag_Resolved, 2, 1, DiscriminatorWP::Medium, false)
-    DEF_ES(TwoJets_TwoBtag_Resolved, 2, 2, DiscriminatorWP::Medium, false)
-    DEF_ES(TwoJets_TwoLooseBtag_Boosted, 2, 2, DiscriminatorWP::Loose, true)
+    DEF_ES(TwoJets_ZeroBtag, 2, 0, true, DiscriminatorWP::Medium)
+    DEF_ES(TwoJets_OneBtag, 2, 1, true, DiscriminatorWP::Medium)
+    DEF_ES(TwoJets_TwoBtagPlus, 2, 2, false, DiscriminatorWP::Medium)
+    DEF_ES(TwoJets_ZeroLooseBtag, 2, 0, true, DiscriminatorWP::Loose)
+    DEF_ES(TwoJets_OneLooseBtag, 2, 1, true, DiscriminatorWP::Loose)
+    DEF_ES(TwoJets_TwoLooseBtagPlus, 2, 2, false, DiscriminatorWP::Loose)
+    DEF_ES(TwoJets_ZeroBtag_Resolved_noVBF, 2, 0, true, DiscriminatorWP::Medium, false, false)
+    DEF_ES(TwoJets_OneBtag_Resolved_noVBF, 2, 1, true, DiscriminatorWP::Medium, false, false)
+    DEF_ES(TwoJets_TwoBtagPlus_Resolved_noVBF, 2, 2, false, DiscriminatorWP::Medium, false, false)
+    DEF_ES(TwoJets_TwoLooseBtagPlus_Boosted_noVBF, 2, 2, false, DiscriminatorWP::Loose, true, false)
+    DEF_ES(FourJets_OneBtagPlus_VBF, 4, 1, false, DiscriminatorWP::Medium, boost::optional<bool>(), true)
+
 
     EventCategory() {}
     explicit EventCategory(size_t _n_jets) : n_jets(_n_jets) {}
-    EventCategory(size_t _n_jets, size_t _n_btag, DiscriminatorWP _btag_wp) :
-        n_jets(_n_jets), n_btag(_n_btag), btag_wp(_btag_wp)
+    EventCategory(size_t _n_jets, size_t _n_btag, bool _strict_n_btag, DiscriminatorWP _btag_wp) :
+        n_jets(_n_jets), n_btag(_n_btag), strict_n_btag(_strict_n_btag), btag_wp(_btag_wp)
     {
         if(n_btag > n_jets)
             throw exception("Number of btag can't be greater than number of jets");
     }
 
-    EventCategory(size_t _n_jets, size_t _n_btag, DiscriminatorWP _btag_wp, bool _boosted) :
-        n_jets(_n_jets), n_btag(_n_btag), btag_wp(_btag_wp), boosted(_boosted)
+    EventCategory(size_t _n_jets, size_t _n_btag, bool _strict_n_btag, DiscriminatorWP _btag_wp, bool _boosted):
+        n_jets(_n_jets), n_btag(_n_btag), strict_n_btag(_strict_n_btag), btag_wp(_btag_wp), boosted(_boosted)
+    {
+        if(n_btag > n_jets)
+            throw exception("Number of btag can't be greater than number of jets");
+    }
+
+    EventCategory(size_t _n_jets, size_t _n_btag, bool _strict_n_btag, DiscriminatorWP _btag_wp,
+                  boost::optional<bool> _boosted, bool _is_VBF):
+        n_jets(_n_jets), n_btag(_n_btag), strict_n_btag(_strict_n_btag), btag_wp(_btag_wp), boosted(_boosted), is_VBF(_is_VBF)
     {
         if(n_btag > n_jets)
             throw exception("Number of btag can't be greater than number of jets");
@@ -233,12 +243,27 @@ struct EventCategory {
         return *btag_wp;
     }
 
+    bool IsN_btagStrict() const
+    {
+        if(!strict_n_btag.is_initialized())
+            throw exception("Strict Btag constraint is not defined.");
+        return *strict_n_btag;
+    }
+
     bool HasBoostConstraint() const { return boosted.is_initialized(); }
     bool IsBoosted() const
     {
         if(!HasBoostConstraint())
             throw exception("Boost constraint is not defined.");
         return *boosted;
+    }
+
+    bool HasVBFConstraint() const { return is_VBF.is_initialized(); }
+    bool isVBF() const
+    {
+        if(!HasVBFConstraint())
+            throw exception("VBF constraint is not defined.");
+        return *is_VBF;
     }
 
     bool operator ==(const EventCategory& ec) const
@@ -258,16 +283,22 @@ struct EventCategory {
     {
         if(*this == Inclusive()) return "Inclusive";
         std::ostringstream s;
-        s << *n_jets << "jets";
+        s << *n_jets << "j";
         if(HasBtagConstraint()) {
             s << *n_btag;
             if(*btag_wp != DiscriminatorWP::Medium)
                 s << __DiscriminatorWP_short_names.EnumToString(*btag_wp);
-            s << "btag";
+            s << "b";
+            const std::string stricbtag_str = IsN_btagStrict() ? "+" : "";
+            s << stricbtag_str;
         }
         if(HasBoostConstraint()) {
             const std::string boosted_str = IsBoosted() ? "B" : "R";
             s << boosted_str;
+        }
+        if(HasVBFConstraint()) {
+            const std::string VBF_str = isVBF() ? "_VBF" : "_noVBF";
+            s << VBF_str;
         }
         return s.str();
     }
@@ -275,13 +306,14 @@ struct EventCategory {
     static EventCategory Parse(const std::string& str)
     {
         static const std::string numbers = "0123456789";
-        static const std::string jets_suffix = "jets", btag_suffix = "btag";
+        static const std::string jets_suffix = "j", btag_suffix = "b";
         static const std::map<char, bool> boosted_suffix = { { 'R', false }, { 'B', true } };
+        static const std::map<std::string, bool> VBF_suffix = { { "noVBF", false }, { "VBF", true } };
 
         if(str == "Inclusive") return Inclusive();
         try {
             const size_t jet_pos = str.find_first_not_of(numbers);
-            if(jet_pos == std::string::npos && str.substr(jet_pos, jets_suffix.size()) != "jets")
+            if(jet_pos == std::string::npos && str.substr(jet_pos, jets_suffix.size()) != "j")
                 throw exception("");
             const size_t n_jets = ::analysis::Parse<size_t>(str.substr(0, jet_pos));
             const size_t btag_str_pos = jet_pos + jets_suffix.size();
@@ -296,23 +328,33 @@ struct EventCategory {
                 throw exception("");
             const DiscriminatorWP btag_wp = btag_wp_pos == btag_pos ? DiscriminatorWP::Medium
                     : __DiscriminatorWP_short_names.Parse(str.substr(btag_wp_pos, btag_pos - btag_wp_pos));
-            const size_t boosted_pos = btag_pos + btag_suffix.size();
+            const size_t strictbtag_pos = btag_pos + btag_suffix.size();
+            const char strictbtag_flag = str.at(strictbtag_pos);
+            const bool is_strictbtag = strictbtag_flag != '+'?  true : false;
+            const size_t boosted_pos = strictbtag_flag == '+' ? strictbtag_pos + 1 : strictbtag_pos;
             if(str.size() == boosted_pos)
-                return EventCategory(n_jets, n_btag, btag_wp);
+                return EventCategory(n_jets, n_btag, is_strictbtag, btag_wp);
             const char boosted_flag = str.at(boosted_pos);
-            if(str.size() != boosted_pos + 1 || !boosted_suffix.count(boosted_flag))
+            if(!boosted_suffix.count(boosted_flag) && boosted_flag!='_')
                 throw exception("");
-            const bool is_boosted = boosted_suffix.at(boosted_flag);
-            return EventCategory(n_jets, n_btag, btag_wp, is_boosted);
+            boost::optional<bool> is_boosted;
+            if (boosted_suffix.count(boosted_flag))
+                    is_boosted = boosted_suffix.at(boosted_flag);
+            const size_t isVBF_pos = str.find("_")+1;
+            const std::string isVBF_flag = str.substr(isVBF_pos);
+            if(!VBF_suffix.count(isVBF_flag))
+                throw exception("");
+            const bool is_VBF = VBF_suffix.at(isVBF_flag);
+            return EventCategory(n_jets, n_btag, is_strictbtag, btag_wp, is_boosted, is_VBF);
         }catch(exception& e) {
             throw exception("Invalid EventCategory '%1%'. %2%") % str % e.message();
         }
     }
 
 private:
-    boost::optional<size_t> n_jets, n_btag;
+    boost::optional<size_t> n_jets, n_btag, strict_n_btag;
     boost::optional<DiscriminatorWP> btag_wp;
-    boost::optional<bool> boosted;
+    boost::optional<bool> boosted, is_strict, is_VBF;
 };
 
 #undef DEF_ES

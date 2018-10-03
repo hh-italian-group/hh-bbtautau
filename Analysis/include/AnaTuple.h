@@ -169,8 +169,8 @@ public:
         tuple().mt_tot = static_cast<float>(Calculate_TotalMT(t1.GetMomentum(),t2.GetMomentum(),
                                                               event.GetMET().GetMomentum()));
         tuple().HT_otherjets = event->ht_other_jets;
-        tuple().HT_otherjets_gen = static_cast<float>(event.CalculateGenHT(2));
-        tuple().HT_total_gen = static_cast<float>(event.CalculateGenHT(0));
+        tuple().HT_otherjets_gen = static_cast<float>(event.GetHT(false,true));
+        tuple().HT_total_gen = static_cast<float>(event.GetHT(true,true));
 
         tuple().n_jets = event->n_jets;
         tuple().n_selected_gen_jets =  event->genJets_p4.size();

@@ -13,9 +13,6 @@ public:
 protected:
     virtual EventRegion DetermineEventRegion(EventInfo& event, EventCategory /*eventCategory*/) override
     {
-        static const std::vector<std::string> trigger_patterns = {
-            "HLT_Ele25_eta2p1_WPTight_Gsf_v"
-        };
 
         static const std::vector<DiscriminatorWP> working_points = {
             DiscriminatorWP::VLoose, DiscriminatorWP::Loose, DiscriminatorWP::Medium
@@ -25,8 +22,6 @@ protected:
         const TauCandidate& tau = event.GetSecondLeg();
 
         EventRegion region;
-
-        if(!event.GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) return region;
 
         const bool os = !ana_setup.apply_os_cut || electron.GetCharge() * tau.GetCharge() == -1;
         region.SetCharge(os);

@@ -199,7 +199,7 @@ private:
                         gen_map[channel].seed(setup.split_seed);
                     }
                     const std::string out_name = job.ProduceMergedOutput() ? job.merged_output : desc_iter->output;
-                    outputFile = root_ext::CreateRootFile(args.outputPath() + "/" + out_name);
+                    outputFile = root_ext::CreateRootFile(args.outputPath() + "/" + out_name, ROOT::kLZ4, 4);
 
                     processQueue.SetAllDone(false);
                     writeQueue.SetAllDone(false);

@@ -14,15 +14,10 @@ public:
 protected:
     virtual EventRegion DetermineEventRegion(EventInfo& event, EventCategory /*eventCategory*/) override
     {
-        static const std::vector<std::string> trigger_patterns = {
-            "HLT_IsoMu22_v"
-        };
 
         const MuonCandidate& muon1 = event.GetFirstLeg();
         const MuonCandidate& muon2 = event.GetSecondLeg();
 //        const HiggsBBCandidate& jets  = event.GetHiggsBB();
-
-        if(!event.GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) return EventRegion::Unknown();
 
         EventRegion region;
         const bool os = !ana_setup.apply_os_cut || muon1.GetCharge() * muon2.GetCharge() == -1;
