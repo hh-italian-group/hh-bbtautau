@@ -268,7 +268,7 @@ struct EventCategory {
 
     bool operator ==(const EventCategory& ec) const
     {
-        return n_jets == ec.n_jets && n_btag == ec.n_btag && strict_n_btag == ec.strict_n_btag && btag_wp == ec.btag_wp && boosted == ec.boosted && is_VBF == ec.is_VBF();
+        return n_jets == ec.n_jets && n_btag == ec.n_btag && strict_n_btag == ec.strict_n_btag && btag_wp == ec.btag_wp && boosted == ec.boosted && is_VBF == ec.is_VBF;
     }
     bool operator !=(const EventCategory& ec) const { return !(*this == ec); }
     bool operator <(const EventCategory& ec) const
@@ -292,7 +292,7 @@ struct EventCategory {
             if(*btag_wp != DiscriminatorWP::Medium)
                 s << __DiscriminatorWP_short_names.EnumToString(*btag_wp);
             s << "b";
-            const std::string stricbtag_str = IsN_btagStrict() ? "+" : "";
+            const std::string stricbtag_str = !IsN_btagStrict() ? "+" : "";
             s << stricbtag_str;
         }
         if(HasBoostConstraint()) {
@@ -341,7 +341,7 @@ struct EventCategory {
             if(!boosted_suffix.count(boosted_flag) && boosted_flag!='_')
                 throw exception("");
             boost::optional<bool> is_boosted;
-            bool boosted;
+            bool boosted = false;
             if (boosted_suffix.count(boosted_flag)){
                 is_boosted = boosted_suffix.at(boosted_flag);
                 boosted = boosted_suffix.at(boosted_flag);
