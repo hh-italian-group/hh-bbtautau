@@ -9,6 +9,8 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Analysis/include/EventTuple.h"
 #include "AnalysisTools/Core/include/AnalyzerData.h"
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
+#include "h-tautau/Cuts/include/Btag_2017.h"
+#include "h-tautau/Cuts/include/hh_bbtautau_2017.h"
 #include "h-tautau/Cuts/include/Btag_2016.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
 #include "AnalysisTools/Core/include/Tools.h"
@@ -19,7 +21,9 @@ struct Arguments { // list of all program arguments
     REQ_ARG(std::string, output_file);
     OPT_ARG(std::string, apply_pu_id_cut,"no");
     OPT_ARG(unsigned, n_threads, 1);
+    OPT_ARG(std::string, deep_csv,"yes");
     REQ_ARG(std::vector<std::string>, input_file);
+    OPT_ARG(std::string, period, "2017");
 };
 
 namespace analysis {
@@ -35,12 +39,12 @@ public:
     TH2D_ENTRY_CUSTOM(val_check,x_bins,y_bins)
 };
 
-class BTagEfficiency {
+class BTagEffEstimator {
 public:
     using Event = ntuple::Event;
     using EventTuple = ntuple::EventTuple;
 
-    BTagEfficiency(const Arguments& _args) :
+    BTagEffEstimator(const Arguments& _args) :
         args(_args), outfile(root_ext::CreateRootFile(args.output_file()))
     {
         ROOT::EnableThreadSafety();
@@ -70,8 +74,20 @@ public:
         std::string channel_all = "all";
         std::set<std::string> channel_names = channels;
         channel_names.insert(channel_all);
-        static const std::map<std::string, double> btag_working_points = { { "L", cuts::btag_2016::CSVv2L },
-            { "M", cuts::btag_2016::CSVv2M }, { "T", cuts::btag_2016::CSVv2T} };
+        if(args.deep_csv()== "yes"){
+            btag_working_points = { { "L", cuts::btag_2017::deepCSVv2L },
+                                    { "M", cuts::btag_2017::deepCSVv2M }, { "T", cuts::btag_2017::deepCSVv2T} };
+        }
+        else{
+            if(args.period()=="2016")
+                btag_working_points = { { "L", cuts::btag_2016::CSVv2L },
+                                    { "M", cuts::btag_2016::CSVv2M }, { "T", cuts::btag_2016::CSVv2T} };
+            else if(args.period()=="2017")
+                btag_working_points = { { "L", cuts::btag_2017::CSVv2L },
+                                    { "M", cuts::btag_2017::CSVv2M }, { "T", cuts::btag_2017::CSVv2T} };
+            else
+                 throw exception("Period %1% is not supported.")% args.period();
+        }
         static const std::string btag_wp_all = "all";
         static const std::map<int, std::string> flavours = { { 5, "b" }, { 4, "c" }, { 0, "udsg" } };
         static const std::string flavour_all = "all";
@@ -82,13 +98,14 @@ public:
         static const std::set<std::string> disabled_branches;
         static const std::set<std::string> enabled_branches = {
             "jets_p4", "SVfit_p4", "extramuon_veto", "extraelec_veto", "q_1", "q_2", "tauId_keys_1", "tauId_values_1",
-            "tauId_keys_2", "tauId_values_2", "jets_mva", "jets_csv", "jets_hadronFlavour"
+            "tauId_keys_2", "tauId_values_2", "jets_mva", "jets_csv", "jets_deepCsv_BvsAll", "jets_hadronFlavour",
+            "jets_pu_id"
         };
 
 
         bool apply_pu_id_cut = args.apply_pu_id_cut() != "no";
-        DiscriminatorWP pu_wp = DiscriminatorWP::Medium;
-        if(apply_pu_id_cut) pu_wp = analysis::Parse<DiscriminatorWP>(args.apply_pu_id_cut());
+        //DiscriminatorWP pu_wp = DiscriminatorWP::Medium;
+        //if(apply_pu_id_cut && args.period()=="2016") pu_wp = analysis::Parse<DiscriminatorWP>(args.apply_pu_id_cut());
 
         for(const auto& channel : channels) {
             const auto leg_types = GetChannelLegTypes(analysis::Parse<Channel>(channel));
@@ -107,13 +124,18 @@ public:
 
                 for(const Event& event : *tuple){
                     const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
-                    if (es != EventEnergyScale::Central || event.jets_p4.size() < 2 || event.extraelec_veto
+                    if (args.period() == "2016" && (es != EventEnergyScale::Central || event.jets_p4.size() < 2 || event.extraelec_veto
                             || event.extramuon_veto
                             || std::abs(event.jets_p4.at(0).eta()) >= cuts::btag_2016::eta
-                            || std::abs(event.jets_p4.at(1).eta()) >= cuts::btag_2016::eta) continue;
+                            || std::abs(event.jets_p4.at(1).eta()) >= cuts::btag_2016::eta)) continue;
+
+                    else if (args.period() == "2017" && (es != EventEnergyScale::Central || event.jets_p4.size() < 2 || event.extraelec_veto
+                            || event.extramuon_veto
+                            || std::abs(event.jets_p4.at(0).eta()) >= cuts::btag_2017::eta
+                            || std::abs(event.jets_p4.at(1).eta()) >= cuts::btag_2017::eta)) continue;
 
                     auto bb = event.jets_p4.at(0) + event.jets_p4.at(1);
-                    if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(event.SVfit_p4.mass(),bb.mass())) continue;
+                    if (!cuts::hh_bbtautau_2017::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(),bb.mass())) continue;
 
                     std::string tau_sign = (event.q_1+event.q_2) == 0 ? "OS" : "SS";
 
@@ -125,15 +147,21 @@ public:
 
                     for (size_t i = 0; i < event.jets_p4.size(); ++i){
                         const auto& jet = event.jets_p4.at(i);
-                        if(std::abs(jet.eta()) >= cuts::btag_2016::eta) continue;
+                        if(args.period()=="2016" && std::abs(jet.eta()) >= cuts::btag_2016::eta) continue;
+                        else if(args.period()=="2017" && std::abs(jet.eta()) >= cuts::btag_2017::eta) continue;
 
                         //PU correction
                         if(apply_pu_id_cut){
-                            double jet_mva = event.jets_mva.at(i);
-                            if(!PassJetPuId(jet.Pt(),jet_mva,pu_wp)) continue;
+                            /*if(args.period()=="2016"){
+                                double jet_mva = event.jets_mva.at(i);
+                                if(!PassJetPuId(jet.Pt(),jet_mva,pu_wp)) continue;
+                            }*/
+                                if((event.jets_pu_id.at(i) & 2) == 0) continue;
                         }
-
-                        double jet_csv = event.jets_csv.at(i);
+                   
+                        double jet_csv;
+                        if(args.deep_csv() == "yes") jet_csv = event.jets_deepCsv_BvsAll.at(i);
+                        else jet_csv = event.jets_csv.at(i);
                         int jet_hadronFlavour = event.jets_hadronFlavour.at(i);
                         const std::string& jet_flavour = flavours.at(jet_hadronFlavour);
 
@@ -309,6 +337,7 @@ private:
     std::string valCha = "valCha", valIso = "valIso", valQ = "valQ";
     std::map<std::string,std::string> valMap = { {"valCha","ValidationChannel"} , {"valIso","ValidationIsolation"},
                                                  {"valQ","ValidationCharge"} };
+    std::map<std::string, double> btag_working_points;
 
     static bool PassTauIdCut(TauIdResults::BitsContainer id_bits)
     {
@@ -363,4 +392,4 @@ private:
 
 } // namespace analysis
 
-PROGRAM_MAIN(analysis::BTagEfficiency, Arguments) // definition of the main program function
+PROGRAM_MAIN(analysis::BTagEffEstimator, Arguments) // definition of the main program function
