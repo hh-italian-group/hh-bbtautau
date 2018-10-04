@@ -11,6 +11,8 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
 #include "h-tautau/Cuts/include/Btag_2017.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2017.h"
+#include "h-tautau/Cuts/include/Btag_2016.h"
+#include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
 #include "AnalysisTools/Core/include/Tools.h"
 #include "AnalysisTools/Core/include/TextIO.h"
 #include "h-tautau/Analysis/include/TauIdResults.h"
@@ -21,6 +23,7 @@ struct Arguments { // list of all program arguments
     OPT_ARG(unsigned, n_threads, 1);
     OPT_ARG(std::string, deep_csv,"yes");
     REQ_ARG(std::vector<std::string>, input_file);
+    OPT_ARG(std::string, period, "2017");
 };
 
 namespace analysis {
@@ -76,8 +79,14 @@ public:
                                     { "M", cuts::btag_2017::deepCSVv2M }, { "T", cuts::btag_2017::deepCSVv2T} };
         }
         else{
-            btag_working_points = { { "L", cuts::btag_2017::CSVv2L },
+            if(args.period()=="2016")
+                btag_working_points = { { "L", cuts::btag_2016::CSVv2L },
+                                    { "M", cuts::btag_2016::CSVv2M }, { "T", cuts::btag_2016::CSVv2T} };
+            else if(args.period()=="2017")
+                btag_working_points = { { "L", cuts::btag_2017::CSVv2L },
                                     { "M", cuts::btag_2017::CSVv2M }, { "T", cuts::btag_2017::CSVv2T} };
+            else
+                 throw exception("Period %1% is not supported.")% args.period();
         }
         static const std::string btag_wp_all = "all";
         static const std::map<int, std::string> flavours = { { 5, "b" }, { 4, "c" }, { 0, "udsg" } };
@@ -95,8 +104,8 @@ public:
 
 
         bool apply_pu_id_cut = args.apply_pu_id_cut() != "no";
-        //DiscriminatorWP pu_wp = DiscriminatorWP::Medium;
-        //if(apply_pu_id_cut) pu_wp = analysis::Parse<DiscriminatorWP>(args.apply_pu_id_cut());
+        DiscriminatorWP pu_wp = DiscriminatorWP::Medium;
+        if(apply_pu_id_cut && args.period()=="2016") pu_wp = analysis::Parse<DiscriminatorWP>(args.apply_pu_id_cut());
 
         for(const auto& channel : channels) {
             const auto leg_types = GetChannelLegTypes(analysis::Parse<Channel>(channel));
@@ -115,10 +124,15 @@ public:
 
                 for(const Event& event : *tuple){
                     const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
-                    if (es != EventEnergyScale::Central || event.jets_p4.size() < 2 || event.extraelec_veto
+                    if (args.period() == "2016" && (es != EventEnergyScale::Central || event.jets_p4.size() < 2 || event.extraelec_veto
+                            || event.extramuon_veto
+                            || std::abs(event.jets_p4.at(0).eta()) >= cuts::btag_2016::eta
+                            || std::abs(event.jets_p4.at(1).eta()) >= cuts::btag_2016::eta)) continue;
+
+                    else if (args.period() == "2017" && (es != EventEnergyScale::Central || event.jets_p4.size() < 2 || event.extraelec_veto
                             || event.extramuon_veto
                             || std::abs(event.jets_p4.at(0).eta()) >= cuts::btag_2017::eta
-                            || std::abs(event.jets_p4.at(1).eta()) >= cuts::btag_2017::eta) continue;
+                            || std::abs(event.jets_p4.at(1).eta()) >= cuts::btag_2017::eta)) continue;
 
                     auto bb = event.jets_p4.at(0) + event.jets_p4.at(1);
                     if (!cuts::hh_bbtautau_2017::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(),bb.mass())) continue;
@@ -133,12 +147,20 @@ public:
 
                     for (size_t i = 0; i < event.jets_p4.size(); ++i){
                         const auto& jet = event.jets_p4.at(i);
-                        if(std::abs(jet.eta()) >= cuts::btag_2017::eta) continue;
+                        if(args.period()=="2016" && std::abs(jet.eta()) >= cuts::btag_2016::eta) continue;
+                        else if(args.period()=="2017" && std::abs(jet.eta()) >= cuts::btag_2017::eta) continue;
 
                         //PU correction
                         if(apply_pu_id_cut){
-
-                            if((event.jets_pu_id.at(i) & 2) == 0) continue;
+                            if(args.period()=="2016"){
+                                double jet_mva = event.jets_mva.at(i);
+                                if(!PassJetPuId(jet.Pt(),jet_mva,pu_wp)) continue;
+                            }
+                            else if(args.period()=="2017"){
+                                if((event.jets_pu_id.at(i) & 2) == 0) continue;
+                            }
+                            else
+                                throw exception("Period %1% is not supported.")% args.period();
                         }
                    
                         double jet_csv;

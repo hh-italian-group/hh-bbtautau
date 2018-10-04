@@ -18,21 +18,21 @@ public:
     {
         if (period == Period::Run2016){
             std::string dy_weights =
-                    use_LLR_weights ? Full_Cfg_Name("weights_2016/dyjets_weights_LLR.cfg") : Full_Cfg_Name("weights_2016/dyjets_weights.cfg");
+                    use_LLR_weights ? Full_Cfg_Name("2016/dyjets_weights_LLR.cfg") : Full_Cfg_Name("2016/dyjets_weights.cfg");
             if(mode.empty() || mode.count(WeightType::DY))
                 providers[WeightType::DY] = std::make_shared<NJets_HT_weight>("DY", dy_weights);
             if(mode.empty() || mode.count(WeightType::TTbar))
-                providers[WeightType::TTbar] = std::make_shared<TTbar_weight>(Full_Cfg_Name("weights_2016/ttbar_weights_full.cfg"));
+                providers[WeightType::TTbar] = std::make_shared<TTbar_weight>(Full_Cfg_Name("2016/ttbar_weights_full.cfg"));
             std::string wjet_weights =
-                    use_LLR_weights ? Full_Cfg_Name("weights_2016/wjets_weights_LLR.cfg") : Full_Cfg_Name("weights_2016/wjets_weights.cfg");
+                    use_LLR_weights ? Full_Cfg_Name("2016/wjets_weights_LLR.cfg") : Full_Cfg_Name("2016/wjets_weights.cfg");
             if(mode.empty() || mode.count(WeightType::Wjets))
                 providers[WeightType::Wjets] = std::make_shared<NJets_HT_weight>("Wjets", wjet_weights);
         }
         else if (period == Period::Run2017){
-            std::string dy_weights = Full_Cfg_Name("weights_2017/dyjets_weights_2017.cfg");
+            std::string dy_weights = Full_Cfg_Name("2017/dyjets_weights_2017.cfg");
             if(mode.empty() || mode.count(WeightType::DY))
                 providers[WeightType::DY] = std::make_shared<NJets_HT_weight>("DY", dy_weights);
-            std::string wjet_weights = Full_Cfg_Name("weights_2017/wjets_weights_2017.cfg");
+            std::string wjet_weights = Full_Cfg_Name("2017/wjets_weights_2017.cfg");
             if(mode.empty() || mode.count(WeightType::Wjets))
                 providers[WeightType::Wjets] = std::make_shared<NJets_HT_weight>("Wjets", wjet_weights);
 
