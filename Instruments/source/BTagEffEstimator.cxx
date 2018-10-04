@@ -104,8 +104,8 @@ public:
 
 
         bool apply_pu_id_cut = args.apply_pu_id_cut() != "no";
-        DiscriminatorWP pu_wp = DiscriminatorWP::Medium;
-        if(apply_pu_id_cut && args.period()=="2016") pu_wp = analysis::Parse<DiscriminatorWP>(args.apply_pu_id_cut());
+        //DiscriminatorWP pu_wp = DiscriminatorWP::Medium;
+        //if(apply_pu_id_cut && args.period()=="2016") pu_wp = analysis::Parse<DiscriminatorWP>(args.apply_pu_id_cut());
 
         for(const auto& channel : channels) {
             const auto leg_types = GetChannelLegTypes(analysis::Parse<Channel>(channel));
@@ -152,15 +152,11 @@ public:
 
                         //PU correction
                         if(apply_pu_id_cut){
-                            if(args.period()=="2016"){
+                            /*if(args.period()=="2016"){
                                 double jet_mva = event.jets_mva.at(i);
                                 if(!PassJetPuId(jet.Pt(),jet_mva,pu_wp)) continue;
-                            }
-                            else if(args.period()=="2017"){
+                            }*/
                                 if((event.jets_pu_id.at(i) & 2) == 0) continue;
-                            }
-                            else
-                                throw exception("Period %1% is not supported.")% args.period();
                         }
                    
                         double jet_csv;
