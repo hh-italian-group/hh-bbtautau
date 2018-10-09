@@ -80,11 +80,13 @@ public:
             }
         }
         else{
-            auto all_events = ntuple::CreateExpressTuple("all_events", file.get(), true,
-                                                         ntuple::TreeState::Full);
-            summary.totalShapeWeight = all_events->GetEntries();
-            if(calc_withTopPt)
-                summary.totalShapeWeight_withTopPt = all_events->GetEntries();
+            try{
+                auto all_events = ntuple::CreateExpressTuple("all_events", file.get(), true,
+                                                             ntuple::TreeState::Full);
+                summary.totalShapeWeight = all_events->GetEntries();
+                if(calc_withTopPt)
+                    summary.totalShapeWeight_withTopPt = all_events->GetEntries();
+            } catch(std::exception& ) {}
         }
         return summary;
     }
