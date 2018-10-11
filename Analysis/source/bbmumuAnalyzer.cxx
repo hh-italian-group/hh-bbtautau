@@ -14,6 +14,9 @@ public:
 protected:
     virtual EventRegion DetermineEventRegion(EventInfo& event, EventCategory /*eventCategory*/) override
     {
+        static const std::map<DiscriminatorWP,double> working_points = {
+            {DiscriminatorWP::Loose,0.2}, {DiscriminatorWP::Medium,0.15}
+        };
 
         const MuonCandidate& muon1 = event.GetFirstLeg();
         const MuonCandidate& muon2 = event.GetSecondLeg();
@@ -22,7 +25,16 @@ protected:
         EventRegion region;
         const bool os = !ana_setup.apply_os_cut || muon1.GetCharge() * muon2.GetCharge() == -1;
         region.SetCharge(os);
-        region.SetLowerIso(DiscriminatorWP::Medium);
+
+        for(auto wp = working_points.rbegin(); wp != working_points.rend(); ++wp) {
+            if(muon1.GetIsolation() < wp->second) {
+                region.SetUpperIso(wp->first);
+                if(wp != working_points.rbegin())
+                    region.SetLowerIso((--wp)->first);
+                break;
+            }
+        }
+        //region.SetLowerIso(DiscriminatorWP::Medium);
 
         return region;
     }
