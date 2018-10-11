@@ -31,7 +31,7 @@ protected:
                 region.SetUpperIso(wp->first);
                 if(wp != working_points.rbegin())
                     region.SetLowerIso((--wp)->first);
-                break;
+                //break;
             }
         }
         //region.SetLowerIso(DiscriminatorWP::Medium);
