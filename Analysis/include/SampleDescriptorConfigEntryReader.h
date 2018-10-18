@@ -30,7 +30,6 @@ public:
         CheckReadParamCounts("backgrounds", 1, Condition::less_equal);
         CheckReadParamCounts("cmb_samples", 1, Condition::less_equal);
         CheckReadParamCounts("draw_sequence", 1, Condition::less_equal);
-        CheckReadParamCounts("limit_category", 0, Condition::greater_equal);
         CheckReadParamCounts("mva_setup", 1, Condition::less_equal);
         CheckReadParamCounts("hist_cfg", 1, Condition::less_equal);
         CheckReadParamCounts("syncDataIds", 1, Condition::less_equal);
@@ -40,7 +39,8 @@ public:
         CheckReadParamCounts("trigger", 0, Condition::greater_equal);
         CheckReadParamCounts("unc_cfg", 1, Condition::less_equal);
         CheckReadParamCounts("jet_ordering", 1, Condition::less_equal);
-
+        CheckReadParamCounts("limit_setup", 0, Condition::greater_equal);
+        current.CreateLimitSetups();
         ConfigEntryReaderT<AnalyzerSetup>::EndEntry();
     }
 
@@ -72,6 +72,8 @@ public:
         ParseMappedEntryList("trigger", current.trigger,false);
         ParseEntry("unc_cfg", current.unc_cfg);
         ParseEntry("jet_ordering", current.jet_ordering);
+        ParseMappedEntryList("limit_setup", current.limit_setup_raw,false);
+        ParseMappedEntryList("limit_setup", current.limit_setup_raw,false);
     }
 };
 
@@ -251,8 +253,3 @@ private:
 };
 
 } // namespace analysis
-
-
-
-
-

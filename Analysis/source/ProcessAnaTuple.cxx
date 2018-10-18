@@ -82,12 +82,42 @@ public:
                 std::cout << "\t\tProducing inputs for limits..." << std::endl;
                 LimitsInputProducer limitsInputProducer(anaDataCollection, sample_descriptors,
                                                         cmb_sample_descriptors);
+
                 for(const std::string& hist_name : ana_setup.final_variables) {
                     if(!activeVariables.count(hist_name)) continue;
                     for(const auto& subCategory : subCategories)
                         limitsInputProducer.Produce(args.output(), hist_name, ana_setup.limit_categories, subCategory,
                                                     ana_setup.energy_scales, ana_setup.regions, mva_sel_aliases);
-                }
+}
+
+                // for(auto map : ana_setup.limit_setup){
+                //     std::map<EventCategory, std::string> mappina = map.second;
+                //     std::vector<std::string> variables;
+                //     for(auto categories : mappina){
+                //         std::string variable = categories.second;
+                //         // std::cout << "VARIABLE LOOP PAT: " << variable << '\n';
+                //         variables.emplace_back(variable);
+                //     }
+                //
+                //     // std::cout << "setup : " << map.first << '\n';
+                // for(const std::string& hist_name : variables) {
+                //     std::cout << "hist_name: " << hist_name<< '\n';
+                //     if(!activeVariables.count(hist_name)) continue;
+                //     for(const auto& subCategory : subCategories)
+                //         limitsInputProducer.Produce(args.output(), hist_name, ana_setup.final_variables, subCategory,
+                //                                 ana_setup.energy_scales, ana_setup.regions, mva_sel_aliases);
+
+                    // for(auto categories : mappina){
+                    //     std::string variable = categories.second;
+                    //     std::cout << "variable: " << variable << '\n';
+                    //     std::cout << "categories: " << categories.first << '\n';
+
+                        // for(const std::string& hist_name : final_variables) {
+
+
+                        // }
+                //      }
+                // }
             }
 
             if(args.draw()) {
