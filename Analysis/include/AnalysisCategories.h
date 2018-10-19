@@ -195,6 +195,8 @@ struct EventCategory {
     DEF_ES(TwoJets_TwoBtagPlus_Resolved_noVBF, 2, 2, false, DiscriminatorWP::Medium, false, false)
     DEF_ES(TwoJets_TwoLooseBtagPlus_Boosted_noVBF, 2, 2, false, DiscriminatorWP::Medium, true, false)
     DEF_ES(FourJets_OneBtagPlus_VBF, 4, 1, false, DiscriminatorWP::Medium, boost::optional<bool>(), true)
+    DEF_ES(TwoJets_OneBtagPlus_Boosted_noVBF, 2, 1, false, DiscriminatorWP::Medium, true, false)
+    DEF_ES(TwoJets_OneBtagPlus_Boosted, 2, 1, false, DiscriminatorWP::Medium, true)
 
 
     EventCategory() {}
