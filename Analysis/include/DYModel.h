@@ -125,12 +125,13 @@ public:
                 else if (n_bJets==2) lhe_category="2Jet_2bJet";
             }
 
-            double fractional_weight = 1;
-            double pt_weight =1;
+            double fractional_weight = 0;
+            double pt_weight =0;
             if (n_selected_gen_jets <= 2){
                 fractional_weight = fractional_weight_map[lhe_category];
 
                 for(size_t i=0;i<event->genParticles_p4.size();i++){
+                    if(event->genParticles_pdg.at(i) != 23) continue;
                     double pt = event->genParticles_p4.at(i).Pt();
                     pt_weight = pt_weight_histo_map[lhe_category]->GetBinContent(pt_weight_histo_map[lhe_category]->FindBin(pt));
                 }
