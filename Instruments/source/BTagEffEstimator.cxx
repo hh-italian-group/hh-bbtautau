@@ -22,8 +22,9 @@ struct Arguments { // list of all program arguments
     OPT_ARG(std::string, apply_pu_id_cut,"no");
     OPT_ARG(unsigned, n_threads, 1);
     OPT_ARG(std::string, csv_type,"deepCSV");
-    REQ_ARG(std::vector<std::string>, input_file);
     OPT_ARG(std::string, period, "2017");
+    REQ_ARG(std::vector<std::string>, input_file);
+
 };
 
 namespace analysis {
@@ -167,7 +168,7 @@ public:
                    
                         double jet_csv;
                         if(args.csv_type()=="deepCSV") jet_csv = event.jets_deepCsv_BvsAll.at(i);
-                        else if(args.csv_type()=="deepFlacour") jet_csv = event.jets_deepFlavour_b.at(i) +
+                        else if(args.csv_type()=="deepFlavour") jet_csv = event.jets_deepFlavour_b.at(i) +
                                 event.jets_deepFlavour_bb.at(i) + event.jets_deepFlavour_lepb.at(i);
                         else if(args.csv_type()=="CSV") jet_csv = event.jets_csv.at(i);
                         else
