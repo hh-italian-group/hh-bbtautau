@@ -268,16 +268,19 @@ struct EventCategory {
 
     bool operator ==(const EventCategory& ec) const
     {
-        return n_jets == ec.n_jets && n_btag == ec.n_btag && btag_wp == ec.btag_wp && boosted == ec.boosted;
+        return n_jets == ec.n_jets && n_btag == ec.n_btag && strict_n_btag == ec.strict_n_btag && btag_wp == ec.btag_wp && boosted == ec.boosted && is_VBF == ec.is_VBF;
     }
     bool operator !=(const EventCategory& ec) const { return !(*this == ec); }
     bool operator <(const EventCategory& ec) const
     {
         if(n_jets != ec.n_jets) return n_jets < ec.n_jets;
         if(n_btag != ec.n_btag) return n_btag < ec.n_btag;
+        if (strict_n_btag != ec.strict_n_btag) return strict_n_btag < ec.strict_n_btag;
         if(btag_wp != ec.btag_wp) return btag_wp < ec.btag_wp;
-        return boosted < ec.boosted;
+        if (boosted != ec.boosted) return boosted < ec.boosted;
+        return is_VBF < ec.is_VBF;
     }
+
 
     std::string ToString() const
     {
@@ -289,7 +292,7 @@ struct EventCategory {
             if(*btag_wp != DiscriminatorWP::Medium)
                 s << __DiscriminatorWP_short_names.EnumToString(*btag_wp);
             s << "b";
-            const std::string stricbtag_str = IsN_btagStrict() ? "+" : "";
+            const std::string stricbtag_str = !IsN_btagStrict() ? "+" : "";
             s << stricbtag_str;
         }
         if(HasBoostConstraint()) {
@@ -329,7 +332,7 @@ struct EventCategory {
             const DiscriminatorWP btag_wp = btag_wp_pos == btag_pos ? DiscriminatorWP::Medium
                     : __DiscriminatorWP_short_names.Parse(str.substr(btag_wp_pos, btag_pos - btag_wp_pos));
             const size_t strictbtag_pos = btag_pos + btag_suffix.size();
-            const char strictbtag_flag = str.at(strictbtag_pos);
+            const char strictbtag_flag = strictbtag_pos == str.size() ? ' ' : str.at(strictbtag_pos);
             const bool is_strictbtag = strictbtag_flag != '+'?  true : false;
             const size_t boosted_pos = strictbtag_flag == '+' ? strictbtag_pos + 1 : strictbtag_pos;
             if(str.size() == boosted_pos)
@@ -338,8 +341,14 @@ struct EventCategory {
             if(!boosted_suffix.count(boosted_flag) && boosted_flag!='_')
                 throw exception("");
             boost::optional<bool> is_boosted;
-            if (boosted_suffix.count(boosted_flag))
-                    is_boosted = boosted_suffix.at(boosted_flag);
+            bool boosted = false;
+            if (boosted_suffix.count(boosted_flag)){
+                is_boosted = boosted_suffix.at(boosted_flag);
+                boosted = boosted_suffix.at(boosted_flag);
+            }
+            if(str.size() == boosted_pos+1)
+                return EventCategory(n_jets, n_btag, is_strictbtag, btag_wp, boosted);
+
             const size_t isVBF_pos = str.find("_")+1;
             const std::string isVBF_flag = str.substr(isVBF_pos);
             if(!VBF_suffix.count(isVBF_flag))

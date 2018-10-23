@@ -485,6 +485,11 @@ private:
             if(leg_types.second == LegType::tau && !ApplyTauIdCut(full_event.tauId_flags_2)) return false;
         }
         
+        event.kinFit_chi2.push_back(static_cast<Float_t>(eventInfo->GetKinFitResults().chi2));
+        event.kinFit_convergence.push_back(eventInfo->GetKinFitResults().convergence);
+        event.kinFit_m.push_back(static_cast<Float_t>(eventInfo->GetKinFitResults().mass));
+        event.kinFit_jetPairId.push_back(static_cast<unsigned>(ntuple::CombinationPairToIndex(eventInfo->GetSelectedSignalJets().selectedBjetPair, eventInfo->GetNJets())));
+
         event.ht_other_jets = (eventInfo->HasBjetPair()) ? static_cast<Float_t>(eventInfo->GetHT(false,true)) : 0;
 
         event.weight_pu = weighting_mode.count(WeightType::PileUp)
