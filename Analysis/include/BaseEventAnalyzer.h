@@ -89,9 +89,9 @@ public:
                 std::map<DiscriminatorWP, size_t> bjet_counts;
                 for(const auto& jet : jets) {
                     for(const auto& btag_wp : btag_working_points) {
-                        if((ana_setup.jet_ordering == JetOrdering::CSV && (*jet)->csv() > btag_wp.second) ||
+                        /*if((ana_setup.jet_ordering == JetOrdering::CSV && (*jet)->csv() > btag_wp.second) ||
                             (ana_setup.jet_ordering == JetOrdering::DeepCSV && (*jet)->deepcsv() > btag_wp.second))*/
-                        if(bTagger->Pass(*jet, btag_wp)) ++bjet_counts[btag_wp];
+                        if(bTagger->Pass(*(*jet), btag_wp)) ++bjet_counts[btag_wp];
 
                     }
                 }
