@@ -7,6 +7,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Analysis/include/EventInfo.h"
 #include "SampleDescriptorConfigEntryReader.h"
 #include "hh-bbtautau/Analysis/include/EventAnalyzerDataCollection.h"
+#include "h-tautau/Analysis/include/BTagger.h"
 
 namespace analysis {
 
@@ -246,6 +247,7 @@ protected:
     Channel channelId;
     std::map<SelectionCut, std::string> mva_sel_aliases;
     std::string working_path;
+    std::shared_ptr<BTagger> bTagger;
 };
 
 } // namespace analysis
