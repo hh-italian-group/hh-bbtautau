@@ -41,32 +41,6 @@ public:
 
     EventCategorySet DetermineEventCategories(EventInfo& event)
     {
-
-        /*static const std::map<DiscriminatorWP, double> btag_working_points_csv_2016 = {
-            { DiscriminatorWP::Loose, cuts::btag_2016::CSVv2L },
-            { DiscriminatorWP::Medium, cuts::btag_2016::CSVv2M }
-        };
-        static const std::map<DiscriminatorWP, double> btag_working_points_csv_2017 = {
-            { DiscriminatorWP::Loose, cuts::btag_2017::CSVv2L },
-            { DiscriminatorWP::Medium, cuts::btag_2017::CSVv2M },
-            { DiscriminatorWP::Tight, cuts::btag_2017::CSVv2T}
-        };
-        static const std::map<DiscriminatorWP, double> btag_working_points_deepcsv_2017 = {
-            { DiscriminatorWP::Loose, cuts::btag_2017::deepCSVv2L },
-            { DiscriminatorWP::Medium, cuts::btag_2017::deepCSVv2M },
-            { DiscriminatorWP::Tight, cuts::btag_2017::deepCSVv2T}
-        };
-
-        const std::map<DiscriminatorWP, double>*  btag_working_points;
-        if ( ana_setup.period == analysis::Period::Run2016 && ana_setup.jet_ordering == JetOrdering::CSV )
-            btag_working_points = &btag_working_points_csv_2016;
-        else if ( ana_setup.period == Period::Run2017 && ana_setup.jet_ordering == JetOrdering::CSV )
-            btag_working_points = &btag_working_points_csv_2017;
-        else if ( ana_setup.period == Period::Run2017 && ana_setup.jet_ordering == JetOrdering::DeepCSV )
-            btag_working_points = &btag_working_points_deepcsv_2017;
-        else
-            throw exception("Combination of jet ordering '%1%' and '%2%' period is not supported") % ana_setup.jet_ordering % ana_setup.period;*/
-
         std::vector<DiscriminatorWP> btag_working_points = {DiscriminatorWP::Loose, DiscriminatorWP::Medium, DiscriminatorWP::Tight};
 
         EventCategorySet categories;
@@ -89,8 +63,6 @@ public:
                 std::map<DiscriminatorWP, size_t> bjet_counts;
                 for(const auto& jet : jets) {
                     for(const auto& btag_wp : btag_working_points) {
-                        /*if((ana_setup.jet_ordering == JetOrdering::CSV && (*jet)->csv() > btag_wp.second) ||
-                            (ana_setup.jet_ordering == JetOrdering::DeepCSV && (*jet)->deepcsv() > btag_wp.second))*/
                         if(bTagger->Pass(*(*jet), btag_wp)) ++bjet_counts[btag_wp];
 
                     }
