@@ -30,6 +30,7 @@ public:
 
     EventAnalyzerCore(const CoreAnalyzerArguments& args, Channel _channel) :
         channelId(_channel), working_path(args.working_path())
+
     {
         ROOT::EnableThreadSafety();
         if(args.n_threads() > 1)
@@ -70,6 +71,8 @@ public:
             CreateMvaSelectionAliases();
         }
         RemoveUnusedSamples();
+
+        bTagger = std::make_shared<BTagger>(ana_setup.period, ana_setup.jet_ordering);
 
         CreateEventSubCategoriesToProcess();
     }
@@ -247,6 +250,7 @@ protected:
     Channel channelId;
     std::map<SelectionCut, std::string> mva_sel_aliases;
     std::string working_path;
+
     std::shared_ptr<BTagger> bTagger;
 };
 

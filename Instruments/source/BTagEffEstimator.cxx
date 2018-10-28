@@ -16,13 +16,14 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/Tools.h"
 #include "AnalysisTools/Core/include/TextIO.h"
 #include "h-tautau/Analysis/include/TauIdResults.h"
+#include "h-tautau/Analysis/include/BTagger.h"
 
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, output_file);
     OPT_ARG(std::string, apply_pu_id_cut,"no");
     OPT_ARG(unsigned, n_threads, 1);
-    OPT_ARG(std::string, csv_type,"deepCSV");
-    OPT_ARG(std::string, period, "2017");
+    OPT_ARG(analysis::JetOrdering, csv_type,analysis::JetOrdering::DeepCSV);
+    OPT_ARG(analysis::Period, period, analysis::Period::Run2017);
     REQ_ARG(std::vector<std::string>, input_file);
 
 };
@@ -75,26 +76,10 @@ public:
         std::string channel_all = "all";
         std::set<std::string> channel_names = channels;
         channel_names.insert(channel_all);
-        if(args.csv_type() == "deepCSV"){
-            btag_working_points = { { "L", cuts::btag_2017::deepCSVv2L },
-                                    { "M", cuts::btag_2017::deepCSVv2M }, { "T", cuts::btag_2017::deepCSVv2T} };
-        }
-        else if(args.csv_type() == "deepFlavour"){
-            btag_working_points = { {"L", cuts::btag_2017::deepFlavourL },
-                                    {"M", cuts::btag_2017::deepFlavourM }, {"T", cuts::btag_2017::deepFlavourT} };
-        }
-        else if(args.csv_type() =="CSV"){
-            if(args.period()=="2016")
-                btag_working_points = { { "L", cuts::btag_2016::CSVv2L },
-                                    { "M", cuts::btag_2016::CSVv2M }, { "T", cuts::btag_2016::CSVv2T} };
-            else if(args.period()=="2017")
-                btag_working_points = { { "L", cuts::btag_2017::CSVv2L },
-                                    { "M", cuts::btag_2017::CSVv2M }, { "T", cuts::btag_2017::CSVv2T} };
-            else
-                 throw exception("Period %1% is not supported.")% args.period();
-        }
-        else
-            throw exception("CSV type %1% is not supported.")% args.csv_type();
+        BTagger bTagger(args.period(),args.csv_type());
+        btag_working_points = {
+            {"L", DiscriminatorWP::Loose }, {"M", DiscriminatorWP::Medium}, {"T", DiscriminatorWP::Tight}
+        };
         static const std::string btag_wp_all = "all";
         static const std::map<int, std::string> flavours = { { 5, "b" }, { 4, "c" }, { 0, "udsg" } };
         static const std::string flavour_all = "all";
@@ -131,12 +116,12 @@ public:
 
                 for(const Event& event : *tuple){
                     const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
-                    if (args.period() == "2016" && (es != EventEnergyScale::Central || event.jets_p4.size() < 2 || event.extraelec_veto
+                    if (args.period() == Period::Run2016 && (es != EventEnergyScale::Central || event.jets_p4.size() < 2 || event.extraelec_veto
                             || event.extramuon_veto
                             || std::abs(event.jets_p4.at(0).eta()) >= cuts::btag_2016::eta
                             || std::abs(event.jets_p4.at(1).eta()) >= cuts::btag_2016::eta)) continue;
 
-                    else if (args.period() == "2017" && (es != EventEnergyScale::Central || event.jets_p4.size() < 2 || event.extraelec_veto
+                    else if (args.period() == Period::Run2017 && (es != EventEnergyScale::Central || event.jets_p4.size() < 2 || event.extraelec_veto
                             || event.extramuon_veto
                             || std::abs(event.jets_p4.at(0).eta()) >= cuts::btag_2017::eta
                             || std::abs(event.jets_p4.at(1).eta()) >= cuts::btag_2017::eta)) continue;
@@ -154,8 +139,8 @@ public:
 
                     for (size_t i = 0; i < event.jets_p4.size(); ++i){
                         const auto& jet = event.jets_p4.at(i);
-                        if(args.period()=="2016" && std::abs(jet.eta()) >= cuts::btag_2016::eta) continue;
-                        else if(args.period()=="2017" && std::abs(jet.eta()) >= cuts::btag_2017::eta) continue;
+                        if(args.period()==Period::Run2016 && std::abs(jet.eta()) >= cuts::btag_2016::eta) continue;
+                        else if(args.period()==Period::Run2017 && std::abs(jet.eta()) >= cuts::btag_2017::eta) continue;
 
                         //PU correction
                         if(apply_pu_id_cut){
@@ -165,15 +150,7 @@ public:
                             }*/
                                 if((event.jets_pu_id.at(i) & 2) == 0) continue;
                         }
-                   
-                        double jet_csv;
-                        if(args.csv_type()=="deepCSV") jet_csv = event.jets_deepCsv_BvsAll.at(i);
-                        else if(args.csv_type()=="deepFlavour") jet_csv = event.jets_deepFlavour_b.at(i) +
-                                event.jets_deepFlavour_bb.at(i) + event.jets_deepFlavour_lepb.at(i);
-                        else if(args.csv_type()=="CSV") jet_csv = event.jets_csv.at(i);
-                        else
-                            throw exception("CSV type %1% is not supported")% args.csv_type();
-
+                                          
                         int jet_hadronFlavour = event.jets_hadronFlavour.at(i);
                         const std::string& jet_flavour = flavours.at(jet_hadronFlavour);
 
@@ -198,7 +175,7 @@ public:
                                 channel_all).Fill(jet.Pt(), std::abs(jet.Eta()));
 
                         for(const auto& btag_wp : btag_working_points) {
-                            if( jet_csv >= btag_wp.second){
+                            if(bTagger.Pass(event,i,btag_wp.second)){
                                 //For folder/subfolder structure in Sign and Isolation
                                 anaDataMap[tau_sign+tau_iso+eff]->h2(num, flavour_all, btag_wp.first, channel).
                                     Fill(jet.Pt(), std::abs(jet.Eta()));
@@ -349,7 +326,7 @@ private:
     std::string valCha = "valCha", valIso = "valIso", valQ = "valQ";
     std::map<std::string,std::string> valMap = { {"valCha","ValidationChannel"} , {"valIso","ValidationIsolation"},
                                                  {"valQ","ValidationCharge"} };
-    std::map<std::string, double> btag_working_points;
+    std::map<std::string, DiscriminatorWP> btag_working_points;
 
     static bool PassTauIdCut(TauIdResults::BitsContainer id_bits)
     {

@@ -41,7 +41,7 @@ public:
 
     EventCategorySet DetermineEventCategories(EventInfo& event)
     {
-        std::vector<DiscriminatorWP> btag_working_points = {DiscriminatorWP::Loose, DiscriminatorWP::Medium, DiscriminatorWP::Tight};
+        static const std::vector<DiscriminatorWP> btag_working_points = {DiscriminatorWP::Loose, DiscriminatorWP::Medium, DiscriminatorWP::Tight};
 
         EventCategorySet categories;
         categories.insert(EventCategory::Inclusive());
@@ -105,8 +105,6 @@ public:
              if(sample.sampleType == SampleType::DY)
                  dymod = std::make_shared<DYModel>(sample,args.working_path());
         }
-        bTagger = std::make_shared<BTagger>(ana_setup.period, ana_setup.jet_ordering);
-
     }
 
     void Run()
