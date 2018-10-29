@@ -191,7 +191,7 @@ public:
                         if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(event.SVfit_p4.mass(),bb.mass())) continue;
                     }
                     auto step = (mergesummary.n_splits/2)/args.subdivisions();
-                    auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(s.channel), event) ;
+                    auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(s.channel), event, Period::Run2017, JetOrdering::DeepCSV) ;
                     EventInfoBase& eventbase = *eventInfoPtr;
                     if (args.suffix() == "_newcut"){
                         if (!cuts::hh_bbtautau_2016::hh_tag::new_m_hh_window().IsInside(eventbase.GetHiggsTTMomentum(false).M(),bb.mass())) continue;
