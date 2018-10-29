@@ -319,7 +319,7 @@ public:
                     }
                     if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
                     if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
-                    auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(s.channel) ,event) ;
+                    auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(s.channel) ,event, Period::Run2017, JetOrdering::DeepCSV) ;
                     EventInfoBase& eventbase = *eventInfoPtr;
                     if (args.suffix() == "_newcut"){
                         if (!cuts::hh_bbtautau_2016::hh_tag::new_m_hh_window().IsInside(eventbase.GetHiggsTTMomentum(false).M(),bb.mass())) continue;

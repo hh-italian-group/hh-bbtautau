@@ -11,6 +11,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Cuts/include/hh_bbtautau_2017.h"
 #include "h-tautau/Analysis/include/EventLoader.h"
 #include "h-tautau/Analysis/include/SyncTupleHTT.h"
+#include "h-tautau/Analysis/include/BTagger.h"
 #include "MvaReader.h"
 #include "EventAnalyzerData.h"
 #include "AnaTuple.h"
@@ -40,32 +41,7 @@ public:
 
     EventCategorySet DetermineEventCategories(EventInfo& event)
     {
-
-        static const std::map<DiscriminatorWP, double> btag_working_points_csv_2016 = {
-            { DiscriminatorWP::Loose, cuts::btag_2016::CSVv2L },
-            { DiscriminatorWP::Medium, cuts::btag_2016::CSVv2M }
-        };
-        static const std::map<DiscriminatorWP, double> btag_working_points_csv_2017 = {
-            { DiscriminatorWP::Loose, cuts::btag_2017::CSVv2L },
-            { DiscriminatorWP::Medium, cuts::btag_2017::CSVv2M },
-            { DiscriminatorWP::Tight, cuts::btag_2017::CSVv2T}
-        };
-        static const std::map<DiscriminatorWP, double> btag_working_points_deepcsv_2017 = {
-            { DiscriminatorWP::Loose, cuts::btag_2017::deepCSVv2L },
-            { DiscriminatorWP::Medium, cuts::btag_2017::deepCSVv2M },
-            { DiscriminatorWP::Tight, cuts::btag_2017::deepCSVv2T}
-        };
-
-        const std::map<DiscriminatorWP, double>*  btag_working_points;
-        if ( ana_setup.period == analysis::Period::Run2016 && ana_setup.jet_ordering == JetOrdering::CSV )
-            btag_working_points = &btag_working_points_csv_2016;
-        else if ( ana_setup.period == Period::Run2017 && ana_setup.jet_ordering == JetOrdering::CSV )
-            btag_working_points = &btag_working_points_csv_2017;
-        else if ( ana_setup.period == Period::Run2017 && ana_setup.jet_ordering == JetOrdering::DeepCSV )
-            btag_working_points = &btag_working_points_deepcsv_2017;
-        else
-            throw exception("Combination of jet ordering '%1%' and '%2%' period is not supported") % ana_setup.jet_ordering % ana_setup.period;
-
+        static const std::vector<DiscriminatorWP> btag_working_points = {DiscriminatorWP::Loose, DiscriminatorWP::Medium, DiscriminatorWP::Tight};
 
         EventCategorySet categories;
         categories.insert(EventCategory::Inclusive());
@@ -86,24 +62,22 @@ public:
                 bool is_VBF = event.HasVBFjetPair() ? true : false;
                 std::map<DiscriminatorWP, size_t> bjet_counts;
                 for(const auto& jet : jets) {
-                    for(const auto& btag_wp : *btag_working_points) {
-                        if((ana_setup.jet_ordering == JetOrdering::CSV && (*jet)->csv() > btag_wp.second) ||
-                            (ana_setup.jet_ordering == JetOrdering::DeepCSV && (*jet)->deepcsv() > btag_wp.second))
-                            ++bjet_counts[btag_wp.first];
+                    for(const auto& btag_wp : btag_working_points) {
+                        if(bTagger->Pass(*(*jet), btag_wp)) ++bjet_counts[btag_wp];
 
                     }
                 }
                 for(size_t n_jets = 2; n_jets <= event.GetNJets(); ++n_jets) {
-                    for(const auto& wp_entry : *btag_working_points) {
-                        categories.emplace(n_jets, bjet_counts[wp_entry.first], true, wp_entry.first);
-                        categories.emplace(n_jets, bjet_counts[wp_entry.first], true, wp_entry.first, is_boosted);
-                        categories.emplace(n_jets, bjet_counts[wp_entry.first], true, wp_entry.first, boost::optional<bool>(), is_VBF);
-                        categories.emplace(n_jets, bjet_counts[wp_entry.first], true, wp_entry.first, is_boosted, is_VBF);
-                        for(size_t b_jets = 0; b_jets <= bjet_counts[wp_entry.first]; ++b_jets) {
-                            categories.emplace(n_jets, b_jets, false, wp_entry.first);
-                            categories.emplace(n_jets, b_jets, false, wp_entry.first, is_boosted);
-                            categories.emplace(n_jets, b_jets, false, wp_entry.first, boost::optional<bool>(), is_VBF);
-                            categories.emplace(n_jets, b_jets, false, wp_entry.first, is_boosted, is_VBF);
+                    for(const auto& wp_entry : btag_working_points) {
+                        categories.emplace(n_jets, bjet_counts[wp_entry], true, wp_entry);
+                        categories.emplace(n_jets, bjet_counts[wp_entry], true, wp_entry, is_boosted);
+                        categories.emplace(n_jets, bjet_counts[wp_entry], true, wp_entry, boost::optional<bool>(), is_VBF);
+                        categories.emplace(n_jets, bjet_counts[wp_entry], true, wp_entry, is_boosted, is_VBF);
+                        for(size_t b_jets = 0; b_jets <= bjet_counts[wp_entry]; ++b_jets) {
+                            categories.emplace(n_jets, b_jets, false, wp_entry);
+                            categories.emplace(n_jets, b_jets, false, wp_entry, is_boosted);
+                            categories.emplace(n_jets, b_jets, false, wp_entry, boost::optional<bool>(), is_VBF);
+                            categories.emplace(n_jets, b_jets, false, wp_entry, is_boosted, is_VBF);
                         }
                     }
                 }
@@ -131,7 +105,6 @@ public:
              if(sample.sampleType == SampleType::DY)
                  dymod = std::make_shared<DYModel>(sample,args.working_path());
         }
-
     }
 
     void Run()
