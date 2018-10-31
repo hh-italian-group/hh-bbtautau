@@ -94,7 +94,7 @@ public:
                 if (args.suffix() == "_ANcut"){
                     if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(event.SVfit_p4.mass(),bb.mass())) continue;
                 }
-                auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(args.tree_name()) ,event) ;
+                auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(args.tree_name()) ,event, Period::Run2017, JetOrdering::DeepCSV) ;
                 EventInfoBase& eventbase = *eventInfoPtr;
                 if (args.suffix() == "_newcut"){
                     if (!cuts::hh_bbtautau_2016::hh_tag::new_m_hh_window().IsInside(eventbase.GetHiggsTTMomentum(false).M(),bb.mass())) continue;
@@ -125,7 +125,7 @@ public:
                 if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(event.SVfit_p4.mass(),bb.mass())) continue;
                 if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
                 if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
-                auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(args.tree_name()) ,event) ;
+                auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(args.tree_name()) ,event, Period::Run2017, JetOrdering::DeepCSV) ;
                 EventInfoBase& eventbase = *eventInfoPtr;
                 vars.AddEvent(eventbase, entry.id, entry.spin, entry.weight);
             }
