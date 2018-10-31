@@ -97,7 +97,13 @@ public:
         using namespace ROOT::Math::VectorUtil;
         static constexpr float def_val = std::numeric_limits<float>::lowest();
 
+       if (event->run == 297050 && event->lumi == 678 && event->evt == 799196447)
+            std::cout<<"    ----Inizio ADD----     "<<std::endl;
+
         if(!dataIds.size()) return;
+
+        if (event->run == 297050 && event->lumi == 678 && event->evt == 799196447)
+            std::cout<<"    ----Dopo return----     "<<std::endl;
         for(const auto& entry : dataIds) {
             if(!known_data_ids.left.count(entry.first)) {
                 const size_t hash = std::hash<std::string>{}(entry.first.GetName());
@@ -116,6 +122,8 @@ public:
             tuple().all_weights.push_back(std::get<0>(entry.second));
             tuple().all_mva_scores.push_back(static_cast<float>(std::get<1>(entry.second)));
         }
+        if (event->run == 297050 && event->lumi == 678 && event->evt == 799196447)
+            std::cout<<"    ----Dopo primo for----     "<<std::endl;
 
         tuple().weight = def_val;
         tuple().mva_score = def_val;
@@ -172,6 +180,7 @@ public:
         tuple().HT_otherjets_gen = static_cast<float>(event.GetHT(false,true));
         tuple().HT_total_gen = static_cast<float>(event.GetHT(true,true));
 
+
         tuple().n_jets = event->n_jets;
         tuple().n_selected_gen_jets =  event->genJets_p4.size();
         int n_bflavour=0;
@@ -187,7 +196,12 @@ public:
         tuple().jets_nTotal_hadronFlavour_b = event->jets_nTotal_hadronFlavour_b;
         tuple().jets_nTotal_hadronFlavour_c = event->jets_nTotal_hadronFlavour_c;
 
+
+        if (event->run == 297050 && event->lumi == 678 && event->evt == 799196447)
+            std::cout<<"    ----Prima HAsBJetPair----     "<<std::endl;
         if(event.HasBjetPair()) {
+            if (event->run == 297050 && event->lumi == 678 && event->evt == 799196447)
+                std::cout<<"    ----HAsBJetPair----     "<<std::endl;
             const auto& Hbb = event.GetHiggsBB();
             const auto& b1 = Hbb.GetFirstDaughter();
             const auto& b2 = Hbb.GetSecondDaughter();

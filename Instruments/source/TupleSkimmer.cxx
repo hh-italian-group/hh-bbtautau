@@ -438,6 +438,9 @@ private:
         storage_mode = ntuple::EventLoader::Load(full_event, prev_event.get());
         auto eventInfo = MakeEventInfo(static_cast<Channel>(full_event.channelId), full_event, setup.period, setup.jet_ordering);
 
+        if (event.run == 1 && event.lumi == 45 && event.evt == 43504)
+            std::cout<<"PRIMA di energy scale "<<std::endl;
+
         const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
         if(!prev_event_stored) {
             event = full_event;
@@ -446,14 +449,37 @@ private:
         }
 
 
-        if (!ntuple::MetFilters(full_event.metFilters).PassAll()) return false;
+//        if (!ntuple::MetFilters(full_event.metFilters).PassAll()) return false;
+
+        if (event.run == 1 && event.lumi == 45 && event.evt == 43504)
+            std::cout<<"PRIMA di MET Filters "<<std::endl;
+
+        if (!ntuple::MetFilters(full_event.metFilters).Pass(ntuple::MetFilters::Filter::PrimaryVertex) ||
+                !ntuple::MetFilters(full_event.metFilters).Pass(ntuple::MetFilters::Filter::BeamHalo) ||
+                !ntuple::MetFilters(full_event.metFilters).Pass(ntuple::MetFilters::Filter::HBHE_noise) ||
+                !ntuple::MetFilters(full_event.metFilters).Pass(ntuple::MetFilters::Filter::HBHEiso_noise) ||
+                !ntuple::MetFilters(full_event.metFilters).Pass(ntuple::MetFilters::Filter::ECAL_TP) ||
+                !ntuple::MetFilters(full_event.metFilters).Pass(ntuple::MetFilters::Filter::badMuon) ||
+                !ntuple::MetFilters(full_event.metFilters).Pass(ntuple::MetFilters::Filter::badChargedHadron) ||
+                !ntuple::MetFilters(full_event.metFilters).Pass(ntuple::MetFilters::Filter::ecalBadCalib) ) return false;
+
+        if (event.run == 297050 && event.lumi == 678 && event.evt == 799196447)
+            std::cout<<"PRIMA di Extra lepton veto "<<std::endl;
 
         if(!setup.energy_scales.count(es) || full_event.extraelec_veto || full_event.extramuon_veto) return false;
 
+        if (event.run == 297050 && event.lumi == 678 && event.evt == 799196447)
+                std::cout<<"PRIMA di Has B jet pair "<<std::endl;
+
         if(setup.apply_bb_cut && !eventInfo->HasBjetPair()) return false;
+
+        if (event.run == 297050 && event.lumi == 678 && event.evt == 799196447)
+                std::cout<<"PRIMA di Apply Mass Cut "<<std::endl;
 
         if(setup.apply_mass_cut) {
             bool pass_mass_cut = false;
+            if (event.run == 297050 && event.lumi == 678 && event.evt == 799196447)
+                    std::cout<<"PRIMA di Has B jet pair "<<std::endl;
             if (!eventInfo->HasBjetPair()) return false;
             const double mbb = eventInfo->GetHiggsBB().GetMomentum().mass();
             const double mtautau = (full_event.p4_1 + full_event.p4_2).mass();
@@ -475,13 +501,22 @@ private:
             if(!pass_mass_cut)
                 return false;
         }
+        if (event.run == 297050 && event.lumi == 678 && event.evt == 799196447)
+                std::cout<<"PRIMA di Opposite Charge "<<std::endl;
 
         if (setup.apply_charge_cut && (full_event.q_1+full_event.q_2) != 0) return false;
+
+        if (event.run == 297050 && event.lumi == 678 && event.evt == 799196447)
+                std::cout<<"PRIMA di Apply Tau Id cuts "<<std::endl;
 
         if(setup.ApplyTauIdCuts()) {
             const Channel channel = static_cast<Channel>(event.channelId);
             const auto leg_types = GetChannelLegTypes(channel);
+            if (event.run == 297050 && event.lumi == 678 && event.evt == 799196447)
+                    std::cout<<"PRIMA di Apply Tau Id cuts  first"<<std::endl;
             if(leg_types.first == LegType::tau && !ApplyTauIdCut(full_event.tauId_flags_1)) return false;
+            if (event.run == 297050 && event.lumi == 678 && event.evt == 799196447)
+                    std::cout<<"PRIMA di Apply Tau Id cuts second"<<std::endl;
             if(leg_types.second == LegType::tau && !ApplyTauIdCut(full_event.tauId_flags_2)) return false;
         }
         
