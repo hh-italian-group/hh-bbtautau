@@ -176,7 +176,7 @@ public:
             auto sampleid = entry.id.IsSignal() ? SampleId::MassTot() : SampleId::Bkg();
 
             for(const Event& event : *tuple) {
-                auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(args.tree_name()), event) ;
+                auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(args.tree_name()), event, Period::Run2017, JetOrdering::DeepCSV) ;
                 EventInfoBase& eventbase = *eventInfoPtr;
 //                if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(eventbase.GetHiggsTTMomentum(true).mass(), eventbase.GetHiggsBB().GetMomentum().mass()))
 //                    continue;

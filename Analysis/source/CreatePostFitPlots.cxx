@@ -44,9 +44,9 @@ public:
                     ana_setup.draw_sequence, sample_descriptors, cmb_sample_descriptors, ana_setup.signals,
                     ana_setup.data, args.channel());
 
-        std::map<analysis::EventCategory,size_t> categories_map = {{ analysis::EventCategory::TwoJets_OneBtag_Resolved(), 0 },
-                                                                   { analysis::EventCategory::TwoJets_TwoBtag_Resolved(), 1 },
-                                                                   { analysis::EventCategory::TwoJets_TwoLooseBtag_Boosted(), 2}};
+        std::map<analysis::EventCategory,size_t> categories_map = {{ analysis::EventCategory::Parse("2j1bR_noVBF"), 0 },
+                                                                   { analysis::EventCategory::Parse("2j2b+R_noVBF")  , 1 },
+                                                                   { analysis::EventCategory::Parse("2j1b+B_noVBF"), 2}};
 
         auto inputFile = root_ext::OpenRootFile(args.input());
         AnaDataCollection anaDataCollection(outputFile, channelId, nullptr, activeVariables,
