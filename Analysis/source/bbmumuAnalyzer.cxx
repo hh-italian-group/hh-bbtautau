@@ -29,18 +29,18 @@ protected:
 
         for(auto wp = working_points.rbegin(); wp != working_points.rend(); ++wp) {
             if(muon1.GetIsolation() < wp->second) {
-                region_muon1.SetUpperIso(wp->first);
+                region_muon1.SetLowerIso(wp->first);
                 if(wp != working_points.rbegin())
-                    region_muon1.SetLowerIso((--wp)->first);
+                    region_muon1.SetUpperIso((--wp)->first);
                 break;
             }
         }
 
         for(auto wp = working_points.rbegin(); wp != working_points.rend(); ++wp) {
             if(muon2.GetIsolation() < wp->second) {
-                region_muon2.SetUpperIso(wp->first);
+                region_muon2.SetLowerIso(wp->first);
                 if(wp != working_points.rbegin())
-                    region_muon2.SetLowerIso((--wp)->first);
+                    region_muon2.SetUpperIso((--wp)->first);
                 break;
             }
         }
