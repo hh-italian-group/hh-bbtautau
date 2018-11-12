@@ -43,6 +43,7 @@ struct AnalyzerSetup {
     std::map<Channel, std::vector<std::string>> trigger;
     std::map<SelectionCut,analysis::EllipseParameters> massWindowParams;
     std::map<std::string, std::vector<std::string>> limit_setup_raw;
+    std::map<std::string, std::map<EventCategory, std::string>> limit_setup;
 
     bool IsSignal(const std::string& sample_name) const
     {
@@ -52,22 +53,25 @@ struct AnalyzerSetup {
 
     void CreateLimitSetups()
     {
-        std::map<EventCategory, std::string> second_map;
-        for(const auto& item: limit_setup_raw) {
-            const auto& setup = item.first;
-            for (size_t i = 0; i < 2; i++){
-                auto second_list = SplitValueList(item.second.at(i), false, ":");
-                if(second_list.size() > 2)
-                    throw exception("The Number of parameters is %1%, only 2 are allowed") % name.size() ;
+        for(const auto& m: limit_setup) {
+            auto variable_categories_map = m.second;
+            for(const auto& item: limit_setup_raw) {
+                const auto& category_name = item.first;
+                for (size_t i = 0; i < item.second.size(); i++){
+                    auto variable_categories = SplitValueList(item.second.at(i), false, ":");
+                    if(variable_categories.size() > 2)
+                        throw exception("The Number of parameters is %1%, only 2 are allowed") % item.second.size() ;
 
-                const auto categories_str = SplitValueList(second_list.at(1), false, ",");
+                    const auto categories_str = SplitValueList(variable_categories.at(1), false, ",");
 
-                EventCategory categories;
-                for (size_t n = 0; n < categories_str.size(); n++)
-                    categories= ::analysis::Parse<EventCategory>(categories_str.at(n));
-                second_map[categories] = second_list.at(0);
+                    EventCategory categories;
+                    for (size_t n = 0; n < categories_str.size(); n++){
+                        categories = ::analysis::Parse<EventCategory>(categories_str.at(n));
+                        variable_categories_map[categories] = variable_categories.at(0);
+                    }
+                }
+                limit_setup.emplace(category_name, variable_categories_map);
             }
-            limit_setup.emplace(setup, second_map);
         }
     }
 };

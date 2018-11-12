@@ -82,10 +82,10 @@ public:
                 std::cout << "\t\tProducing inputs for limits..." << std::endl;
                 LimitsInputProducer limitsInputProducer(anaDataCollection, sample_descriptors,
                                                         cmb_sample_descriptors);
-                for(auto map : ana_setup.limit_setup){
-                    std::cout << "\t\tsetup_name: " << map.first <<  std::endl;
+                for(const auto& limit_setup : ana_setup.limit_setup){
+                    std::cout << "\t\tsetup_name: " << limit_setup.first <<  std::endl;
                     for(const auto& subCategory : subCategories)
-                        limitsInputProducer.Produce(args.output(), map.first, map.second, subCategory,
+                        limitsInputProducer.Produce(args.output(), limit_setup.first, limit_setup.second, subCategory,
                                                     ana_setup.energy_scales, ana_setup.regions, mva_sel_aliases);
                 }
             }
