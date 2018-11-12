@@ -23,7 +23,6 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 namespace analysis {
 
 struct AnalyzerSetup {
-    using StrSet = std::unordered_set<std::string>;
     std::string name;
     double int_lumi{0};
     Period period;
@@ -53,24 +52,18 @@ struct AnalyzerSetup {
 
     void CreateLimitSetups()
     {
-        for(const auto& m: limit_setup) {
-            auto variable_categories_map = m.second;
-            for(const auto& item: limit_setup_raw) {
-                const auto& category_name = item.first;
-                for (size_t i = 0; i < item.second.size(); i++){
-                    auto variable_categories = SplitValueList(item.second.at(i), false, ":");
-                    if(variable_categories.size() > 2)
-                        throw exception("The Number of parameters is %1%, only 2 are allowed") % item.second.size() ;
+        for(const auto& item: limit_setup_raw) {
+            const auto& setup_name = item.first;
+            for (size_t i = 0; i < item.second.size(); i++){
+                auto variable_categories = SplitValueList(item.second.at(i), false, ":");
+                if(variable_categories.size() > 2)
+                    throw exception("The Number of parameters is %1%, only 2 are allowed") % item.second.size() ;
 
-                    const auto categories_str = SplitValueList(variable_categories.at(1), false, ",");
-
-                    EventCategory categories;
-                    for (size_t n = 0; n < categories_str.size(); n++){
-                        categories = ::analysis::Parse<EventCategory>(categories_str.at(n));
-                        variable_categories_map[categories] = variable_categories.at(0);
-                    }
+                const auto categories_str = SplitValueList(variable_categories.at(1), false, ",");
+                for (size_t n = 0; n < categories_str.size(); n++){
+                    const EventCategory categories = ::analysis::Parse<EventCategory>(categories_str.at(n));
+                    limit_setup[setup_name][categories] = variable_categories.at(0);
                 }
-                limit_setup.emplace(category_name, variable_categories_map);
             }
         }
     }
