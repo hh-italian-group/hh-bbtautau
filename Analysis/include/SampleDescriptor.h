@@ -56,7 +56,7 @@ struct AnalyzerSetup {
             const auto& setup_name = item.first;
             for (size_t i = 0; i < item.second.size(); i++){
                 auto variable_categories = SplitValueList(item.second.at(i), false, ":");
-                if(variable_categories.size() > 2)
+                if(variable_categories.size() != 2)
                     throw exception("The Number of parameters is %1%, only 2 are allowed") % item.second.size() ;
 
                 const auto categories_str = SplitValueList(variable_categories.at(1), false, ",");
