@@ -18,6 +18,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Analysis/include/AnalysisTypes.h"
 #include "EventAnalyzerDataId.h"
 #include "h-tautau/Analysis/include/EventInfo.h"
+#include "hh-bbtautau/Analysis/include/SampleDescriptorConfigEntryReader.h"
 
 namespace analysis {
 
@@ -39,13 +40,32 @@ struct AnalyzerSetup {
     std::string plot_cfg, plot_page_opt, unc_cfg;
     JetOrdering jet_ordering;
     std::map<Channel, std::vector<std::string>> trigger;
-
     std::map<SelectionCut,analysis::EllipseParameters> massWindowParams;
+    std::map<std::string, std::vector<std::string>> limit_setup_raw;
+    std::map<std::string, std::map<EventCategory, std::string>> limit_setup;
 
     bool IsSignal(const std::string& sample_name) const
     {
         const auto iter = std::find(signals.begin(), signals.end(), sample_name);
         return iter != signals.end();
+    }
+
+    void CreateLimitSetups()
+    {
+        for(const auto& item: limit_setup_raw) {
+            const auto& setup_name = item.first;
+            for (size_t i = 0; i < item.second.size(); i++){
+                auto variable_categories = SplitValueList(item.second.at(i), false, ":");
+                if(variable_categories.size() != 2)
+                    throw exception("The Number of parameters is %1%, only 2 are allowed") % item.second.size() ;
+
+                const auto categories_str = SplitValueList(variable_categories.at(1), false, ",");
+                for (size_t n = 0; n < categories_str.size(); n++){
+                    const EventCategory categories = ::analysis::Parse<EventCategory>(categories_str.at(n));
+                    limit_setup[setup_name][categories] = variable_categories.at(0);
+                }
+            }
+        }
     }
 };
 
@@ -411,4 +431,3 @@ private:
 };
 
 } // namespace analysis
-

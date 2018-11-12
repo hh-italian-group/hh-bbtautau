@@ -82,14 +82,13 @@ public:
                 std::cout << "\t\tProducing inputs for limits..." << std::endl;
                 LimitsInputProducer limitsInputProducer(anaDataCollection, sample_descriptors,
                                                         cmb_sample_descriptors);
-                for(const std::string& hist_name : ana_setup.final_variables) {
-                    if(!activeVariables.count(hist_name)) continue;
+                for(const auto& limit_setup : ana_setup.limit_setup){
+                    std::cout << "\t\tsetup_name: " << limit_setup.first <<  std::endl;
                     for(const auto& subCategory : subCategories)
-                        limitsInputProducer.Produce(args.output(), hist_name, ana_setup.limit_categories, subCategory,
+                        limitsInputProducer.Produce(args.output(), limit_setup.first, limit_setup.second, subCategory,
                                                     ana_setup.energy_scales, ana_setup.regions, mva_sel_aliases);
                 }
             }
-
             if(args.draw()) {
                 std::cout << "\t\tCreating plots..." << std::endl;
                 PlotsProducer plotsProducer(anaDataCollection, samplesToDraw, FullPath(ana_setup.plot_cfg),

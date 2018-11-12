@@ -37,7 +37,7 @@ struct EventRegion {
     static const EventRegion& OS_AntiIsolated()
     {
         static const EventRegion er =
-                EventRegion().SetCharge(true).SetLowerIso(DiscriminatorWP::VLoose).SetUpperIso(DiscriminatorWP::Medium);
+                EventRegion().SetCharge(true).SetLowerIso(DiscriminatorWP::VVLoose).SetUpperIso(DiscriminatorWP::Medium);
         return er;
     }
 
@@ -56,7 +56,7 @@ struct EventRegion {
     static const EventRegion& SS_AntiIsolated()
     {
         static const EventRegion er =
-                EventRegion().SetCharge(false).SetLowerIso(DiscriminatorWP::VLoose).SetUpperIso(DiscriminatorWP::Medium);
+                EventRegion().SetCharge(false).SetLowerIso(DiscriminatorWP::VVLoose).SetUpperIso(DiscriminatorWP::Medium);
         return er;
     }
 
@@ -193,8 +193,10 @@ struct EventCategory {
     DEF_ES(TwoJets_ZeroBtag_Resolved_noVBF, 2, 0, true, DiscriminatorWP::Medium, false, false)
     DEF_ES(TwoJets_OneBtag_Resolved_noVBF, 2, 1, true, DiscriminatorWP::Medium, false, false)
     DEF_ES(TwoJets_TwoBtagPlus_Resolved_noVBF, 2, 2, false, DiscriminatorWP::Medium, false, false)
-    DEF_ES(TwoJets_TwoLooseBtagPlus_Boosted_noVBF, 2, 2, false, DiscriminatorWP::Loose, true, false)
+    DEF_ES(TwoJets_TwoLooseBtagPlus_Boosted_noVBF, 2, 2, false, DiscriminatorWP::Medium, true, false)
     DEF_ES(FourJets_OneBtagPlus_VBF, 4, 1, false, DiscriminatorWP::Medium, boost::optional<bool>(), true)
+    DEF_ES(TwoJets_OneBtagPlus_Boosted_noVBF, 2, 1, false, DiscriminatorWP::Medium, true, false)
+    DEF_ES(TwoJets_OneBtagPlus_Boosted, 2, 1, false, DiscriminatorWP::Medium, true)
 
 
     EventCategory() {}
