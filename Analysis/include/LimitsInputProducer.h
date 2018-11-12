@@ -64,7 +64,7 @@ public:
     }
 
 
-    void Produce(const std::string& outputFileNamePrefix, const std::string& setup_name,
+    void Produce(const std::string& outputFileNamePrefix, const std::string& category,
                  const std::map<EventCategory, std::string>& eventCategories, EventSubCategory eventSubCategory,
                  const EventEnergyScaleSet& eventEnergyScales, const EventRegionSet& eventRegions,
                  const std::map<SelectionCut, std::string>& sel_aliases)
@@ -74,7 +74,7 @@ public:
         static const std::string dirNamePrefix = ToString(anaDataCollection->ChannelId()) + "_";
 
         std::ostringstream s_file_name;
-        s_file_name << outputFileNamePrefix << "_" << setup_name;
+        s_file_name << outputFileNamePrefix << "_" << category;
         if(eventSubCategory != EventSubCategory::NoCuts())
             s_file_name << "_" << eventSubCategory.ToString(sel_aliases);
         const std::string file_name = s_file_name.str();
@@ -84,7 +84,7 @@ public:
         for(const EventAnalyzerDataId& metaId : EventAnalyzerDataId::MetaLoop(eventCategories, eventEnergyScales,
                                                                               sampleWorkingPoints, eventRegions))
         {
-            const std::string directoryName = dirNamePrefix + setup_name + EventRegionSuffix(metaId.Get<EventRegion>());
+            const std::string directoryName = dirNamePrefix + category + EventRegionSuffix(metaId.Get<EventRegion>());
             TDirectory* directory = root_ext::GetDirectory(*outputFile, directoryName, true);
             const SampleWP& sampleWP = sampleWorkingPoints.at(metaId.Get<std::string>());
             const auto anaDataId = metaId.Set(eventSubCategory);
