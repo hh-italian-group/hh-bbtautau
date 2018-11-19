@@ -246,7 +246,6 @@ protected:
             for(auto eventCategory : eventCategories) {
                 if (!ana_setup.categories.count(eventCategory)) continue;
                 const EventRegion eventRegion = DetermineEventRegion(event, eventCategory);
-
                 for(const auto& region : ana_setup.regions){
                     if(!eventRegion.Implies(region)) continue;
                     std::map<SelectionCut, double> mva_scores;
