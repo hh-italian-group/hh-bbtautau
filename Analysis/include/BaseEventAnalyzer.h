@@ -93,14 +93,12 @@ public:
     {
         InitializeMvaReader();
         if(ana_setup.syncDataIds.size()){
-            std::cout<<"ana_setup.syncDataIds.size(): "<<ana_setup.syncDataIds.size()<<std::endl;
             outputFile_sync = root_ext::CreateRootFile(args.output_sync());
-            std::cout<<"outputFile_sync: "<<outputFile_sync<<std::endl;
             for(unsigned n = 0; n < ana_setup.syncDataIds.size(); ++n){
                 const EventAnalyzerDataId dataId = ana_setup.syncDataIds.at(n);
-                std::cout<<"dataId: "<<dataId<<std::endl;
                 syncTuple_map[dataId] = std::make_shared<htt_sync::SyncTuple>(dataId.GetName("_"),outputFile_sync.get(),false);
             }
+
         }
         for(auto& x: sample_descriptors) {
             SampleDescriptor& sample = x.second;
@@ -247,17 +245,10 @@ protected:
             const auto eventCategories = DetermineEventCategories(event);
             for(auto eventCategory : eventCategories) {
                 if (!ana_setup.categories.count(eventCategory)) continue;
-//                 if ((event.GetHiggsBB().GetFirstDaughter())->deepcsv()<0.05 || (event.GetHiggsBB().GetFirstDaughter())->deepcsv()>0.95 ||
-//                         (event.GetHiggsBB().GetSecondDaughter())->deepcsv()<0.05 || (event.GetHiggsBB().GetSecondDaughter())->deepcsv()>0.95) continue;
                 const EventRegion eventRegion = DetermineEventRegion(event, eventCategory);
 
-
                 for(const auto& region : ana_setup.regions){
-                    if (event->run == 297050 && event->lumi == 678 && event->evt == 799196447)
-                        std::cout<<"PRIMA "<<region<<std::endl;
                     if(!eventRegion.Implies(region)) continue;
-                    if (event->run == 297050 && event->lumi == 678 && event->evt == 799196447)
-                        std::cout<<"DOPO "<<region<<std::endl;
                     std::map<SelectionCut, double> mva_scores;
                     const auto eventSubCategory = DetermineEventSubCategory(event, eventCategory, mva_scores);
                     for(const auto& subCategory : sub_categories_to_process) {
@@ -268,27 +259,17 @@ protected:
                             mva_score = mva_scores.at(mva_cut);
                             const auto& mva_params = mva_setup->selections.at(mva_cut);
                             if(mva_params.training_range.is_initialized() && mva_params.samples.count(sample.name)) {
-                                if (event->run == 297050 && event->lumi == 678 && event->evt == 799196447)
-                                    std::cout<<"    ----ciao prima if----     "<<std::endl;
                                 if(mva_params.training_range->Contains(event->split_id)) continue;
-                                if (event->run == 297050 && event->lumi == 678 && event->evt == 799196447)
-                                    std::cout<<"    ----ciao dopo if----     "<<std::endl;
                                 mva_weight_scale = double(summary->n_splits)
                                         / (summary->n_splits - mva_params.training_range->size());
                             }
                         }
                         event.SetMvaScore(mva_score);
-                        if (event->run == 297050 && event->lumi == 678 && event->evt == 799196447)
-                            std::cout<<"    mva score  "<<mva_score<<std::endl;
                         const EventAnalyzerDataId anaDataId(eventCategory, subCategory, region,
                                                             event.GetEnergyScale(), sample_wp.full_name);
                         if(sample.sampleType == SampleType::Data) {
-                            if (event->run == 297050 && event->lumi == 678 && event->evt == 799196447)
-                                std::cout<<"    ----dataids---     "<<std::endl;
                             dataIds[anaDataId] = std::make_tuple(1., mva_score);
                         } else {
-//                            const double weight = event->weight_total * sample.cross_section * ana_setup.int_lumi
-//                                                / summary->totalShapeWeight * mva_weight_scale / event->weight_btag;
                             const double weight = event->weight_total * sample.cross_section * ana_setup.int_lumi
                                                 / summary->totalShapeWeight * mva_weight_scale;
                             if(sample.sampleType == SampleType::MC) {
@@ -301,10 +282,6 @@ protected:
                 }
             }
 
-
-
-            if (event->run == 297050 && event->lumi == 678 && event->evt == 799196447)
-                std::cout<<"    ----ciao----     "<<std::endl;
             anaTupleWriter.AddEvent(event, dataIds);
             for (auto& sync_iter : syncTuple_map) {
                 if(!dataIds.count(sync_iter.first)) continue;

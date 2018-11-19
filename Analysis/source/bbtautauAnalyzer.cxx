@@ -14,13 +14,11 @@ public:
 protected:
     virtual EventRegion DetermineEventRegion(EventInfo& event, EventCategory /*eventCategory*/) override
     {
+
         static const std::vector<DiscriminatorWP> working_points = {
             DiscriminatorWP::VLoose, DiscriminatorWP::Loose, DiscriminatorWP::Medium
         };
 
-
-        if (event->run == 297050 && event->lumi == 678 && event->evt == 799196447)
-            std::cout<<"    ----Inizio Determine Event Region----     "<<std::endl;
 
         const TauCandidate& tau_1 = event.GetFirstLeg();
         const TauCandidate& tau_2 = event.GetSecondLeg();
@@ -46,8 +44,6 @@ protected:
 
 
         if (std::abs(tau_1.GetMomentum().eta())>2.1 || std::abs(tau_2.GetMomentum().eta())>2.1) return EventRegion::Unknown();
-        if (event->run == 297050 && event->lumi == 678 && event->evt == 799196447)
-            std::cout<<"    ----Taglio Eta passato----     "<<std::endl;
 
         EventRegion region_tau1, region_tau2;
 
@@ -73,22 +69,11 @@ protected:
             }
         }
 
-        if (event->run == 297050 && event->lumi == 678 && event->evt == 799196447)
-            std::cout<<"    ----Prima di egion_tau1.HasLowerIso()----     "<<std::endl;
         if(!region_tau1.HasLowerIso() || !region_tau2.HasLowerIso()) return EventRegion::Unknown();
 
-
-        if (event->run == 297050 && event->lumi == 678 && event->evt == 799196447)
-            std::cout<<"    ----Prima di region tau2----     "<<std::endl;
         if(region_tau1.GetLowerIso() >= DiscriminatorWP::Medium) return region_tau2;
 
-        if (event->run == 297050 && event->lumi == 678 && event->evt == 799196447)
-            std::cout<<"    ----Prima di region tau1----     "<<std::endl;
-
         if(region_tau2.GetLowerIso() >= DiscriminatorWP::Medium) return region_tau1;
-
-        if (event->run == 297050 && event->lumi == 678 && event->evt == 799196447)
-            std::cout<<"    ----Prima di Region Unkown----     "<<std::endl;
 
         return EventRegion::Unknown();
     }
