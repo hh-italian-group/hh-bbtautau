@@ -44,9 +44,6 @@ struct AnalyzerSetup {
     std::map<SelectionCut,analysis::EllipseParameters> massWindowParams;
     std::map<std::string, std::vector<std::string>> limit_setup_raw;
     std::map<std::string, std::map<EventCategory, std::string>> limit_setup;
-    std::map<std::string, std::map<std::string, std::string>> limit_setup_stringa;
-
-
 
     bool IsSignal(const std::string& sample_name) const
     {
@@ -55,66 +52,21 @@ struct AnalyzerSetup {
     }
 
     void CreateLimitSetups()
-{
+    {
         for(const auto& item: limit_setup_raw) {
-            const std::string& setup = item.first;
-            const std::vector<std::string>& second_map = item.second;
+            const auto& setup_name = item.first;
+            for (size_t i = 0; i < item.second.size(); i++){
+                auto variable_categories = SplitValueList(item.second.at(i), false, ":");
+                if(variable_categories.size() != 2)
+                    throw exception("The Number of parameters is %1%, only 2 are allowed") % item.second.size() ;
 
-            std::vector<std::string> name;
-            std::string variable;
-            std::string category;
-            // for (size_t i = 0; i < second_map.size(); i++){
-            for (size_t i = 0; i < 2; i++){
-                name = SplitValueList(second_map.at(i), false, ":");
-                if(name.size() > 2)
-                    throw exception("The Number of parameters is %1%, only 2 are allowed") % name.size() ;
-                variable = name.at(0); //std::cout << "variableeee" << variable  <<'\n';
-                category = name.at(1);
-                // std::cout << "category lungaaaa" << category<< '\n';
-
-           // std::vector<std::string> categories_str;
-           // for (size_t i = 0; i < categories_str.size(); i++) {
-                const auto categories_str = SplitValueList(category, false, ",");
-                // std::cout << " categories_str " << categories_str.size()<<'\n';
-                // for (size_t i = 0; i < categories_str.size(); i++) {
-                //     std::cout << "categories_strrr      : " << categories_str.at(i) << '\n';
-                // }
-                // }
-            std::vector<EventCategory> categories_ec;
-            for (size_t n = 0; n < categories_str.size(); n++) {
-                EventCategory Category = ::analysis::Parse<EventCategory>(categories_str.at(n));
-                categories_ec.emplace_back(Category);
-            }
-        // }
-            std::map<EventCategory, std::string> mappina;
-            std::transform( categories_ec.begin(), categories_ec.end(), std::inserter( mappina, mappina.begin() ),
-                 [variable]( EventCategory c ){ return std::pair<const EventCategory, std::string>( c, variable ); } );
-
-
-            std::map<std::string, std::string> mappina_stringa;
-            // mappina[variable] = categories_str;
-
-            std::transform( categories_str.begin(), categories_str.end(), std::inserter( mappina_stringa, mappina_stringa.begin() ),
-                 [variable]( std::string c ){ return std::pair<const std::string, std::string>( c, variable ); } );
-             // }
-            limit_setup.emplace(setup, mappina);
-            limit_setup_stringa.emplace(setup, mappina_stringa);
-
+                const auto categories_str = SplitValueList(variable_categories.at(1), false, ",");
+                for (size_t n = 0; n < categories_str.size(); n++){
+                    const EventCategory categories = ::analysis::Parse<EventCategory>(categories_str.at(n));
+                    limit_setup[setup_name][categories] = variable_categories.at(0);
+                }
             }
         }
-
-             for(const auto& item: limit_setup_stringa ){
-                 // std::cout << "Res and non Res: " << item.first << '\n';
-                 std::map<std::string, std::string> mappina_stringa = item.second;
-                 // std::map<EventCategory, std::string> mappina_ec = item.second;
-                 for(const auto& c: mappina_stringa ){
-                     // std::cout << "categories!! : " << c.first << '\n';
-                     // std::cout << "variable:  " <<  c.second<< '\n';
-
-
-                 }
-        }
-        // }
     }
 };
 

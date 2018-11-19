@@ -73,7 +73,6 @@ public:
         ParseEntry("unc_cfg", current.unc_cfg);
         ParseEntry("jet_ordering", current.jet_ordering);
         ParseMappedEntryList("limit_setup", current.limit_setup_raw,false);
-        ParseMappedEntryList("limit_setup", current.limit_setup_raw,false);
     }
 };
 
