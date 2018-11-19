@@ -461,7 +461,7 @@ private:
 
         if(setup.apply_mass_cut) {
             bool pass_mass_cut = false;
-             if (!eventInfo->HasBjetPair()) return false;
+            if (!eventInfo->HasBjetPair()) return false;
             const double mbb = eventInfo->GetHiggsBB().GetMomentum().mass();
             const double mtautau = (full_event.p4_1 + full_event.p4_2).mass();
             pass_mass_cut = pass_mass_cut
@@ -482,7 +482,9 @@ private:
             if(!pass_mass_cut)
                 return false;
         }
+
         if (setup.apply_charge_cut && (full_event.q_1+full_event.q_2) != 0) return false;
+
         if(setup.ApplyTauIdCuts()) {
             const Channel channel = static_cast<Channel>(event.channelId);
             const auto leg_types = GetChannelLegTypes(channel);

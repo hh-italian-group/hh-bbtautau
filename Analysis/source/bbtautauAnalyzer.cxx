@@ -42,9 +42,7 @@ protected:
 
 //        return region;
 
-
         if (std::abs(tau_1.GetMomentum().eta())>2.1 || std::abs(tau_2.GetMomentum().eta())>2.1) return EventRegion::Unknown();
-
         EventRegion region_tau1, region_tau2;
 
         const bool os = !ana_setup.apply_os_cut || tau_1.GetCharge() * tau_2.GetCharge() == -1;
@@ -70,11 +68,8 @@ protected:
         }
 
         if(!region_tau1.HasLowerIso() || !region_tau2.HasLowerIso()) return EventRegion::Unknown();
-
         if(region_tau1.GetLowerIso() >= DiscriminatorWP::Medium) return region_tau2;
-
         if(region_tau2.GetLowerIso() >= DiscriminatorWP::Medium) return region_tau1;
-
         return EventRegion::Unknown();
     }
 };

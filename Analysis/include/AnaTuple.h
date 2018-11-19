@@ -98,7 +98,6 @@ public:
         static constexpr float def_val = std::numeric_limits<float>::lowest();
 
         if(!dataIds.size()) return;
-
         for(const auto& entry : dataIds) {
             if(!known_data_ids.left.count(entry.first)) {
                 const size_t hash = std::hash<std::string>{}(entry.first.GetName());
