@@ -104,6 +104,7 @@ public:
 	using ExpressEvent = ntuple::ExpressEvent;
     using SummaryTuple = ntuple::SummaryTuple;
     using ProdSummary = ntuple::ProdSummary;
+    using Filter = ntuple::MetFilters::Filter;
 
     static constexpr size_t max_queue_size = 100000;
 
@@ -446,7 +447,11 @@ private:
         }
 
 
-        if (!ntuple::MetFilters(full_event.metFilters).PassAll()) return false;
+        auto event_metFilters = ntuple::MetFilters(full_event.metFilters);
+        if (!event_metFilters.Pass(Filter::PrimaryVertex) || !event_metFilters.Pass(Filter::BeamHalo) ||
+                !event_metFilters.Pass(Filter::HBHE_noise) || !event_metFilters.Pass(Filter::HBHEiso_noise) ||
+                !event_metFilters.Pass(Filter::ECAL_TP) || !event_metFilters.Pass(Filter::badMuon) ||
+                !event_metFilters.Pass(Filter::badChargedHadron) || !event_metFilters.Pass(Filter::ecalBadCalib) ) return false;
 
         if(!setup.energy_scales.count(es) || full_event.extraelec_veto || full_event.extramuon_veto) return false;
 
