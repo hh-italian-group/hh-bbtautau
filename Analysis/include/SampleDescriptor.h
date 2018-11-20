@@ -23,7 +23,6 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 namespace analysis {
 
 struct AnalyzerSetup {
-    using StrSet = std::unordered_set<std::string>;
     std::string name;
     double int_lumi{0};
     Period period;
