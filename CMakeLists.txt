@@ -38,3 +38,6 @@ set_target_properties(LimitConfigurationProducer BjetSelectionStudy BjetEffSF Ki
 
 add_library("hh-bbtautau" OBJECT ${HEADER_LIST} ${SOURCE_LIST} ${EXE_SOURCE_LIST} ${SCRIPT_LIST} ${CONFIG_LIST})
 set_target_properties("hh-bbtautau" PROPERTIES EXCLUDE_FROM_ALL 1)
+message("ROOT include: ${ROOT_INCLUDE_DIR}")
+message("ROOT library: ${ROOT_LIBRARY_DIR}")
+message("ROOT library: ${ROOT_LIBRARIES}")
