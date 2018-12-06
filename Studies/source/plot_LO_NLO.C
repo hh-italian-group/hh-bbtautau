@@ -22,10 +22,10 @@ void plot_LO_NLO(){
     chain.Add("/home/rbhattac/2017Trees/Skimmed_muMu/DYJetsToLL_M-50_nlo.root");
     TTreeReader reader_NLO(&chain);*/
 
-    TFile* f_LO = new TFile("/home/rbhattac/2017Trees/Skimmed_muMu/DYJetsToLL_M-50.root");
+    TFile* f_LO = new TFile("/media/rbhattac/Seagate\ Backup\ Plus\ Drive/2017Trees/Skimmed_muMu/DYJetsToLL_M-50.root");
     TTreeReader reader_LO("muMu",f_LO);
 
-    TFile* f_NLO = new TFile("/home/rbhattac/2017Trees/Skimmed_muMu/DYJetsToLL_M-50_nlo.root");
+    TFile* f_NLO = new TFile("/media/rbhattac/Seagate\ Backup\ Plus\ Drive/2017Trees/Skimmed_muMu/DYJetsToLL_M-50_nlo.root");
     TTreeReader reader_NLO("muMu",f_NLO);
 
 
