@@ -284,7 +284,8 @@ private:
 
                             auto dataset_name_raw = RemoveFileExtension(desc_iter->inputs.at(n));
                             std::ostringstream ss_dataset_name;
-                            std::string dataset_name = ss_dataset_name.str();
+                            ss_dataset_name << "n_pu_mc_" << dataset_name_raw;
+							std::string dataset_name = ss_dataset_name.str();
                             
                             pile_up_weight->SetActiveDataset(dataset_name);
                         }
@@ -408,7 +409,8 @@ private:
                                                                 mc_corrections::WeightType::PileUp);
             auto dataset_name_raw = RemoveFileExtension(desc.inputs.at(file_index));
             std::ostringstream ss_dataset_name;
-            std::string dataset_name = ss_dataset_name.str();
+            ss_dataset_name << "n_pu_mc_" << dataset_name_raw;
+			std::string dataset_name = ss_dataset_name.str();
 
             pile_up_weight->SetActiveDataset(dataset_name);
         }
