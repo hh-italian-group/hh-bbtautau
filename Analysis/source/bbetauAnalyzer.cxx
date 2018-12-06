@@ -27,7 +27,7 @@ protected:
         region.SetCharge(os);
 
         for(auto wp = working_points.rbegin(); wp != working_points.rend(); ++wp) {
-            if(tau->tauID(TauIdDiscriminator::byIsolationMVArun2v1DBoldDMwLT, *wp)) {
+            if(tau->tauID(TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017, *wp)) {
                 region.SetLowerIso(*wp);
                 if(wp != working_points.rbegin())
                     region.SetUpperIso(*(--wp));

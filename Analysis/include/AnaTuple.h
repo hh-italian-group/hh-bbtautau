@@ -26,7 +26,7 @@ namespace analysis {
     VAR_LIST(float, m_ttbb, m_ttbb_kinfit, m_sv, MT2, mt_tot, deta_hbbhtautau, dphi_hbbhtautau, m_tt_vis, pt_H_tt, \
              pt_H_tt_MET, pt_1, eta_1, iso_1, mt_1, pt_2, eta_2, iso_2, mt_2, dR_l1l2, abs_dphi_l1MET, \
              dphi_htautauMET, dR_l1l2MET, dR_l1l2Pt_htautau, mass_l1l2MET, pt_l1l2MET, MT_htautau, npv, MET, phiMET, \
-             pt_MET, m_bb, pt_H_bb, pt_b1, eta_b1, csv_b1, pt_b2, eta_b2, csv_b2, costheta_METhbb, dR_b1b2, \
+             pt_MET, m_bb, pt_H_bb, pt_b1, eta_b1, csv_b1, deepcsv_b1, pt_b2, eta_b2, csv_b2, deepcsv_b2, costheta_METhbb, dR_b1b2, \
              dR_b1b2_boosted, HT_otherjets, mass_top1, mass_top2, p_zeta, p_zetavisible, HT_total, HT_otherjets_gen,\
              HT_total_gen, n_selected_gen_jets, n_selected_gen_bjets, n_selected_gen_notbjets, genJets_nTotal, \
              jets_nTotal_hadronFlavour_b, jets_nTotal_hadronFlavour_c, n_jets) \
@@ -196,9 +196,11 @@ public:
             tuple().pt_b1 = static_cast<float>(b1.GetMomentum().pt());
             tuple().eta_b1 = static_cast<float>(b1.GetMomentum().Eta());
             tuple().csv_b1 = b1->csv();
+            tuple().deepcsv_b1 = b1->deepcsv();
             tuple().pt_b2 = static_cast<float>(b2.GetMomentum().Pt());
             tuple().eta_b2 = static_cast<float>(b2.GetMomentum().Eta());
             tuple().csv_b2 = b2->csv();
+            tuple().deepcsv_b2 = b2->deepcsv();
             tuple().dphi_hbbhtautau = static_cast<float>(DeltaPhi(Hbb.GetMomentum(), event.GetHiggsTTMomentum(true)));
             tuple().deta_hbbhtautau = static_cast<float>((Hbb.GetMomentum()-event.GetHiggsTTMomentum(true)).Eta());
             tuple().costheta_METhbb = static_cast<float>(four_bodies::Calculate_cosTheta_2bodies(

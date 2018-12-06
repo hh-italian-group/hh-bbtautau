@@ -47,7 +47,6 @@ public:
                             ana_descriptor_element.int_lumi << ", " <<
                          ana_descriptor_element.apply_mass_cut << ", " <<
                          ana_descriptor_element.energy_scales.size() << ", " <<
-                         ana_descriptor_element.final_variables.size() << ", " <<
                          ana_descriptor_element.int_lumi << ", " << std::endl;
 
         } //end loop ana_descriptors
