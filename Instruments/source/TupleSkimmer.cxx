@@ -282,10 +282,7 @@ private:
                                 && setup.period == Period::Run2017 ) {
                             auto pile_up_weight = eventWeights_HH->GetProviderT<mc_corrections::PileUpWeightEx>(mc_corrections::WeightType::PileUp);
 
-                            auto dataset_name_raw = RemoveFileExtension(desc_iter->inputs.at(n));
-                            std::ostringstream ss_dataset_name;
-                            std::string dataset_name = ss_dataset_name.str();
-                            
+                            auto dataset_name = RemoveFileExtension(desc_iter->inputs.at(n));
                             pile_up_weight->SetActiveDataset(dataset_name);
                         }
 
@@ -406,10 +403,7 @@ private:
         if(weighting_mode.count(mc_corrections::WeightType::PileUp) && setup.period == Period::Run2017){
             auto pile_up_weight = eventWeights_HH->GetProviderT<mc_corrections::PileUpWeightEx>(
                                                                 mc_corrections::WeightType::PileUp);
-            auto dataset_name_raw = RemoveFileExtension(desc.inputs.at(file_index));
-            std::ostringstream ss_dataset_name;
-            std::string dataset_name = ss_dataset_name.str();
-
+            auto dataset_name = RemoveFileExtension(desc.inputs.at(file_index));
             pile_up_weight->SetActiveDataset(dataset_name);
         }
         return eventWeights_HH->GetSummaryWithWeights(file, weighting_mode);
@@ -515,7 +509,7 @@ private:
             if(leg_types.first == LegType::tau && !ApplyTauIdCut(full_event.tauId_flags_1)) return false;
             if(leg_types.second == LegType::tau && !ApplyTauIdCut(full_event.tauId_flags_2)) return false;
         }
-        
+
         if(setup.apply_kinfit){
             event.kinFit_chi2.push_back(static_cast<Float_t>(eventInfo->GetKinFitResults().chi2));
             event.kinFit_convergence.push_back(eventInfo->GetKinFitResults().convergence);
