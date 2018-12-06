@@ -282,11 +282,7 @@ private:
                                 && setup.period == Period::Run2017 ) {
                             auto pile_up_weight = eventWeights_HH->GetProviderT<mc_corrections::PileUpWeightEx>(mc_corrections::WeightType::PileUp);
 
-                            auto dataset_name_raw = RemoveFileExtension(desc_iter->inputs.at(n));
-                            std::ostringstream ss_dataset_name;
-                            ss_dataset_name << "n_pu_mc_" << dataset_name_raw;
-                            std::string dataset_name = ss_dataset_name.str();
-
+                            auto dataset_name = RemoveFileExtension(desc_iter->inputs.at(n));
                             pile_up_weight->SetActiveDataset(dataset_name);
                         }
 
@@ -407,11 +403,7 @@ private:
         if(weighting_mode.count(mc_corrections::WeightType::PileUp) && setup.period == Period::Run2017){
             auto pile_up_weight = eventWeights_HH->GetProviderT<mc_corrections::PileUpWeightEx>(
                                                                 mc_corrections::WeightType::PileUp);
-            auto dataset_name_raw = RemoveFileExtension(desc.inputs.at(file_index));
-            std::ostringstream ss_dataset_name;
-            ss_dataset_name << "n_pu_mc_" << dataset_name_raw;
-            std::string dataset_name = ss_dataset_name.str();
-
+            auto dataset_name = RemoveFileExtension(desc.inputs.at(file_index));
             pile_up_weight->SetActiveDataset(dataset_name);
         }
         return eventWeights_HH->GetSummaryWithWeights(file, weighting_mode);
