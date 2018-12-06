@@ -32,6 +32,7 @@ public:
         CheckReadParamCounts("keep_MET_cov",1,Condition::less_equal);
         CheckReadParamCounts("tau_id_cuts", 1, Condition::less_equal);
         CheckReadParamCounts("massWindowParams", 0, Condition::greater_equal);
+        CheckReadParamCounts("apply_kinfit", 1, Condition::less_equal);
 
         current.UpdateTauIdIndices();
         ConfigEntryReaderT<Setup>::EndEntry();
@@ -57,6 +58,7 @@ public:
         ParseEntry("keep_MET_cov",current.keep_MET_cov);
         ParseEntryList("tau_id_cuts", current.tau_id_cuts);
         ParseEntry("massWindowParams", current.massWindowParams);
+        ParseEntry("apply_kinfit",current.apply_kinfit);
     }
 };
 
