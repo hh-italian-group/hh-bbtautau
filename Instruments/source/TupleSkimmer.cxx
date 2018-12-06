@@ -285,8 +285,8 @@ private:
                             auto dataset_name_raw = RemoveFileExtension(desc_iter->inputs.at(n));
                             std::ostringstream ss_dataset_name;
                             ss_dataset_name << "n_pu_mc_" << dataset_name_raw;
-							std::string dataset_name = ss_dataset_name.str();
-                            
+                            std::string dataset_name = ss_dataset_name.str();
+
                             pile_up_weight->SetActiveDataset(dataset_name);
                         }
 
@@ -410,7 +410,7 @@ private:
             auto dataset_name_raw = RemoveFileExtension(desc.inputs.at(file_index));
             std::ostringstream ss_dataset_name;
             ss_dataset_name << "n_pu_mc_" << dataset_name_raw;
-			std::string dataset_name = ss_dataset_name.str();
+            std::string dataset_name = ss_dataset_name.str();
 
             pile_up_weight->SetActiveDataset(dataset_name);
         }
@@ -517,7 +517,7 @@ private:
             if(leg_types.first == LegType::tau && !ApplyTauIdCut(full_event.tauId_flags_1)) return false;
             if(leg_types.second == LegType::tau && !ApplyTauIdCut(full_event.tauId_flags_2)) return false;
         }
-        
+
         if(setup.apply_kinfit){
             event.kinFit_chi2.push_back(static_cast<Float_t>(eventInfo->GetKinFitResults().chi2));
             event.kinFit_convergence.push_back(eventInfo->GetKinFitResults().convergence);
