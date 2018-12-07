@@ -16,16 +16,17 @@
 #include <vector>
 #include <map>
 #include <fstream>
-void plot_LO_NLO(){
+#include <string>
+void plot_LO_NLO(std::string path){
     /*TChain chain("muMu");
     chain.Add("/home/rbhattac/2017Trees/Skimmed_muMu/DYJetsToLL_M-50_ext1_nlo.root");
     chain.Add("/home/rbhattac/2017Trees/Skimmed_muMu/DYJetsToLL_M-50_nlo.root");
     TTreeReader reader_NLO(&chain);*/
 
-    TFile* f_LO = new TFile("/media/rbhattac/Seagate\ Backup\ Plus\ Drive/2017Trees/Skimmed_muMu/DYJetsToLL_M-50.root");
+    TFile* f_LO = new TFile((path+"DYJetsToLL_M-50.root").c_str());
     TTreeReader reader_LO("muMu",f_LO);
 
-    TFile* f_NLO = new TFile("/media/rbhattac/Seagate\ Backup\ Plus\ Drive/2017Trees/Skimmed_muMu/DYJetsToLL_M-50_nlo.root");
+    TFile* f_NLO = new TFile((path+"DYJetsToLL_M-50_nlo.root").c_str());
     TTreeReader reader_NLO("muMu",f_NLO);
 
 
