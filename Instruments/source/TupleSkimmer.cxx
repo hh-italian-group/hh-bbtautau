@@ -272,13 +272,19 @@ private:
                     using FullEventIdSet = std::set<FullEventId>;
 
                     FullEventIdSet processed_events;
-
                     for(size_t n = 0; n < desc_iter->inputs.size(); ++n) {
                         auto file = inputFiles.at(n);
                         std::cout << "\t\t" << desc_iter->inputs.at(n) << ":" << treeName << std::endl;
 
                         if(!desc_iter->first_input_is_ref && (!desc_iter->input_is_partial.size() || desc_iter->input_is_partial.at(n) == false))
                             processed_events.clear();
+                        if((n == 0 || !desc_iter->first_input_is_ref) && weighting_mode.count(mc_corrections::WeightType::PileUp)
+                                && setup.period == Period::Run2017 ) {
+                            auto pile_up_weight = eventWeights_HH->GetProviderT<mc_corrections::PileUpWeightEx>(mc_corrections::WeightType::PileUp);
+
+                            auto dataset_name = RemoveFileExtension(desc_iter->inputs.at(n));
+                            pile_up_weight->SetActiveDataset(dataset_name);
+                        }
 
                         std::shared_ptr<EventTuple> tuple;
                         try {
@@ -306,6 +312,7 @@ private:
                             event_ptr->weight_xs_withTopPt = weight_xs_withTopPt;
                             event_ptr->file_desc_id = desc_id;
                             event_ptr->split_id = 0;
+                            event_ptr->isData = job.isData;
                             if(split_distr) {
                                 const EventIdentifier event_id(event);
                                 event_ptr->split_id = event_id == prev_event_id
@@ -389,19 +396,32 @@ private:
         }
     }
 
+
+    ntuple::ProdSummary GetSummaryWithWeights(const FileDescriptor& desc, const std::shared_ptr<TFile>& file,
+                                              size_t file_index)
+    {
+        if(weighting_mode.count(mc_corrections::WeightType::PileUp) && setup.period == Period::Run2017){
+            auto pile_up_weight = eventWeights_HH->GetProviderT<mc_corrections::PileUpWeightEx>(
+                                                                mc_corrections::WeightType::PileUp);
+            auto dataset_name = RemoveFileExtension(desc.inputs.at(file_index));
+            pile_up_weight->SetActiveDataset(dataset_name);
+        }
+        return eventWeights_HH->GetSummaryWithWeights(file, weighting_mode);
+    }
+
     ProdSummary GetCombinedSummary(const FileDescriptor& desc, const std::vector<std::shared_ptr<TFile>>& input_files,
                                    double& weight_xs, double& weight_xs_withTopPt)
     {
         if(!input_files.size())
             throw exception("Input files list is empty.");
         auto file_iter = input_files.begin();
-        auto summary = eventWeights_HH->GetSummaryWithWeights(*file_iter++, weighting_mode);
+        auto summary = GetSummaryWithWeights(desc, *file_iter++, 0);
         if(!desc.first_input_is_ref) {
             unsigned n=1;
             for(; file_iter != input_files.end(); ++file_iter, ++n) {
                 if (desc.input_is_partial.size() && desc.input_is_partial.at(n) == true)
                     continue;
-                auto other_summary = eventWeights_HH->GetSummaryWithWeights(*file_iter, weighting_mode);
+                auto other_summary = GetSummaryWithWeights(desc, *file_iter, n);
                 ntuple::MergeProdSummaries(summary, other_summary);
             }
         }
@@ -430,7 +450,7 @@ private:
     bool ProcessEvent(Event& event, const std::shared_ptr<Event>& prev_event, ntuple::StorageMode& storage_mode,
                       bool prev_event_stored)
     {
-//        using EventPart = ntuple::StorageMode::EventPart;
+        // using EventPart = ntuple::StorageMode::EventPart;
         using WeightType = mc_corrections::WeightType;
         using WeightingMode = mc_corrections::WeightingMode;
 
@@ -446,12 +466,13 @@ private:
             event.storageMode = static_cast<UInt_t>(storage_mode.Mode());
         }
 
-
         auto event_metFilters = ntuple::MetFilters(full_event.metFilters);
-        if (!event_metFilters.Pass(Filter::PrimaryVertex) || !event_metFilters.Pass(Filter::BeamHalo) ||
-                !event_metFilters.Pass(Filter::HBHE_noise) || !event_metFilters.Pass(Filter::HBHEiso_noise) ||
-                !event_metFilters.Pass(Filter::ECAL_TP) || !event_metFilters.Pass(Filter::badMuon) ||
-                !event_metFilters.Pass(Filter::badChargedHadron) ) return false;
+        if (!event_metFilters.Pass(Filter::PrimaryVertex)  || !event_metFilters.Pass(Filter::BeamHalo) ||
+            !event_metFilters.Pass(Filter::HBHE_noise)  || !event_metFilters.Pass(Filter::HBHEiso_noise) ||
+            !event_metFilters.Pass(Filter::ECAL_TP) || !event_metFilters.Pass(Filter::badMuon) ||
+            !event_metFilters.Pass(Filter::badChargedHadron)) return false;
+
+        if(event.isData && !event_metFilters.Pass(Filter::ee_badSC_noise)) return false;
 
         if(!setup.energy_scales.count(es) || full_event.extraelec_veto || full_event.extramuon_veto) return false;
 
@@ -477,8 +498,7 @@ private:
                 pass_mass_cut = pass_mass_cut || setup.massWindowParams.at(SelectionCut::mhMET)
                         .IsInside((full_event.p4_1 + full_event.p4_2 + full_event.pfMET_p4).mass(),mbb);
 
-            if(!pass_mass_cut)
-                return false;
+            if(!pass_mass_cut) return false;
         }
 
         if (setup.apply_charge_cut && (full_event.q_1+full_event.q_2) != 0) return false;
@@ -489,7 +509,7 @@ private:
             if(leg_types.first == LegType::tau && !ApplyTauIdCut(full_event.tauId_flags_1)) return false;
             if(leg_types.second == LegType::tau && !ApplyTauIdCut(full_event.tauId_flags_2)) return false;
         }
-        
+
         if(setup.apply_kinfit){
             event.kinFit_chi2.push_back(static_cast<Float_t>(eventInfo->GetKinFitResults().chi2));
             event.kinFit_convergence.push_back(eventInfo->GetKinFitResults().convergence);
