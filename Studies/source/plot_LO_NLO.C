@@ -16,17 +16,18 @@
 #include <vector>
 #include <map>
 #include <fstream>
-void plot_LO_NLO(){
-	/*TChain chain("muMu");
-	chain.Add("/home/rbhattac/HH_BB_tau_tau_full_trees/DYJetsToLL_M-50_ext1.root");
-	chain.Add("/home/rbhattac/HH_BB_tau_tau_full_trees/DYJetsToLL_M-50_ext2.root");
-	TTreeReader reader_LO(&chain);
-	*/
-	TFile* f_LO = new TFile("Skimmed_muMu/DYJetsToLL_M-50.root");
-	TTreeReader reader_LO("muMu",f_LO);
+#include <string>
+void plot_LO_NLO(std::string path){
+    /*TChain chain("muMu");
+    chain.Add("/home/rbhattac/2017Trees/Skimmed_muMu/DYJetsToLL_M-50_ext1_nlo.root");
+    chain.Add("/home/rbhattac/2017Trees/Skimmed_muMu/DYJetsToLL_M-50_nlo.root");
+    TTreeReader reader_NLO(&chain);*/
 
-	TFile* f_NLO = new TFile("Skimmed_muMu/DYJetsToLL_M-50_NLO.root");
-	TTreeReader reader_NLO("muMu",f_NLO);
+    TFile* f_LO = new TFile((path+"DYJetsToLL_M-50.root").c_str());
+    TTreeReader reader_LO("muMu",f_LO);
+
+    TFile* f_NLO = new TFile((path+"DYJetsToLL_M-50_nlo.root").c_str());
+    TTreeReader reader_NLO("muMu",f_NLO);
 
 
 	TTreeReaderArray<ROOT::Math::LorentzVector<ROOT::Math::PtEtaPhiM4D<float>>> genParticles_p4_LO(reader_LO,"genParticles_p4");
@@ -51,7 +52,7 @@ void plot_LO_NLO(){
     
 
     std::map<std::string,TH1D*> pt_weight_histo_map;
-    TFile* NLO_weight_file = new TFile("comp_LO_NLO_7.root");
+    TFile* NLO_weight_file = new TFile("comp_LO_NLO_1_2017.root");
     for(int i=0;i<sizeof(categories)/sizeof(std::string);i++){
     	std::string category = categories[i];
     	TH1D* h1;
@@ -60,12 +61,12 @@ void plot_LO_NLO(){
     }
 
     std::map<std::string,double> fractional_weight_map;
-    fractional_weight_map["0Jet"] = 0.93;
-    fractional_weight_map["1Jet_0bJet"] = 1.02;
-    fractional_weight_map["1Jet_1bJet"] = 1.38;
-    fractional_weight_map["2Jet_0bJet"] = 0.99;
-    fractional_weight_map["2Jet_1bJet"] = 1.15;
-    fractional_weight_map["2Jet_2bJet"] = 1.39;
+    fractional_weight_map["0Jet"] = 0.813;
+    fractional_weight_map["1Jet_0bJet"] = 1.100;
+    fractional_weight_map["1Jet_1bJet"] = 1.316;
+    fractional_weight_map["2Jet_0bJet"] = 1.044;
+    fractional_weight_map["2Jet_1bJet"] = 1.232;
+    fractional_weight_map["2Jet_2bJet"] = 1.222;
 
 	std::map<std::string,TH1D*> LO_pt_histograms;
     std::map<std::string,TH1D*> NLO_pt_histograms;
@@ -157,14 +158,14 @@ void plot_LO_NLO(){
 			else if (lhe_n_b_partons==2) category = "2Jet_2bJet";
 		}
 		double pt_weight = 1;
-		double fractional_weight = fractional_weight_map[category];
+        double fractional_weight = fractional_weight_map[category];
 		gen_particle_size_LO->Fill(genParticles_p4_LO.GetSize());
 		for(int i=0;i<genParticles_p4_LO.GetSize(); ++i){
 			double pt;
 			if(genParticles_p4_LO[i].Pt()>400) pt=450;
 			else pt = genParticles_p4_LO[i].Pt();
 			double eta = genParticles_p4_LO[i].Eta();
-			pt_weight = pt_weight_histo_map[category]->GetBinContent(pt_weight_histo_map[category]->FindBin(pt));
+            pt_weight = pt_weight_histo_map[category]->GetBinContent(pt_weight_histo_map[category]->FindBin(pt));
 			LO_pt_histograms["inclusive"]->Fill(pt,weight_dy*fractional_weight*pt_weight);
 			LO_eta_histograms["inclusive"]->Fill(eta,weight_dy*fractional_weight*pt_weight);
 			LO_pt_eta_histograms["inclusive"]->Fill(pt,eta,weight_dy*fractional_weight*pt_weight);
@@ -231,7 +232,6 @@ void plot_LO_NLO(){
 		}
 		gen_particle_sie_NLO->Fill(genParticles_p4_NLO.GetSize());
 		for(int i=0;i<genParticles_p4_NLO.GetSize(); ++i){
-			std::cout<<"B"<<std::endl;
 			double pt;
 			if(genParticles_p4_NLO[i].Pt()>400) pt=450;
 			else pt = genParticles_p4_NLO[i].Pt();
@@ -280,24 +280,23 @@ void plot_LO_NLO(){
 		}
 
 	}
-	TFile* f_out = new TFile("comp_LO_NLO_8.root","RECREATE");
+    TFile* f_out = new TFile("val_LO_NLO_1_2017.root","RECREATE");
 	f_out->cd();
 	gen_particle_size_LO->Write();
 	gen_particle_sie_NLO->Write();
 	double inclusive_LO_integral = LO_pt_histograms["inclusive"]->Integral();
 	double inclusive_NLO_integral = NLO_pt_histograms["inclusive"]->Integral();
 	std::ofstream LO_output;
-	LO_output.open("LO_output_2.txt");
+    LO_output.open("LO_val_2017.txt");
 	LO_output<<std::setw(10)<<" "<<std::setw(20)<<"Integral"<<std::setw(20)<<"Fraction"<<std::endl;
 
 
 	std::ofstream NLO_output;
-	NLO_output.open("NLO_output_2.txt");
+    NLO_output.open("NLO_val_2017.txt");
 	NLO_output<<std::setw(10)<<"Category"<<std::setw(20)<<"Integral"<<std::setw(20)<<"Fraction"<<std::endl;
 
   	for (int i = 0; i<sizeof(categories)/sizeof(std::string); ++i)
   	{
-  		std::cout<<"C"<<std::endl;
 		std::string category = categories[i];
 
 		TH1D* hist_LO = LO_pt_histograms[category];
@@ -352,7 +351,6 @@ void plot_LO_NLO(){
 
     for (int i = 0; i<sizeof(categories)/sizeof(std::string); ++i)
   	{
-  		std::cout<<"D"<<std::endl;
 		std::string category = categories[i];
 
 		TH1D* hist_LO = LO_n_partons_histograms[category];
@@ -401,7 +399,6 @@ void plot_LO_NLO(){
 
     for (int i = 0; i<sizeof(categories)/sizeof(std::string); ++i)
   	{
-  		std::cout<<"E"<<std::endl;
 		std::string category = categories[i];
 
 		TH1D* hist_LO = LO_n_b_partons_histograms[category];
@@ -450,7 +447,6 @@ void plot_LO_NLO(){
 
     for (int i = 0; i<sizeof(categories)/sizeof(std::string); ++i)
   	{
-  		std::cout<<"F"<<std::endl;
 		std::string category = categories[i];
 
 		TH1D* hist_LO = LO_n_c_partons_histograms[category];
@@ -500,7 +496,6 @@ void plot_LO_NLO(){
 
     for (int i = 0; i<sizeof(categories)/sizeof(std::string); ++i)
   	{
-  		std::cout<<"G"<<std::endl;
 		std::string category = categories[i];
 
 		TH1D* hist_LO = LO_lhe_HT_histograms[category];
@@ -550,7 +545,6 @@ void plot_LO_NLO(){
 
   for (int i = 0; i<sizeof(categories)/sizeof(std::string); ++i)
   	{
-  		std::cout<<"G"<<std::endl;
 		std::string category = categories[i];
 
 		TH1D* hist_LO = LO_eta_histograms[category];
@@ -599,7 +593,6 @@ void plot_LO_NLO(){
 
       for (int i = 0; i<sizeof(categories)/sizeof(std::string); ++i)
   	{
-  		std::cout<<"G"<<std::endl;
 		std::string category = categories[i];
 
 		TH2D* hist_LO = LO_pt_eta_histograms[category];
@@ -650,7 +643,7 @@ void plot_LO_NLO(){
 
     f_out->Close();
 
-    f_NLO->Close();
+    //f_NLO->Close();
 
     LO_output.close();
     NLO_output.close();

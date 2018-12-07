@@ -76,12 +76,12 @@ public:
             throw exception("Unable to find the fit method");
 
         if(sampleOrder == "LO"){
-            fractional_weight_map["0Jet"] = 0.93;
-            fractional_weight_map["1Jet_0bJet"] = 1.02;
-            fractional_weight_map["1Jet_1bJet"] = 1.38;
-            fractional_weight_map["2Jet_0bJet"] = 0.99;
-            fractional_weight_map["2Jet_1bJet"] = 1.15;
-            fractional_weight_map["2Jet_2bJet"] = 1.39;
+            fractional_weight_map["0Jet"] = 0.813;
+            fractional_weight_map["1Jet_0bJet"] = 1.100;
+            fractional_weight_map["1Jet_1bJet"] = 1.316;
+            fractional_weight_map["2Jet_0bJet"] = 1.044;
+            fractional_weight_map["2Jet_1bJet"] = 1.232;
+            fractional_weight_map["2Jet_2bJet"] = 1.222;
 
             auto NLO_weight_file = (root_ext::OpenRootFile(working_path+"/"+sample.NLO_weight_file));
             std::string histo_name = "h_ratio_pt";
