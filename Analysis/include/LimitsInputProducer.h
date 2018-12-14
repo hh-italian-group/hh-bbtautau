@@ -69,8 +69,8 @@ public:
                  const EventEnergyScaleSet& eventEnergyScales, const EventRegionSet& eventRegions,
                  const std::map<SelectionCut, std::string>& sel_aliases)
     {
-        static constexpr double tiny_value = 1e-9;
-        static constexpr double tiny_value_error = tiny_value;
+        // static constexpr double tiny_value = 1e-9;
+        // static constexpr double tiny_value_error = tiny_value;
         static const std::string dirNamePrefix = ToString(anaDataCollection->ChannelId()) + "_";
 
         std::ostringstream s_file_name;
@@ -96,17 +96,18 @@ public:
                 hist = std::make_shared<TH1D>(hist_entry());
             if(hist)
                 hist->Scale(sampleWP.datacard_sf);
-            if(!hist || hist->Integral() == 0.) {
-                bool print_warning;
-                if(CanHaveEmptyHistogram(anaDataId, print_warning)) continue;
-                if(print_warning)
-                    empty_histograms.insert(anaDataId);
-                if(!hist)
-                    hist = std::make_shared<TH1D>(hist_entry());
-                const Int_t central_bin = hist->GetNbinsX() / 2;
-                hist->SetBinContent(central_bin, tiny_value);
-                hist->SetBinError(central_bin, tiny_value_error);
-            }
+            if(!hist || hist->Integral() == 0.) continue;
+            // {
+            //     bool print_warning;
+            //     if(CanHaveEmptyHistogram(anaDataId, print_warning)) continue;
+            //     if(print_warning)
+            //         empty_histograms.insert(anaDataId);
+            //     if(!hist)
+            //         hist = std::make_shared<TH1D>(hist_entry());
+            //     const Int_t central_bin = hist->GetNbinsX() / 2;
+            //     hist->SetBinContent(central_bin, tiny_value);
+            //     hist->SetBinError(central_bin, tiny_value_error);
+            // }
             const auto datacard_name = FullDataCardName(sampleWP.datacard_name, metaId.Get<EventEnergyScale>());
             root_ext::WriteObject(*hist, directory, datacard_name);
         }

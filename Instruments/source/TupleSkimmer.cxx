@@ -278,8 +278,10 @@ private:
 
                         if(!desc_iter->first_input_is_ref && (!desc_iter->input_is_partial.size() || desc_iter->input_is_partial.at(n) == false))
                             processed_events.clear();
-                        if((n == 0 || !desc_iter->first_input_is_ref) && weighting_mode.count(mc_corrections::WeightType::PileUp)
-                                && setup.period == Period::Run2017 ) {
+                        if((n == 0 || !desc_iter->first_input_is_ref)
+                                && (desc_iter->input_is_partial.empty() || !desc_iter->input_is_partial.at(n))
+                                && weighting_mode.count(mc_corrections::WeightType::PileUp)
+                                && setup.period == Period::Run2017) {
                             auto pile_up_weight = eventWeights_HH->GetProviderT<mc_corrections::PileUpWeightEx>(mc_corrections::WeightType::PileUp);
 
                             auto dataset_name = RemoveFileExtension(desc_iter->inputs.at(n));
