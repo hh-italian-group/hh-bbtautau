@@ -167,6 +167,8 @@ public:
         CheckReadParamCounts("points", 0, Condition::greater_equal);
         CheckReadParamCounts("draw_ex", 0, Condition::greater_equal);
         CheckReadParamCounts("norm_sf", 1, Condition::less_equal);
+        CheckReadParamCounts("reference_pu_sample", 1, Condition::less_equal);
+
 
         Base::EndEntry();
     }
@@ -181,6 +183,7 @@ public:
         ParseMappedEntryList("points", current.points, true);
         ParseEntry("draw_ex", current.draw_ex);
         ParseEntryList("norm_sf", current.norm_sf, true);
+        ParseEntry("reference_pu_sample", current.reference_pu_sample);
 
         Base::ReadParameter(param_name,param_value,ss);
     }

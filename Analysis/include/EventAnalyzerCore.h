@@ -128,7 +128,6 @@ public:
     void ProcessCombinedSamples(AnaDataCollection& anaDataCollection, const EventSubCategory& subCategory,
                                 const std::vector<std::string>& sample_names)
     {
-
         for(const std::string& sample_name : sample_names) {
             if(!cmb_sample_descriptors.count(sample_name))
                 throw exception("Combined sample '%1%' not found.") % sample_name;
