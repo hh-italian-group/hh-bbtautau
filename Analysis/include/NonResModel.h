@@ -69,7 +69,6 @@ private:
     };
 
 public:
-
     NonResModel(Period period, const SampleDescriptor& sample, std::shared_ptr<TFile> file)
         : weighting_mode({WeightType::PileUp, WeightType::BSM_to_SM}),
           weights(period, JetOrdering::NoOrdering, DiscriminatorWP::Medium, false, weighting_mode),
@@ -78,6 +77,12 @@ public:
         const ParamPositionDesc param_positions(sample.GetModelParameterNames());
         eft_weights->AddFile(*file);
         eft_weights->CreatePdfs();
+
+        if(weighting_mode.count(WeightType::PileUp) && period == Period::Run2017){
+            auto pile_up_weight = weights.GetProviderT<mc_corrections::PileUpWeightEx>(mc_corrections::WeightType::PileUp);
+            pile_up_weight->SetActiveDataset(sample.reference_pu_sample);
+        }
+
         for(const auto& sample_wp : sample.working_points) {
             const Point point = param_positions.CreatePoint(sample_wp.param_values);
             eft_weights->SetTargetPoint(point);
