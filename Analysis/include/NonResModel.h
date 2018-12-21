@@ -70,7 +70,8 @@ private:
 
 public:
     NonResModel(Period period, const SampleDescriptor& sample, std::shared_ptr<TFile> file)
-        : weighting_mode({WeightType::PileUp, WeightType::BSM_to_SM}),
+        : weighting_mode({WeightType::PileUp, WeightType::BSM_to_SM, WeightType::GenEventWeight}),
+        // : weighting_mode({WeightType::PileUp, WeightType::BSM_to_SM}),
           weights(period, JetOrdering::NoOrdering, DiscriminatorWP::Medium, false, weighting_mode),
           eft_weights(weights.GetProviderT<NonResHH_EFT::WeightProvider>(WeightType::BSM_to_SM))
     {
