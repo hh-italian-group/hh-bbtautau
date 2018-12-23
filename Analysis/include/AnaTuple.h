@@ -13,6 +13,11 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 namespace analysis {
 
+enum class SampleId { Signal = -1, Data = 0, Background = 1 };
+ENUM_NAMES(SampleId) = {
+    { SampleId::Signal, "Signal" }, { SampleId::Data, "Data" }, { SampleId::Background, "Background" }
+};
+
 #define CREATE_VAR(r, type, name) VAR(type, name)
 #define VAR_LIST(type, ...) BOOST_PP_SEQ_FOR_EACH(CREATE_VAR, type, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
 
@@ -22,6 +27,7 @@ namespace analysis {
     VAR(std::vector<float>, all_mva_scores) /* all mva scores */ \
     VAR(bool, has_2jets) /* has 2 jets */ \
     VAR(double, weight) /* weight */ \
+    VAR(int, sample_id) /* sample_id */ \
     VAR(float, mva_score) /* mva score */ \
     VAR_LIST(float, m_ttbb, m_ttbb_kinfit, m_sv, MT2, mt_tot, deta_hbbhtautau, dphi_hbbhtautau, m_tt_vis, pt_H_tt, \
              pt_H_tt_MET, pt_1, eta_1, iso_1, mt_1, pt_2, eta_2, iso_2, mt_2, dR_l1l2, abs_dphi_l1MET, \
@@ -116,8 +122,10 @@ public:
             tuple().all_weights.push_back(std::get<0>(entry.second));
             tuple().all_mva_scores.push_back(static_cast<float>(std::get<1>(entry.second)));
         }
+        const std::string sample_name = dataIds.begin()->first.Get<std::string>();
+        tuple().sample_id = GetSampleId(sample_name);
 
-        tuple().weight = def_val;
+        tuple().weight = dataIds.begin()->second;
         tuple().mva_score = def_val;
         tuple().has_2jets = event.HasBjetPair();
         tuple().m_sv = static_cast<float>(event.GetHiggsTTMomentum(true).M());
