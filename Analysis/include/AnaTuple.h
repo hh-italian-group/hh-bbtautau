@@ -13,9 +13,10 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 namespace analysis {
 
-enum class SampleId { Signal = -1, Data = 0, Background = 1 };
-ENUM_NAMES(SampleId) = {
-    { SampleId::Signal, "Signal" }, { SampleId::Data, "Data" }, { SampleId::Background, "Background" }
+enum class Sample_Index { Signal = -1, Data = 0, Background = 1 };
+ENUM_NAMES(Sample_Index) = {
+    { Sample_Index::Signal, "Signal" },
+    { Sample_Index::Data, "Data" }, { Sample_Index::Background, "Background" }
 };
 
 #define CREATE_VAR(r, type, name) VAR(type, name)
@@ -30,12 +31,10 @@ ENUM_NAMES(SampleId) = {
     VAR(int, sample_id) /* sample_id */ \
     VAR(float, mva_score) /* mva score */ \
     VAR_LIST(float, m_ttbb, m_ttbb_kinfit, m_sv, MT2, mt_tot, deta_hbbhtautau, dphi_hbbhtautau, m_tt_vis, pt_H_tt, \
-             pt_H_tt_MET, pt_1, eta_1, iso_1, mt_1, pt_2, eta_2, iso_2, mt_2, dR_l1l2, abs_dphi_l1MET, \
+             pt_H_tt_MET, pt_1, eta_1, phi_1, E_1, iso_1, q_1, mt_1, pt_2, eta_2, phi_2, E_2, iso_2, q_2, mt_2, dR_l1l2, abs_dphi_l1MET, \
              dphi_htautauMET, dR_l1l2MET, dR_l1l2Pt_htautau, mass_l1l2MET, pt_l1l2MET, MT_htautau, npv, MET, phiMET, \
-             pt_MET, m_bb, pt_H_bb, pt_b1, eta_b1, csv_b1, pt_b2, eta_b2, csv_b2, costheta_METhbb, dR_b1b2, \
-             dR_b1b2_boosted, HT_otherjets, mass_top1, mass_top2, p_zeta, p_zetavisible, HT_total, HT_otherjets_gen,\
-             HT_total_gen, n_selected_gen_jets, n_selected_gen_bjets, n_selected_gen_notbjets, genJets_nTotal, \
-             jets_nTotal_hadronFlavour_b, jets_nTotal_hadronFlavour_c, n_jets) \
+             pt_MET, m_bb, pt_H_bb, pt_b1, eta_b1, phi_b1, E_b1, csv_b1, pt_b2, eta_b2, phi_b2, E_b2, csv_b2, costheta_METhbb, dR_b1b2, \
+             dR_b1b2_boosted, HT_otherjets, HT_total, n_jets) \
     /**/
 
 #define VAR(type, name) DECLARE_BRANCH_VARIABLE(type, name)
@@ -97,6 +96,19 @@ public:
         tuple.Write();
     }
 
+    Sample_Index GetSampleId(const std::string& sample_name)
+    {
+        const auto vector_name = analysis::SplitValueList(sample_name,true,"_");
+        const auto iter_signal = std::find(vector_name.begin(), vector_name.end(), "Signal");
+        const auto iter_data = std::find(vector_name.begin(), vector_name.end(), "Data");
+        if (iter_signal != vector_name.end())
+            return Sample_Index::Signal;
+        else if (iter_data != vector_name.end())
+            return Sample_Index::Data;
+        else
+            return Sample_Index::Background;
+    }
+
     template<typename EventInfo>
     void AddEvent(EventInfo& event, const DataIdMap& dataIds)
     {
@@ -123,9 +135,14 @@ public:
             tuple().all_mva_scores.push_back(static_cast<float>(std::get<1>(entry.second)));
         }
         const std::string sample_name = dataIds.begin()->first.Get<std::string>();
-        tuple().sample_id = GetSampleId(sample_name);
+//        std::cout << "sample_name in AnaTuple: " << sample_name << std::endl;
 
-        tuple().weight = dataIds.begin()->second;
+        //std::cout << "sample_Id: " << static_cast<int>(GetSampleId(sample_name)) << std::endl;
+//        std::cout << "weight, first: " << std::get<0>(dataIds.begin()->second) << ", second: " <<
+//                     std::get<1>(dataIds.begin()->second) << std::endl;
+
+        tuple().weight = std::get<0>(dataIds.begin()->second);
+        tuple().sample_id = static_cast<int>(GetSampleId(sample_name));
         tuple().mva_score = def_val;
         tuple().has_2jets = event.HasBjetPair();
         tuple().m_sv = static_cast<float>(event.GetHiggsTTMomentum(true).M());
@@ -150,10 +167,16 @@ public:
         tuple().pt_H_tt_MET = static_cast<float>((Htt + event.GetMET().GetMomentum()).Pt());
         tuple().pt_1 = static_cast<float>(t1.GetMomentum().pt());
         tuple().eta_1 = static_cast<float>(t1.GetMomentum().eta());
+        tuple().phi_1 = static_cast<float>(t1.GetMomentum().phi());
+        tuple().E_1 = static_cast<float>(t1.GetMomentum().E());
+        tuple().q_1 = event->q_1;
         tuple().iso_1 = static_cast<float>(t1.GetIsolation());
         tuple().mt_1 = static_cast<float>(Calculate_MT(t1.GetMomentum(), event.GetMET().GetMomentum()));
         tuple().pt_2 = static_cast<float>(t2.GetMomentum().pt());
         tuple().eta_2 = static_cast<float>(t2.GetMomentum().eta());
+        tuple().phi_2 = static_cast<float>(t2.GetMomentum().phi());
+        tuple().E_2 = static_cast<float>(t2.GetMomentum().E());
+        tuple().q_2 = event->q_2;
         tuple().iso_2 = static_cast<float>(t2.GetIsolation());
         tuple().mt_2 = static_cast<float>(Calculate_MT(t2.GetMomentum(), event.GetMET().GetMomentum()));
         tuple().dR_l1l2 = static_cast<float>(DeltaR(t1.GetMomentum(),t2.GetMomentum()));
@@ -171,29 +194,11 @@ public:
         tuple().MET = static_cast<float>(event.GetMET().GetMomentum().Pt());
         tuple().phiMET = static_cast<float>(event.GetMET().GetMomentum().Phi());
         tuple().pt_MET = static_cast<float>(event.GetMET().GetMomentum().pt());
-        tuple().p_zeta = static_cast<float>(Calculate_Pzeta(t1.GetMomentum(), t2.GetMomentum(),
-                                                            event.GetMET().GetMomentum()));
-        tuple().p_zetavisible = static_cast<float>(Calculate_visiblePzeta(t1.GetMomentum(), t2.GetMomentum()));
         tuple().mt_tot = static_cast<float>(Calculate_TotalMT(t1.GetMomentum(),t2.GetMomentum(),
                                                               event.GetMET().GetMomentum()));
         tuple().HT_otherjets = event->ht_other_jets;
-        tuple().HT_otherjets_gen = static_cast<float>(event.CalculateGenHT(2));
-        tuple().HT_total_gen = static_cast<float>(event.CalculateGenHT(0));
 
         tuple().n_jets = event->n_jets;
-        tuple().n_selected_gen_jets =  event->genJets_p4.size();
-        int n_bflavour=0;
-        int n_otherflavour=0;
-        static constexpr double b_Flavour = 5;
-        for(size_t i=0;i<event->genJets_hadronFlavour.size();i++){
-            if(event->genJets_hadronFlavour.at(i)==b_Flavour) n_bflavour++;
-            else n_otherflavour++;
-        }
-        tuple().n_selected_gen_bjets = n_bflavour;
-        tuple().n_selected_gen_notbjets = n_otherflavour;
-        tuple().genJets_nTotal = event->genJets_nTotal;
-        tuple().jets_nTotal_hadronFlavour_b = event->jets_nTotal_hadronFlavour_b;
-        tuple().jets_nTotal_hadronFlavour_c = event->jets_nTotal_hadronFlavour_c;
 
         if(event.HasBjetPair()) {
             const auto& Hbb = event.GetHiggsBB();
@@ -203,9 +208,13 @@ public:
             tuple().pt_H_bb = static_cast<float>(Hbb.GetMomentum().Pt());
             tuple().pt_b1 = static_cast<float>(b1.GetMomentum().pt());
             tuple().eta_b1 = static_cast<float>(b1.GetMomentum().Eta());
+            tuple().phi_b1 = static_cast<float>(b1.GetMomentum().phi());
+            tuple().E_b1 = static_cast<float>(b1.GetMomentum().E());
             tuple().csv_b1 = b1->csv();
             tuple().pt_b2 = static_cast<float>(b2.GetMomentum().Pt());
             tuple().eta_b2 = static_cast<float>(b2.GetMomentum().Eta());
+            tuple().phi_b2 = static_cast<float>(b2.GetMomentum().phi());
+            tuple().E_b2 = static_cast<float>(b2.GetMomentum().E());
             tuple().csv_b2 = b2->csv();
             tuple().dphi_hbbhtautau = static_cast<float>(DeltaPhi(Hbb.GetMomentum(), event.GetHiggsTTMomentum(true)));
             tuple().deta_hbbhtautau = static_cast<float>((Hbb.GetMomentum()-event.GetHiggsTTMomentum(true)).Eta());
@@ -214,30 +223,25 @@ public:
             tuple().dR_b1b2 = static_cast<float>(DeltaR(b1.GetMomentum(), b2.GetMomentum()));
             tuple().dR_b1b2_boosted = static_cast<float>(four_bodies::Calculate_dR_boosted(
                                                              b1.GetMomentum(), b2.GetMomentum(), Hbb.GetMomentum()));
-
-            tuple().mass_top1 = static_cast<float>(four_bodies::Calculate_topPairMasses(
-                                                       t1.GetMomentum(), t2.GetMomentum(), b1.GetMomentum(),
-                                                       b2.GetMomentum(), event.GetMET().GetMomentum()).first);
-            tuple().mass_top2 = static_cast<float>(four_bodies::Calculate_topPairMasses(
-                                                       t1.GetMomentum(), t2.GetMomentum(), b1.GetMomentum(),
-                                                       b2.GetMomentum(), event.GetMET().GetMomentum()).second);
             tuple().HT_total = static_cast<float>(b1.GetMomentum().pt() + b2.GetMomentum().Pt() + event->ht_other_jets);
         } else {
             tuple().m_bb = def_val;
             tuple().pt_H_bb = def_val;
             tuple().pt_b1 = def_val;
             tuple().eta_b1 = def_val;
+            tuple().phi_b1 = def_val;
+            tuple().E_b1 = def_val;
             tuple().csv_b1 = def_val;
             tuple().pt_b2 = def_val;
             tuple().eta_b2 = def_val;
+            tuple().phi_b2 = def_val;
+            tuple().E_b2 = def_val;
             tuple().csv_b2 = def_val;
             tuple().dphi_hbbhtautau = def_val;
             tuple().deta_hbbhtautau = def_val;
             tuple().costheta_METhbb = def_val;
             tuple().dR_b1b2 = def_val;
             tuple().dR_b1b2_boosted = def_val;
-            tuple().mass_top1 = def_val;
-            tuple().mass_top2 = def_val;
         }
 
         tuple.Fill();
