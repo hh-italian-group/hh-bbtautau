@@ -13,10 +13,35 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 namespace analysis {
 
-enum class Sample_Index { Signal = -1, Data = 0, Background = 1 };
+enum class Sample_Index { Signal_NonRes = -125, Signal_Radion_M250 = -250,
+                          Signal_Radion_M260 = -260, Signal_Radion_M270 = -270, Signal_Radion_M280 = -280,
+                          Signal_Radion_M300 = -300, Signal_Radion_M320 = -320, Signal_Radion_M340 = -340,
+                          Signal_Radion_M350 = -350, Signal_Radion_M400 = -400, Signal_Radion_M450 = -450,
+                          Signal_Radion_M500 = -500, Signal_Radion_M550 = -550, Signal_Radion_M600 = -600,
+                          Signal_Radion_M650 = -650, Signal_Radion_M750 = -750, Signal_Radion_M800 = -800,
+                          Signal_Radion_M900 = -900, Data = 0, TT = 1, DY = 2, Wjets= 3, SM_Higgs = 4, other_bkg = 5 };
 ENUM_NAMES(Sample_Index) = {
-    { Sample_Index::Signal, "Signal" },
-    { Sample_Index::Data, "Data" }, { Sample_Index::Background, "Background" }
+        { Sample_Index::Signal_NonRes, "Signal_NonRes" },
+        { Sample_Index::Signal_Radion_M250, "Signal_Radion_M250" },
+        { Sample_Index::Signal_Radion_M260, "Signal_Radion_M260" },
+        { Sample_Index::Signal_Radion_M270, "Signal_Radion_M270" },
+        { Sample_Index::Signal_Radion_M280, "Signal_Radion_M280" },
+        { Sample_Index::Signal_Radion_M300, "Signal_Radion_M300" },
+        { Sample_Index::Signal_Radion_M320, "Signal_Radion_M320" },
+        { Sample_Index::Signal_Radion_M340, "Signal_Radion_M340" },
+        { Sample_Index::Signal_Radion_M350, "Signal_Radion_M350" },
+        { Sample_Index::Signal_Radion_M400, "Signal_Radion_M400" },
+        { Sample_Index::Signal_Radion_M450, "Signal_Radion_M450" },
+        { Sample_Index::Signal_Radion_M500, "Signal_Radion_M500" },
+        { Sample_Index::Signal_Radion_M550, "Signal_Radion_M550" },
+        { Sample_Index::Signal_Radion_M600, "Signal_Radion_M600" },
+        { Sample_Index::Signal_Radion_M650, "Signal_Radion_M650" },
+        { Sample_Index::Signal_Radion_M750, "Signal_Radion_M750" },
+        { Sample_Index::Signal_Radion_M800, "Signal_Radion_M800" },
+        { Sample_Index::Signal_Radion_M900, "Signal_Radion_M900" },
+        { Sample_Index::Data, "Data" },
+        { Sample_Index::TT, "TT" }, { Sample_Index::DY, "DY" }, { Sample_Index::Wjets, "Wjets" },
+        { Sample_Index::SM_Higgs, "SM_Higgs" }, { Sample_Index::other_bkg, "other_bkg" }
 };
 
 #define CREATE_VAR(r, type, name) VAR(type, name)
@@ -30,7 +55,7 @@ ENUM_NAMES(Sample_Index) = {
     VAR(double, weight) /* weight */ \
     VAR(int, sample_id) /* sample_id */ \
     VAR(float, mva_score) /* mva score */ \
-    VAR_LIST(float, m_ttbb, m_ttbb_kinfit, m_sv, MT2, mt_tot, deta_hbbhtautau, dphi_hbbhtautau, m_tt_vis, pt_H_tt, \
+    VAR_LIST(float, m_ttbb, m_ttbb_kinfit, m_sv, pt_sv, eta_sv, phi_sv, MT2, mt_tot, deta_hbbhtautau, dphi_hbbhtautau, m_tt_vis, pt_H_tt, \
              pt_H_tt_MET, pt_1, eta_1, phi_1, E_1, iso_1, q_1, mt_1, pt_2, eta_2, phi_2, E_2, iso_2, q_2, mt_2, dR_l1l2, abs_dphi_l1MET, \
              dphi_htautauMET, dR_l1l2MET, dR_l1l2Pt_htautau, mass_l1l2MET, pt_l1l2MET, MT_htautau, npv, MET, phiMET, \
              pt_MET, m_bb, pt_H_bb, pt_b1, eta_b1, phi_b1, E_b1, csv_b1, pt_b2, eta_b2, phi_b2, E_b2, csv_b2, costheta_METhbb, dR_b1b2, \
@@ -99,14 +124,25 @@ public:
     Sample_Index GetSampleId(const std::string& sample_name)
     {
         const auto vector_name = analysis::SplitValueList(sample_name,true,"_");
-        const auto iter_signal = std::find(vector_name.begin(), vector_name.end(), "Signal");
+        const auto iter_signal = std::find(vector_name.begin(), vector_name.end(), "Radion");
         const auto iter_data = std::find(vector_name.begin(), vector_name.end(), "Data");
-        if (iter_signal != vector_name.end())
-            return Sample_Index::Signal;
+        const auto iter_DY = std::find(vector_name.begin(), vector_name.end(), "DY");
+        if (sample_name == "Signal_NonRes")
+            return Sample_Index::Signal_NonRes;
+        else if (iter_signal != vector_name.end())
+            return analysis::Parse<Sample_Index>("Signal_Radion_"+ vector_name.at(2));
         else if (iter_data != vector_name.end())
             return Sample_Index::Data;
+        else if (sample_name == "TT")
+            return Sample_Index::TT;
+        else if (iter_DY != vector_name.end())
+            return Sample_Index::DY;
+        else if (sample_name == "Wjets")
+            return Sample_Index::Wjets;
+        else if (sample_name == "ZH")
+            return Sample_Index::SM_Higgs;
         else
-            return Sample_Index::Background;
+            return Sample_Index::other_bkg;
     }
 
     template<typename EventInfo>
@@ -135,7 +171,7 @@ public:
             tuple().all_mva_scores.push_back(static_cast<float>(std::get<1>(entry.second)));
         }
         const std::string sample_name = dataIds.begin()->first.Get<std::string>();
-//        std::cout << "sample_name in AnaTuple: " << sample_name << std::endl;
+        //std::cout << "sample_name in AnaTuple: " << sample_name << std::endl;
 
         //std::cout << "sample_Id: " << static_cast<int>(GetSampleId(sample_name)) << std::endl;
 //        std::cout << "weight, first: " << std::get<0>(dataIds.begin()->second) << ", second: " <<
@@ -146,6 +182,9 @@ public:
         tuple().mva_score = def_val;
         tuple().has_2jets = event.HasBjetPair();
         tuple().m_sv = static_cast<float>(event.GetHiggsTTMomentum(true).M());
+        tuple().pt_sv = static_cast<float>(event.GetHiggsTTMomentum(true).pt());
+        tuple().eta_sv = static_cast<float>(event.GetHiggsTTMomentum(true).eta());
+        tuple().phi_sv = static_cast<float>(event.GetHiggsTTMomentum(true).phi());
 
         if(event.HasBjetPair()) {
             tuple().m_ttbb = static_cast<float>(event.GetResonanceMomentum(true, false).M());
