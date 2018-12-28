@@ -49,7 +49,7 @@ public:
                                               const WeightingMode& weighting_mode) const
     {
         static const WeightingMode shape_weights = { WeightType::PileUp, WeightType::BSM_to_SM, WeightType::DY,
-                                                   WeightType::TTbar, WeightType::Wjets};
+                                                   WeightType::TTbar, WeightType::Wjets, WeightType::GenEventWeight };
         static const WeightingMode shape_weights_withTopPt = shape_weights | WeightingMode({WeightType::TopPt});
 
         auto summary_tuple = ntuple::CreateSummaryTuple("summary", file.get(), true, ntuple::TreeState::Full);
