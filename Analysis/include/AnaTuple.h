@@ -124,10 +124,11 @@ public:
     Sample_Index GetSampleId(const std::string& sample_name)
     {
         const auto vector_name = analysis::SplitValueList(sample_name,true,"_");
+        const auto iter_nonres = std::find(vector_name.begin(), vector_name.end(), "NonRes");
         const auto iter_signal = std::find(vector_name.begin(), vector_name.end(), "Radion");
         const auto iter_data = std::find(vector_name.begin(), vector_name.end(), "Data");
         const auto iter_DY = std::find(vector_name.begin(), vector_name.end(), "DY");
-        if (sample_name == "Signal_NonRes")
+        if (iter_nonres != vector_name.end())
             return Sample_Index::Signal_NonRes;
         else if (iter_signal != vector_name.end())
             return analysis::Parse<Sample_Index>("Signal_Radion_"+ vector_name.at(2));
