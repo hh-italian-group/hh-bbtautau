@@ -29,7 +29,7 @@ public:
         for(const auto& h_name : histogram_names) {
             auto desc = FindDescriptor(h_name, channel, dataId, descriptors);
             if(!desc) continue;
-            auto entry_ptr = std::make_shared<Entry>(h_name, this, desc);
+            auto entry_ptr = std::make_shared<Entry>(h_name, this, *desc);
             const auto branch_ptr = anaTuple ? &anaTuple->get<ValueType>(h_name) : nullptr;
             (*entry_ptr)().SetSystematicUncertainty(sample_unc.unc);
             (*entry_ptr)().SetPostfitScaleFactor(sample_unc.sf);
@@ -63,9 +63,8 @@ private:
             auto iter = descriptors.find(desc_name);
             if(iter != descriptors.end())
                 return &(iter->second);
-            return nullptr;
         }
-        //throw exception("Descriptor for histogram '%1%' not found.") % h_name;
+        return nullptr;
     }
 
 private:
