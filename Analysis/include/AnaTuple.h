@@ -308,8 +308,8 @@ public:
     AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names) :
         file(root_ext::OpenRootFile(file_name))
     {
-        static const NameSet essential_branches = { "dataIds", "all_weights", "has_2jets" };
-        static const NameSet other_branches = { "all_mva_scores", "weight" };
+        static const NameSet essential_branches = { "dataIds", "all_weights", "has_2jets", "sample_id" , "weight" };
+        static const NameSet other_branches = { "all_mva_scores" };
         NameSet enabled_branches;
         if(active_var_names.size()) {
             enabled_branches.insert(essential_branches.begin(), essential_branches.end());

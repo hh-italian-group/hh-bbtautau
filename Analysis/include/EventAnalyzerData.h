@@ -16,7 +16,7 @@ public:
     using ValueType = float;
     using EntrySource = std::pair<EntryPtr, const ValueType*>;
     using HistContainer = std::map<std::string, EntrySource>;
-    using HistDesc = PropertyConfigReader::Item;
+    using HistDesc = PropertyConfigReader::Item*;
     using HistDescCollection = PropertyConfigReader::ItemCollection;
     using SampleUnc = ModellingUncertainty::SampleUnc;
 
@@ -27,7 +27,8 @@ public:
         AnalyzerData(outputFile, directoryName, anaTuple == nullptr)
     {
         for(const auto& h_name : histogram_names) {
-            const auto& desc = FindDescriptor(h_name, channel, dataId, descriptors);
+            auto desc = FindDescriptor(h_name, channel, dataId, descriptors);
+            if(!desc) continue;
             auto entry_ptr = std::make_shared<Entry>(h_name, this, desc);
             const auto branch_ptr = anaTuple ? &anaTuple->get<ValueType>(h_name) : nullptr;
             (*entry_ptr)().SetSystematicUncertainty(sample_unc.unc);
@@ -45,7 +46,7 @@ public:
     }
 
 private:
-    static const HistDesc& FindDescriptor(const std::string& h_name, Channel channel, const EventAnalyzerDataId& dataId,
+    HistDesc FindDescriptor(const std::string& h_name, Channel channel, const EventAnalyzerDataId& dataId,
                                           const HistDescCollection& descriptors)
     {
         const std::vector<std::string> desc_name_candidates = {
@@ -58,11 +59,11 @@ private:
             boost::str(boost::format("%1%/%2%") % h_name % channel),
             h_name
         };
-        for(const auto& desc_name : desc_name_candidates) {
+        for(auto& desc_name : desc_name_candidates) {
             auto iter = descriptors.find(desc_name);
             if(iter != descriptors.end())
-                return iter->second;
-            continue;
+                return (HistDesc)(&iter->second);
+            return nullptr;
         }
         //throw exception("Descriptor for histogram '%1%' not found.") % h_name;
     }
