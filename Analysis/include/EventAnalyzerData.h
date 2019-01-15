@@ -62,8 +62,9 @@ private:
             auto iter = descriptors.find(desc_name);
             if(iter != descriptors.end())
                 return iter->second;
+            continue;
         }
-        throw exception("Descriptor for histogram '%1%' not found.") % h_name;
+        //throw exception("Descriptor for histogram '%1%' not found.") % h_name;
     }
 
 private:
