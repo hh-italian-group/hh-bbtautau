@@ -16,7 +16,7 @@ public:
     using ValueType = float;
     using EntrySource = std::pair<EntryPtr, const ValueType*>;
     using HistContainer = std::map<std::string, EntrySource>;
-    using HistDesc = PropertyConfigReader::Item*;
+    using HistDesc = PropertyConfigReader::Item;
     using HistDescCollection = PropertyConfigReader::ItemCollection;
     using SampleUnc = ModellingUncertainty::SampleUnc;
 
@@ -46,7 +46,7 @@ public:
     }
 
 private:
-    HistDesc FindDescriptor(const std::string& h_name, Channel channel, const EventAnalyzerDataId& dataId,
+    const HistDesc* FindDescriptor(const std::string& h_name, Channel channel, const EventAnalyzerDataId& dataId,
                                           const HistDescCollection& descriptors)
     {
         const std::vector<std::string> desc_name_candidates = {
@@ -62,7 +62,7 @@ private:
         for(auto& desc_name : desc_name_candidates) {
             auto iter = descriptors.find(desc_name);
             if(iter != descriptors.end())
-                return (HistDesc)(&iter->second);
+                return &(iter->second);
             return nullptr;
         }
         //throw exception("Descriptor for histogram '%1%' not found.") % h_name;
