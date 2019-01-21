@@ -87,7 +87,8 @@ struct CategoryModel{
             EventAnalyzerDataId dataId = catId.Set(contrib_name);
              mc_contributions[contrib_name] = std::make_shared<Contribution>(input_file,dataId,hist_name,x,
                                                                              *(scale_factor_map.at(contrib_name)));
-             pdf_list.add(mc_contributions[contrib_name]->expdf);
+             if(mc_contributions[contrib_name]->histogram->Integral() != 0)
+                pdf_list.add(mc_contributions[contrib_name]->expdf);
              mc_contributions[contrib_name]->expdf.Print();
         }
         sum_pdf = std::make_shared<RooAddPdf>(("sumpdf_"+name).c_str(),("Total Pdf for "+name).c_str(),pdf_list);
@@ -271,11 +272,11 @@ public:
                                                    static_cast<std::string>("_")+ToString(sub_cat) +
                                                    static_cast<std::string>("_other_bkg_muMu")).c_str()),
                                 ProjWData(rooCategories,combData),LineStyle(kDashed)) ;
-                simPdf.plotOn(frame,Slice(rooCategories,(GetCategoryName(cat)+ToString(sub_cat)).c_str()),
+                /*simPdf.plotOn(frame,Slice(rooCategories,(GetCategoryName(cat)+ToString(sub_cat)).c_str()),
                               Components((static_cast<std::string>("expdf_")+GetCategoryName(cat)+
                                                    static_cast<std::string>("_")+ToString(sub_cat) +
                                                    static_cast<std::string>("_QCD")).c_str()),
-                                ProjWData(rooCategories,combData),LineColor(kBlack),LineStyle(kDashed)) ;
+                                ProjWData(rooCategories,combData),LineColor(kBlack),LineStyle(kDashed)) ;*/
 
                 gPad->SetLeftMargin(0.15) ; frame->GetYaxis()->SetTitleOffset(static_cast<float>(1.4)) ; frame->Draw() ;
 
