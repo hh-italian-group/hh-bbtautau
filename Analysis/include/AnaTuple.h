@@ -44,6 +44,8 @@ ENUM_NAMES(Sample_Index) = {
         { Sample_Index::SM_Higgs, "SM_Higgs" }, { Sample_Index::other_bkg, "other_bkg" }
 };
 
+enum class Region_Index { Other = 0, OS_Isolated = 1, OS_AntiIsolated = 2, SS_Isolated = 3, SS_AntiIsolated = 4 };
+
 #define CREATE_VAR(r, type, name) VAR(type, name)
 #define VAR_LIST(type, ...) BOOST_PP_SEQ_FOR_EACH(CREATE_VAR, type, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
 
@@ -55,6 +57,9 @@ ENUM_NAMES(Sample_Index) = {
     VAR(double, weight) /* weight */ \
     VAR(int, sample_id) /* sample_id */ \
     VAR(float, mva_score) /* mva score */ \
+    VAR(uint16_t, iso_wp_1) \
+    VAR(uint16_t, iso_wp_2) \
+    VAR(int, region_id) \
     VAR_LIST(float, m_ttbb, m_ttbb_kinfit, m_sv, pt_sv, eta_sv, phi_sv, MT2, mt_tot, deta_hbbhtautau, dphi_hbbhtautau, m_tt_vis, pt_H_tt, \
              pt_H_tt_MET, pt_1, eta_1, phi_1, E_1, iso_1, q_1, mt_1, pt_2, eta_2, phi_2, E_2, iso_2, q_2, mt_2, dR_l1l2, abs_dphi_l1MET, \
              dphi_htautauMET, dR_l1l2MET, dR_l1l2Pt_htautau, mass_l1l2MET, pt_l1l2MET, MT_htautau, npv, MET, phiMET, \
@@ -100,7 +105,7 @@ public:
     using RangeMap = std::map<SelectionCut, Range>;
 
     AnaTupleWriter(const std::string& file_name, Channel channel) :
-        file(root_ext::CreateRootFile(file_name)), tuple(ToString(channel), file.get(), false),
+        file(root_ext::CreateRootFile(file_name, ROOT::kLZ4, 5)), tuple(ToString(channel), file.get(), false),
         aux_tuple(file.get(), false)
     {
     }
@@ -121,7 +126,7 @@ public:
         tuple.Write();
     }
 
-    Sample_Index GetSampleId(const std::string& sample_name)
+    static Sample_Index GetSampleId(const std::string& sample_name)
     {
         const auto vector_name = analysis::SplitValueList(sample_name,true,"_");
         const auto iter_nonres = std::find(vector_name.begin(), vector_name.end(), "NonRes");
@@ -146,6 +151,19 @@ public:
             return Sample_Index::other_bkg;
     }
 
+    static Region_Index GetRegionId(const EventRegion& region)
+    {
+        static const std::map<EventRegion, Region_Index> regions = {
+            { EventRegion::OS_Isolated(), Region_Index::OS_Isolated },
+            { EventRegion::OS_AntiIsolated(), Region_Index::OS_AntiIsolated },
+            { EventRegion::SS_Isolated(), Region_Index::SS_Isolated },
+            { EventRegion::SS_AntiIsolated(), Region_Index::SS_AntiIsolated },
+        };
+        const auto iter = regions.find(region);
+        if(iter == regions.end()) return Region_Index::Other;
+        return iter->second;
+    }
+
     template<typename EventInfo>
     void AddEvent(EventInfo& event, const DataIdMap& dataIds)
     {
@@ -153,6 +171,7 @@ public:
         static constexpr float def_val = std::numeric_limits<float>::lowest();
 
         if(!dataIds.size()) return;
+        Region_Index region_id = Region_Index::Other;
         for(const auto& entry : dataIds) {
             if(!known_data_ids.left.count(entry.first)) {
                 const size_t hash = std::hash<std::string>{}(entry.first.GetName());
@@ -170,6 +189,13 @@ public:
             tuple().dataIds.push_back(known_data_ids.left.at(entry.first));
             tuple().all_weights.push_back(std::get<0>(entry.second));
             tuple().all_mva_scores.push_back(static_cast<float>(std::get<1>(entry.second)));
+
+            const Region_Index entry_region_id = GetRegionId(entry.first.Get<EventRegion>());
+            if(entry_region_id != Region_Index::Other) {
+                if(region_id != Region_Index::Other && region_id != entry_region_id)
+                    throw exception("Overlapping regions.");
+                region_id = entry_region_id;
+            }
         }
         const std::string sample_name = dataIds.begin()->first.Get<std::string>();
         //std::cout << "sample_name in AnaTuple: " << sample_name << std::endl;
@@ -180,6 +206,7 @@ public:
 
         tuple().weight = std::get<0>(dataIds.begin()->second);
         tuple().sample_id = static_cast<int>(GetSampleId(sample_name));
+        tuple().region_id = static_cast<int>(region_id);
         tuple().mva_score = def_val;
         tuple().has_2jets = event.HasBjetPair();
         tuple().m_sv = static_cast<float>(event.GetHiggsTTMomentum(true).M());
@@ -199,8 +226,8 @@ public:
         }
 
         const auto& Htt = event.GetHiggsTTMomentum(false);
-        const auto& t1 = event.GetLeg(1);
-        const auto& t2 = event.GetLeg(2);
+        const auto& t1 = event.GetFirstLeg();
+        const auto& t2 = event.GetSecondLeg();
 
         tuple().m_tt_vis = static_cast<float>(Htt.M());
         tuple().pt_H_tt = static_cast<float>(Htt.Pt());
@@ -211,6 +238,7 @@ public:
         tuple().E_1 = static_cast<float>(t1.GetMomentum().E());
         tuple().q_1 = event->q_1;
         tuple().iso_1 = static_cast<float>(t1.GetIsolation());
+        tuple().iso_wp_1 = t1->iso_wp().GetResultBits();
         tuple().mt_1 = static_cast<float>(Calculate_MT(t1.GetMomentum(), event.GetMET().GetMomentum()));
         tuple().pt_2 = static_cast<float>(t2.GetMomentum().pt());
         tuple().eta_2 = static_cast<float>(t2.GetMomentum().eta());
@@ -218,6 +246,7 @@ public:
         tuple().E_2 = static_cast<float>(t2.GetMomentum().E());
         tuple().q_2 = event->q_2;
         tuple().iso_2 = static_cast<float>(t2.GetIsolation());
+        tuple().iso_wp_2 = t2->iso_wp().GetResultBits();
         tuple().mt_2 = static_cast<float>(Calculate_MT(t2.GetMomentum(), event.GetMET().GetMomentum()));
         tuple().dR_l1l2 = static_cast<float>(DeltaR(t1.GetMomentum(),t2.GetMomentum()));
         tuple().abs_dphi_l1MET = static_cast<float>(std::abs(DeltaPhi(t1.GetMomentum(), event.GetMET().GetMomentum())));
