@@ -69,9 +69,9 @@ public:
     using Range = ::analysis::Range<double>;
     using RangeMap = std::map<SelectionCut, Range>;
 
-    AnaTupleWriter(const std::string& file_name, Channel channel) :
+    AnaTupleWriter(const std::string& file_name, Channel channel, bool _runKinFit) :
         file(root_ext::CreateRootFile(file_name)), tuple(ToString(channel), file.get(), false),
-        aux_tuple(file.get(), false)
+        aux_tuple(file.get(), false), runKinFit(_runKinFit)
     {
     }
 
@@ -124,8 +124,10 @@ public:
 
         if(event.HasBjetPair()) {
             tuple().m_ttbb = static_cast<float>(event.GetResonanceMomentum(true, false).M());
-            const auto& kinfit = event.GetKinFitResults();
-            tuple().m_ttbb_kinfit = kinfit.HasValidMass() ? static_cast<float>(kinfit.mass) : def_val;
+            if(runKinFit){
+                const auto& kinfit = event.GetKinFitResults();
+                tuple().m_ttbb_kinfit = kinfit.HasValidMass() ? static_cast<float>(kinfit.mass) : def_val;
+            }
             tuple().MT2 = static_cast<float>(event.GetMT2());
         } else {
             tuple().m_ttbb = def_val;
@@ -241,6 +243,7 @@ private:
     std::shared_ptr<TFile> file;
     AnaTuple tuple;
     AnaAuxTuple aux_tuple;
+    bool runKinFit;
     DataIdBiMap known_data_ids;
     RangeMap mva_ranges;
 };
