@@ -77,7 +77,7 @@ public:
     }
 
     BaseEventAnalyzer(const AnalyzerArguments& _args) :
-        EventAnalyzerCore(_args, ChannelId()), args(_args), anaTupleWriter(args.output(), ChannelId()),
+        EventAnalyzerCore(_args, ChannelId()), args(_args), anaTupleWriter(args.output(), ChannelId(), args.runKinFit()),
         trigger_patterns(ana_setup.trigger.at(ChannelId()))
     {
         InitializeMvaReader();
@@ -159,8 +159,8 @@ protected:
                     sub_category.SetCutResult(SelectionCut::mhMET,ana_setup.massWindowParams.at(SelectionCut::mhMET)
                             .IsInside((event.GetHiggsTT(false).GetMomentum() + event.GetMET().GetMomentum()).mass(),mbb));
             }
-            sub_category.SetCutResult(SelectionCut::KinematicFitConverged,
-                                      event.GetKinFitResults().HasValidMass());
+            if(args.runKinFit())
+                sub_category.SetCutResult(SelectionCut::KinematicFitConverged, event.GetKinFitResults().HasValidMass());
         }
         if(mva_setup.is_initialized()) {
 
