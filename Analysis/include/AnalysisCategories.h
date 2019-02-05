@@ -209,7 +209,7 @@ struct EventCategory {
     }
 
     EventCategory(size_t _n_jets, size_t _n_btag, bool _strict_n_btag, DiscriminatorWP _btag_wp, bool _boosted):
-        n_jets(_n_jets), n_btag(_n_btag), strict_n_btag(_strict_n_btag), btag_wp(_btag_wp), boosted(_boosted)
+        n_jets(_n_jets), n_btag(_n_btag), strict_n_btag(_strict_n_btag), btag_wp(_btag_wp), boosted(_boosted) 
     {
         if(n_btag > n_jets)
             throw exception("Number of btag can't be greater than number of jets");
@@ -362,10 +362,23 @@ struct EventCategory {
         }
     }
 
+    bool Contains (size_t num_jets, const std::map<DiscriminatorWP, size_t>& num_btag, bool is_vbf, bool is_boosted) const
+    {
+        if(btag_wp && !num_btag.count(*btag_wp))
+            throw exception("The btag_wp, is not defined") ;
+
+        bool contains = (!n_jets || num_jets >= *n_jets) && (!n_btag
+                            || (*strict_n_btag ? (num_btag.at(*btag_wp) == n_btag) : (num_btag.at(*btag_wp) >= *n_btag)))
+                            && (!is_VBF || is_vbf == *is_VBF)
+                            && (!boosted || is_boosted == *boosted);
+        return contains;
+    }
+
 private:
-    boost::optional<size_t> n_jets, n_btag, strict_n_btag;
+    boost::optional<size_t> n_jets, n_btag ;
+    boost::optional<bool> strict_n_btag;
     boost::optional<DiscriminatorWP> btag_wp;
-    boost::optional<bool> boosted, is_strict, is_VBF;
+    boost::optional<bool> boosted, is_VBF;
 };
 
 #undef DEF_ES
