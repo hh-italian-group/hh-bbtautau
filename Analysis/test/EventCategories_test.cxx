@@ -149,7 +149,7 @@ BOOST_AUTO_TEST_CASE(determine_ec_1)
     BOOST_TEST(EC::Parse("1j0b").Contains(2, btags, false, false));
     BOOST_TEST(EC::Parse("1j0b+").Contains(1, btags, false, false));
     BOOST_TEST(EC::Parse("2j").Contains(2, btags, false, false));
-    // BOOST_CHECK_THROW(!EC::Parse("2j1LbR_VBF").Contains(2, btags, true, false), analysis::exception);
+    BOOST_CHECK_THROW(!EC::Parse("2j1LbR_VBF").Contains(2, btags, true, false), analysis::exception);
 }
 
 BOOST_AUTO_TEST_CASE(determine_ec_2)

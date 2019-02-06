@@ -40,15 +40,15 @@ public:
 
     EventCategorySet DetermineEventCategories(EventInfo& event)
     {
-        size_t b_jets = 0;
-        static const std::map<DiscriminatorWP, size_t> btag_working_points = {{DiscriminatorWP::Loose, b_jets},
-                                                                              {DiscriminatorWP::Medium, b_jets},
-                                                                              {DiscriminatorWP::Tight, b_jets }};
+        static const std::map<DiscriminatorWP, size_t> btag_working_points = {{DiscriminatorWP::Loose, 0},
+                                                                              {DiscriminatorWP::Medium, 0},
+                                                                              {DiscriminatorWP::Tight, 0}};
         EventCategorySet categories;
 
         const bool is_boosted = event.SelectFatJet(cuts::hh_bbtautau_2016::fatJetID::mass,
                                                    cuts::hh_bbtautau_2016::fatJetID::deltaR_subjet) != nullptr;
         bool is_VBF = false;
+        std::set<size_t> jets_to_exclude;
         if(event.HasVBFjetPair()){
             const auto vbf_jet_1 = event.GetVBFJet(1).GetMomentum();
             const auto vbf_jet_2 = event.GetVBFJet(2).GetMomentum();
@@ -58,9 +58,12 @@ public:
 
             is_VBF = (m_jj > cuts::hh_bbtautau_2017::VBF::mass_jj
                         && deta_jj > cuts::hh_bbtautau_2017::VBF::deltaeta_jj);
+            jets_to_exclude.insert(event.GetVBFJet(1)->jet_index());
+            jets_to_exclude.insert(event.GetVBFJet(2)->jet_index());
         }
 
-        const auto& jets = event.SelectJets(cuts::btag_2017::pt,cuts::btag_2017::eta, ana_setup.jet_ordering);
+        const auto& jets = event.SelectJets(cuts::btag_2017::pt,cuts::btag_2017::eta, ana_setup.jet_ordering,
+                                            jets_to_exclude);
         std::map<DiscriminatorWP, size_t> bjet_counts = btag_working_points;
 
         for(const auto& jet : jets) {
