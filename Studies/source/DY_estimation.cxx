@@ -262,7 +262,7 @@ public:
                             Components((static_cast<std::string>("expdf_")+ToString(cat)+"_"+ToString(sub_cat)+
                                         static_cast<std::string>("_other_bkg_muMu")).c_str() ),
                             ProjWData(rooCategories,combData),LineStyle(kDashed)) ;
-                gPad->SetLeftMargin(0.15) ; frame->GetYaxis()->SetTitleOffset(static_cast<float>(1.4)) ; frame->Draw() ;
+                gPad->SetLeftMargin(0.15f) ; frame->GetYaxis()->SetTitleOffset(1.4f) ; frame->Draw() ;
                 c->Write();
             }
         }
@@ -286,4 +286,3 @@ private:
 
 } // namesapce analysis
 PROGRAM_MAIN(analysis::DY_estimation, Arguments) // definition of the main program function
-

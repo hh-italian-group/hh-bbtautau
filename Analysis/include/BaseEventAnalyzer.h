@@ -38,57 +38,49 @@ public:
 
     static constexpr Channel ChannelId() { return ChannelInfo::IdentifyChannel<FirstLeg, SecondLeg>(); }
 
-
     EventCategorySet DetermineEventCategories(EventInfo& event)
     {
-        static const std::vector<DiscriminatorWP> btag_working_points = {DiscriminatorWP::Loose, DiscriminatorWP::Medium, DiscriminatorWP::Tight};
-
+        static const std::map<DiscriminatorWP, size_t> btag_working_points = {{DiscriminatorWP::Loose, 0},
+                                                                              {DiscriminatorWP::Medium, 0},
+                                                                              {DiscriminatorWP::Tight, 0}};
         EventCategorySet categories;
-        categories.insert(EventCategory::Inclusive());
 
         const bool is_boosted = event.SelectFatJet(cuts::hh_bbtautau_2016::fatJetID::mass,
                                                    cuts::hh_bbtautau_2016::fatJetID::deltaR_subjet) != nullptr;
+        bool is_VBF = false;
+        std::set<size_t> jets_to_exclude;
+        if(event.HasVBFjetPair()){
+            const auto vbf_jet_1 = event.GetVBFJet(1).GetMomentum();
+            const auto vbf_jet_2 = event.GetVBFJet(2).GetMomentum();
 
+            const auto deta_jj =  std::abs(vbf_jet_1.Eta() - vbf_jet_2.Eta());
+            const auto m_jj = (vbf_jet_1 + vbf_jet_2).M();
 
-        if (event.HasBjetPair()){
-            const auto m_jj = event.GetHiggsBB().GetMomentum().M();
-            const auto deta_jj = event.GetHiggsBB().GetMomentum().eta();
+            is_VBF = (m_jj > cuts::hh_bbtautau_2017::VBF::mass_jj
+                        && deta_jj > cuts::hh_bbtautau_2017::VBF::deltaeta_jj);
+            jets_to_exclude.insert(event.GetVBFJet(1)->jet_index());
+            jets_to_exclude.insert(event.GetVBFJet(2)->jet_index());
+        }
 
-            if(event.HasBjetPair() || (event.HasVBFjetPair() && m_jj>cuts::hh_bbtautau_2017::VBF::mass_jj && deta_jj>cuts::hh_bbtautau_2017::VBF::deltaeta_jj)) {
-                categories.insert(EventCategory::TwoJets_Inclusive());
-                const std::vector<const JetCandidate*> jets = {
-                    &event.GetHiggsBB().GetFirstDaughter(), &event.GetHiggsBB().GetSecondDaughter(),
-                };
-                bool is_VBF = event.HasVBFjetPair() ? true : false;
-                std::map<DiscriminatorWP, size_t> bjet_counts;
-                for(const auto& jet : jets) {
-                    for(const auto& btag_wp : btag_working_points) {
-                        if(bTagger->Pass(*(*jet), btag_wp)) ++bjet_counts[btag_wp];
+        const auto& jets = event.SelectJets(cuts::btag_2017::pt,cuts::btag_2017::eta, ana_setup.jet_ordering,
+                                            jets_to_exclude);
+        std::map<DiscriminatorWP, size_t> bjet_counts = btag_working_points;
 
-                    }
-                }
-                for(size_t n_jets = 2; n_jets <= event.GetNJets(); ++n_jets) {
-                    for(const auto& wp_entry : btag_working_points) {
-                        categories.emplace(n_jets, bjet_counts[wp_entry], true, wp_entry);
-                        categories.emplace(n_jets, bjet_counts[wp_entry], true, wp_entry, is_boosted);
-                        categories.emplace(n_jets, bjet_counts[wp_entry], true, wp_entry, boost::optional<bool>(), is_VBF);
-                        categories.emplace(n_jets, bjet_counts[wp_entry], true, wp_entry, is_boosted, is_VBF);
-                        for(size_t b_jets = 0; b_jets <= bjet_counts[wp_entry]; ++b_jets) {
-                            categories.emplace(n_jets, b_jets, false, wp_entry);
-                            categories.emplace(n_jets, b_jets, false, wp_entry, is_boosted);
-                            categories.emplace(n_jets, b_jets, false, wp_entry, boost::optional<bool>(), is_VBF);
-                            categories.emplace(n_jets, b_jets, false, wp_entry, is_boosted, is_VBF);
-                        }
-                    }
-                }
+        for(const auto& jet : jets) {
+            for(const auto& btag_wp : btag_working_points){
+                if(bTagger->Pass(*jet, btag_wp.first)) ++bjet_counts[btag_wp.first];
             }
         }
 
+        for(const auto& category : ana_setup.categories) {
+            if(category.Contains(jets.size(), bjet_counts, is_VBF ,is_boosted))
+                categories.insert(category);
+        }
         return categories;
     }
 
     BaseEventAnalyzer(const AnalyzerArguments& _args) :
-        EventAnalyzerCore(_args, ChannelId()), args(_args), anaTupleWriter(args.output(), ChannelId()),
+        EventAnalyzerCore(_args, ChannelId()), args(_args), anaTupleWriter(args.output(), ChannelId(), args.runKinFit()),
         trigger_patterns(ana_setup.trigger.at(ChannelId()))
     {
         InitializeMvaReader();
@@ -149,27 +141,30 @@ protected:
         using MvaKey = mva_study::MvaReader::MvaKey;
 
         EventSubCategory sub_category;
-        const double mbb = event.GetHiggsBB().GetMomentum().mass();
-        if(category.HasBoostConstraint() && category.IsBoosted()){
-            bool isInsideBoostedCut = IsInsideBoostedMassWindow(event.GetHiggsTT(true).GetMomentum().mass(),mbb);
-            sub_category.SetCutResult(SelectionCut::mh,isInsideBoostedCut);
-            sub_category.SetCutResult(SelectionCut::mhVis,isInsideBoostedCut);
-            sub_category.SetCutResult(SelectionCut::mhMET,isInsideBoostedCut);
-        }
-        else{
-            if(ana_setup.massWindowParams.count(SelectionCut::mh))
-                sub_category.SetCutResult(SelectionCut::mh,ana_setup.massWindowParams.at(SelectionCut::mh)
-                        .IsInside(event.GetHiggsTT(true).GetMomentum().mass(),mbb));
-            if(ana_setup.massWindowParams.count(SelectionCut::mhVis))
-                sub_category.SetCutResult(SelectionCut::mhVis,ana_setup.massWindowParams.at(SelectionCut::mhVis)
-                        .IsInside(event.GetHiggsTT(false).GetMomentum().mass(),mbb));
-            if(ana_setup.massWindowParams.count(SelectionCut::mhMET))
-                sub_category.SetCutResult(SelectionCut::mhMET,ana_setup.massWindowParams.at(SelectionCut::mhMET)
-                        .IsInside((event.GetHiggsTT(false).GetMomentum() + event.GetMET().GetMomentum()).mass(),mbb));
-        }
-        sub_category.SetCutResult(SelectionCut::KinematicFitConverged,
-                                  event.GetKinFitResults().HasValidMass());
 
+        double mbb = 0;
+        if(event.HasBjetPair()){
+            mbb = event.GetHiggsBB().GetMomentum().mass();
+            if(category.HasBoostConstraint() && category.IsBoosted()){
+                bool isInsideBoostedCut = IsInsideBoostedMassWindow(event.GetHiggsTT(true).GetMomentum().mass(),mbb);
+                sub_category.SetCutResult(SelectionCut::mh,isInsideBoostedCut);
+                sub_category.SetCutResult(SelectionCut::mhVis,isInsideBoostedCut);
+                sub_category.SetCutResult(SelectionCut::mhMET,isInsideBoostedCut);
+            }
+            else{
+                if(ana_setup.massWindowParams.count(SelectionCut::mh))
+                    sub_category.SetCutResult(SelectionCut::mh,ana_setup.massWindowParams.at(SelectionCut::mh)
+                            .IsInside(event.GetHiggsTT(true).GetMomentum().mass(),mbb));
+                if(ana_setup.massWindowParams.count(SelectionCut::mhVis))
+                    sub_category.SetCutResult(SelectionCut::mhVis,ana_setup.massWindowParams.at(SelectionCut::mhVis)
+                            .IsInside(event.GetHiggsTT(false).GetMomentum().mass(),mbb));
+                if(ana_setup.massWindowParams.count(SelectionCut::mhMET))
+                    sub_category.SetCutResult(SelectionCut::mhMET,ana_setup.massWindowParams.at(SelectionCut::mhMET)
+                            .IsInside((event.GetHiggsTT(false).GetMomentum() + event.GetMET().GetMomentum()).mass(),mbb));
+            }
+            if(args.runKinFit())
+                sub_category.SetCutResult(SelectionCut::KinematicFitConverged, event.GetKinFitResults().HasValidMass());
+        }
         if(mva_setup.is_initialized()) {
 
             std::map<MvaKey, std::future<double>> scores;
@@ -244,7 +239,7 @@ protected:
             bbtautau::AnaTupleWriter::DataIdMap dataIds;
             const auto eventCategories = DetermineEventCategories(event);
             for(auto eventCategory : eventCategories) {
-                if (!ana_setup.categories.count(eventCategory)) continue;
+                //if (!ana_setup.categories.count(eventCategory)) continue;
                 const EventRegion eventRegion = DetermineEventRegion(event, eventCategory);
                 for(const auto& region : ana_setup.regions){
                     if(!eventRegion.Implies(region)) continue;

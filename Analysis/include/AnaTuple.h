@@ -29,7 +29,7 @@ namespace analysis {
              pt_MET, m_bb, pt_H_bb, pt_b1, eta_b1, csv_b1, deepcsv_b1, pt_b2, eta_b2, csv_b2, deepcsv_b2, costheta_METhbb, dR_b1b2, \
              dR_b1b2_boosted, HT_otherjets, mass_top1, mass_top2, p_zeta, p_zetavisible, HT_total, HT_otherjets_gen,\
              HT_total_gen, n_selected_gen_jets, n_selected_gen_bjets, n_selected_gen_notbjets, genJets_nTotal, \
-             jets_nTotal_hadronFlavour_b, jets_nTotal_hadronFlavour_c, n_jets) \
+             jets_nTotal_hadronFlavour_b, jets_nTotal_hadronFlavour_c, n_jets, gen_match_1, gen_match_2) \
     /**/
 
 #define VAR(type, name) DECLARE_BRANCH_VARIABLE(type, name)
@@ -69,9 +69,9 @@ public:
     using Range = ::analysis::Range<double>;
     using RangeMap = std::map<SelectionCut, Range>;
 
-    AnaTupleWriter(const std::string& file_name, Channel channel) :
+    AnaTupleWriter(const std::string& file_name, Channel channel, bool _runKinFit) :
         file(root_ext::CreateRootFile(file_name)), tuple(ToString(channel), file.get(), false),
-        aux_tuple(file.get(), false)
+        aux_tuple(file.get(), false), runKinFit(_runKinFit)
     {
     }
 
@@ -124,8 +124,10 @@ public:
 
         if(event.HasBjetPair()) {
             tuple().m_ttbb = static_cast<float>(event.GetResonanceMomentum(true, false).M());
-            const auto& kinfit = event.GetKinFitResults();
-            tuple().m_ttbb_kinfit = kinfit.HasValidMass() ? static_cast<float>(kinfit.mass) : def_val;
+            if(runKinFit){
+                const auto& kinfit = event.GetKinFitResults();
+                tuple().m_ttbb_kinfit = kinfit.HasValidMass() ? static_cast<float>(kinfit.mass) : def_val;
+            }
             tuple().MT2 = static_cast<float>(event.GetMT2());
         } else {
             tuple().m_ttbb = def_val;
@@ -187,6 +189,9 @@ public:
         tuple().jets_nTotal_hadronFlavour_b = event->jets_nTotal_hadronFlavour_b;
         tuple().jets_nTotal_hadronFlavour_c = event->jets_nTotal_hadronFlavour_c;
 
+        tuple().gen_match_1 = event->gen_match_1;
+        tuple().gen_match_2 = event->gen_match_2;
+
         if(event.HasBjetPair()) {
             const auto& Hbb = event.GetHiggsBB();
             const auto& b1 = Hbb.GetFirstDaughter();
@@ -241,6 +246,7 @@ private:
     std::shared_ptr<TFile> file;
     AnaTuple tuple;
     AnaAuxTuple aux_tuple;
+    bool runKinFit;
     DataIdBiMap known_data_ids;
     RangeMap mva_ranges;
 };

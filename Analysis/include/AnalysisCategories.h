@@ -362,10 +362,22 @@ struct EventCategory {
         }
     }
 
+    bool Contains (size_t num_jets, const std::map<DiscriminatorWP, size_t>& num_btag, bool is_vbf, bool is_boosted) const
+    {
+        if(btag_wp && !num_btag.count(*btag_wp))
+            throw exception("The btag_wp, is not defined") ;
+
+        return (!n_jets || num_jets >= *n_jets) && (!n_btag
+                            || (*strict_n_btag ? (num_btag.at(*btag_wp) == n_btag) : (num_btag.at(*btag_wp) >= *n_btag)))
+                            && (!is_VBF || is_vbf == *is_VBF)
+                            && (!boosted || is_boosted == *boosted);
+    }
+
 private:
-    boost::optional<size_t> n_jets, n_btag, strict_n_btag;
+    boost::optional<size_t> n_jets, n_btag ;
+    boost::optional<bool> strict_n_btag;
     boost::optional<DiscriminatorWP> btag_wp;
-    boost::optional<bool> boosted, is_strict, is_VBF;
+    boost::optional<bool> boosted, is_VBF;
 };
 
 #undef DEF_ES

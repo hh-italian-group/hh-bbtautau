@@ -17,6 +17,7 @@ struct CoreAnalyzerArguments {
     REQ_ARG(std::string, setup);
     OPT_ARG(std::string, mva_setup, "");
     OPT_ARG(std::string, working_path, "./");
+    OPT_ARG(bool, runKinFit, true);
     OPT_ARG(unsigned, n_threads, 1);
 
     CoreAnalyzerArguments() {}
