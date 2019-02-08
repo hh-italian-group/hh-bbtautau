@@ -162,6 +162,7 @@ public:
     virtual void EndEntry() override
     {
         CheckReadParamCounts("name_suffix", 1, Condition::less_equal);
+        CheckReadParamCounts("norm_sf_bin_prefix", 1, Condition::less_equal);
         CheckReadParamCounts("file_path", 1, Condition::less_equal);
         CheckReadParamCounts("cross_section", 1, Condition::less_equal);
         CheckReadParamCounts("points", 0, Condition::greater_equal);
@@ -177,6 +178,7 @@ public:
                                std::istringstream& ss) override
     {
         ParseEntry("name_suffix", current.name_suffix);
+        ParseEntry("norm_sf_bin_prefix", current.name_suffix);
         ParseEntry("file_path", current.file_path);
         ParseEntry<double, NumericalExpression>("cross_section", current.cross_section,
                                                 [](double xs){ return xs > 0; });

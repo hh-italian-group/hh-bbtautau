@@ -259,7 +259,7 @@ public:
     using SampleDescriptorBase::SampleDescriptorBase; //to inherit the constructor, copy constructor and assignment of parent class
                                                       // otherwise you should declare them as well as parent class, except the destructor
 
-    std::string name_suffix, reference_pu_sample;
+    std::string name_suffix, reference_pu_sample, norm_sf_bin_prefix;
     std::string file_path;
     double cross_section{1};
     std::map<std::string, std::vector<double>> points; // mass for resonant, radion or graviton, nodes for non-resonant

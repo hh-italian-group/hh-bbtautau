@@ -27,7 +27,6 @@ public:
         b_index = b_param_iter->second;
 
         ht_found = sample.name_suffix.find(HT_suffix()) != std::string::npos;
-
         fit_method = sample.fit_method;
 
         if(ht_found){
@@ -68,7 +67,11 @@ public:
             for(int i=1; i<=nbins;i++){
                 std::string scale_factor_name = scale_factor_histo->GetXaxis()->GetBinLabel(i);
                 double value = scale_factor_histo->GetBinContent(i);
-                scale_factor_name.erase(2,3);
+
+                if (scale_factor_name.substr(0, sample.norm_sf_bin_prefix.size()) != sample.norm_sf_bin_prefix)
+                    throw exception("The name of the sf bin (%1%) is different that the prefix name (%2%).") % scale_factor_name % sample.norm_sf_bin_prefix;
+                scale_factor_name.erase(0, sample.norm_sf_bin_prefix.size()+6);
+
                 scale_factor_maps[scale_factor_name] = value;
             }
         }
@@ -96,7 +99,7 @@ public:
     }
 
     void ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& event, double weight,
-                 bbtautau::AnaTupleWriter::DataIdMap& dataIds){
+                      bbtautau::AnaTupleWriter::DataIdMap& dataIds){
         //static constexpr double pt_cut =18, b_Flavour = 5;
         /*size_t n_genJets = 0;
         for(const auto& b_Candidates : event.GetHiggsBB().GetDaughterMomentums()) {
@@ -190,7 +193,7 @@ public:
         double norm_sf = 1;
 
         if(fit_method == DYFitModel::NbjetBins)
-            norm_sf = scale_factor_maps.at(sample_wp.full_name);
+            norm_sf = scale_factor_maps.at(sample_wp.name);
         else if(fit_method == DYFitModel::NbjetBins_htBins){
             if(ht_found) norm_sf = scale_factor_maps.at(sample_wp.full_name);
             else norm_sf = scale_factor_maps.at(sample_wp.full_name+"_"+ToString(it->first.second)+HT_suffix());
@@ -200,6 +203,7 @@ public:
             else norm_sf = scale_factor_maps.at(sample_wp.full_name+"_"+ToString(it->first.second)+NJet_suffix());
         }
         dataIds[finalId] = std::make_tuple(weight * norm_sf, event.GetMvaScore());
+
     }
 
     template<typename T>
@@ -233,6 +237,5 @@ private:
     std::map<std::string, std::shared_ptr<TH1D>> pt_weight_histo_map;
     std::map<std::string, double>  fractional_weight_map;
     std::string sampleOrder;
-
 };
 }

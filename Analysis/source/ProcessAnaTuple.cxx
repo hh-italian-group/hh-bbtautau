@@ -6,6 +6,8 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "hh-bbtautau/Analysis/include/EventAnalyzerDataCollection.h"
 #include "hh-bbtautau/Analysis/include/StackedPlotsProducer.h"
 #include "hh-bbtautau/Analysis/include/LimitsInputProducer.h"
+// #include "h-tautau/McCorrections/include/LeptonWeights.h
+
 
 namespace analysis {
 
@@ -47,7 +49,6 @@ public:
         const auto samplesToDraw = PlotsProducer::CreateOrderedSampleCollection(
                     ana_setup.draw_sequence, sample_descriptors, cmb_sample_descriptors, ana_setup.signals,
                     ana_setup.data, args.channel());
-
         std::ofstream qcd_out(args.output() +"_QCD.txt");
 
         const std::vector<EventSubCategory> all_subCategories(sub_categories_to_process.begin(),
@@ -115,6 +116,7 @@ private:
                 const auto& dataId = tupleReader.GetDataIdByIndex(n);
                 if(!subCategories.count(dataId.Get<EventSubCategory>())) continue;
                 tupleReader.UpdateSecondaryBranches(dataId, n);
+                // tauIdWeight = std::make_shared<TauIdWeight2017>();
                 anaDataCollection.Fill(dataId, tuple().weight);
             }
         }

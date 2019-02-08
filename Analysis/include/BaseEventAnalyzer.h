@@ -289,6 +289,7 @@ protected:
     {
         if(sample.sampleType == SampleType::DY) {
             dymod->ProcessEvent(anaDataId,event,weight,dataIds);
+
         } else if(sample.sampleType == SampleType::TT) {
             dataIds[anaDataId] = std::make_tuple(weight, event.GetMvaScore());
             if(anaDataId.Get<EventEnergyScale>() == EventEnergyScale::Central) {
