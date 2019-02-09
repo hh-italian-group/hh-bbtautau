@@ -7,16 +7,16 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "Math/Factory.h"
 #include "Math/Functor.h"
 #include "AnalysisTools/Run/include/program_main.h"
-#include "h-tautau/Analysis/include/EventTuple.h"
+#include "h-tautau/Core/include/EventTuple.h"
 #include "AnalysisTools/Core/include/exception.h"
 #include "AnalysisTools/Core/include/AnalyzerData.h"
 #include "AnalysisTools/Core/include/StatEstimators.h"
 #include "hh-bbtautau/Analysis/include/MvaVariables.h"
-#include "hh-bbtautau/Studies/include/MvaConfiguration.h"
+#include "hh-bbtautau/Analysis/include/MvaConfiguration.h"
 #include "h-tautau/Cuts/include/Btag_2016.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
 #include "hh-bbtautau/Studies/include/MvaMethods.h"
-#include "hh-bbtautau/Analysis/include/MvaConfigurationReader.h"
+#include "hh-bbtautau/Analysis/include/MvaConfigReader.h"
 
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, input_path);

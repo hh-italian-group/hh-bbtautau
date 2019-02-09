@@ -10,7 +10,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include <TCanvas.h>
 #include <TPad.h>
 #include "AnalysisTools/Run/include/program_main.h"
-#include "h-tautau/Analysis/include/EventTuple.h"
+#include "h-tautau/Core/include/EventTuple.h"
 #include "AnalysisTools/Core/include/exception.h"
 #include "AnalysisTools/Core/include/AnalyzerData.h"
 #include "AnalysisTools/Core/include/StatEstimators.h"
@@ -21,9 +21,9 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "hh-bbtautau/Studies/include/MvaMethods.h"
 #include "h-tautau/Cuts/include/Btag_2016.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
-#include "h-tautau/Analysis/include/AnalysisTypes.h"
+#include "h-tautau/Core/include/AnalysisTypes.h"
 #include "AnalysisTools/Core/include/RootExt.h"
-#include "hh-bbtautau/Analysis/include/MvaConfigurationReader.h"
+#include "hh-bbtautau/Analysis/include/MvaConfigReader.h"
 
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, input_path);
@@ -146,7 +146,7 @@ public:
                     }
                 }
                 distance.emplace_back(var_entry.first, d);
-            }   
+            }
             std::sort(distance.begin(), distance.end(), [](const auto& el1, const auto& el2){
                 return el1.second > el2.second;
             });
@@ -289,7 +289,7 @@ public:
                                                  static_cast<int>(vector_signal_2.size()), v_s_2, "");
                 if (plot.count(var) == 0) {
                     std::string name = var+"_Signal"+std::to_string(range.min())+"_"+std::to_string(range.max());
-                    plot[var] = CreatePlot(name.c_str(), ("Ks_"+name).c_str(), "mass","KS Probability" );
+                    plot[var] = CreatePlot<TGraph>(name.c_str(), ("Ks_"+name).c_str(), "mass","KS Probability" );
                 }
                 plot[var]->SetPoint(i, mass_entry.first.mass, k);
             }
@@ -376,7 +376,7 @@ public:
                     continue;
                 }
                 for (const auto& var : JSDivergenceSB.at(s).at(sample.first)){
-                    if (!plot_jsd[s].count(var.first)) plot_jsd[s][var.first] = CreatePlot("","","","");
+                    if (!plot_jsd[s].count(var.first)) plot_jsd[s][var.first] = CreatePlot<TGraph>("","","","");
                     plot_jsd.at(s).at(var.first)->SetPoint(i, sample.first.mass, JSDivergenceSB.at(s).at(sample.first).at(var.first));
                 }
                 i++;
@@ -428,7 +428,7 @@ public:
                             name=var+"_";
                         }
                         if (!plot_ss[s][range.min()].count(var_pair)) {
-                            plot_ss[s][range.min()][var_pair] = CreatePlot(("JSD_"+name+"Range"+std::to_string(range.min())+"_"+std::to_string(range.max())).c_str(),("JSD_"+name+"Range"+std::to_string(range.min())+"_"+std::to_string(range.max())).c_str(),"mass","JSD");
+                            plot_ss[s][range.min()][var_pair] = CreatePlot<TGraph>(("JSD_"+name+"Range"+std::to_string(range.min())+"_"+std::to_string(range.max())).c_str(),("JSD_"+name+"Range"+std::to_string(range.min())+"_"+std::to_string(range.max())).c_str(),"mass","JSD");
                         }
                     }
                 }
@@ -551,7 +551,7 @@ public:
                     {
                         auto var = value.first.begin();
                         if (!plot_sb.count(*var)){
-                            plot_sb[*var] = CreatePlot(("JSD_"+*var+"_SignalBkg").c_str(), ("JSD_"+*var+"_SignalBkg").c_str(), "mass", "JSD");
+                            plot_sb[*var] = CreatePlot<TGraph>(("JSD_"+*var+"_SignalBkg").c_str(), ("JSD_"+*var+"_SignalBkg").c_str(), "mass", "JSD");
                         }
                     }
                     else{
@@ -562,7 +562,7 @@ public:
                             name=var+"_";
                         }
                         if (!plot_sb.count(var_pair)) {
-                            plot_sb[var_pair] = CreatePlot(("JSD_"+name+"_SignalBkg").c_str(), ("JSD_"+name+"_SignalBkg").c_str(), "mass", "JSD");
+                            plot_sb[var_pair] = CreatePlot<TGraph>(("JSD_"+name+"_SignalBkg").c_str(), ("JSD_"+name+"_SignalBkg").c_str(), "mass", "JSD");
                         }
                     }
                 }
@@ -632,7 +632,7 @@ public:
                     plot_ss.at(s).at(range.min()).at(selected_name.first)->Draw();
                 }
                 plot_jsd.at(s).at(selected_name.first)->Draw();
-                root_ext::WriteObject<TCanvas>(*canvas[selected_name.first], directory_compare);
+                root_ext::WriteObject(*canvas[selected_name.first], directory_compare);
                 canvas[selected_name.first]->Close();
             }
         }

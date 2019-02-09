@@ -6,7 +6,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include <future>
 #include <initializer_list>
 #include "AnalysisTools/Run/include/program_main.h"
-#include "h-tautau/Analysis/include/EventTuple.h"
+#include "h-tautau/Core/include/EventTuple.h"
 #include "AnalysisTools/Core/include/exception.h"
 #include "AnalysisTools/Core/include/AnalyzerData.h"
 #include "AnalysisTools/Core/include/StatEstimators.h"
@@ -17,8 +17,8 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "hh-bbtautau/Studies/include/MvaMethods.h"
 #include "h-tautau/Cuts/include/Btag_2016.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
-#include "h-tautau/Analysis/include/AnalysisTypes.h"
-#include "hh-bbtautau/Analysis/include/MvaConfigurationReader.h"
+#include "h-tautau/Core/include/AnalysisTypes.h"
+#include "hh-bbtautau/Analysis/include/MvaConfigReader.h"
 
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, input_path);
@@ -113,7 +113,7 @@ public:
                     continue;
                 const std::string name = *var.first.begin();
                 if (!plot.count(name))
-                    plot[name] = CreatePlot("JSD_"+name+"_SignalBkg","JSD_"+name+"_SignalBkg","mass","JSD");
+                    plot[name] = CreatePlot<TGraph>("JSD_"+name+"_SignalBkg","JSD_"+name+"_SignalBkg","mass","JSD");
                 plot[name]->SetPoint(i, entry.first.mass, var.second);
             }
             i++;

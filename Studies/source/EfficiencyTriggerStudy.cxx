@@ -7,6 +7,8 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "TGraphAsymmErrors.h"
 #include "TMultiGraph.h"
 #include <TCanvas.h>
+#include <TStyle.h>
+#include <TLegend.h>
 #include "AnalysisTools/Print/include/PdfPrinter.h"
 #include "h-tautau/Analysis/include/EventInfo.h"
 #include "AnalysisTools/Core/include/PropertyConfigReader.h"

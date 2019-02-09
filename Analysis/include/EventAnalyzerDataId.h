@@ -56,9 +56,9 @@ public:
         return *std::get<Optional<T>>(id_tuple);
     }
 
-    bool operator< (const EventAnalyzerDataId& other) const { return id_tuple < other.id_tuple; }
-    std::string GetName(const std::string& separator = "/") const { return GetSubName(std::make_index_sequence<TupleSize>{},separator); }
-    bool IsComplete() const { return ItemsAreInitialized(std::make_index_sequence<TupleSize>{}); }
+    bool operator< (const EventAnalyzerDataId& other) const;
+    std::string GetName(const std::string& separator = "/") const;
+    bool IsComplete() const;
 
     template<typename ...Collections>
     static std::vector<EventAnalyzerDataId> MetaLoop(Collections&&... cols)
@@ -68,20 +68,7 @@ public:
         return result;
     }
 
-    static EventAnalyzerDataId Parse(const std::string& str)
-    {
-        static const std::string separator = "/";
-        try {
-            std::vector<std::string> item_strings = SplitValueList(str, true, separator, false);
-            if(item_strings.size() != std::tuple_size<Tuple>::value)
-                throw exception("Number of elements != %1%.") % std::tuple_size<Tuple>::value;
-            EventAnalyzerDataId id;
-            id.ParseAllItems(item_strings, std::make_index_sequence<TupleSize>{});
-            return id;
-        } catch(std::exception& e) {
-            throw exception("Invalid EventAnalyzerDataId = '%1%'. %2%") % str % e.what();
-        }
-    }
+    static EventAnalyzerDataId Parse(const std::string& str);
 
 private:
     void Initialize() {}
@@ -178,18 +165,7 @@ private:
     Tuple id_tuple;
 };
 
-inline std::ostream& operator<<(std::ostream& s, const EventAnalyzerDataId& id)
-{
-    s << id.GetName();
-    return s;
-}
-
-inline std::istream& operator>>(std::istream& s, EventAnalyzerDataId& id)
-{
-    std::string str;
-    s >> str;
-    id = EventAnalyzerDataId::Parse(str);
-    return s;
-}
+std::ostream& operator<<(std::ostream& s, const EventAnalyzerDataId& id);
+std::istream& operator>>(std::istream& s, EventAnalyzerDataId& id);
 
 } // namespace analysis

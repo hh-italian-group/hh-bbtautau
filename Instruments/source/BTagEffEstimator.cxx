@@ -6,17 +6,17 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include <map>
 
 #include "AnalysisTools/Run/include/program_main.h"
-#include "h-tautau/Analysis/include/EventTuple.h"
+#include "h-tautau/Core/include/EventTuple.h"
 #include "AnalysisTools/Core/include/AnalyzerData.h"
-#include "h-tautau/Analysis/include/AnalysisTypes.h"
+#include "h-tautau/Core/include/AnalysisTypes.h"
 #include "h-tautau/Cuts/include/Btag_2017.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2017.h"
 #include "h-tautau/Cuts/include/Btag_2016.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
 #include "AnalysisTools/Core/include/Tools.h"
 #include "AnalysisTools/Core/include/TextIO.h"
-#include "h-tautau/Analysis/include/TauIdResults.h"
-#include "h-tautau/Analysis/include/BTagger.h"
+#include "h-tautau/Core/include/TauIdResults.h"
+#include "h-tautau/JetTools/include/BTagger.h"
 
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, output_file);
@@ -150,7 +150,7 @@ public:
                             }*/
                                 if((event.jets_pu_id.at(i) & 2) == 0) continue;
                         }
-                                          
+
                         int jet_hadronFlavour = event.jets_hadronFlavour.at(i);
                         const std::string& jet_flavour = flavours.at(jet_hadronFlavour);
 

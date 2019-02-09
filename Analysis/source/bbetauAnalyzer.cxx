@@ -5,18 +5,19 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 namespace analysis {
 
-class bbetauAnalyzer : public BaseEventAnalyzer<ElectronCandidate, TauCandidate> {
+class bbetauAnalyzer : public BaseEventAnalyzer {
 public:
-    using Base = BaseEventAnalyzer<ElectronCandidate, TauCandidate>;
-    using Base::BaseEventAnalyzer;
+    using EventInfo = ::analysis::EventInfo<ElectronCandidate, TauCandidate>;
+    bbetauAnalyzer(const AnalyzerArguments& _args) : BaseEventAnalyzer(_args, Channel::ETau) {}
 
 protected:
-    virtual EventRegion DetermineEventRegion(EventInfo& event, EventCategory /*eventCategory*/) override
+    virtual EventRegion DetermineEventRegion(EventInfoBase& eventInfoBase, EventCategory /*eventCategory*/) override
     {
-
         static const std::vector<DiscriminatorWP> working_points = {
             DiscriminatorWP::VLoose, DiscriminatorWP::Loose, DiscriminatorWP::Medium
         };
+
+        EventInfo& event = *dynamic_cast<EventInfo*>(&eventInfoBase);
 
         const ElectronCandidate& electron = event.GetFirstLeg();
         const TauCandidate& tau = event.GetSecondLeg();
