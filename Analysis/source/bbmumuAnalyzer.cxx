@@ -5,18 +5,21 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 namespace analysis {
 
-class bbmumuAnalyzer : public BaseEventAnalyzer<MuonCandidate, MuonCandidate> {
+class bbmumuAnalyzer : public BaseEventAnalyzer {
 public:
-
-    using Base = BaseEventAnalyzer<MuonCandidate, MuonCandidate>;
-    using Base::BaseEventAnalyzer;
+    using EventInfo = ::analysis::EventInfo<MuonCandidate, MuonCandidate>;
     using HiggsBBCandidate = EventInfoBase::HiggsBBCandidate;
+
+    bbmumuAnalyzer(const AnalyzerArguments& _args) : BaseEventAnalyzer(_args, Channel::MuMu) {}
+
 protected:
-    virtual EventRegion DetermineEventRegion(EventInfo& event, EventCategory /*eventCategory*/) override
+    virtual EventRegion DetermineEventRegion(EventInfoBase& eventInfoBase, EventCategory /*eventCategory*/) override
     {
         static const std::map<DiscriminatorWP,double> working_points = {
             {DiscriminatorWP::Loose,2.0}, {DiscriminatorWP::Medium,0.15}
         };
+
+        EventInfo& event = *dynamic_cast<EventInfo*>(&eventInfoBase);
 
         const MuonCandidate& muon1 = event.GetFirstLeg();
         const MuonCandidate& muon2 = event.GetSecondLeg();
@@ -55,7 +58,7 @@ protected:
         //return region;
     }
 
-    virtual EventSubCategory DetermineEventSubCategory(EventInfo& event, const EventCategory& /*category*/,
+    virtual EventSubCategory DetermineEventSubCategory(EventInfoBase& event, const EventCategory& /*category*/,
                                                        std::map<SelectionCut, double>& /*mva_scores*/) override
     {
         double mass_muMu = event.GetHiggsTTMomentum(false).M();

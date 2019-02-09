@@ -4,7 +4,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include "AnalysisTools/Run/include/program_main.h"
 #include "AnalysisTools/Core/include/AnalyzerData.h"
-#include "h-tautau/Analysis/include/AnalysisTypes.h"
+#include "h-tautau/Core/include/AnalysisTypes.h"
 #include "Analysis/include/EventAnalyzerDataId.h"
 #include "Analysis/include/AnalysisCategories.h"
 
@@ -288,13 +288,11 @@ private:
     //X axis
     RooRealVar x;
 
-    std::vector<EventCategory> eventCategories{EventCategory::TwoJets_ZeroBtag(),
-                EventCategory::TwoJets_OneBtag(),EventCategory::TwoJets_TwoBtagPlus()};
+    std::vector<EventCategory> eventCategories{ EventCategory::Parse("2j0b"), EventCategory::Parse("2j1b"),
+                                                EventCategory::Parse("2j2b+") };
     std::vector<EventSubCategory> subCategories;
-
     std::vector<std::string> contribution_names;
     DYFitModel fit_model;
-
     std::vector<std::shared_ptr<RooRealVar>> params;
 };
 

@@ -1,0 +1,7 @@
+<use name="boost"/>
+<use name="root"/>
+<use name="AnalysisTools/Core"/>
+<use name="h-tautau/Analysis"/>
+<use name="h-tautau/Core"/>
+<use name="hh-bbtautau/Analysis"/>
+<export> <lib name="1"/> </export>

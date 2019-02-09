@@ -1,0 +1,10 @@
+<use name="boost"/>
+<use name="boost_program_options"/>
+<use name="root"/>
+<use name="roottmva"/>
+<use name="AnalysisTools/Core"/>
+<use name="AnalysisTools/Print"/>
+<use name="h-tautau/Analysis"/>
+<use name="h-tautau/Core"/>
+<use name="hh-bbtautau/McCorrections"/>
+<export> <lib name="1"/> </export>

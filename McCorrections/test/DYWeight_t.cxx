@@ -1,16 +1,10 @@
 /*! Merge DYJets files.
 This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
-#include <boost/format.hpp>
-#include "AnalysisTools/Run/include/program_main.h"
-#include "AnalysisTools/Core/include/ConfigReader.h"
-#include "AnalysisTools/Core/include/RootExt.h"
-#include "h-tautau/Analysis/include/EventInfo.h"
-#include "Instruments/include/NJets_HT_BinFileConfigEntryReader.h"
-#include "AnalysisTools/Core/include/NumericPrimitives.h"
-#include "Instruments/include/SampleDescriptor.h"
-#include "McCorrections/include/NJets_HT_weight.h"
-#include <iostream>
 
+#include "AnalysisTools/Run/include/program_main.h"
+#include "h-tautau/Analysis/include/EventInfo.h"
+#include "hh-bbtautau/McCorrections/include/NJets_HT_BinFileConfigEntryReader.h"
+#include "hh-bbtautau/McCorrections/include/NJets_HT_weight.h"
 
 struct Arguments {
     run::Argument<std::string> tree_name{"tree_name", "Tree on which we work"};

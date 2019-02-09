@@ -1,0 +1,5 @@
+<use name="boost"/>
+<use name="root"/>
+<use name="AnalysisTools/Core"/>
+<use name="h-tautau/McCorrections"/>
+<export> <lib name="1"/> </export>

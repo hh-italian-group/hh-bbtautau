@@ -4,12 +4,14 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include <numeric>
 
 #include "AnalysisTools/Run/include/program_main.h"
-#include "h-tautau/Analysis/include/EventTuple.h"
+#include "AnalysisTools/Core/include/StatEstimators.h"
+#include "h-tautau/Core/include/EventTuple.h"
 #include "AnalysisTools/Core/include/exception.h"
 #include "AnalysisTools/Core/include/AnalyzerData.h"
 #include "hh-bbtautau/Studies/include/MvaTuple.h"
-#include "h-tautau/Analysis/include/AnalysisTypes.h"
+#include "h-tautau/Core/include/AnalysisTypes.h"
 #include "hh-bbtautau/Studies/include/MvaMethods.h"
+
 
 
 struct Arguments { // list of all program arguments
@@ -145,7 +147,7 @@ public:
             MvaTuple myTree("mva_result", in_file.get(), true);
             for(const MvaResults& results : myTree) {
                 const std::string method_name = results.name.substr(0, results.name.find_last_of('_'));
-                const auto grid_point = GetGridPoint(results);               
+                const auto grid_point = GetGridPoint(results);
                 const auto KS_results = GetKSResultsMap(results);
                 const auto chi_results = GetChiResultsMap(results);
                 const auto ranking = GetRankingMap(results);

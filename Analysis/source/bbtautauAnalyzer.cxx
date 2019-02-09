@@ -2,23 +2,24 @@
 This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include "Analysis/include/BaseEventAnalyzer.h"
-#include "h-tautau/McCorrections/include/TauIdWeight.h"
 
 namespace analysis {
 
-class bbtautauAnalyzer : public BaseEventAnalyzer<TauCandidate, TauCandidate> {
+class bbtautauAnalyzer : public BaseEventAnalyzer {
 public:
-    using Base = BaseEventAnalyzer<TauCandidate, TauCandidate>;
-    using Base::BaseEventAnalyzer;
+    using EventInfo = ::analysis::EventInfo<TauCandidate, TauCandidate>;
+
+    bbtautauAnalyzer(const AnalyzerArguments& _args) : BaseEventAnalyzer(_args, Channel::TauTau) {}
 
 protected:
-    virtual EventRegion DetermineEventRegion(EventInfo& event, EventCategory /*eventCategory*/) override
+    virtual EventRegion DetermineEventRegion(EventInfoBase& eventInfoBase, EventCategory /*eventCategory*/) override
     {
 
         static const std::vector<DiscriminatorWP> working_points = {
             DiscriminatorWP::VLoose, DiscriminatorWP::Loose, DiscriminatorWP::Medium
         };
 
+        EventInfo& event = *dynamic_cast<EventInfo*>(&eventInfoBase);
 
         const TauCandidate& tau_1 = event.GetFirstLeg();
         const TauCandidate& tau_2 = event.GetSecondLeg();

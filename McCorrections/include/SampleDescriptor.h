@@ -9,7 +9,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/EnumNameMap.h"
 #include "AnalysisTools/Core/include/NumericPrimitives.h"
 #include "AnalysisTools/Core/include/PhysicalValue.h"
-#include "h-tautau/Analysis/include/SummaryTuple.h"
+#include "h-tautau/Core/include/SummaryTuple.h"
 
 namespace analysis {
 
