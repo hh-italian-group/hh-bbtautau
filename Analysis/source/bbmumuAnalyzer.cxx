@@ -21,6 +21,7 @@ protected:
         const MuonCandidate& muon1 = event.GetFirstLeg();
         const MuonCandidate& muon2 = event.GetSecondLeg();
 //        const HiggsBBCandidate& jets  = event.GetHiggsBB();
+        if(muon1.GetMomentum().Pt() < 20 || muon2.GetMomentum().Pt() < 20) return EventRegion::Unknown();
 
         EventRegion region_muon1, region_muon2;
         const bool os = !ana_setup.apply_os_cut || muon1.GetCharge() * muon2.GetCharge() == -1;
