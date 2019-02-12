@@ -86,6 +86,7 @@ protected:
         sub_category.SetCutResult(SelectionCut::medPt, event.GetHiggsTTMomentum(false).Pt() > 40 &&
                                                         event.GetHiggsTTMomentum(false).Pt() <= 100);
         sub_category.SetCutResult(SelectionCut::highPt, event.GetHiggsTTMomentum(false).Pt() > 100);
+        sub_category.SetCutResult(SelectionCut::mtt, mass_muMu > 60);
 
         return sub_category;
     }
