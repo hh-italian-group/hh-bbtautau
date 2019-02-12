@@ -45,6 +45,14 @@ public:
             njet_index = njet_param_iter->second;
         }
 
+        pt_found = sample.name_suffix.find(Pt_suffix()) != std::string::npos;
+        if(pt_found){
+            const auto pt_param_iter = param_names.find(Pt_suffix());
+            if(pt_param_iter == param_names.end())
+                throw exception("Unable to find Pt WP for DY smaple");
+            pt_index = pt_param_iter->second;
+        }
+
         for(const auto& sample_wp : sample.working_points) {
             const size_t n_b_partons = static_cast<size_t>(sample_wp.param_values.at(b_index));
             if(ht_found){
@@ -57,10 +65,15 @@ public:
                 working_points_map[std::pair<size_t,size_t>(n_b_partons,njet_wp)] = sample_wp;
                 njet_wp_set.insert(njet_wp);
             }
+            else if(pt_found){
+                const size_t pt_wp = static_cast<size_t>(sample_wp.param_values.at(pt_index));
+                working_points_map[std::pair<size_t,size_t>(n_b_partons,pt_wp)] = sample_wp;
+                pt_wp_set.insert(pt_wp);
+            }
             else working_points_map[std::pair<size_t,size_t>(n_b_partons,0)] = sample_wp;
         }
         if(fit_method == DYFitModel::NbjetBins || fit_method == DYFitModel::NbjetBins_htBins ||
-                fit_method == DYFitModel::NbjetBins_NjetBins){
+                fit_method == DYFitModel::NbjetBins_NjetBins || fit_method == DYFitModel::NbjetBins_ptBins){
             auto input_file = root_ext::OpenRootFile(working_path+"/"+sample.norm_sf_file);
             auto scale_factor_histo =  std::shared_ptr<TH1D>(root_ext::ReadObject<TH1D>(*input_file,ToString(fit_method)
                                                                                     +"/scale_factors"));
@@ -177,6 +190,12 @@ public:
             size_t njet_wp = Get2WP(n_selected_gen_jets,njet_wp_set);
             p.second = njet_wp;
         }
+        else if(pt_found){
+            double gen_pt = 0;
+            if(event->genParticles_p4.size() > 0) gen_pt = event->genParticles_p4.at(0).Pt();
+            size_t pt_wp = Get2WP(gen_pt,pt_wp_set);
+            p.second = pt_wp;
+        }
 
 
         std::map<std::pair<size_t,size_t>,SampleDescriptorBase::Point>::iterator it = working_points_map.find(p);
@@ -199,6 +218,10 @@ public:
             if(jet_found) norm_sf = scale_factor_maps.at(sample_wp.full_name);
             else norm_sf = scale_factor_maps.at(sample_wp.full_name+"_"+ToString(it->first.second)+NJet_suffix());
         }
+        else if(fit_method == DYFitModel::NbjetBins_ptBins){
+            if(pt_found) norm_sf = scale_factor_maps.at(sample_wp.full_name);
+            else norm_sf = scale_factor_maps.at(sample_wp.full_name+"_"+ToString(it->first.second)+Pt_suffix());
+        }
         dataIds[finalId] = std::make_tuple(weight * norm_sf, event.GetMvaScore());
     }
 
@@ -218,6 +241,7 @@ private:
     size_t b_index;
     size_t ht_index;
     size_t njet_index;
+    size_t pt_index;
     std::map<std::pair<size_t,size_t>,SampleDescriptorBase::Point> working_points_map;
     DYFitModel fit_method;
     bool ht_found;
@@ -226,6 +250,9 @@ private:
     bool jet_found;
     std::set<size_t> njet_wp_set;
     static const std::string& NJet_suffix() { static const std::string s = "Jet"; return s; }
+    bool pt_found;
+    std::set<size_t> pt_wp_set;
+    static const std::string& Pt_suffix() { static const std::string s = "Pt"; return s; }
 
     //static constexpr double b_Flavour = 5;
     //int b_Flavour=5;
