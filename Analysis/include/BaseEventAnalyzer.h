@@ -12,6 +12,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Analysis/include/EventLoader.h"
 #include "h-tautau/Analysis/include/SyncTupleHTT.h"
 #include "h-tautau/Analysis/include/BTagger.h"
+#include "h-tautau/McCorrections/include/LeptonWeights.h"
 #include "MvaReader.h"
 #include "EventAnalyzerData.h"
 #include "AnaTuple.h"
@@ -97,6 +98,8 @@ public:
              if(sample.sampleType == SampleType::DY)
                  dymod = std::make_shared<DYModel>(sample,args.working_path());
         }
+        tauIdWeight = std::make_shared<mc_corrections::TauIdWeight2017>();
+
     }
 
     void Run()
@@ -226,6 +229,8 @@ protected:
     void ProcessDataSource(const SampleDescriptor& sample, const SampleDescriptor::Point& sample_wp,
                            std::shared_ptr<ntuple::EventTuple> tuple, const ntuple::ProdSummary& prod_summary)
     {
+        std::map<int, double> decay_SF_map = {{0, 1.06}, {1,1.01}, {10, 0.90}};
+
         const SummaryInfo summary(prod_summary);
         Event prevFullEvent, *prevFullEventPtr = nullptr;
         for(auto tupleEvent : *tuple) {
@@ -264,8 +269,27 @@ protected:
                         if(sample.sampleType == SampleType::Data) {
                             dataIds[anaDataId] = std::make_tuple(1., mva_score);
                         } else {
-                            const double weight = event->weight_total * sample.cross_section * ana_setup.int_lumi
-                                                / summary->totalShapeWeight * mva_weight_scale;
+
+                            // auto weight_tauIdIso = tauIdWeight->GetIdIsoSF(event->p4_1, static_cast<GenMatch>(event->gen_match_1),
+                            //                                        event->decayMode_1, DiscriminatorWP::VLoose,
+                            //                                        DiscriminatorWP::Loose,  DiscriminatorWP::Medium) *
+                            //                                        tauIdWeight->GetIdIsoSF(event->p4_2,
+                            //                                        static_cast<GenMatch>(event->gen_match_2),
+                            //                                        event->decayMode_2,DiscriminatorWP::VLoose,
+                            //                                        DiscriminatorWP::Loose, DiscriminatorWP::Medium);
+
+                            auto weight_tauIso = tauIdWeight->getTauIso(DiscriminatorWP::Medium,static_cast<GenMatch>(event->gen_match_1)).GetValue();
+
+                            double ChiaraSF = 1;
+                            if((static_cast<GenMatch>(event->gen_match_1) == GenMatch::Tau) && (static_cast<GenMatch>(event->gen_match_2) == GenMatch::Tau)){
+                                if(decay_SF_map.count(event->decayMode_1) &&  decay_SF_map.count(event->decayMode_2)){
+                                    ChiaraSF = decay_SF_map[event->decayMode_1];
+                                    std::cout << "decay_mode: " <<  event->decayMode_1 << "SF: " <<  decay_SF_map[event->decayMode_1]<< '\n';
+                                }
+                            }
+                            const double weight = ((event->weight_total * sample.cross_section * ana_setup.int_lumi * ChiaraSF)
+                                                / (summary->totalShapeWeight * weight_tauIso )) * mva_weight_scale ;
+
                             if(sample.sampleType == SampleType::MC) {
                                 dataIds[anaDataId] = std::make_tuple(weight, mva_score);
                             } else
@@ -318,6 +342,7 @@ protected:
     std::shared_ptr<DYModel> dymod;
     std::shared_ptr<NonResModel> nonResModel;
     const std::vector<std::string> trigger_patterns;
+    std::shared_ptr<mc_corrections::TauIdWeight2017> tauIdWeight;
 };
 
 } // namespace analysis

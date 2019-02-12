@@ -6,8 +6,6 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "hh-bbtautau/Analysis/include/EventAnalyzerDataCollection.h"
 #include "hh-bbtautau/Analysis/include/StackedPlotsProducer.h"
 #include "hh-bbtautau/Analysis/include/LimitsInputProducer.h"
-// #include "h-tautau/McCorrections/include/LeptonWeights.h
-
 
 namespace analysis {
 
@@ -116,7 +114,6 @@ private:
                 const auto& dataId = tupleReader.GetDataIdByIndex(n);
                 if(!subCategories.count(dataId.Get<EventSubCategory>())) continue;
                 tupleReader.UpdateSecondaryBranches(dataId, n);
-                // tauIdWeight = std::make_shared<TauIdWeight2017>();
                 anaDataCollection.Fill(dataId, tuple().weight);
             }
         }
