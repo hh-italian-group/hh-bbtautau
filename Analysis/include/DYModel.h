@@ -192,7 +192,11 @@ public:
         }
         else if(pt_found){
             double gen_pt = 0;
-            if(event->genParticles_p4.size() > 0) gen_pt = event->genParticles_p4.at(0).Pt();
+            for(size_t i=0;i<event->genParticles_p4.size();i++){
+                if(event->genParticles_pdg.at(i) != 23) continue;
+                gen_pt = event->genParticles_p4.at(0).Pt();
+                break;
+            }
             size_t pt_wp = Get2WP(gen_pt,pt_wp_set);
             p.second = pt_wp;
         }
