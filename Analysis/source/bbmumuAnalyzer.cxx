@@ -64,7 +64,6 @@ protected:
                                                        std::map<SelectionCut, double>& /*mva_scores*/) override
     {
         double mass_muMu = event.GetHiggsTTMomentum(false).M();
-        double mass_jj = event.GetHiggsBB().GetMomentum().M();
         //const bool jetMass = mass_jj > 80 && mass_jj < 160;
         //const bool muonMass= mass_muMu > 60;
         /*double pt_jets = event.GetHiggsBB().GetFirstDaughter().GetMomentum().Pt()
@@ -74,8 +73,12 @@ protected:
 
 
         EventSubCategory sub_category;
-        sub_category.SetCutResult(SelectionCut::mh, ana_setup.massWindowParams.at(SelectionCut::mh)
+        if(event.HasBjetPair()){
+            double mass_jj = event.GetHiggsBB().GetMomentum().M();
+            sub_category.SetCutResult(SelectionCut::mh, ana_setup.massWindowParams.at(SelectionCut::mh)
                               .IsInside(mass_muMu,mass_jj));
+        }
+        else sub_category.SetCutResult(SelectionCut::mh, false);
         sub_category.SetCutResult(SelectionCut::lowMET, event.GetMET().GetMomentum().Pt() < 45);
         sub_category.SetCutResult(SelectionCut::lowHT, event->ht_other_jets <= 20);
         sub_category.SetCutResult(SelectionCut::medHT,  event->ht_other_jets > 20 && event->ht_other_jets <= 250);

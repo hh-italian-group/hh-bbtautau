@@ -194,7 +194,7 @@ public:
             double gen_pt = 0;
             for(size_t i=0;i<event->genParticles_p4.size();i++){
                 if(event->genParticles_pdg.at(i) != 23) continue;
-                gen_pt = event->genParticles_p4.at(0).Pt();
+                gen_pt = event->genParticles_p4.at(i).Pt();
                 break;
             }
             size_t pt_wp = Get2WP(gen_pt,pt_wp_set);
