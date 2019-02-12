@@ -15,7 +15,7 @@ protected:
     virtual EventRegion DetermineEventRegion(EventInfo& event, EventCategory /*eventCategory*/) override
     {
         static const std::map<DiscriminatorWP,double> working_points = {
-            {DiscriminatorWP::Loose,2.0}, {DiscriminatorWP::Medium,0.15}
+            {DiscriminatorWP::VVLoose,2.0}, {DiscriminatorWP::Medium,0.15}
         };
 
         const MuonCandidate& muon1 = event.GetFirstLeg();
