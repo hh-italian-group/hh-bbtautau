@@ -95,7 +95,7 @@ public:
         for(auto& x: sample_descriptors) {
             SampleDescriptor& sample = x.second;
              if(sample.sampleType == SampleType::DY)
-                 dymod[sample.sampleOrder] = std::make_shared<DYModel>(sample,args.working_path());
+                 dymod[sample.name] = std::make_shared<DYModel>(sample,args.working_path());
         }
     }
 
@@ -288,7 +288,7 @@ protected:
                                      double shape_weight, bbtautau::AnaTupleWriter::DataIdMap& dataIds)
     {
         if(sample.sampleType == SampleType::DY) {
-            dymod[sample.sampleOrder]->ProcessEvent(anaDataId,event,weight,dataIds);
+            dymod.at(sample.name)->ProcessEvent(anaDataId,event,weight,dataIds);
         } else if(sample.sampleType == SampleType::TT) {
             dataIds[anaDataId] = std::make_tuple(weight, event.GetMvaScore());
             if(anaDataId.Get<EventEnergyScale>() == EventEnergyScale::Central) {
