@@ -36,6 +36,12 @@ struct Arguments {
     OPT_ARG(int, high_ht, 150);
     OPT_ARG(int, low_nJet, 0);
     OPT_ARG(int, high_nJet, 4);
+    OPT_ARG(int, vlowPt, 0);
+    OPT_ARG(int, lowPt, 20);
+    OPT_ARG(int, medPt, 40);
+    OPT_ARG(int, highPt, 100);
+    OPT_ARG(std::string, sub_category_option, "mh");
+    OPT_ARG(std::string, sample_order, "LO");
 };
 
 
@@ -106,11 +112,17 @@ public:
 
     void Run()
     {
-        static const std::string dy_contrib_prefix = "DY_MC";
-        auto base_sub_category = EventSubCategory().SetCutResult(SelectionCut::mh, true)
-                                                         .SetCutResult(SelectionCut::lowMET,true);
+        static std::string dy_contrib_prefix;
+        if(args.sample_order() == "LO") dy_contrib_prefix= "DY_lo";
+        else if(args.sample_order() == "NLO") dy_contrib_prefix = "DY_nlo";
+        EventSubCategory base_sub_category;
+        if(args.sub_category_option() == "mh") base_sub_category =
+                EventSubCategory().SetCutResult(SelectionCut::mh, true).SetCutResult(SelectionCut::lowMET,true);
+        else if(args.sub_category_option() == "mtt") base_sub_category =
+                EventSubCategory().SetCutResult(SelectionCut::mtt, true).SetCutResult(SelectionCut::lowMET,true);
         const std::vector<int> ht_points = { 0, args.med_ht(), args.high_ht() };
         const std::vector<int> nJet_points = {args.low_nJet(), args.high_nJet() };
+        const std::vector<int> pt_points = {args.vlowPt(), args.lowPt(), args.medPt(), args.highPt()};
         static const size_t max_n_b = 2;
         if(fit_model == DYFitModel::NbjetBins) {
             subCategories = { base_sub_category };
@@ -136,6 +148,16 @@ public:
                 else if(fit_model==DYFitModel::NbjetBins_NjetBins){
                     for(int nJet : nJet_points) {
                         const std::string name = boost::str(boost::format("%1%_%2%b_%3%Jet") % dy_contrib_prefix % nb % nJet);
+                        contribution_names.push_back(name);
+                    }
+                }
+                else if(fit_model==DYFitModel::NbjetBins_ptBins){
+                    subCategories = { EventSubCategory(base_sub_category).SetCutResult(SelectionCut::vlowPt, true),
+                                      EventSubCategory(base_sub_category).SetCutResult(SelectionCut::lowPt, true),
+                                      EventSubCategory(base_sub_category).SetCutResult(SelectionCut::medPt, true),
+                                      EventSubCategory(base_sub_category).SetCutResult(SelectionCut::highPt, true)};
+                    for(int pt : pt_points){
+                        const std::string name = boost::str(boost::format("%1%_%2%b_%3%Pt") % dy_contrib_prefix % nb % pt);
                         contribution_names.push_back(name);
                     }
                 }
