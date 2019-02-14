@@ -95,7 +95,7 @@ public:
         for(auto& x: sample_descriptors) {
             SampleDescriptor& sample = x.second;
              if(sample.sampleType == SampleType::DY)
-                 dymod = std::make_shared<DYModel>(sample,args.working_path());
+                 dymod[sample.sampleOrder] = std::make_shared<DYModel>(sample,args.working_path());
         }
     }
 
@@ -288,7 +288,7 @@ protected:
                                      double shape_weight, bbtautau::AnaTupleWriter::DataIdMap& dataIds)
     {
         if(sample.sampleType == SampleType::DY) {
-            dymod->ProcessEvent(anaDataId,event,weight,dataIds);
+            dymod[sample.sampleOrder]->ProcessEvent(anaDataId,event,weight,dataIds);
         } else if(sample.sampleType == SampleType::TT) {
             dataIds[anaDataId] = std::make_tuple(weight, event.GetMvaScore());
             if(anaDataId.Get<EventEnergyScale>() == EventEnergyScale::Central) {
@@ -314,7 +314,7 @@ protected:
     mva_study::MvaReader mva_reader;
     std::shared_ptr<TFile> outputFile_sync;
     std::map<EventAnalyzerDataId, std::shared_ptr<htt_sync::SyncTuple>> syncTuple_map;
-    std::shared_ptr<DYModel> dymod;
+    std::map<std::string,std::shared_ptr<DYModel>> dymod;
     std::shared_ptr<NonResModel> nonResModel;
     const std::vector<std::string> trigger_patterns;
 };
