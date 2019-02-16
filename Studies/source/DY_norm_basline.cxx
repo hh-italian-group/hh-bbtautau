@@ -164,7 +164,7 @@ public:
             }
         }
         contribution_names.push_back("other_bkg_muMu");
-        contribution_names.push_back("QCD");
+        //contribution_names.push_back("QCD");
         /*contribution_names.push_back("WW");
         contribution_names.push_back("WZ");
         contribution_names.push_back("Wjets");

@@ -81,8 +81,11 @@ public:
             for(int i=1; i<=nbins;i++){
                 std::string scale_factor_name = scale_factor_histo->GetXaxis()->GetBinLabel(i);
                 double value = scale_factor_histo->GetBinContent(i);
-                scale_factor_name.erase(2,3);
-                scale_factor_maps[scale_factor_name] = value;
+                std::string sf_prefix = "SF_";
+                if(!scale_factor_name.empty()){
+                    scale_factor_name.insert(7,sf_prefix);
+                    scale_factor_maps[scale_factor_name] = value;
+                }
             }
         }
         else if(fit_method != DYFitModel::None)
