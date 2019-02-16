@@ -78,6 +78,8 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
 
     tuple().m_tt_vis = static_cast<float>(Htt.M());
     tuple().pt_H_tt = static_cast<float>(Htt.Pt());
+    tuple().eta_H_tt = static_cast<float>(Htt.Eta());
+    tuple().phi_H_tt = static_cast<float>(Htt.Phi());
     tuple().pt_H_tt_MET = static_cast<float>((Htt + event.GetMET().GetMomentum()).Pt());
     tuple().pt_1 = static_cast<float>(t1.GetMomentum().pt());
     tuple().eta_1 = static_cast<float>(t1.GetMomentum().eta());

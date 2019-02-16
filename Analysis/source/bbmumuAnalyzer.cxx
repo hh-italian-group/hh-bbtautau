@@ -16,7 +16,7 @@ protected:
     virtual EventRegion DetermineEventRegion(EventInfoBase& eventInfoBase, EventCategory /*eventCategory*/) override
     {
         static const std::map<DiscriminatorWP,double> working_points = {
-            {DiscriminatorWP::Loose,2.0}, {DiscriminatorWP::Medium,0.15}
+            {DiscriminatorWP::VVLoose,2.0}, {DiscriminatorWP::Medium,0.15}
         };
 
         EventInfo& event = *dynamic_cast<EventInfo*>(&eventInfoBase);
@@ -24,6 +24,7 @@ protected:
         const MuonCandidate& muon1 = event.GetFirstLeg();
         const MuonCandidate& muon2 = event.GetSecondLeg();
 //        const HiggsBBCandidate& jets  = event.GetHiggsBB();
+        if(muon1.GetMomentum().Pt() < 20 || muon2.GetMomentum().Pt() < 20) return EventRegion::Unknown();
 
         EventRegion region_muon1, region_muon2;
         const bool os = !ana_setup.apply_os_cut || muon1.GetCharge() * muon2.GetCharge() == -1;
@@ -49,6 +50,11 @@ protected:
         }
 
         //region.SetLowerIso(DiscriminatorWP::Medium);
+        bool muon1_ex=false;
+        bool muon2_ex=false;
+        if(muon1.GetIsolation() > 0.15 && muon1.GetIsolation() < 0.5) muon1_ex=true;
+        if(muon2.GetIsolation() > 0.15 && muon2.GetIsolation() < 0.5) muon2_ex=true;
+        if(muon1_ex || muon2_ex) return EventRegion::Unknown();
 
         if(!region_muon1.HasLowerIso() || !region_muon2.HasLowerIso()) return EventRegion::Unknown();
         if(region_muon1.GetLowerIso() >= DiscriminatorWP::Medium) return region_muon2;
@@ -62,7 +68,6 @@ protected:
                                                        std::map<SelectionCut, double>& /*mva_scores*/) override
     {
         double mass_muMu = event.GetHiggsTTMomentum(false).M();
-        double mass_jj = event.GetHiggsBB().GetMomentum().M();
         //const bool jetMass = mass_jj > 80 && mass_jj < 160;
         //const bool muonMass= mass_muMu > 60;
         /*double pt_jets = event.GetHiggsBB().GetFirstDaughter().GetMomentum().Pt()
@@ -72,12 +77,23 @@ protected:
 
 
         EventSubCategory sub_category;
-        sub_category.SetCutResult(SelectionCut::mh, ana_setup.massWindowParams.at(SelectionCut::mh)
+        if(event.HasBjetPair()){
+            double mass_jj = event.GetHiggsBB().GetMomentum().M();
+            sub_category.SetCutResult(SelectionCut::mh, ana_setup.massWindowParams.at(SelectionCut::mh)
                               .IsInside(mass_muMu,mass_jj));
-        sub_category.SetCutResult(SelectionCut::lowMET,event.GetMET().GetMomentum().Pt() < 45);
+        }
+        else sub_category.SetCutResult(SelectionCut::mh, false);
+        sub_category.SetCutResult(SelectionCut::lowMET, event.GetMET().GetMomentum().Pt() < 45);
         sub_category.SetCutResult(SelectionCut::lowHT, event->ht_other_jets <= 20);
-        sub_category.SetCutResult(SelectionCut::medHT,event->ht_other_jets > 20 && event->ht_other_jets <= 250);
-        sub_category.SetCutResult(SelectionCut::highHT,event->ht_other_jets > 250);
+        sub_category.SetCutResult(SelectionCut::medHT,  event->ht_other_jets > 20 && event->ht_other_jets <= 250);
+        sub_category.SetCutResult(SelectionCut::highHT, event->ht_other_jets > 250);
+        sub_category.SetCutResult(SelectionCut::vlowPt, event.GetHiggsTTMomentum(false).Pt() <= 20);
+        sub_category.SetCutResult(SelectionCut::lowPt,  event.GetHiggsTTMomentum(false).Pt() > 20 &&
+                                                        event.GetHiggsTTMomentum(false).Pt() <= 40);
+        sub_category.SetCutResult(SelectionCut::medPt, event.GetHiggsTTMomentum(false).Pt() > 40 &&
+                                                        event.GetHiggsTTMomentum(false).Pt() <= 100);
+        sub_category.SetCutResult(SelectionCut::highPt, event.GetHiggsTTMomentum(false).Pt() > 100);
+        sub_category.SetCutResult(SelectionCut::mtt, mass_muMu > 60);
 
         return sub_category;
     }

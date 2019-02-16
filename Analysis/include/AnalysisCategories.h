@@ -18,10 +18,11 @@ ENUM_NAMES(SampleType) = {
     { SampleType::TT, "TT" }, { SampleType::NonResHH, "NonResHH" }
 };
 
-enum class DYFitModel { None = 0, NbjetBins = 1, NbjetBins_htBins = 2 , NbjetBins_NjetBins = 3};
+enum class DYFitModel { None = 0, NbjetBins = 1, NbjetBins_htBins = 2 , NbjetBins_NjetBins = 3, NbjetBins_ptBins = 4};
 ENUM_NAMES(DYFitModel) = {
-    { { DYFitModel::None, "None" } , { DYFitModel::NbjetBins, "NbjetBins" } ,
-    { DYFitModel::NbjetBins_htBins, "NbjetBins_htBins"}, { DYFitModel::NbjetBins_NjetBins, "NbjetBins_NjetBins"}}
+    { DYFitModel::None, "None" } , { DYFitModel::NbjetBins, "NbjetBins" } ,
+    { DYFitModel::NbjetBins_htBins, "NbjetBins_htBins"}, { DYFitModel::NbjetBins_NjetBins, "NbjetBins_NjetBins"},
+    { DYFitModel::NbjetBins_ptBins, "NbjetBins_ptBins"}
 };
 
 struct EventRegion {
@@ -108,7 +109,7 @@ std::istream& operator>>(std::istream& is, EventCategory& eventCategory);
 #define MVA_CUT_LIST(first, count) BOOST_PP_REPEAT(count, DECL_MVA_SEL, first)
 
 enum class SelectionCut { mh = 0, mhVis = 1, mhMET = 2, KinematicFitConverged = 3, lowMET = 4, lowHT = 5, medHT = 6, highHT = 7,
-                          MVA_CUT_LIST(8, 100) MVA_first = MVA0, MVA_last = MVA99 };
+                          vlowPt = 8, lowPt = 9, medPt = 10, highPt = 11, mtt = 12, MVA_CUT_LIST(13, 100) MVA_first = MVA0, MVA_last = MVA99 };
 
 #undef MVA_CUT_LIST
 #undef DECL_MVA_SEL
@@ -125,6 +126,11 @@ inline std::map<SelectionCut, std::string> CreateSelectionCutNames()
     names[SelectionCut::lowHT] = "lowHT";
     names[SelectionCut::medHT] = "medHT";
     names[SelectionCut::highHT] = "highHT";
+    names[SelectionCut::vlowPt] = "vlowPt";
+    names[SelectionCut::lowPt] = "lowPt";
+    names[SelectionCut::medPt] = "medPt";
+    names[SelectionCut::highPt] = "highPt";
+    names[SelectionCut::mtt] = "mtt";
     const size_t MVA_first_index = static_cast<size_t>(SelectionCut::MVA_first);
     const size_t MVA_last_index = static_cast<size_t>(SelectionCut::MVA_last);
     const size_t n_mva_cuts = MVA_last_index - MVA_first_index + 1;

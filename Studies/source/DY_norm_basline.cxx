@@ -36,9 +36,25 @@ struct Arguments {
     OPT_ARG(int, high_ht, 150);
     OPT_ARG(int, low_nJet, 0);
     OPT_ARG(int, high_nJet, 4);
+    OPT_ARG(int, vlowPt, 0);
+    OPT_ARG(int, lowPt, 20);
+    OPT_ARG(int, medPt, 40);
+    OPT_ARG(int, highPt, 100);
+    OPT_ARG(std::string, sub_category_option, "mh");
+    OPT_ARG(std::string, sample_order, "LO");
 };
+
+
 namespace analysis {
 using namespace RooFit;
+
+static const std::string& GetCategoryName(const EventCategory& category){
+
+    static std::map<EventCategory,std::string> eventCategories{ {  EventCategory::Parse("2j0b"), "2j0b"} ,
+        {EventCategory::Parse("2j1b"), "2j1b"}, { EventCategory::Parse("2j2b+"), "2j2b" }};
+
+    return eventCategories.at(category);
+}
 
 struct Contribution{
     std::string name;
@@ -51,7 +67,7 @@ struct Contribution{
 
     Contribution(std::shared_ptr<TFile> input_file, const EventAnalyzerDataId& dataId, const std::string& hist_name,
                  const RooRealVar& x, const RooRealVar& scale_factor) :
-    name(boost::str(boost::format("%1%_%2%_%3%") % dataId.Get<EventCategory>() % dataId.Get<EventSubCategory>()
+    name(boost::str(boost::format("%1%_%2%_%3%") % GetCategoryName(dataId.Get<EventCategory>()) % dataId.Get<EventSubCategory>()
                     % dataId.Get<std::string>())),
     histogram(root_ext::ReadObject<TH1D>(*input_file, dataId.GetName()+ "/" + hist_name)),
     norm(("norm_"+name).c_str(),("norm for "+name).c_str(),histogram->Integral()),
@@ -70,18 +86,17 @@ struct CategoryModel{
     CategoryModel(std::shared_ptr<TFile> input_file, const EventAnalyzerDataId& catId,
                   const std::vector<std::string>& contribution_names,const std::string& hist_name, const RooRealVar& x,
                   const std::map<std::string,std::shared_ptr<RooRealVar>>& scale_factor_map) :
-    name(ToString(catId.Get<EventCategory>())+"_"+ToString(catId.Get<EventSubCategory>()))
+    name(GetCategoryName(catId.Get<EventCategory>())+"_"+ToString(catId.Get<EventSubCategory>()))
     {
         RooArgList pdf_list;
         for(const std::string& contrib_name : contribution_names){
-            std::cout<<contrib_name<<std::endl;
             EventAnalyzerDataId dataId = catId.Set(contrib_name);
              mc_contributions[contrib_name] = std::make_shared<Contribution>(input_file,dataId,hist_name,x,
                                                                              *(scale_factor_map.at(contrib_name)));
-             pdf_list.add(mc_contributions[contrib_name]->expdf);
+             if(mc_contributions[contrib_name]->histogram->Integral() != 0)
+                pdf_list.add(mc_contributions[contrib_name]->expdf);
              mc_contributions[contrib_name]->expdf.Print();
         }
-        std::cout<<" name = "<<name<<std::endl;
         sum_pdf = std::make_shared<RooAddPdf>(("sumpdf_"+name).c_str(),("Total Pdf for "+name).c_str(),pdf_list);
     }
 };
@@ -97,11 +112,17 @@ public:
 
     void Run()
     {
-        static const std::string dy_contrib_prefix = "DY_MC";
-        auto base_sub_category = EventSubCategory().SetCutResult(SelectionCut::mh, true)
-                                                         .SetCutResult(SelectionCut::lowMET,true);
+        static std::string dy_contrib_prefix;
+        if(args.sample_order() == "LO") dy_contrib_prefix= "DY_lo";
+        else if(args.sample_order() == "NLO") dy_contrib_prefix = "DY_nlo";
+        EventSubCategory base_sub_category;
+        if(args.sub_category_option() == "mh") base_sub_category =
+                EventSubCategory().SetCutResult(SelectionCut::mh, true).SetCutResult(SelectionCut::lowMET,true);
+        else if(args.sub_category_option() == "mtt") base_sub_category =
+                EventSubCategory().SetCutResult(SelectionCut::mtt, true).SetCutResult(SelectionCut::lowMET,true);
         const std::vector<int> ht_points = { 0, args.med_ht(), args.high_ht() };
         const std::vector<int> nJet_points = {args.low_nJet(), args.high_nJet() };
+        const std::vector<int> pt_points = {args.vlowPt(), args.lowPt(), args.medPt(), args.highPt()};
         static const size_t max_n_b = 2;
         if(fit_model == DYFitModel::NbjetBins) {
             subCategories = { base_sub_category };
@@ -127,6 +148,16 @@ public:
                 else if(fit_model==DYFitModel::NbjetBins_NjetBins){
                     for(int nJet : nJet_points) {
                         const std::string name = boost::str(boost::format("%1%_%2%b_%3%Jet") % dy_contrib_prefix % nb % nJet);
+                        contribution_names.push_back(name);
+                    }
+                }
+                else if(fit_model==DYFitModel::NbjetBins_ptBins){
+                    subCategories = { EventSubCategory(base_sub_category).SetCutResult(SelectionCut::vlowPt, true),
+                                      EventSubCategory(base_sub_category).SetCutResult(SelectionCut::lowPt, true),
+                                      EventSubCategory(base_sub_category).SetCutResult(SelectionCut::medPt, true),
+                                      EventSubCategory(base_sub_category).SetCutResult(SelectionCut::highPt, true)};
+                    for(int pt : pt_points){
+                        const std::string name = boost::str(boost::format("%1%_%2%b_%3%Pt") % dy_contrib_prefix % nb % pt);
                         contribution_names.push_back(name);
                     }
                 }
@@ -162,7 +193,6 @@ public:
 
         std::map<std::string, std::shared_ptr<RooRealVar>> scale_factor_map;
         for (const std::string& contrib_name: contribution_names){
-            std::cout<<contrib_name<<std::endl;
             //if(contrib_name.find("DY") != std::string::npos){
             //    double value = scale_factor_values[contrib_name].first;
             //    double error = scale_factor_values[contrib_name].second;
@@ -183,19 +213,16 @@ public:
         RooCategory rooCategories("rooCategories","rooCategories") ;
         RooSimultaneous simPdf("simPdf","simultaneous pdf",rooCategories) ;
 
-        for(std::map<EventCategory,std::string>::iterator it=eventCategories.begin(); it!=eventCategories.end(); ++it ){
+        for(const EventCategory& cat : eventCategories_vec){
             for (const EventSubCategory& subCategory : subCategories){
-                EventAnalyzerDataId catId{it->first,subCategory,EventRegion::SignalRegion(),EventEnergyScale::Central};
-                std::string category = it->second;
+                EventAnalyzerDataId catId{cat,subCategory,EventRegion::SignalRegion(),EventEnergyScale::Central};
+                std::string category = GetCategoryName(cat);
                 std::string subcategory= ToString(catId.Get<EventSubCategory>());
                 categories[category+subcategory] = std::make_shared<CategoryModel>(input_file,catId,contribution_names,
                                                                                    args.histo_name(),x,scale_factor_map);
                 EventAnalyzerDataId dataId = catId.Set(data_folder);
-                std::cout<<" dataId = "<<dataId.GetName()<<std::endl;
                 dataCategories[category+subcategory] = root_ext::ReadObject<TH1>(*input_file,dataId.GetName()+ "/" +
                                                                                  args.histo_name());
-
-                std::cout<<"category+subcategory = "<<category+subcategory<<std::endl;
                 rooCategories.defineType((category+subcategory).c_str()) ;
                 categories[category+subcategory]->sum_pdf->Print();
                 simPdf.addPdf(*(categories[category+subcategory]->sum_pdf),(category+subcategory).c_str());
@@ -206,13 +233,13 @@ public:
         RooDataHist combData("combData","combined data",x,rooCategories,dataCategories);
 
         // Perform simultaneous fit
-        //RooFitResult* result = simPdf.fitTo(combData,Extended(kTRUE),Save(),Verbose(false));//,PrintLevel(3)) ;
+        RooFitResult* result = simPdf.fitTo(combData,Extended(kTRUE),Save(),Verbose(false));//,PrintLevel(3)) ;
 
         //Saving Results
         output_file->mkdir(ToString(fit_model).c_str());
         output_file->cd(ToString(fit_model).c_str());
 
-        /*const TMatrixDSym& correaltion_matrix = result->correlationMatrix();
+        const TMatrixDSym& correaltion_matrix = result->correlationMatrix();
         const TMatrixDSym& covariance_matrix = result->covarianceMatrix();
         int nRows = covariance_matrix.GetNrows();
         int nColumns = covariance_matrix.GetNcols();
@@ -227,17 +254,17 @@ public:
                 double cor = correaltion_matrix[i][j];
                 cor_hist->SetBinContent(i+1,j+1,cor);
             }
-        }*/
+        }
 
         auto scale_factors_hist = std::make_shared<TH1D>("scale_factors","Scale factors afte the fit",
-                                                                     10,0.5,0.5+10);
+                                                                     nRows,0.5,0.5+nRows);
         int i=1;
         for (const std::string& contrib_name: contribution_names){
             //if(contrib_name != "other_bkg_muMu"){
-                /*cov_hist->GetXaxis()->SetBinLabel(i,contrib_name.c_str());
+                cov_hist->GetXaxis()->SetBinLabel(i,contrib_name.c_str());
                 cov_hist->GetYaxis()->SetBinLabel(i,contrib_name.c_str());
                 cor_hist->GetXaxis()->SetBinLabel(i,contrib_name.c_str());
-                cor_hist->GetYaxis()->SetBinLabel(i,contrib_name.c_str());*/
+                cor_hist->GetYaxis()->SetBinLabel(i,contrib_name.c_str());
             //}
 
             scale_factors_hist->GetXaxis()->SetBinLabel(i,contrib_name.c_str());
@@ -246,27 +273,32 @@ public:
             i++;
             //}
         }
-        //cov_hist->Write();
-        //cor_hist->Write();
+        cov_hist->Write();
+        cor_hist->Write();
         scale_factors_hist->Write();
 
         //Plotting
-        /*for(std::map<EventCategory,std::string>::iterator it=eventCategories.begin(); it != eventCategories.end(); ++it){
+        for(auto& cat : eventCategories_vec){
             for(const EventSubCategory& sub_cat: subCategories){
-                TCanvas* c = new TCanvas(("fit_"+it->second+"_"+ToString(sub_cat)).c_str(),
-                                     ("fit in eventCategory " + it->second + ToString(sub_cat)).c_str(),800,400) ;
+                TCanvas* c = new TCanvas(("fit_"+GetCategoryName(cat)+"_"+ToString(sub_cat)).c_str(),
+                                     ("fit in eventCategory " + GetCategoryName(cat) + ToString(sub_cat)).c_str(),800,400) ;
                 RooPlot* frame = x.frame() ;
-                simPdf.getPdf((it->second+ToString(sub_cat)).c_str())->Print();
+                //simPdf.getPdf((it->second+ToString(sub_cat)).c_str())->Print();
                 //std::cout<<" RooCategory cat = "<<ToString(cat)<<std::endl;
                 combData.plotOn(frame,Cut((static_cast<std::string>("rooCategories==rooCategories::")+
-                                    it->second+ToString(sub_cat)).c_str())) ;
-                simPdf.plotOn(frame,Slice(rooCategories,(it->second+ToString(sub_cat)).c_str()),
+                                    GetCategoryName(cat)+ToString(sub_cat)).c_str())) ;
+                simPdf.plotOn(frame,Slice(rooCategories,(GetCategoryName(cat)+ToString(sub_cat)).c_str()),
                                   ProjWData(rooCategories,combData)) ;
-                simPdf.plotOn(frame,Slice(rooCategories,(it->second+ToString(sub_cat)).c_str()),
-                              Components((static_cast<std::string>("expdf_")+ToString(it->first)+
+                simPdf.plotOn(frame,Slice(rooCategories,(GetCategoryName(cat)+ToString(sub_cat)).c_str()),
+                              Components((static_cast<std::string>("expdf_")+GetCategoryName(cat)+
                                                    static_cast<std::string>("_")+ToString(sub_cat) +
-                                                   static_cast<std::string>("_DY_MC_0b_0Jet")).c_str()),
-                            ProjWData(rooCategories,combData),LineStyle(kDashed)) ;
+                                                   static_cast<std::string>("_other_bkg_muMu")).c_str()),
+                                ProjWData(rooCategories,combData),LineStyle(kDashed)) ;
+                /*simPdf.plotOn(frame,Slice(rooCategories,(GetCategoryName(cat)+ToString(sub_cat)).c_str()),
+                              Components((static_cast<std::string>("expdf_")+GetCategoryName(cat)+
+                                                   static_cast<std::string>("_")+ToString(sub_cat) +
+                                                   static_cast<std::string>("_QCD")).c_str()),
+                                ProjWData(rooCategories,combData),LineColor(kBlack),LineStyle(kDashed)) ;*/
 
                 gPad->SetLeftMargin(0.15) ; frame->GetYaxis()->SetTitleOffset(static_cast<float>(1.4)) ; frame->Draw() ;
 
@@ -277,7 +309,7 @@ public:
                 tex->SetTextSize(0.06);
                 tex->Draw();
 
-                tex = new TLatex(0.87,   0.76,it->second.c_str());
+                tex = new TLatex(0.87,   0.76,GetCategoryName(cat).c_str());
                 tex->SetNDC(true);
                 tex->SetTextFont(52);
                 tex->SetTextAlign(31);
@@ -300,8 +332,8 @@ public:
 
                 c->Write();
             }
-        }*/
-        TCanvas* c = new TCanvas("fit_","fit in eventCategory ",800,400) ;
+        }
+        /*TCanvas* c = new TCanvas("fit_","fit in eventCategory ",800,400) ;
         RooPlot* frame = x.frame();
         simPdf.getPdf("2j2bmh_lowMET")->Print();
         simPdf.getPdf("2j2bmh_lowMET")->plotOn(frame,Components("expdf_2j2b+_mh_lowMET_other_bkg_muMu"));
@@ -309,7 +341,7 @@ public:
         simPdf.getPdf("2j1bmh_lowMET")->plotOn(frame,Components("expdf_2j1b_mh_lowMET_other_bkg_muMu"),LineColor(kBlack));
         frame->Draw();
         c->Write();
-        output_file->Close();
+        output_file->Close();*/
   }
 
 private:
@@ -318,9 +350,9 @@ private:
     //X axis
     RooRealVar x;
 
-    std::map<EventCategory,std::string> eventCategories{ { EventCategory::Parse("2j0b"), "2j0b" },
-                                                         { EventCategory::Parse("2j1b"), "2j1b" },
-                                                         { EventCategory::Parse("2j2b+"), "2j2b" } };
+
+    std::vector<EventCategory> eventCategories_vec{ EventCategory::Parse("2j0b"), EventCategory::Parse("2j1b"), EventCategory::Parse("2j2b+") };
+
     std::vector<EventSubCategory> subCategories;
 
     std::vector<std::string> contribution_names;
