@@ -204,19 +204,21 @@ void DYModel::ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& 
     const auto finalId = anaDataId.Set(sample_wp.full_name);
     double norm_sf = 1;
 
-    if(fit_method == DYFitModel::NbjetBins)
-        norm_sf = scale_factor_maps.at(sample_wp.full_name);
-    else if(fit_method == DYFitModel::NbjetBins_htBins){
-        if(ht_found) norm_sf = scale_factor_maps.at(sample_wp.full_name);
-        else norm_sf = scale_factor_maps.at(sample_wp.full_name+"_"+ToString(it->first.second)+HT_suffix());
-    }
-    else if(fit_method == DYFitModel::NbjetBins_NjetBins){
-        if(jet_found) norm_sf = scale_factor_maps.at(sample_wp.full_name);
-        else norm_sf = scale_factor_maps.at(sample_wp.full_name+"_"+ToString(it->first.second)+NJet_suffix());
-    }
-    else if(fit_method == DYFitModel::NbjetBins_ptBins){
-        if(pt_found) norm_sf = scale_factor_maps.at(sample_wp.full_name);
-        else norm_sf = scale_factor_maps.at(sample_wp.full_name+"_"+ToString(it->first.second)+Pt_suffix());
+    if(event.HasBjetPair()){
+        if(fit_method == DYFitModel::NbjetBins)
+            norm_sf = scale_factor_maps.at(sample_wp.full_name);
+        else if(fit_method == DYFitModel::NbjetBins_htBins){
+            if(ht_found) norm_sf = scale_factor_maps.at(sample_wp.full_name);
+            else norm_sf = scale_factor_maps.at(sample_wp.full_name+"_"+ToString(it->first.second)+HT_suffix());
+        }
+        else if(fit_method == DYFitModel::NbjetBins_NjetBins){
+            if(jet_found) norm_sf = scale_factor_maps.at(sample_wp.full_name);
+            else norm_sf = scale_factor_maps.at(sample_wp.full_name+"_"+ToString(it->first.second)+NJet_suffix());
+        }
+        else if(fit_method == DYFitModel::NbjetBins_ptBins){
+            if(pt_found) norm_sf = scale_factor_maps.at(sample_wp.full_name);
+            else norm_sf = scale_factor_maps.at(sample_wp.full_name+"_"+ToString(it->first.second)+Pt_suffix());
+        }
     }
     dataIds[finalId] = std::make_tuple(weight * norm_sf, event.GetMvaScore());
 }
