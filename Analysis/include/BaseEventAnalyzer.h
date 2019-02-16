@@ -99,7 +99,6 @@ public:
                  dymod = std::make_shared<DYModel>(sample,args.working_path());
         }
         tauIdWeight = std::make_shared<mc_corrections::TauIdWeight2017>();
-
     }
 
     void Run()
@@ -270,14 +269,6 @@ protected:
                             dataIds[anaDataId] = std::make_tuple(1., mva_score);
                         } else {
 
-                            // auto weight_tauIdIso = tauIdWeight->GetIdIsoSF(event->p4_1, static_cast<GenMatch>(event->gen_match_1),
-                            //                                        event->decayMode_1, DiscriminatorWP::VLoose,
-                            //                                        DiscriminatorWP::Loose,  DiscriminatorWP::Medium) *
-                            //                                        tauIdWeight->GetIdIsoSF(event->p4_2,
-                            //                                        static_cast<GenMatch>(event->gen_match_2),
-                            //                                        event->decayMode_2,DiscriminatorWP::VLoose,
-                            //                                        DiscriminatorWP::Loose, DiscriminatorWP::Medium);
-
                             double tau_iso_1 = tauIdWeight->getTauIso(DiscriminatorWP::Medium,
                                                                        static_cast<GenMatch>(event->gen_match_1)).GetValue();
                             double tau_iso_2 = tauIdWeight->getTauIso(DiscriminatorWP::Medium,
@@ -319,7 +310,6 @@ protected:
     {
         if(sample.sampleType == SampleType::DY) {
             dymod->ProcessEvent(anaDataId,event,weight,dataIds);
-
         } else if(sample.sampleType == SampleType::TT) {
             dataIds[anaDataId] = std::make_tuple(weight, event.GetMvaScore());
             if(anaDataId.Get<EventEnergyScale>() == EventEnergyScale::Central) {

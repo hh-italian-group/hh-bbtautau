@@ -203,7 +203,6 @@ public:
             else norm_sf = scale_factor_maps.at(sample_wp.full_name+"_"+ToString(it->first.second)+NJet_suffix());
         }
         dataIds[finalId] = std::make_tuple(weight * norm_sf, event.GetMvaScore());
-
     }
 
     template<typename T>
