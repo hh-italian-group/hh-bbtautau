@@ -2,9 +2,10 @@
 This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include "AnalysisTools/Run/include/program_main.h"
-#include "TEfficiency.h"
+#include <TEfficiency.h>
 #include <TCanvas.h>
-#include <exception.h>
+#include <TLatex.h>
+#include <TStyle.h>
 #include "AnalysisTools/Print/include/PdfPrinter.h"
 
 struct Arguments {

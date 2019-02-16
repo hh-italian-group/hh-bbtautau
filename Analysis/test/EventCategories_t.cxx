@@ -3,7 +3,7 @@ This file is part of https://github.com/hh-italian-group/AnalysisTools. */
 
 #include <iostream>
 #include "hh-bbtautau/Analysis/include/AnalysisCategories.h"
-#include "h-tautau/Analysis/include/AnalysisTypes.h"
+#include "h-tautau/Core/include/AnalysisTypes.h"
 
 #define BOOST_TEST_MODULE EventCategories_t
 #define BOOST_TEST_DYN_LINK

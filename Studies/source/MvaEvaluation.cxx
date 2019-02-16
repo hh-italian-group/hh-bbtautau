@@ -2,14 +2,14 @@
 This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include "AnalysisTools/Run/include/program_main.h"
-#include "h-tautau/Analysis/include/EventTuple.h"
+#include "h-tautau/Core/include/EventTuple.h"
 #include "AnalysisTools/Core/include/exception.h"
 #include "AnalysisTools/Core/include/AnalyzerData.h"
-#include "hh-bbtautau/Studies/include/MvaConfiguration.h"
+#include "hh-bbtautau/Analysis/include/MvaConfiguration.h"
 #include "hh-bbtautau/Analysis/include/MvaVariables.h"
 #include "h-tautau/Cuts/include/Btag_2016.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
-#include "h-tautau/Analysis/include/AnalysisTypes.h"
+#include "h-tautau/Core/include/AnalysisTypes.h"
 #include "AnalysisTools/Core/include/NumericPrimitives.h"
 #include "AnalysisTools/Core/include/AnalysisMath.h"
 #include "TMVA/Factory.h"
@@ -26,10 +26,11 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "TMVA/MethodCategory.h"
 #include "TMVA/ResultsClassification.h"
 #include "TMVA/ROCCurve.h"
-#include "TMath.h"
+#include <TMath.h>
+#include <TGraphErrors.h>
 #include <fstream>
 #include <random>
-#include "hh-bbtautau/Analysis/include/MvaConfigurationReader.h"
+#include "hh-bbtautau/Analysis/include/MvaConfigReader.h"
 #include "hh-bbtautau/Analysis/include/MvaReader.h"
 #include "hh-bbtautau/Studies/include/MvaTuple.h"
 #include "hh-bbtautau/Studies/include/MvaVariablesStudy.h"
@@ -114,7 +115,7 @@ public:
 
     void CreateOutputHistos(std::map<ChannelSampleIdSpin, std::map<size_t, std::vector<double>>> data, BDTData::Entry& outputBDT)
     {
-        for(const auto& sample : data){           
+        for(const auto& sample : data){
             for(const auto& entry : sample.second){
                 std::vector<BDTData::Hist*> outs = { &outputBDT(sample.first.channel, sample.first.sample_id, sample.first.spin, entry.first)};
                 for (const auto& value : entry.second){
@@ -416,7 +417,3 @@ private:
 }
 
 PROGRAM_MAIN(analysis::mva_study::MVAEvaluation, Arguments) // definition of the main program function
-
-
-
-

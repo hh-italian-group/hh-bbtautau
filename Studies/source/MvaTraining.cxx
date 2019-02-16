@@ -2,14 +2,14 @@
 This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include "AnalysisTools/Run/include/program_main.h"
-#include "h-tautau/Analysis/include/EventTuple.h"
+#include "h-tautau/Core/include/EventTuple.h"
 #include "AnalysisTools/Core/include/exception.h"
 #include "AnalysisTools/Core/include/AnalyzerData.h"
-#include "hh-bbtautau/Studies/include/MvaConfiguration.h"
+#include "hh-bbtautau/Analysis/include/MvaConfiguration.h"
 #include "hh-bbtautau/Analysis/include/MvaVariables.h"
 #include "h-tautau/Cuts/include/Btag_2016.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
-#include "h-tautau/Analysis/include/AnalysisTypes.h"
+#include "h-tautau/Core/include/AnalysisTypes.h"
 #include "AnalysisTools/Core/include/NumericPrimitives.h"
 #include "AnalysisTools/Core/include/AnalysisMath.h"
 #include "TMVA/Factory.h"
@@ -33,7 +33,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/filtering_streambuf.hpp>
-#include "hh-bbtautau/Analysis/include/MvaConfigurationReader.h"
+#include "hh-bbtautau/Analysis/include/MvaConfigReader.h"
 #include "hh-bbtautau/Studies/include/MvaTuple.h"
 #include "hh-bbtautau/Studies/include/MvaVariablesStudy.h"
 #include "hh-bbtautau/Studies/include/MvaMethods.h"
@@ -265,7 +265,7 @@ public:
           for( itrMethod = methods->begin(); itrMethod != methods->end(); itrMethod++ ) {
               TMVA::Event::SetIsTraining(kTRUE);
               TMVA::MethodBase* mva = dynamic_cast<TMVA::MethodBase*>(*itrMethod);
-              if (mva==0)
+              if (!mva)
                   throw exception("Method not found.");
               if (mva->DataInfo().GetNClasses() < 2 )
                   throw exception("You want to do classification training, but specified less than two classes.");
@@ -502,7 +502,7 @@ public:
                     }
 
                     if (!args.is_SM() && args.is_BSM())
-                        throw exception("Impossible to reweight events in different benchmark scenario if you don't use SM sample");                    
+                        throw exception("Impossible to reweight events in different benchmark scenario if you don't use SM sample");
 
                     if (entry.id.IsBackground()) {
                         std::pair<int,int> pair_mass_spin;
