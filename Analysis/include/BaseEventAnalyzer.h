@@ -278,17 +278,23 @@ protected:
                             //                                        event->decayMode_2,DiscriminatorWP::VLoose,
                             //                                        DiscriminatorWP::Loose, DiscriminatorWP::Medium);
 
-                            auto weight_tauIso = tauIdWeight->getTauIso(DiscriminatorWP::Medium,static_cast<GenMatch>(event->gen_match_1)).GetValue();
+                            double tau_iso_1 = tauIdWeight->getTauIso(DiscriminatorWP::Medium,
+                                                                       static_cast<GenMatch>(event->gen_match_1)).GetValue();
+                            double tau_iso_2 = tauIdWeight->getTauIso(DiscriminatorWP::Medium,
+                                                                       static_cast<GenMatch>(event->gen_match_2)).GetValue();
 
-                            double ChiaraSF = 1;
-                            if((static_cast<GenMatch>(event->gen_match_1) == GenMatch::Tau) && (static_cast<GenMatch>(event->gen_match_2) == GenMatch::Tau)){
-                                if(decay_SF_map.count(event->decayMode_1) &&  decay_SF_map.count(event->decayMode_2)){
-                                    ChiaraSF = decay_SF_map[event->decayMode_1];
-                                    std::cout << "decay_mode: " <<  event->decayMode_1 << "SF: " <<  decay_SF_map[event->decayMode_1]<< '\n';
-                                }
-                            }
-                            const double weight = ((event->weight_total * sample.cross_section * ana_setup.int_lumi * ChiaraSF)
-                                                / (summary->totalShapeWeight * weight_tauIso )) * mva_weight_scale ;
+                            double weight_tau_iso_pog = tau_iso_1 * tau_iso_2;
+
+                            double tau_id_dm_1 = tauIdWeight->tauIdForDM(static_cast<GenMatch>(event->gen_match_1),
+                                                                         event->decayMode_1).GetValue();
+                            double tau_id_dm_2 = tauIdWeight->tauIdForDM(static_cast<GenMatch>(event->gen_match_2),
+                                                                         event->decayMode_2).GetValue();
+
+                            auto weight_tau_id_dm = tau_id_dm_1 * tau_id_dm_2;
+
+
+                            const double weight = ((event->weight_total * sample.cross_section * ana_setup.int_lumi * weight_tau_id_dm )
+                                                / (summary->totalShapeWeight * weight_tau_iso_pog )) * mva_weight_scale ;
 
                             if(sample.sampleType == SampleType::MC) {
                                 dataIds[anaDataId] = std::make_tuple(weight, mva_score);
