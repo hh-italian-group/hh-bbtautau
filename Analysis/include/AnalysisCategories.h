@@ -109,8 +109,8 @@ std::istream& operator>>(std::istream& is, EventCategory& eventCategory);
 #define MVA_CUT_LIST(first, count) BOOST_PP_REPEAT(count, DECL_MVA_SEL, first)
 
 enum class SelectionCut { mh = 0, mhVis = 1, mhMET = 2, KinematicFitConverged = 3, lowMET = 4, lowHT = 5, medHT = 6, highHT = 7,
-                          vlowPt_NLO = 8, lowPt_NLO = 9, medPt_NLO = 10, highPt_NLO = 11, mtt = 12, vlowPt_LO = 13, lowPt_LO = 14,
-                          medPt1_LO = 15, medPt2_LO = 16, highPt_LO = 17, vhighPt_LO = 18,
+                          vlowPtNLO = 8, lowPtNLO = 9, medPtNLO = 10, highPtNLO = 11, mtt = 12, vlowPtLO = 13, lowPtLO = 14,
+                          medPt1LO = 15, medPt2LO = 16, highPtLO = 17, vhighPtLO = 18,
                           MVA_CUT_LIST(19, 100) MVA_first = MVA0, MVA_last = MVA99 };
 
 #undef MVA_CUT_LIST
@@ -128,16 +128,16 @@ inline std::map<SelectionCut, std::string> CreateSelectionCutNames()
     names[SelectionCut::lowHT] = "lowHT";
     names[SelectionCut::medHT] = "medHT";
     names[SelectionCut::highHT] = "highHT";
-    names[SelectionCut::vlowPt_NLO] = "vlowPt_NLO";
-    names[SelectionCut::lowPt_NLO] = "lowPt_NLO";
-    names[SelectionCut::medPt_NLO] = "medPt_NLO";
-    names[SelectionCut::highPt_NLO] = "highPt_NLO";
-    names[SelectionCut::vlowPt_LO] = "vlowPt_LO";
-    names[SelectionCut::lowPt_LO] = "lowPt_LO";
-    names[SelectionCut::medPt1_LO] = "medPt1_LO";
-    names[SelectionCut::medPt2_LO] = "medPt2_LO";
-    names[SelectionCut::highPt_LO] = "highPt_LO";
-    names[SelectionCut::vhighPt_LO] = "vhighPt_LO";
+    names[SelectionCut::vlowPtNLO] = "vlowPtNLO";
+    names[SelectionCut::lowPtNLO] = "lowPtNLO";
+    names[SelectionCut::medPtNLO] = "medPtNLO";
+    names[SelectionCut::highPtNLO] = "highPtNLO";
+    names[SelectionCut::vlowPtLO] = "vlowPtLO";
+    names[SelectionCut::lowPtLO] = "lowPtLO";
+    names[SelectionCut::medPt1LO] = "medPt1LO";
+    names[SelectionCut::medPt2LO] = "medPt2LO";
+    names[SelectionCut::highPtLO] = "highPtLO";
+    names[SelectionCut::vhighPtLO] = "vhighPtLO";
     names[SelectionCut::mtt] = "mtt";
     const size_t MVA_first_index = static_cast<size_t>(SelectionCut::MVA_first);
     const size_t MVA_last_index = static_cast<size_t>(SelectionCut::MVA_last);

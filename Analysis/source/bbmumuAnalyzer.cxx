@@ -87,22 +87,22 @@ protected:
         sub_category.SetCutResult(SelectionCut::lowHT, event->ht_other_jets <= 20);
         sub_category.SetCutResult(SelectionCut::medHT,  event->ht_other_jets > 20 && event->ht_other_jets <= 250);
         sub_category.SetCutResult(SelectionCut::highHT, event->ht_other_jets > 250);
-        sub_category.SetCutResult(SelectionCut::vlowPt_NLO, event.GetHiggsTTMomentum(false).Pt() <= 20);
-        sub_category.SetCutResult(SelectionCut::lowPt_NLO,  event.GetHiggsTTMomentum(false).Pt() > 20 &&
+        sub_category.SetCutResult(SelectionCut::vlowPtNLO, event.GetHiggsTTMomentum(false).Pt() <= 20);
+        sub_category.SetCutResult(SelectionCut::lowPtNLO,  event.GetHiggsTTMomentum(false).Pt() > 20 &&
                                                         event.GetHiggsTTMomentum(false).Pt() <= 40);
-        sub_category.SetCutResult(SelectionCut::medPt_NLO, event.GetHiggsTTMomentum(false).Pt() > 40 &&
+        sub_category.SetCutResult(SelectionCut::medPtNLO, event.GetHiggsTTMomentum(false).Pt() > 40 &&
                                                         event.GetHiggsTTMomentum(false).Pt() <= 100);
-        sub_category.SetCutResult(SelectionCut::highPt_NLO, event.GetHiggsTTMomentum(false).Pt() > 100);
-        sub_category.SetCutResult(SelectionCut::vlowPt_LO, event.GetHiggsTTMomentum(false).Pt() <= 10);
-        sub_category.SetCutResult(SelectionCut::lowPt_LO, event.GetHiggsTTMomentum(false).Pt() > 10 &&
+        sub_category.SetCutResult(SelectionCut::highPtNLO, event.GetHiggsTTMomentum(false).Pt() > 100);
+        sub_category.SetCutResult(SelectionCut::vlowPtLO, event.GetHiggsTTMomentum(false).Pt() <= 10);
+        sub_category.SetCutResult(SelectionCut::lowPtLO, event.GetHiggsTTMomentum(false).Pt() > 10 &&
                                                         event.GetHiggsTTMomentum(false).Pt() <= 30);
-        sub_category.SetCutResult(SelectionCut::medPt1_LO, event.GetHiggsTTMomentum(false).Pt() > 30 &&
+        sub_category.SetCutResult(SelectionCut::medPt1LO, event.GetHiggsTTMomentum(false).Pt() > 30 &&
                                                         event.GetHiggsTTMomentum(false).Pt() <= 50);
-        sub_category.SetCutResult(SelectionCut::medPt2_LO, event.GetHiggsTTMomentum(false).Pt() > 50 &&
+        sub_category.SetCutResult(SelectionCut::medPt2LO, event.GetHiggsTTMomentum(false).Pt() > 50 &&
                                                         event.GetHiggsTTMomentum(false).Pt() <= 100);
-        sub_category.SetCutResult(SelectionCut::highPt_LO, event.GetHiggsTTMomentum(false).Pt() > 100 &&
+        sub_category.SetCutResult(SelectionCut::highPtLO, event.GetHiggsTTMomentum(false).Pt() > 100 &&
                                                         event.GetHiggsTTMomentum(false).Pt() <= 200);
-        sub_category.SetCutResult(SelectionCut::vhighPt_LO, event.GetHiggsTTMomentum(false).Pt() > 200);
+        sub_category.SetCutResult(SelectionCut::vhighPtLO, event.GetHiggsTTMomentum(false).Pt() > 200);
         sub_category.SetCutResult(SelectionCut::mtt, mass_muMu > 60);
 
         return sub_category;
