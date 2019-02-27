@@ -109,7 +109,9 @@ std::istream& operator>>(std::istream& is, EventCategory& eventCategory);
 #define MVA_CUT_LIST(first, count) BOOST_PP_REPEAT(count, DECL_MVA_SEL, first)
 
 enum class SelectionCut { mh = 0, mhVis = 1, mhMET = 2, KinematicFitConverged = 3, lowMET = 4, lowHT = 5, medHT = 6, highHT = 7,
-                          vlowPt = 8, lowPt = 9, medPt = 10, highPt = 11, mtt = 12, MVA_CUT_LIST(13, 100) MVA_first = MVA0, MVA_last = MVA99 };
+                          vlowPt_NLO = 8, lowPt_NLO = 9, medPt_NLO = 10, highPt_NLO = 11, mtt = 12, vlowPt_LO = 13, lowPt_LO = 14,
+                          medPt1_LO = 15, medPt2_LO = 16, highPt_LO = 17, vhighPt_LO = 18,
+                          MVA_CUT_LIST(19, 100) MVA_first = MVA0, MVA_last = MVA99 };
 
 #undef MVA_CUT_LIST
 #undef DECL_MVA_SEL
@@ -126,10 +128,16 @@ inline std::map<SelectionCut, std::string> CreateSelectionCutNames()
     names[SelectionCut::lowHT] = "lowHT";
     names[SelectionCut::medHT] = "medHT";
     names[SelectionCut::highHT] = "highHT";
-    names[SelectionCut::vlowPt] = "vlowPt";
-    names[SelectionCut::lowPt] = "lowPt";
-    names[SelectionCut::medPt] = "medPt";
-    names[SelectionCut::highPt] = "highPt";
+    names[SelectionCut::vlowPt_NLO] = "vlowPt_NLO";
+    names[SelectionCut::lowPt_NLO] = "lowPt_NLO";
+    names[SelectionCut::medPt_NLO] = "medPt_NLO";
+    names[SelectionCut::highPt_NLO] = "highPt_NLO";
+    names[SelectionCut::vlowPt_LO] = "vlowPt_LO";
+    names[SelectionCut::lowPt_LO] = "lowPt_LO";
+    names[SelectionCut::medPt1_LO] = "medPt1_LO";
+    names[SelectionCut::medPt2_LO] = "medPt2_LO";
+    names[SelectionCut::highPt_LO] = "highPt_LO";
+    names[SelectionCut::vhighPt_LO] = "vhighPt_LO";
     names[SelectionCut::mtt] = "mtt";
     const size_t MVA_first_index = static_cast<size_t>(SelectionCut::MVA_first);
     const size_t MVA_last_index = static_cast<size_t>(SelectionCut::MVA_last);
