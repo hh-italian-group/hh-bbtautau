@@ -69,9 +69,10 @@ DYModel::DYModel(const SampleDescriptor& sample,const std::string& working_path)
         for(int i=1; i<=nbins;i++){
             std::string scale_factor_name = scale_factor_histo->GetXaxis()->GetBinLabel(i);
             double value = scale_factor_histo->GetBinContent(i);
-            if(!scale_factor_name.empty()){
+            if(scale_factor_name.find("DY") != std::string::npos){
                 std::string sf_prefix = "SF_";
-                scale_factor_name.insert(7,sf_prefix);
+                if(sampleOrder == "NLO") scale_factor_name.insert(7,sf_prefix);
+                else if(sampleOrder == "LO") scale_factor_name.insert(6,sf_prefix);
                 scale_factor_maps[scale_factor_name] = value;
             }
         }
