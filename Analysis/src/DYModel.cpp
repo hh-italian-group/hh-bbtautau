@@ -71,8 +71,8 @@ DYModel::DYModel(const SampleDescriptor& sample,const std::string& working_path)
             double value = scale_factor_histo->GetBinContent(i);
             if(scale_factor_name.find("DY") != std::string::npos){
                 std::string sf_prefix = "SF_";
-                if(sampleOrder == "NLO") scale_factor_name.insert(7,sf_prefix);
-                else if(sampleOrder == "LO") scale_factor_name.insert(6,sf_prefix);
+                if(scale_factor_name.find("DY_nlo") != std::string::npos) scale_factor_name.insert(7,sf_prefix);
+                else if(scale_factor_name.find("DY_lo") != std::string::npos) scale_factor_name.insert(6,sf_prefix);
                 scale_factor_maps[scale_factor_name] = value;
             }
         }
