@@ -250,13 +250,12 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                         auto weight_tau_id_dm = tau_id_dm_1 * tau_id_dm_2;
 
 
-                        const double weight = (((*event)->weight_total * sample.cross_section * ana_setup.int_lumi)
-                               / (summary->totalShapeWeight )) * mva_weight_scale ;
+                        // const double weight = (((*event)->weight_total * sample.cross_section * ana_setup.int_lumi)
+                        //        / (summary->totalShapeWeight )) * mva_weight_scale ;
 
 
-
-                        // const double weight = (*event)->weight_total * sample.cross_section * ana_setup.int_lumi
-                        //                     / summary->totalShapeWeight * mva_weight_scale;
+                        const double weight = (*event)->weight_total * sample.cross_section * ana_setup.int_lumi
+                                            / summary->totalShapeWeight * mva_weight_scale;
                         if(sample.sampleType == SampleType::MC) {
                             dataIds[anaDataId] = std::make_tuple(weight, mva_score);
                         } else
