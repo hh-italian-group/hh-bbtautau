@@ -185,6 +185,9 @@ void DYModel::ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& 
     }
     else if(pt_found){
         double gen_pt = 0;
+        if(event->genParticles_p4.size() == 0){
+            if(event->gen_match_1 == 2 && event->gen_match_2 == 2) gen_pt = (event->gen_p4_1 + event->gen_p4_2).Pt();
+        }
         for(size_t i=0;i<event->genParticles_p4.size();i++){
             if(event->genParticles_pdg.at(i) != 23) continue;
             gen_pt = event->genParticles_p4.at(i).Pt();
@@ -193,7 +196,6 @@ void DYModel::ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& 
         size_t pt_wp = Get2WP(gen_pt,pt_wp_set);
         p.second = pt_wp;
     }
-
 
     std::map<std::pair<size_t,size_t>,SampleDescriptorBase::Point>::iterator it = working_points_map.find(p);
     if(it == working_points_map.end())
