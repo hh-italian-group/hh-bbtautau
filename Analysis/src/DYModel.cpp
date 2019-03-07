@@ -187,12 +187,14 @@ void DYModel::ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& 
         double gen_pt;
         if(sampleOrder == "LO") gen_pt= 0;
         else if (sampleOrder == "NLO") gen_pt=25;
+        bool Z_found =false;
         for(size_t i=0;i<event->genParticles_p4.size();i++){
             if(event->genParticles_pdg.at(i) != 23) continue;
             gen_pt = event->genParticles_p4.at(i).Pt();
+            Z_found = true;
             break;
         }
-        if(event->genParticles_p4.size() == 0){
+        if(!Z_found){
             if(event->gen_match_1 == 2 && event->gen_match_2 == 2) gen_pt = (event->gen_p4_1 + event->gen_p4_2).Pt();
         }
         size_t pt_wp = Get2WP(gen_pt,pt_wp_set);
