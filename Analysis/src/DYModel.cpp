@@ -194,8 +194,9 @@ void DYModel::ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& 
             Z_found = true;
             break;
         }
+        int gen_match_muon = static_cast<int>(GenMatch::Muon);
         if(!Z_found){
-            if(event->gen_match_1 == 2 && event->gen_match_2 == 2) gen_pt = (event->gen_p4_1 + event->gen_p4_2).Pt();
+            if(event->gen_match_1 == gen_match_muon && event->gen_match_2 == gen_match_muon) gen_pt = (event->gen_p4_1 + event->gen_p4_2).Pt();
         }
         size_t pt_wp = Get2WP(gen_pt,pt_wp_set);
         p.second = pt_wp;
