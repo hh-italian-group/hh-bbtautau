@@ -118,7 +118,7 @@ void DYModel::ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& 
     auto n_selected_gen_jets = event->lhe_n_partons;
     size_t n_bJets = event->lhe_n_b_partons;
 
-    if(sampleOrder == "LO"){
+    /*if(sampleOrder == "LO"){
         std::string lhe_category = "";
         if(n_selected_gen_jets==0) lhe_category = "0Jet";
         else if (n_selected_gen_jets == 1){
@@ -143,7 +143,7 @@ void DYModel::ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& 
             }
         }
         weight = weight*fractional_weight*pt_weight;
-    }
+    }*/
 
 
     //unsigned int n_bJets = event->jets_nTotal_hadronFlavour_b;
@@ -184,14 +184,16 @@ void DYModel::ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& 
         p.second = njet_wp;
     }
     else if(pt_found){
-        double gen_pt = 0;
-        if(event->genParticles_p4.size() == 0){
-            if(event->gen_match_1 == 2 && event->gen_match_2 == 2) gen_pt = (event->gen_p4_1 + event->gen_p4_2).Pt();
-        }
+        double gen_pt;
+        if(sampleOrder == "LO") gen_pt= 0;
+        else if (sampleOrder == "NLO") gen_pt=25;
         for(size_t i=0;i<event->genParticles_p4.size();i++){
             if(event->genParticles_pdg.at(i) != 23) continue;
             gen_pt = event->genParticles_p4.at(i).Pt();
             break;
+        }
+        if(event->genParticles_p4.size() == 0){
+            if(event->gen_match_1 == 2 && event->gen_match_2 == 2) gen_pt = (event->gen_p4_1 + event->gen_p4_2).Pt();
         }
         size_t pt_wp = Get2WP(gen_pt,pt_wp_set);
         p.second = pt_wp;
