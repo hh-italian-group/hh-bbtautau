@@ -66,8 +66,8 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfoBase& even
         jets_to_exclude.insert(event.GetVBFJet(2)->jet_index());
     }
 
-    const auto& jets = event.SelectJets(bTagger->PtCut(), bTagger->EtaCut(), ana_setup.jet_ordering,
-                                        jets_to_exclude);
+    const auto& jets = event.SelectJets(bTagger->PtCut(), bTagger->EtaCut(), false, false, false, false,
+                                        ana_setup.jet_ordering, jets_to_exclude);
     std::map<DiscriminatorWP, size_t> bjet_counts = btag_working_points;
 
     for(const auto& jet : jets) {
@@ -235,24 +235,23 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                         dataIds[anaDataId] = std::make_tuple(1., mva_score);
                     } else {
 
-                        double tau_iso_1 = tauIdWeight->getTauIso(DiscriminatorWP::Medium,
-                                                      static_cast<GenMatch>((*event)->gen_match_1)).GetValue();
-                        double tau_iso_2 = tauIdWeight->getTauIso(DiscriminatorWP::Medium,
-                                                                  static_cast<GenMatch>((*event)->gen_match_2)).GetValue();
-
-                        double weight_tau_iso_pog = tau_iso_1 * tau_iso_2;
-
-                        double tau_id_dm_1 = tauIdWeight->tauIdForDM(static_cast<GenMatch>((*event)->gen_match_1),
-                                                                    (*event)->decayMode_1).GetValue();
-                        double tau_id_dm_2 = tauIdWeight->tauIdForDM(static_cast<GenMatch>((*event)->gen_match_2),
-                                                                    (*event)->decayMode_2).GetValue();
-
-                        auto weight_tau_id_dm = tau_id_dm_1 * tau_id_dm_2;
+                        // double tau_iso_1 = tauIdWeight->getTauIso(DiscriminatorWP::Medium,
+                        //                               static_cast<GenMatch>((*event)->gen_match_1)).GetValue();
+                        // double tau_iso_2 = tauIdWeight->getTauIso(DiscriminatorWP::Medium,
+                        //                                           static_cast<GenMatch>((*event)->gen_match_2)).GetValue();
+                        //
+                        // double weight_tau_iso_pog = tau_iso_1 * tau_iso_2;
+                        //
+                        // double tau_id_dm_1 = tauIdWeight->tauIdForDM(static_cast<GenMatch>((*event)->gen_match_1),
+                        //                                             (*event)->decayMode_1).GetValue();
+                        // double tau_id_dm_2 = tauIdWeight->tauIdForDM(static_cast<GenMatch>((*event)->gen_match_2),
+                        //                                             (*event)->decayMode_2).GetValue();
+                        //
+                        // auto weight_tau_id_dm = tau_id_dm_1 * tau_id_dm_2;
 
 
                         // const double weight = (((*event)->weight_total * sample.cross_section * ana_setup.int_lumi)
                         //        / (summary->totalShapeWeight )) * mva_weight_scale ;
-
 
                         const double weight = (*event)->weight_total * sample.cross_section * ana_setup.int_lumi
                                             / summary->totalShapeWeight * mva_weight_scale;

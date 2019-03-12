@@ -113,7 +113,20 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
     tuple().HT_otherjets_gen = static_cast<float>(event.GetHT(false,true));
     tuple().HT_total_gen = static_cast<float>(event.GetHT(true,true));
 
-    tuple().n_jets = event->n_jets;
+
+    // bool& applyPu,const bool& applyPt, const bool& applyEta, const bool& passBtag
+
+    tuple().n_jets = event.EventInfoBase::SelectJets(20,4).size();
+    tuple().n_jets_pu = event.EventInfoBase::SelectJets(20,4,true).size();
+    tuple().n_jets_eta24 = event.EventInfoBase::SelectJets(20,2.4,false,false,true).size();
+    tuple().n_jets_eta24_pu = event.EventInfoBase::SelectJets(20,2.4,true,false,true).size();
+    tuple().n_jets_pt20 = event.EventInfoBase::SelectJets(30,4.7,false,true,false).size();
+    tuple().n_jets_pt20_pu = event.EventInfoBase::SelectJets(30,4.7,true,true,false).size();
+    tuple().n_jets_eta24_pt30 = event.EventInfoBase::SelectJets(30,2.4,false,true,true).size();
+    tuple().n_jets_eta24_pt30_pu = event.EventInfoBase::SelectJets(30,2.4,true,true,true).size();
+    tuple().n_jets_eta24_pt30_btag = event.EventInfoBase::SelectJets(30,2.4,false,true,true,true).size();
+    tuple().n_jets_eta24_pt30_btag_pu = event.EventInfoBase::SelectJets(30,2.4,true,true,true,true).size();
+
     tuple().n_selected_gen_jets =  event->genJets_p4.size();
     int n_bflavour=0;
     int n_otherflavour=0;

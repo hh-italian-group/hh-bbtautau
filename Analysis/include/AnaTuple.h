@@ -31,7 +31,17 @@ namespace analysis {
              npv, MET, phiMET, pt_MET, m_bb, pt_H_bb, pt_b1, eta_b1, csv_b1, deepcsv_b1, pt_b2, eta_b2, csv_b2, \
              deepcsv_b2, costheta_METhbb, dR_b1b2, dR_b1b2_boosted, HT_otherjets, mass_top1, mass_top2, p_zeta, \
              p_zetavisible, HT_total, HT_otherjets_gen, HT_total_gen, n_selected_gen_jets, n_selected_gen_bjets, \
-             n_selected_gen_notbjets, genJets_nTotal, jets_nTotal_hadronFlavour_b, jets_nTotal_hadronFlavour_c, n_jets, gen_match_1, gen_match_2) \
+             n_selected_gen_notbjets, genJets_nTotal, jets_nTotal_hadronFlavour_b, jets_nTotal_hadronFlavour_c, gen_match_1, gen_match_2) \
+     VAR(float, n_jets) /* mva score */ \
+     VAR(float, n_jets_pu) /* mva score */ \
+     VAR(float, n_jets_eta24) /* mva score */ \
+     VAR(float, n_jets_eta24_pu) /* mva score */ \
+     VAR(float, n_jets_pt20) /* mva score */ \
+     VAR(float, n_jets_pt20_pu) /* mva score */ \
+     VAR(float, n_jets_eta24_pt30) /* mva score */ \
+     VAR(float, n_jets_eta24_pt30_pu) /* mva score */ \
+     VAR(float, n_jets_eta24_pt30_btag) /* mva score */ \
+     VAR(float, n_jets_eta24_pt30_btag_pu) /* mva score */ \
     /**/
 
 #define VAR(type, name) DECLARE_BRANCH_VARIABLE(type, name)
