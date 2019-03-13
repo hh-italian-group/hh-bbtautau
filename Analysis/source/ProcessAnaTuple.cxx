@@ -170,21 +170,21 @@ private:
                     log << anaDataId << ": " << sub_entry.first << " " << hist.first << "\n";
                     const auto osAntiIso_integral = Integral(entry_osAntiIso(hist.first), true);
                     const auto ssAntiIso_integral = Integral(entry_ssAntiIso(hist.first), true);
-                    if (osAntiIso_integral.GetValue() <= 0 || osAntiIso_integral.IsCompatible(PhysicalValue::Zero)){
+                    /*if (osAntiIso_integral.GetValue() <= 0 || osAntiIso_integral.IsCompatible(PhysicalValue::Zero)){
                         log << "Warning: OS Anti Iso integral is too small " << hist.first << std::endl;
                         continue;
-                    }
+                    }*/
 
-                    if (ssAntiIso_integral.GetValue() <= 0 || ssAntiIso_integral.IsCompatible(PhysicalValue::Zero)){
+                    /*if (ssAntiIso_integral.GetValue() <= 0 || ssAntiIso_integral.IsCompatible(PhysicalValue::Zero)){
                         log << "Warning: SS Anti Iso integral is too small " << hist.first << std::endl;
                         continue;
-                    }
-                    const auto k_factor = osAntiIso_integral / ssAntiIso_integral;
+                    }*/
+                    const auto k_factor = 27.2;
                     const auto ssIso_integral = analysis::Integral(*hist.second, true);
-                    if (ssIso_integral.GetValue() <= 0){
+                    /*if (ssIso_integral.GetValue() <= 0){
                         log << "Warning: SS Iso integral less or equal 0 for " << hist.first << std::endl;
                         continue;
-                    }
+                    }*/
                     const auto total_yield = ssIso_integral * k_factor;
                     log << anaDataId << ": osAntiIso integral = " << osAntiIso_integral
                         << ", ssAntiIso integral = " << ssAntiIso_integral << ", os/ss sf = " << k_factor

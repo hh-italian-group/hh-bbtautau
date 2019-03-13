@@ -52,8 +52,8 @@ protected:
         //region.SetLowerIso(DiscriminatorWP::Medium);
         bool muon1_ex=false;
         bool muon2_ex=false;
-        if(muon1.GetIsolation() > 0.15 && muon1.GetIsolation() < 0.5) muon1_ex=true;
-        if(muon2.GetIsolation() > 0.15 && muon2.GetIsolation() < 0.5) muon2_ex=true;
+        if(muon1.GetIsolation() > 0.15 && muon1.GetIsolation() < 0.3) muon1_ex=true;
+        if(muon2.GetIsolation() > 0.15 && muon2.GetIsolation() < 0.3) muon2_ex=true;
         if(muon1_ex || muon2_ex) return EventRegion::Unknown();
 
         if(!region_muon1.HasLowerIso() || !region_muon2.HasLowerIso()) return EventRegion::Unknown();
