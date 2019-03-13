@@ -179,7 +179,7 @@ private:
                         log << "Warning: SS Anti Iso integral is too small " << hist.first << std::endl;
                         continue;
                     }*/
-                    const auto k_factor = 27.2;
+                    const PhysicalValue k_factor(27.2,4.5);
                     const auto ssIso_integral = analysis::Integral(*hist.second, true);
                     /*if (ssIso_integral.GetValue() <= 0){
                         log << "Warning: SS Iso integral less or equal 0 for " << hist.first << std::endl;
