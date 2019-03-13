@@ -120,16 +120,13 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
         if(!event_info) return;
 
         if (run_period == analysis::Period::Run2016) {
-            jets_pt20 = event_info->SelectJets(20, 4.7,false,false,false,false,
-                                               analysis::JetOrdering::Pt);
-            jets_pt30 = event_info->SelectJets(30, 4.7,false,false,false,false,
-                                               analysis::JetOrdering::Pt);
+            jets_pt20 = event_info->SelectJets(20, 4.7,false,false,analysis::JetOrdering::Pt);
+            jets_pt30 = event_info->SelectJets(30, 4.7,false,false,analysis::JetOrdering::Pt);
         }
 
         if (run_period == analysis::Period::Run2017) {
-            jets_pt20 = event_info->SelectJets(20, 4.7,false,false,false,false,
-                                               analysis::JetOrdering::Pt);
-            jets_pt30 = event_info->SelectJets(30, std::numeric_limits<double>::max(),false,false,false,false,
+            jets_pt20 = event_info->SelectJets(20, 4.7,false,false,analysis::JetOrdering::Pt);
+            jets_pt30 = event_info->SelectJets(30, std::numeric_limits<double>::max(),false,false,
                                                analysis::JetOrdering::Pt);
         }
 

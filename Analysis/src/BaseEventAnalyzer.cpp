@@ -66,8 +66,8 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfoBase& even
         jets_to_exclude.insert(event.GetVBFJet(2)->jet_index());
     }
 
-    const auto& jets = event.SelectJets(bTagger->PtCut(), bTagger->EtaCut(), false, false, false, false,
-                                        ana_setup.jet_ordering, jets_to_exclude);
+    const auto& jets = event.SelectJets(bTagger->PtCut(), bTagger->EtaCut(), false, false, ana_setup.jet_ordering,
+                                        jets_to_exclude);
     std::map<DiscriminatorWP, size_t> bjet_counts = btag_working_points;
 
     for(const auto& jet : jets) {
