@@ -6,6 +6,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include "AnalysisTools/Run/include/MultiThread.h"
 #include "h-tautau/Analysis/include/EventLoader.h"
+#include <boost/regex.hpp>
 
 namespace analysis {
 
@@ -15,10 +16,15 @@ BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel cha
 {
     InitializeMvaReader();
     if(ana_setup.syncDataIds.size()){
+        // std::cout << "Size: " << ana_setup.syncDataIds.size() << std::endl;
         outputFile_sync = root_ext::CreateRootFile(args.output_sync());
         for(unsigned n = 0; n < ana_setup.syncDataIds.size(); ++n){
-            const EventAnalyzerDataId dataId = ana_setup.syncDataIds.at(n);
-            syncTuple_map[dataId] = std::make_shared<htt_sync::SyncTuple>(dataId.GetName("_"),outputFile_sync.get(),false);
+            auto tree_regexes = SplitValueList(ana_setup.syncDataIds.at(n), false, ":");
+            if(tree_regexes.size() != 2)
+                throw exception("The Number of parameters is %1%, only 2 are allowed") % ana_setup.syncDataIds.size() ;
+            auto sync_tree = std::make_shared<htt_sync::SyncTuple>(tree_regexes.at(0),outputFile_sync.get(),false);
+            auto regex_pattern = std::make_shared<boost::regex>(tree_regexes.at(1));
+            sync_descriptors.emplace_back(sync_tree,regex_pattern);
         }
 
     }
@@ -36,8 +42,9 @@ void BaseEventAnalyzer::Run()
     ProcessSamples(ana_setup.data, "data");
     ProcessSamples(ana_setup.backgrounds, "background");
     std::cout << "Saving output file..." << std::endl;
-    for (auto& sync_iter : syncTuple_map){
-        sync_iter.second->Write();
+    for (size_t n = 0; n < sync_descriptors.size(); ++n) {
+        auto sync_tree = sync_descriptors.at(n).sync_tree;
+        sync_tree->Write();
     }
 }
 
@@ -237,17 +244,24 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                             / summary->totalShapeWeight * mva_weight_scale;
                         if(sample.sampleType == SampleType::MC) {
                             dataIds[anaDataId] = std::make_tuple(weight, mva_score);
-                        } else
+                        }
+                        else
                             ProcessSpecialEvent(sample, sample_wp, anaDataId, *event, weight,
                                                 summary->totalShapeWeight, dataIds);
                     }
                 }
             }
         }
+        
         anaTupleWriter.AddEvent(*event, dataIds);
-        for (auto& sync_iter : syncTuple_map) {
-            if(!dataIds.count(sync_iter.first)) continue;
-            htt_sync::FillSyncTuple(*event, *sync_iter.second, ana_setup.period);
+        for (size_t n = 0; n < sync_descriptors.size(); ++n) {
+            auto regex_pattern = sync_descriptors.at(n).regex_pattern;
+            for(auto& dataId : dataIds){
+                if(boost::regex_match(dataId.first.GetName(), *regex_pattern)){
+                    htt_sync::FillSyncTuple(*event, *sync_descriptors.at(n).sync_tree, ana_setup.period);
+                    break;
+                }
+            }
         }
     }
 }
