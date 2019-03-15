@@ -22,9 +22,7 @@ struct SyncDescriptor {
     std::shared_ptr<htt_sync::SyncTuple> sync_tree;
     std::shared_ptr<boost::regex> regex_pattern;
 
-    SyncDescriptor(std::shared_ptr<htt_sync::SyncTuple> _sync_tree,
-                   std::shared_ptr<boost::regex> _regex_pattern) :
-    sync_tree(_sync_tree), regex_pattern(_regex_pattern) {}
+    SyncDescriptor(const std::string& desc_str, std::shared_ptr<TFile> outputFile_sync);
 
 };
 
@@ -56,7 +54,6 @@ protected:
     bbtautau::AnaTupleWriter anaTupleWriter;
     mva_study::MvaReader mva_reader;
     std::shared_ptr<TFile> outputFile_sync;
-    // std::map<EventAnalyzerDataId, std::shared_ptr<htt_sync::SyncTuple>> syncTuple_map;
     std::vector<SyncDescriptor> sync_descriptors;
     std::map<std::string,std::shared_ptr<DYModel>> dymod;
     std::shared_ptr<NonResModel> nonResModel;

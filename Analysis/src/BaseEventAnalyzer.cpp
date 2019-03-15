@@ -6,9 +6,17 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include "AnalysisTools/Run/include/MultiThread.h"
 #include "h-tautau/Analysis/include/EventLoader.h"
-#include <boost/regex.hpp>
 
 namespace analysis {
+
+SyncDescriptor::SyncDescriptor(const std::string& desc_str, std::shared_ptr<TFile> outputFile_sync)
+{
+    auto tree_regexes = SplitValueList(desc_str, false, ":");
+    if(tree_regexes.size() != 2)
+        throw exception("The Number of parameters is %1%, only 2 are allowed") %  tree_regexes.size();
+    sync_tree = std::make_shared<htt_sync::SyncTuple>(tree_regexes.at(0),outputFile_sync.get(),false);
+    regex_pattern = std::make_shared<boost::regex>(tree_regexes.at(1));
+}
 
 BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel channel) :
     EventAnalyzerCore(_args, channel), args(_args), anaTupleWriter(args.output(), channel, args.runKinFit()),
@@ -16,15 +24,9 @@ BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel cha
 {
     InitializeMvaReader();
     if(ana_setup.syncDataIds.size()){
-        // std::cout << "Size: " << ana_setup.syncDataIds.size() << std::endl;
         outputFile_sync = root_ext::CreateRootFile(args.output_sync());
         for(unsigned n = 0; n < ana_setup.syncDataIds.size(); ++n){
-            auto tree_regexes = SplitValueList(ana_setup.syncDataIds.at(n), false, ":");
-            if(tree_regexes.size() != 2)
-                throw exception("The Number of parameters is %1%, only 2 are allowed") % ana_setup.syncDataIds.size() ;
-            auto sync_tree = std::make_shared<htt_sync::SyncTuple>(tree_regexes.at(0),outputFile_sync.get(),false);
-            auto regex_pattern = std::make_shared<boost::regex>(tree_regexes.at(1));
-            sync_descriptors.emplace_back(sync_tree,regex_pattern);
+            sync_descriptors.emplace_back(ana_setup.syncDataIds.at(n),outputFile_sync);
         }
 
     }
@@ -252,7 +254,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                 }
             }
         }
-        
+
         anaTupleWriter.AddEvent(*event, dataIds);
         for (size_t n = 0; n < sync_descriptors.size(); ++n) {
             auto regex_pattern = sync_descriptors.at(n).regex_pattern;
