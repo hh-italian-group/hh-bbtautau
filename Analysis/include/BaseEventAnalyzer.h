@@ -8,6 +8,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "MvaReader.h"
 #include "NonResModel.h"
 #include "SyncTupleHTT.h"
+#include <boost/regex.hpp>
 
 namespace analysis {
 
@@ -15,6 +16,14 @@ struct AnalyzerArguments : CoreAnalyzerArguments {
     REQ_ARG(std::string, input);
     REQ_ARG(std::string, output);
     OPT_ARG(std::string, output_sync,"sync.root");
+};
+
+struct SyncDescriptor {
+    std::shared_ptr<htt_sync::SyncTuple> sync_tree;
+    std::shared_ptr<boost::regex> regex_pattern;
+
+    SyncDescriptor(const std::string& desc_str, std::shared_ptr<TFile> outputFile_sync);
+
 };
 
 class BaseEventAnalyzer : public EventAnalyzerCore {
@@ -45,7 +54,7 @@ protected:
     bbtautau::AnaTupleWriter anaTupleWriter;
     mva_study::MvaReader mva_reader;
     std::shared_ptr<TFile> outputFile_sync;
-    std::map<EventAnalyzerDataId, std::shared_ptr<htt_sync::SyncTuple>> syncTuple_map;
+    std::vector<SyncDescriptor> sync_descriptors;
     std::map<std::string,std::shared_ptr<DYModel>> dymod;
     std::shared_ptr<NonResModel> nonResModel;
     const std::vector<std::string> trigger_patterns;

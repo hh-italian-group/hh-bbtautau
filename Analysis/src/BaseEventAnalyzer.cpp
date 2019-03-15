@@ -9,6 +9,15 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 namespace analysis {
 
+SyncDescriptor::SyncDescriptor(const std::string& desc_str, std::shared_ptr<TFile> outputFile_sync)
+{
+    auto tree_regexes = SplitValueList(desc_str, false, ":");
+    if(tree_regexes.size() != 2)
+        throw exception("The Number of parameters is %1%, only 2 are allowed") %  tree_regexes.size();
+    sync_tree = std::make_shared<htt_sync::SyncTuple>(tree_regexes.at(0),outputFile_sync.get(),false);
+    regex_pattern = std::make_shared<boost::regex>(tree_regexes.at(1));
+}
+
 BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel channel) :
     EventAnalyzerCore(_args, channel), args(_args), anaTupleWriter(args.output(), channel, args.runKinFit()),
     trigger_patterns(ana_setup.trigger.at(channel))
@@ -17,8 +26,7 @@ BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel cha
     if(ana_setup.syncDataIds.size()){
         outputFile_sync = root_ext::CreateRootFile(args.output_sync());
         for(unsigned n = 0; n < ana_setup.syncDataIds.size(); ++n){
-            const EventAnalyzerDataId dataId = ana_setup.syncDataIds.at(n);
-            syncTuple_map[dataId] = std::make_shared<htt_sync::SyncTuple>(dataId.GetName("_"),outputFile_sync.get(),false);
+            sync_descriptors.emplace_back(ana_setup.syncDataIds.at(n),outputFile_sync);
         }
 
     }
@@ -36,8 +44,9 @@ void BaseEventAnalyzer::Run()
     ProcessSamples(ana_setup.data, "data");
     ProcessSamples(ana_setup.backgrounds, "background");
     std::cout << "Saving output file..." << std::endl;
-    for (auto& sync_iter : syncTuple_map){
-        sync_iter.second->Write();
+    for (size_t n = 0; n < sync_descriptors.size(); ++n) {
+        auto sync_tree = sync_descriptors.at(n).sync_tree;
+        sync_tree->Write();
     }
 }
 
@@ -244,10 +253,16 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                 }
             }
         }
+
         anaTupleWriter.AddEvent(*event, dataIds);
-        for (auto& sync_iter : syncTuple_map) {
-            if(!dataIds.count(sync_iter.first)) continue;
-            htt_sync::FillSyncTuple(*event, *sync_iter.second, ana_setup.period);
+        for (size_t n = 0; n < sync_descriptors.size(); ++n) {
+            const auto& regex_pattern = sync_descriptors.at(n).regex_pattern;
+            for(auto& dataId : dataIds){
+                if(boost::regex_match(dataId.first.GetName(), *regex_pattern)){
+                    htt_sync::FillSyncTuple(*event, *sync_descriptors.at(n).sync_tree, ana_setup.period);
+                    break;
+                }
+            }
         }
     }
 }
