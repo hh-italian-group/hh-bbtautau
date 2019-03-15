@@ -246,8 +246,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                             / summary->totalShapeWeight * mva_weight_scale;
                         if(sample.sampleType == SampleType::MC) {
                             dataIds[anaDataId] = std::make_tuple(weight, mva_score);
-                        }
-                        else
+                        } else
                             ProcessSpecialEvent(sample, sample_wp, anaDataId, *event, weight,
                                                 summary->totalShapeWeight, dataIds);
                     }
@@ -257,7 +256,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
 
         anaTupleWriter.AddEvent(*event, dataIds);
         for (size_t n = 0; n < sync_descriptors.size(); ++n) {
-            auto regex_pattern = sync_descriptors.at(n).regex_pattern;
+            const auto& regex_pattern = sync_descriptors.at(n).regex_pattern;
             for(auto& dataId : dataIds){
                 if(boost::regex_match(dataId.first.GetName(), *regex_pattern)){
                     htt_sync::FillSyncTuple(*event, *sync_descriptors.at(n).sync_tree, ana_setup.period);
