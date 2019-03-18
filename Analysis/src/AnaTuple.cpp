@@ -113,19 +113,20 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
     tuple().HT_otherjets_gen = static_cast<float>(event.GetHT(false,true));
     tuple().HT_total_gen = static_cast<float>(event.GetHT(true,true));
 
+    tuple().n_jets = event.EventInfoBase::SelectJets(20,5,false,false,JetOrdering::DeepCSV,event.EventInfoBase::GetSelectedBjetIndicesSet(),false).size();
+    tuple().n_jets_pu = event.EventInfoBase::SelectJets(20,5,true,false,JetOrdering::DeepCSV,event.EventInfoBase::GetSelectedBjetIndicesSet(),false).size();
+    tuple().n_jets_eta24_eta5 = event.EventInfoBase::SelectJets(20,5,false,false,JetOrdering::DeepCSV,event.EventInfoBase::GetSelectedBjetIndicesSet(),true).size();
+    tuple().n_jets_eta24_eta5_pu = event.EventInfoBase::SelectJets(20,5,true,false,JetOrdering::DeepCSV,event.EventInfoBase::GetSelectedBjetIndicesSet(),true ).size();
+    tuple().n_jets_eta24 = event.EventInfoBase::SelectJets(20,2.4,false,false,JetOrdering::DeepCSV ,event.EventInfoBase::GetSelectedBjetIndicesSet()).size();
+    tuple().n_jets_eta24_pu = event.EventInfoBase::SelectJets(20,2.4,true,false,JetOrdering::DeepCSV ,event.EventInfoBase::GetSelectedBjetIndicesSet()).size();
 
-    // bool& applyPu,const bool& applyPt, const bool& applyEta, const bool& passBtag
+    if(event.HasVBFjetPair()){
+        tuple().eta_b1_VBF = static_cast<float>(event.GetVBFJet(1).GetMomentum().Eta());
+        tuple().eta_b2_VBF = static_cast<float>(event.GetVBFJet(2).GetMomentum().Eta());
+        tuple().pt_b1_VBF = static_cast<float>(event.GetVBFJet(1).GetMomentum().Pt());
+        tuple().pt_b2_VBF = static_cast<float>(event.GetVBFJet(2).GetMomentum().Pt());
+    }
 
-    tuple().n_jets = event.EventInfoBase::SelectJets(20,5).size();
-    tuple().n_jets_pu = event.EventInfoBase::SelectJets(20,5,true).size();
-    tuple().n_jets_eta24 = event.EventInfoBase::SelectJets(20,2.4,false).size();
-    tuple().n_jets_eta24_pu = event.EventInfoBase::SelectJets(20,2.4,true).size();
-    tuple().n_jets_pt20 = event.EventInfoBase::SelectJets(30,4.7,false).size();
-    tuple().n_jets_pt20_pu = event.EventInfoBase::SelectJets(30,4.7,true).size();
-    tuple().n_jets_eta24_pt30 = event.EventInfoBase::SelectJets(30,2.4,false).size();
-    tuple().n_jets_eta24_pt30_pu = event.EventInfoBase::SelectJets(30,2.4,true).size();
-    tuple().n_jets_eta24_pt30_btag = event.EventInfoBase::SelectJets(30,2.4,false,true).size();
-    tuple().n_jets_eta24_pt30_btag_pu = event.EventInfoBase::SelectJets(30,2.4,true,true).size();
 
     tuple().n_selected_gen_jets =  event->genJets_p4.size();
     int n_bflavour=0;
