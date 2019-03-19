@@ -25,14 +25,17 @@ namespace analysis {
     VAR(bool, has_2jets) /* has 2 jets */ \
     VAR(double, weight) /* weight */ \
     VAR(float, mva_score) /* mva score */ \
-    VAR_LIST(float, m_ttbb, m_ttbb_kinfit, m_sv, MT2, mt_tot, deta_hbbhtautau, dphi_hbbhtautau, m_tt_vis, pt_H_tt, \
-             eta_H_tt, phi_H_tt, pt_H_tt_MET, pt_1, eta_1, iso_1, mt_1, pt_2, eta_2, iso_2, mt_2, dR_l1l2, \
+    VAR_LIST(float, m_ttbb, m_ttbb_kinfit, chi2_kinFit, m_sv, MT2, mt_tot, deta_hbbhtautau, dphi_hbbhtautau, m_tt_vis, pt_H_tt, \
+             eta_H_tt, phi_H_tt, pt_H_tt_MET, iso_1,iso_2, dR_l1l2, \
              abs_dphi_l1MET, dphi_htautauMET, dR_l1l2MET, dR_l1l2Pt_htautau, mass_l1l2MET, pt_l1l2MET, MT_htautau, \
-             npv, MET, phiMET, pt_MET, m_bb, pt_H_bb, pt_b1, pt_b1_VBF,eta_b1, csv_b1, deepcsv_b1, pt_b2, pt_b2_VBF, eta_b2, eta_b2_VBF, csv_b2, \
+             npv, MET, phiMET, pt_MET, m_bb, pt_H_bb, csv_b1, deepcsv_b1, csv_b2, \
              deepcsv_b2, costheta_METhbb, dR_b1b2, dR_b1b2_boosted, HT_otherjets, mass_top1, mass_top2, p_zeta, \
              p_zetavisible, HT_total, HT_otherjets_gen, HT_total_gen, n_selected_gen_jets, n_selected_gen_bjets, \
              n_selected_gen_notbjets, genJets_nTotal, jets_nTotal_hadronFlavour_b, jets_nTotal_hadronFlavour_c, gen_match_1, gen_match_2) \
-    VAR_LIST(float, n_jets, n_jets_pu, n_jets_eta24, n_jets_eta24_pu, n_jets_eta24_eta5, n_jets_eta24_eta5_pu, eta_b1_VBF ) \
+    VAR_LIST(float, n_jets, n_jets_pu, n_jets_eta24, n_jets_eta24_pu, n_jets_eta24_eta5, n_jets_eta24_eta5_pu) \
+    VAR_LIST(float, pt_1,eta_1, phi_1, mt_1, pt_2, eta_2, phi_2, mt_2, pt_b1, eta_b1, phi_b1, m_b1, \
+             pt_b2, eta_b2, phi_b2, m_b2, pt_b1_VBF, eta_b1_VBF, phi_b1_VBF, m_b1_VBF, \
+             pt_b2_VBF, eta_b2_VBF, phi_b2_VBF, m_b2_VBF) \
     /**/
 
 #define VAR(type, name) DECLARE_BRANCH_VARIABLE(type, name)
