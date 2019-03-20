@@ -85,13 +85,15 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
     tuple().pt_1 = static_cast<float>(t1.GetMomentum().pt());
     tuple().eta_1 = static_cast<float>(t1.GetMomentum().eta());
     tuple().phi_1 = static_cast<float>(t1.GetMomentum().phi());
+    tuple().m_1 = static_cast<float>(t1.GetMomentum().M());
     tuple().iso_1 = static_cast<float>(t1.GetIsolation());
-    tuple().m_1 = static_cast<float>(Calculate_MT(t1.GetMomentum(), event.GetMET().GetMomentum()));
+    tuple().mt_1 = static_cast<float>(Calculate_MT(t1.GetMomentum(), event.GetMET().GetMomentum()));
     tuple().pt_2 = static_cast<float>(t2.GetMomentum().pt());
     tuple().eta_2 = static_cast<float>(t2.GetMomentum().eta());
     tuple().phi_2 = static_cast<float>(t2.GetMomentum().phi());
+    tuple().m_2 = static_cast<float>(t2.GetMomentum().M());
     tuple().iso_2 = static_cast<float>(t2.GetIsolation());
-    tuple().m_2 = static_cast<float>(Calculate_MT(t2.GetMomentum(), event.GetMET().GetMomentum()));
+    tuple().mt_2 = static_cast<float>(Calculate_MT(t2.GetMomentum(), event.GetMET().GetMomentum()));
     tuple().dR_l1l2 = static_cast<float>(DeltaR(t1.GetMomentum(),t2.GetMomentum()));
     tuple().abs_dphi_l1MET = static_cast<float>(std::abs(DeltaPhi(t1.GetMomentum(), event.GetMET().GetMomentum())));
     tuple().dphi_htautauMET = static_cast<float>(DeltaPhi(event.GetHiggsTTMomentum(true),
