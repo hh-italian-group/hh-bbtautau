@@ -60,6 +60,7 @@ protected:
     std::map<std::string,std::shared_ptr<DYModel>> dymod;
     std::shared_ptr<NonResModel> nonResModel;
     const std::vector<std::string> trigger_patterns;
+    std::shared_ptr<mc_corrections::TauIdWeight2017> tauIdWeight;
 };
 
 } // namespace analysis

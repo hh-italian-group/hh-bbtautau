@@ -86,12 +86,12 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
     tuple().eta_1 = static_cast<float>(t1.GetMomentum().eta());
     tuple().phi_1 = static_cast<float>(t1.GetMomentum().phi());
     tuple().iso_1 = static_cast<float>(t1.GetIsolation());
-    tuple().mt_1 = static_cast<float>(Calculate_MT(t1.GetMomentum(), event.GetMET().GetMomentum()));
+    tuple().m_1 = static_cast<float>(Calculate_MT(t1.GetMomentum(), event.GetMET().GetMomentum()));
     tuple().pt_2 = static_cast<float>(t2.GetMomentum().pt());
     tuple().eta_2 = static_cast<float>(t2.GetMomentum().eta());
     tuple().phi_2 = static_cast<float>(t2.GetMomentum().phi());
     tuple().iso_2 = static_cast<float>(t2.GetIsolation());
-    tuple().mt_2 = static_cast<float>(Calculate_MT(t2.GetMomentum(), event.GetMET().GetMomentum()));
+    tuple().m_2 = static_cast<float>(Calculate_MT(t2.GetMomentum(), event.GetMET().GetMomentum()));
     tuple().dR_l1l2 = static_cast<float>(DeltaR(t1.GetMomentum(),t2.GetMomentum()));
     tuple().abs_dphi_l1MET = static_cast<float>(std::abs(DeltaPhi(t1.GetMomentum(), event.GetMET().GetMomentum())));
     tuple().dphi_htautauMET = static_cast<float>(DeltaPhi(event.GetHiggsTTMomentum(true),
@@ -124,14 +124,14 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
     tuple().n_jets_eta24_pu = event.EventInfoBase::SelectJets(20,2.4,true,false,JetOrdering::DeepCSV ,event.EventInfoBase::GetSelectedBjetIndicesSet()).size();
 
     if(event.HasVBFjetPair()){
-        tuple().pt_b1_VBF = static_cast<float>(event.GetVBFJet(1).GetMomentum().Pt());
-        tuple().eta_b1_VBF = static_cast<float>(event.GetVBFJet(1).GetMomentum().Eta());
-        tuple().phi_b1_VBF = static_cast<float>(event.GetVBFJet(1).GetMomentum().Phi());
-        tuple().m_b1_VBF = static_cast<float>(event.GetVBFJet(1).GetMomentum().M());
-        tuple().pt_b2_VBF = static_cast<float>(event.GetVBFJet(2).GetMomentum().Pt());
-        tuple().eta_b2_VBF = static_cast<float>(event.GetVBFJet(2).GetMomentum().Eta());
-        tuple().phi_b2_VBF = static_cast<float>(event.GetVBFJet(2).GetMomentum().Phi());
-        tuple().m_b2_VBF = static_cast<float>(event.GetVBFJet(2).GetMomentum().M());
+        tuple().pt_VBF_1 = static_cast<float>(event.GetVBFJet(1).GetMomentum().Pt());
+        tuple().eta_VBF_1 = static_cast<float>(event.GetVBFJet(1).GetMomentum().Eta());
+        tuple().phi_VBF_1 = static_cast<float>(event.GetVBFJet(1).GetMomentum().Phi());
+        tuple().m_VBF_1 = static_cast<float>(event.GetVBFJet(1).GetMomentum().M());
+        tuple().pt_VBF_2 = static_cast<float>(event.GetVBFJet(2).GetMomentum().Pt());
+        tuple().eta_VBF_2 = static_cast<float>(event.GetVBFJet(2).GetMomentum().Eta());
+        tuple().phi_VBF_2 = static_cast<float>(event.GetVBFJet(2).GetMomentum().Phi());
+        tuple().m_VBF_2 = static_cast<float>(event.GetVBFJet(2).GetMomentum().M());
     }
 
 
