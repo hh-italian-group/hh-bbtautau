@@ -9,6 +9,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "MvaReader.h"
 #include "NonResModel.h"
 #include "SyncTupleHTT.h"
+#include <boost/regex.hpp>
 
 namespace analysis {
 
@@ -16,6 +17,14 @@ struct AnalyzerArguments : CoreAnalyzerArguments {
     REQ_ARG(std::string, input);
     REQ_ARG(std::string, output);
     OPT_ARG(std::string, output_sync,"sync.root");
+};
+
+struct SyncDescriptor {
+    std::shared_ptr<htt_sync::SyncTuple> sync_tree;
+    std::shared_ptr<boost::regex> regex_pattern;
+
+    SyncDescriptor(const std::string& desc_str, std::shared_ptr<TFile> outputFile_sync);
+
 };
 
 class BaseEventAnalyzer : public EventAnalyzerCore {
