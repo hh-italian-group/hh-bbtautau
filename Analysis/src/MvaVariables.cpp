@@ -145,7 +145,7 @@ void MvaVariables::AddEvent(analysis::EventInfoBase& eventbase, const SampleId& 
     VAR("pt_htautau", (Htt+met).Pt());
     VAR("pt_htautau_sv", SVfit_is_valid ? Htt_sv.Pt() : default_value);
     VAR("pt_MET", met.Pt());
-    VAR("HT_otherjets", eventbase.GetHT(false));
+    VAR("HT_otherjets", eventbase.GetHT(false,true));
     VAR("p_zeta", Calculate_Pzeta(t1, t2,  met));
     VAR("p_zetavisible", Calculate_visiblePzeta(t1, t2));
 

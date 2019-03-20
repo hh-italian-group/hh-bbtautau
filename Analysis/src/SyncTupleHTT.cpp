@@ -182,7 +182,7 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
             ? event.GetBJet(2)->deepcsv() : -2);
     sync().bjet_resolution_2 = COND_VAL(event.HasBjetPair(),
                                         event.GetBJet(2)->resolution() * event.GetBJet(2).GetMomentum().E());
-    sync().ht_other_jets = event.GetHT(false);
+    sync().ht_other_jets = event.GetHT(false,true);
 
     sync().kinfit_convergence = COND_VAL_INT(event.HasBjetPair() , event.GetKinFitResults().convergence);
     sync().m_kinfit = COND_VAL(event.HasBjetPair() && event.GetKinFitResults().HasValidMass(),
