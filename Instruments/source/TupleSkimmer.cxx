@@ -527,7 +527,7 @@ private:
             event.kinFit_jetPairId.push_back(static_cast<unsigned>(ntuple::CombinationPairToIndex(eventInfo->GetSelectedSignalJets().selectedBjetPair, eventInfo->GetNJets())));
         }
 
-        event.ht_other_jets = (eventInfo->HasBjetPair()) ? static_cast<Float_t>(eventInfo->GetHT(false,true)) : 0;
+        event.ht_other_jets = (eventInfo->HasBjetPair()) ? static_cast<Float_t>(eventInfo->GetHT(false)) : 0;
 
         event.weight_pu = weighting_mode.count(WeightType::PileUp)
                         ? eventWeights_HH->GetWeight(full_event, WeightType::PileUp) : 1;

@@ -64,7 +64,7 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
         if(runKinFit){
             const auto& kinfit = event.GetKinFitResults();
             tuple().m_ttbb_kinfit = kinfit.HasValidMass() ? static_cast<float>(kinfit.mass) : def_val;
-            tuple().chi2_kinFit = kinfit.HasValidMass() ? kinfit.chi2 : def_val;
+            tuple().chi2_kinFit = kinfit.HasValidMass() ? static_cast<float>(kinfit.chi2) : def_val;
         }
         tuple().MT2 = static_cast<float>(event.GetMT2());
     } else {
@@ -113,8 +113,8 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
     tuple().mt_tot = static_cast<float>(Calculate_TotalMT(t1.GetMomentum(),t2.GetMomentum(),
                                                           event.GetMET().GetMomentum()));
     tuple().HT_otherjets = event->ht_other_jets;
-    tuple().HT_otherjets_gen = static_cast<float>(event.GetHT(false,true));
-    tuple().HT_total_gen = static_cast<float>(event.GetHT(true,true));
+    tuple().HT_otherjets_gen = static_cast<float>(event.GetHT(false));
+    tuple().HT_total_gen = static_cast<float>(event.GetHT(true));
 
     tuple().n_jets = event.EventInfoBase::SelectJets(20,5,false,false,JetOrdering::DeepCSV,event.EventInfoBase::GetSelectedBjetIndicesSet()).size();
     tuple().n_jets_pu = event.EventInfoBase::SelectJets(20,5,true,false,JetOrdering::DeepCSV,event.EventInfoBase::GetSelectedBjetIndicesSet()).size();

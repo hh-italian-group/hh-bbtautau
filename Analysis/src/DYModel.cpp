@@ -174,7 +174,7 @@ void DYModel::ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& 
 
     std::pair<size_t,size_t> p(std::min<size_t>(2,n_bJets),0);
     if(ht_found){
-        double lheHT_otherjets = event.GetHT(false, true);
+        double lheHT_otherjets = event.GetHT(false);
         size_t ht_wp = Get2WP(lheHT_otherjets,ht_wp_set);
         p.second = ht_wp;
     }
