@@ -29,6 +29,7 @@ protected:
     EventCategorySet DetermineEventCategories(EventInfoBase& event);
     virtual EventRegion DetermineEventRegion(EventInfoBase& event, EventCategory eventCategory) = 0;
 
+
     void InitializeMvaReader();
     virtual EventSubCategory DetermineEventSubCategory(EventInfoBase& event, const EventCategory& category,
                                                        std::map<SelectionCut, double>& mva_scores);
@@ -46,11 +47,10 @@ protected:
     bbtautau::AnaTupleWriter anaTupleWriter;
     mva_study::MvaReader mva_reader;
     std::shared_ptr<TFile> outputFile_sync;
-    std::map<EventAnalyzerDataId, std::shared_ptr<htt_sync::SyncTuple>> syncTuple_map;
+    std::vector<SyncDescriptor> sync_descriptors;
     std::map<std::string,std::shared_ptr<DYModel>> dymod;
     std::shared_ptr<NonResModel> nonResModel;
     const std::vector<std::string> trigger_patterns;
-    std::shared_ptr<mc_corrections::TauIdWeight2017> tauIdWeight;       
 };
 
 } // namespace analysis
