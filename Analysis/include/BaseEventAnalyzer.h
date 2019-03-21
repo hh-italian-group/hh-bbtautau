@@ -3,6 +3,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #pragma once
 
+#include "h-tautau/McCorrections/include/LeptonWeights.h"
 #include "DYModel.h"
 #include "EventAnalyzerCore.h"
 #include "MvaReader.h"
@@ -37,6 +38,7 @@ protected:
     EventCategorySet DetermineEventCategories(EventInfoBase& event);
     virtual EventRegion DetermineEventRegion(EventInfoBase& event, EventCategory eventCategory) = 0;
 
+
     void InitializeMvaReader();
     virtual EventSubCategory DetermineEventSubCategory(EventInfoBase& event, const EventCategory& category,
                                                        std::map<SelectionCut, double>& mva_scores);
@@ -58,6 +60,7 @@ protected:
     std::map<std::string,std::shared_ptr<DYModel>> dymod;
     std::shared_ptr<NonResModel> nonResModel;
     const std::vector<std::string> trigger_patterns;
+    std::shared_ptr<mc_corrections::TauIdWeight2017> tauIdWeight;
 };
 
 } // namespace analysis

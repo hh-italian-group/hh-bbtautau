@@ -5,7 +5,7 @@ get_filename_component(AnalysisTools_DIR "${PROJECT_SOURCE_DIR}/../AnalysisTools
 include("${AnalysisTools_DIR}/cmake/include/common.cmake")
 
 file(GLOB_RECURSE ANA_TOOLS_SRC "${AnalysisTools_DIR}/*.cpp")
-add_library(AnalysisTools STATIC ${ANA_TOOLS_SRC}  "${RootDict}")
+add_library(AnalysisTools STATIC ${ANA_TOOLS_SRC})
 add_dependencies(AnalysisTools GenerateRootDict)
 
 get_filename_component(h_tautau_DIR "${PROJECT_SOURCE_DIR}/../h-tautau" ABSOLUTE)

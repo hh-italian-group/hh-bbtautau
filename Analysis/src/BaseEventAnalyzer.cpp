@@ -35,6 +35,7 @@ BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel cha
          if(sample.sampleType == SampleType::DY)
              dymod[sample.name] = std::make_shared<DYModel>(sample,args.working_path());
     }
+    tauIdWeight = std::make_shared<mc_corrections::TauIdWeight2017>();
 }
 
 void BaseEventAnalyzer::Run()
@@ -74,7 +75,7 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfoBase& even
         jets_to_exclude.insert(event.GetVBFJet(2)->jet_index());
     }
 
-    const auto& jets = event.SelectJets(bTagger->PtCut(), bTagger->EtaCut(), ana_setup.jet_ordering,
+    const auto& jets = event.SelectJets(bTagger->PtCut(), bTagger->EtaCut(), false, false, ana_setup.jet_ordering,
                                         jets_to_exclude);
     std::map<DiscriminatorWP, size_t> bjet_counts = btag_working_points;
 
@@ -242,6 +243,25 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                     if(sample.sampleType == SampleType::Data) {
                         dataIds[anaDataId] = std::make_tuple(1., mva_score);
                     } else {
+
+                        // double tau_iso_1 = tauIdWeight->getTauIso(DiscriminatorWP::Medium,
+                        //                               static_cast<GenMatch>((*event)->gen_match_1)).GetValue();
+                        // double tau_iso_2 = tauIdWeight->getTauIso(DiscriminatorWP::Medium,
+                        //                                           static_cast<GenMatch>((*event)->gen_match_2)).GetValue();
+                        //
+                        // double weight_tau_iso_pog = tau_iso_1 * tau_iso_2;
+                        //
+                        // double tau_id_dm_1 = tauIdWeight->getDmDependentTauIso(static_cast<GenMatch>((*event)->gen_match_1),
+                        //                                             (*event)->decayMode_1).GetValue();
+                        // double tau_id_dm_2 = tauIdWeight->getDmDependentTauIso(static_cast<GenMatch>((*event)->gen_match_2),
+                        //                                             (*event)->decayMode_2).GetValue();
+                        //
+                        // auto weight_tau_id_dm = tau_id_dm_1 * tau_id_dm_2;
+
+
+                        // const double weight = (((*event)->weight_total * sample.cross_section * ana_setup.int_lumi)
+                        //        / (summary->totalShapeWeight )) * mva_weight_scale ;
+
                         const double weight = (*event)->weight_total * sample.cross_section * ana_setup.int_lumi
                                             / summary->totalShapeWeight * mva_weight_scale;
                         if(sample.sampleType == SampleType::MC) {
