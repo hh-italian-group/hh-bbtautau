@@ -75,7 +75,7 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfoBase& even
         jets_to_exclude.insert(event.GetVBFJet(2)->jet_index());
     }
 
-    const auto& jets = event.SelectJets(bTagger->PtCut(), bTagger->EtaCut(), false, false, ana_setup.jet_ordering,
+    const auto& jets = event.SelectJets(bTagger->PtCut(), bTagger->EtaCut(), true, false, ana_setup.jet_ordering,
                                         jets_to_exclude);
     std::map<DiscriminatorWP, size_t> bjet_counts = btag_working_points;
 
@@ -279,7 +279,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
             const auto& regex_pattern = sync_descriptors.at(n).regex_pattern;
             for(auto& dataId : dataIds){
                 if(boost::regex_match(dataId.first.GetName(), *regex_pattern)){
-                    htt_sync::FillSyncTuple(*event, *sync_descriptors.at(n).sync_tree, ana_setup.period);
+                    htt_sync::FillSyncTuple(*event, *sync_descriptors.at(n).sync_tree, ana_setup.period,std::get<0>(dataId.second));
                     break;
                 }
             }
