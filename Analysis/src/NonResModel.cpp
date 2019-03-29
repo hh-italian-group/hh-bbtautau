@@ -75,7 +75,7 @@ void NonResModel::ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBa
     for(const auto& wp : points) {
         const auto final_id = anaDataId.Set(wp.first);
         eft_weights->SetTargetPoint(wp.second.point);
-        const double eft_weight = eft_weights->Get(*event);
+        const double eft_weight = eft_weights->Get(event);
         const double final_weight = weight * (shape_weight / wp.second.total_shape_weight)
                 * (eft_weight / event->weight_bsm_to_sm);
         dataIds[final_id] = std::make_tuple(final_weight, event.GetMvaScore());

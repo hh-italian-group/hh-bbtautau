@@ -29,10 +29,10 @@ NJets_HT_weight::NJets_HT_weight(const std::string& _name, const std::string& we
     }
 }
 
-double NJets_HT_weight::Get(const Event& event) const
+double NJets_HT_weight::Get(EventInfoBase& eventInfo) const
 {
     static constexpr size_t ht_bin_size = 10;
-    return GetWeight(event.lhe_n_partons, event.lhe_n_b_partons, static_cast<size_t>(event.lhe_HT / ht_bin_size));
+    return GetWeight(eventInfo->lhe_n_partons, eventInfo->lhe_n_b_partons, static_cast<size_t>(eventInfo->lhe_HT / ht_bin_size));
 }
 
 double NJets_HT_weight::Get(const ntuple::ExpressEvent& event) const

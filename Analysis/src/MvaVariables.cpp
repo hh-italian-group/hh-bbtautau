@@ -128,10 +128,10 @@ void MvaVariables::AddEvent(analysis::EventInfoBase& eventbase, const SampleId& 
     const auto& kinfit_results = eventbase.GetKinFitResults();
     const bool kinfit_is_valid = kinfit_results.HasValidMass();
 
-    VAR_INT("decayMode_1", eventbase->decayMode_1);
-    VAR_INT("decayMode_2", eventbase->decayMode_2);
-    VAR("iso_1", eventbase->iso_1);
-    VAR("iso_2", eventbase->iso_2);
+    VAR_INT("decayMode_1", eventbase.GetLeg(1)->decayMode());
+    VAR_INT("decayMode_2", eventbase.GetLeg(2)->decayMode());
+    VAR("iso_1", eventbase.GetLeg(1)->iso());
+    VAR("iso_2", eventbase.GetLeg(2)->iso());
     VAR("csv_1", eventbase.GetHiggsBB().GetFirstDaughter()->csv());
     VAR("csv_2", eventbase.GetHiggsBB().GetSecondDaughter()->csv());
 

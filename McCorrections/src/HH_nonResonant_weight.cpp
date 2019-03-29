@@ -67,9 +67,9 @@ void WeightProvider::SetTargetPoint(const Point& _point)
     param_denom = GF_Parameterization::Denominator_13TeV().Evaluate(point);
 }
 
-double WeightProvider::Get(const ntuple::Event& event) const
+double WeightProvider::Get(EventInfoBase& eventInfo) const
 {
-    return Get(event.lhe_hh_m, event.lhe_hh_cosTheta);
+    return Get(eventInfo->lhe_hh_m, eventInfo->lhe_hh_cosTheta);
 }
 
 double WeightProvider::Get(const ntuple::ExpressEvent& event) const
