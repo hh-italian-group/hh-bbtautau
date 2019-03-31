@@ -27,7 +27,7 @@ struct AnalyzerSetup {
     std::vector<std::string> draw_sequence;
     std::map<EventCategory, std::string> limit_categories;
     std::string mva_setup, hist_cfg;
-    std::vector<EventAnalyzerDataId> syncDataIds;
+    std::vector<std::string> syncDataIds;
     std::string plot_cfg, plot_page_opt, unc_cfg;
     JetOrdering jet_ordering;
     double qcd_ss_os_sf{0};

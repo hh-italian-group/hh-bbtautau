@@ -9,6 +9,8 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 namespace htt_sync {
 
 void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, analysis::Period run_period,
+                   double weight,
+                   //double dy_weight,
                    analysis::mva_study::MvaReader* mva_reader,
                    analysis::EventInfoBase* event_tau_up,
                    analysis::EventInfoBase* event_tau_down,
@@ -120,16 +122,13 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
         if(!event_info) return;
 
         if (run_period == analysis::Period::Run2016) {
-            jets_pt20 = event_info->SelectJets(20, 4.7,
-                                               analysis::JetOrdering::Pt);
-            jets_pt30 = event_info->SelectJets(30, 4.7,
-                                               analysis::JetOrdering::Pt);
+            jets_pt20 = event_info->SelectJets(20, 4.7,false,false,analysis::JetOrdering::Pt);
+            jets_pt30 = event_info->SelectJets(30, 4.7,false,false,analysis::JetOrdering::Pt);
         }
 
         if (run_period == analysis::Period::Run2017) {
-            jets_pt20 = event_info->SelectJets(20, 4.7,
-                                               analysis::JetOrdering::Pt);
-            jets_pt30 = event_info->SelectJets(30, std::numeric_limits<double>::max(),
+            jets_pt20 = event_info->SelectJets(20, 4.7,false,false,analysis::JetOrdering::Pt);
+            jets_pt30 = event_info->SelectJets(30, std::numeric_limits<double>::max(),false,false,
                                                analysis::JetOrdering::Pt);
         }
 
@@ -185,7 +184,7 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
             ? event.GetBJet(2)->deepcsv() : -2);
     sync().bjet_resolution_2 = COND_VAL(event.HasBjetPair(),
                                         event.GetBJet(2)->resolution() * event.GetBJet(2).GetMomentum().E());
-    sync().ht_other_jets = event.GetHT(false, true);
+    sync().ht_other_jets = event.GetHT(false,true);
 
     sync().kinfit_convergence = COND_VAL_INT(event.HasBjetPair() , event.GetKinFitResults().convergence);
     sync().m_kinfit = COND_VAL(event.HasBjetPair() && event.GetKinFitResults().HasValidMass(),
@@ -231,6 +230,8 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().puweight = static_cast<Float_t>(event->weight_pu);
     sync().leptonidisoWeight = static_cast<Float_t>(event->weight_lepton_id_iso);
     sync().leptontrigWeight = static_cast<Float_t>(event->weight_lepton_trig);
+    sync().final_weight = static_cast<Float_t>(weight);
+    //sync().dy_weight = static_cast<Float_t>(dy_weight);
 
     sync().lhe_n_b_partons = static_cast<int>(event->lhe_n_b_partons);
     sync().lhe_n_partons = static_cast<int>(event->lhe_n_partons);

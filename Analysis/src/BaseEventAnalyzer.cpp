@@ -9,6 +9,15 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 namespace analysis {
 
+SyncDescriptor::SyncDescriptor(const std::string& desc_str, std::shared_ptr<TFile> outputFile_sync)
+{
+    auto tree_regexes = SplitValueList(desc_str, false, ":");
+    if(tree_regexes.size() != 2)
+        throw exception("The Number of parameters is %1%, only 2 are allowed") %  tree_regexes.size();
+    sync_tree = std::make_shared<htt_sync::SyncTuple>(tree_regexes.at(0),outputFile_sync.get(),false);
+    regex_pattern = std::make_shared<boost::regex>(tree_regexes.at(1));
+}
+
 BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel channel) :
     EventAnalyzerCore(_args, channel), args(_args), anaTupleWriter(args.output(), channel, args.runKinFit()),
     trigger_patterns(ana_setup.trigger.at(channel))
@@ -17,8 +26,7 @@ BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel cha
     if(ana_setup.syncDataIds.size()){
         outputFile_sync = root_ext::CreateRootFile(args.output_sync());
         for(unsigned n = 0; n < ana_setup.syncDataIds.size(); ++n){
-            const EventAnalyzerDataId dataId = ana_setup.syncDataIds.at(n);
-            syncTuple_map[dataId] = std::make_shared<htt_sync::SyncTuple>(dataId.GetName("_"),outputFile_sync.get(),false);
+            sync_descriptors.emplace_back(ana_setup.syncDataIds.at(n),outputFile_sync);
         }
 
     }
@@ -27,6 +35,7 @@ BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel cha
          if(sample.sampleType == SampleType::DY)
              dymod[sample.name] = std::make_shared<DYModel>(sample,args.working_path());
     }
+    tauIdWeight = std::make_shared<mc_corrections::TauIdWeight2017>();
 }
 
 void BaseEventAnalyzer::Run()
@@ -36,8 +45,9 @@ void BaseEventAnalyzer::Run()
     ProcessSamples(ana_setup.data, "data");
     ProcessSamples(ana_setup.backgrounds, "background");
     std::cout << "Saving output file..." << std::endl;
-    for (auto& sync_iter : syncTuple_map){
-        sync_iter.second->Write();
+    for (size_t n = 0; n < sync_descriptors.size(); ++n) {
+        auto sync_tree = sync_descriptors.at(n).sync_tree;
+        sync_tree->Write();
     }
 }
 
@@ -65,7 +75,7 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfoBase& even
         jets_to_exclude.insert(event.GetVBFJet(2)->jet_index());
     }
 
-    const auto& jets = event.SelectJets(bTagger->PtCut(), bTagger->EtaCut(), ana_setup.jet_ordering,
+    const auto& jets = event.SelectJets(bTagger->PtCut(), bTagger->EtaCut(), true, false, ana_setup.jet_ordering,
                                         jets_to_exclude);
     std::map<DiscriminatorWP, size_t> bjet_counts = btag_working_points;
 
@@ -233,6 +243,25 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                     if(sample.sampleType == SampleType::Data) {
                         dataIds[anaDataId] = std::make_tuple(1., mva_score);
                     } else {
+
+                        // double tau_iso_1 = tauIdWeight->getTauIso(DiscriminatorWP::Medium,
+                        //                               static_cast<GenMatch>((*event)->gen_match_1)).GetValue();
+                        // double tau_iso_2 = tauIdWeight->getTauIso(DiscriminatorWP::Medium,
+                        //                                           static_cast<GenMatch>((*event)->gen_match_2)).GetValue();
+                        //
+                        // double weight_tau_iso_pog = tau_iso_1 * tau_iso_2;
+                        //
+                        // double tau_id_dm_1 = tauIdWeight->getDmDependentTauIso(static_cast<GenMatch>((*event)->gen_match_1),
+                        //                                             (*event)->decayMode_1).GetValue();
+                        // double tau_id_dm_2 = tauIdWeight->getDmDependentTauIso(static_cast<GenMatch>((*event)->gen_match_2),
+                        //                                             (*event)->decayMode_2).GetValue();
+                        //
+                        // auto weight_tau_id_dm = tau_id_dm_1 * tau_id_dm_2;
+
+
+                        // const double weight = (((*event)->weight_total * sample.cross_section * ana_setup.int_lumi)
+                        //        / (summary->totalShapeWeight )) * mva_weight_scale ;
+
                         const double weight = (*event)->weight_total * sample.cross_section * ana_setup.int_lumi
                                             / summary->totalShapeWeight * mva_weight_scale;
                         if(sample.sampleType == SampleType::MC) {
@@ -244,10 +273,16 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                 }
             }
         }
+
         anaTupleWriter.AddEvent(*event, dataIds);
-        for (auto& sync_iter : syncTuple_map) {
-            if(!dataIds.count(sync_iter.first)) continue;
-            htt_sync::FillSyncTuple(*event, *sync_iter.second, ana_setup.period);
+        for (size_t n = 0; n < sync_descriptors.size(); ++n) {
+            const auto& regex_pattern = sync_descriptors.at(n).regex_pattern;
+            for(auto& dataId : dataIds){
+                if(boost::regex_match(dataId.first.GetName(), *regex_pattern)){
+                    htt_sync::FillSyncTuple(*event, *sync_descriptors.at(n).sync_tree, ana_setup.period,std::get<0>(dataId.second));
+                    break;
+                }
+            }
         }
     }
 }
