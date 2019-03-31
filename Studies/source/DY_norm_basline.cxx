@@ -96,7 +96,7 @@ struct CategoryModel{
             EventAnalyzerDataId dataId = catId.Set(contrib_name);
              mc_contributions[contrib_name] = std::make_shared<Contribution>(input_file,dataId,hist_name,x,
                                                                              *(scale_factor_map.at(contrib_name)));
-             if(mc_contributions[contrib_name]->histogram->Integral() != 0)
+             if(mc_contributions[contrib_name]->histogram->Integral() > 0)
                 pdf_list.add(mc_contributions[contrib_name]->expdf);
              mc_contributions[contrib_name]->expdf.Print();
         }
