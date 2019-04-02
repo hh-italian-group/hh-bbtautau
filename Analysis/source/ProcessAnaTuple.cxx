@@ -172,14 +172,15 @@ private:
                     const auto ssAntiIso_integral = Integral(entry_ssAntiIso(hist.first), true);
                     if (osAntiIso_integral.GetValue() <= 0 || osAntiIso_integral.IsCompatible(PhysicalValue::Zero)){
                         log << "Warning: OS Anti Iso integral is too small " << hist.first << std::endl;
-                        continue;
+                        if(ana_setup.qcd_ss_os_sf <= 0 ) continue;
                     }
 
                     if (ssAntiIso_integral.GetValue() <= 0 || ssAntiIso_integral.IsCompatible(PhysicalValue::Zero)){
                         log << "Warning: SS Anti Iso integral is too small " << hist.first << std::endl;
-                        continue;
+                        if(ana_setup.qcd_ss_os_sf <= 0) continue;
                     }
-                    const auto k_factor = osAntiIso_integral / ssAntiIso_integral;
+                    PhysicalValue k_factor(ana_setup.qcd_ss_os_sf,ana_setup.qcd_ss_os_err);
+                    if(ana_setup.qcd_ss_os_sf <=0 ) k_factor = osAntiIso_integral / ssAntiIso_integral;
                     const auto ssIso_integral = analysis::Integral(*hist.second, true);
                     if (ssIso_integral.GetValue() <= 0){
                         log << "Warning: SS Iso integral less or equal 0 for " << hist.first << std::endl;

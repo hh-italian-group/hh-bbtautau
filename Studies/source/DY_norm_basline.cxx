@@ -39,7 +39,10 @@ struct Arguments {
     OPT_ARG(int, vlowPt, 0);
     OPT_ARG(int, lowPt, 20);
     OPT_ARG(int, medPt, 40);
+    OPT_ARG(int, medPt1, 30);
+    OPT_ARG(int, medPt2, 50);
     OPT_ARG(int, highPt, 100);
+    OPT_ARG(int, vhighPt,200);
     OPT_ARG(std::string, sub_category_option, "mh");
     OPT_ARG(std::string, sample_order, "LO");
 };
@@ -93,7 +96,7 @@ struct CategoryModel{
             EventAnalyzerDataId dataId = catId.Set(contrib_name);
              mc_contributions[contrib_name] = std::make_shared<Contribution>(input_file,dataId,hist_name,x,
                                                                              *(scale_factor_map.at(contrib_name)));
-             if(mc_contributions[contrib_name]->histogram->Integral() != 0)
+             if(mc_contributions[contrib_name]->histogram->Integral() > 0)
                 pdf_list.add(mc_contributions[contrib_name]->expdf);
              mc_contributions[contrib_name]->expdf.Print();
         }
@@ -122,7 +125,10 @@ public:
                 EventSubCategory().SetCutResult(SelectionCut::mtt, true).SetCutResult(SelectionCut::lowMET,true);
         const std::vector<int> ht_points = { 0, args.med_ht(), args.high_ht() };
         const std::vector<int> nJet_points = {args.low_nJet(), args.high_nJet() };
-        const std::vector<int> pt_points = {args.vlowPt(), args.lowPt(), args.medPt(), args.highPt()};
+        std::vector<int> pt_points;
+        if(args.sample_order() == "NLO") pt_points = {args.vlowPt(), args.lowPt(), args.medPt(), args.highPt()};
+        else if(args.sample_order() == "LO") pt_points = {args.vlowPt(), args.lowPt(), args.medPt1(), args.medPt2(), args.highPt(),
+                                                          args.vhighPt()};
         static const size_t max_n_b = 2;
         if(fit_model == DYFitModel::NbjetBins) {
             subCategories = { base_sub_category };
@@ -152,10 +158,18 @@ public:
                     }
                 }
                 else if(fit_model==DYFitModel::NbjetBins_ptBins){
-                    subCategories = { EventSubCategory(base_sub_category).SetCutResult(SelectionCut::vlowPt, true),
-                                      EventSubCategory(base_sub_category).SetCutResult(SelectionCut::lowPt, true),
-                                      EventSubCategory(base_sub_category).SetCutResult(SelectionCut::medPt, true),
-                                      EventSubCategory(base_sub_category).SetCutResult(SelectionCut::highPt, true)};
+                    if(args.sample_order() == "NLO")
+                        subCategories = { EventSubCategory(base_sub_category).SetCutResult(SelectionCut::vlowPtNLO, true),
+                                        EventSubCategory(base_sub_category).SetCutResult(SelectionCut::lowPtNLO, true),
+                                        EventSubCategory(base_sub_category).SetCutResult(SelectionCut::medPtNLO, true),
+                                        EventSubCategory(base_sub_category).SetCutResult(SelectionCut::highPtNLO, true)};
+                    else if(args.sample_order() == "LO")
+                        subCategories = { EventSubCategory(base_sub_category).SetCutResult(SelectionCut::vlowPtLO, true),
+                                        EventSubCategory(base_sub_category).SetCutResult(SelectionCut::lowPtLO, true),
+                                        EventSubCategory(base_sub_category).SetCutResult(SelectionCut::medPt1LO, true),
+                                        EventSubCategory(base_sub_category).SetCutResult(SelectionCut::medPt2LO, true),
+                                        EventSubCategory(base_sub_category).SetCutResult(SelectionCut::highPtLO, true),
+                                        EventSubCategory(base_sub_category).SetCutResult(SelectionCut::vhighPtLO, true)};
                     for(int pt : pt_points){
                         const std::string name = boost::str(boost::format("%1%_%2%b_%3%Pt") % dy_contrib_prefix % nb % pt);
                         contribution_names.push_back(name);
@@ -164,7 +178,7 @@ public:
             }
         }
         contribution_names.push_back("other_bkg_muMu");
-        //contribution_names.push_back("QCD");
+        contribution_names.push_back("QCD");
         /*contribution_names.push_back("WW");
         contribution_names.push_back("WZ");
         contribution_names.push_back("Wjets");

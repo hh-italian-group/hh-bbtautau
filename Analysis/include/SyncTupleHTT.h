@@ -137,6 +137,8 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
     VAR(Float_t, puweight) \
     VAR(Float_t, leptonidisoWeight) \
     VAR(Float_t, leptontrigWeight) \
+    VAR(Float_t, final_weight) \
+    VAR(Float_t, dy_weight) \
     /* hh->bbtautau part */ \
     VAR(Float_t, shapeWeight) /* genWeight * puWeight * genEventSpec */ \
     VAR(Float_t, topWeight) /* gen top pt weight for TTbar */ \
@@ -260,6 +262,8 @@ namespace htt_sync {
 
 
 void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, analysis::Period run_period,
+                   double weight,
+                   //double dy_weight,
                    analysis::mva_study::MvaReader* mva_reader = nullptr,
                    analysis::EventInfoBase* event_tau_up = nullptr,
                    analysis::EventInfoBase* event_tau_down = nullptr,
