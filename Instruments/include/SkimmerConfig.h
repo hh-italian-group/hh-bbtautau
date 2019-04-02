@@ -34,7 +34,6 @@ struct Setup {
 
     bool ApplyTauIdCuts() const;
 
-    void UpdateTauIdIndices();
 };
 
 using SetupCollection = std::unordered_map<std::string, Setup>;

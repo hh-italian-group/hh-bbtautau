@@ -212,18 +212,19 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
             prevFullEvent = tupleEvent;
             prevFullEventPtr = &prevFullEvent;
         }
-        auto event = MakeEventInfo(channelId, tupleEvent, ana_setup.period, ana_setup.jet_ordering, &summary);
-        if(!ana_setup.energy_scales.count(event->GetEnergyScale())) continue;
-        if(!event->GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) continue;
+
+        analysis::EventInfoBase event = analysis::EventInfoBase(tupleEvent,EventInfoBase::GetHiggsCandidateIndex(tupleEvent,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017),ana_setup.period,ana_setup.jet_ordering, &summary);
+        if(!ana_setup.energy_scales.count(event.GetEnergyScale())) continue;
+        if(!event.GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) continue;
         bbtautau::AnaTupleWriter::DataIdMap dataIds;
-        const auto eventCategories = DetermineEventCategories(*event);
+        const auto eventCategories = DetermineEventCategories(event);
         for(auto eventCategory : eventCategories) {
             //if (!ana_setup.categories.count(eventCategory)) continue;
-            const EventRegion eventRegion = DetermineEventRegion(*event, eventCategory);
+            const EventRegion eventRegion = DetermineEventRegion(event, eventCategory);
             for(const auto& region : ana_setup.regions){
                 if(!eventRegion.Implies(region)) continue;
                 std::map<SelectionCut, double> mva_scores;
-                const auto eventSubCategory = DetermineEventSubCategory(*event, eventCategory, mva_scores);
+                const auto eventSubCategory = DetermineEventSubCategory(event, eventCategory, mva_scores);
                 for(const auto& subCategory : sub_categories_to_process) {
                     if(!eventSubCategory.Implies(subCategory)) continue;
                     SelectionCut mva_cut;
@@ -232,14 +233,14 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                         mva_score = mva_scores.at(mva_cut);
                         const auto& mva_params = mva_setup->selections.at(mva_cut);
                         if(mva_params.training_range.is_initialized() && mva_params.samples.count(sample.name)) {
-                            if(mva_params.training_range->Contains((*event)->split_id)) continue;
+                            if(mva_params.training_range->Contains(event->split_id)) continue;
                             mva_weight_scale = double(summary->n_splits)
                                     / (summary->n_splits - mva_params.training_range->size());
                         }
                     }
-                    event->SetMvaScore(mva_score);
+                    event.SetMvaScore(mva_score);
                     const EventAnalyzerDataId anaDataId(eventCategory, subCategory, region,
-                                                        event->GetEnergyScale(), sample_wp.full_name);
+                                                        event.GetEnergyScale(), sample_wp.full_name);
                     if(sample.sampleType == SampleType::Data) {
                         dataIds[anaDataId] = std::make_tuple(1., mva_score);
                     } else {
@@ -262,24 +263,24 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                         // const double weight = (((*event)->weight_total * sample.cross_section * ana_setup.int_lumi)
                         //        / (summary->totalShapeWeight )) * mva_weight_scale ;
 
-                        const double weight = (*event)->weight_total * sample.cross_section * ana_setup.int_lumi
+                        const double weight = event->weight_total * sample.cross_section * ana_setup.int_lumi
                                             / summary->totalShapeWeight * mva_weight_scale;
                         if(sample.sampleType == SampleType::MC) {
                             dataIds[anaDataId] = std::make_tuple(weight, mva_score);
                         } else
-                            ProcessSpecialEvent(sample, sample_wp, anaDataId, *event, weight,
+                            ProcessSpecialEvent(sample, sample_wp, anaDataId, event, weight,
                                                 summary->totalShapeWeight, dataIds);
                     }
                 }
             }
         }
 
-        anaTupleWriter.AddEvent(*event, dataIds);
+        anaTupleWriter.AddEvent(event, dataIds);
         for (size_t n = 0; n < sync_descriptors.size(); ++n) {
             const auto& regex_pattern = sync_descriptors.at(n).regex_pattern;
             for(auto& dataId : dataIds){
                 if(boost::regex_match(dataId.first.GetName(), *regex_pattern)){
-                    htt_sync::FillSyncTuple(*event, *sync_descriptors.at(n).sync_tree, ana_setup.period);
+                    htt_sync::FillSyncTuple(event, *sync_descriptors.at(n).sync_tree, ana_setup.period);
                     break;
                 }
             }

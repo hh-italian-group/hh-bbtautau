@@ -151,8 +151,8 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
     tuple().jets_nTotal_hadronFlavour_b = event->jets_nTotal_hadronFlavour_b;
     tuple().jets_nTotal_hadronFlavour_c = event->jets_nTotal_hadronFlavour_c;
 
-    tuple().gen_match_1 = event->gen_match_1;
-    tuple().gen_match_2 = event->gen_match_2;
+    tuple().gen_match_1 = static_cast<float>(event.GetLeg(1)->gen_match());
+    tuple().gen_match_2 = static_cast<float>(event.GetLeg(2)->gen_match());
 
     if(event.HasBjetPair()) {
         const auto& Hbb = event.GetHiggsBB();

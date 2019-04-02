@@ -8,17 +8,6 @@ namespace tuple_skimmer {
 
 bool Setup::ApplyTauIdCuts() const { return !tau_id_cuts.empty(); }
 
-void Setup::UpdateTauIdIndices()
-{
-    tau_id_cut_indices.clear();
-    const auto& bit_refs = TauIdResults::GetBitRefsByName();
-    for(const auto& cut_name : tau_id_cuts) {
-        if(!bit_refs.count(cut_name))
-            throw exception("Unknown tau ID '%1%'") % cut_name;
-        tau_id_cut_indices.insert(bit_refs.at(cut_name));
-    }
-}
-
 FileDescriptor::FileDescriptor(const std::vector<std::string>& _inputs) :
     inputs(_inputs), output(inputs.size() ? inputs.front() : ""),
     cross_section(std::numeric_limits<double>::quiet_NaN()), first_input_is_ref(true) {}
