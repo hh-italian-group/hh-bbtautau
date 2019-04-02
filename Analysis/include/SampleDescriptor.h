@@ -30,6 +30,8 @@ struct AnalyzerSetup {
     std::vector<std::string> syncDataIds;
     std::string plot_cfg, plot_page_opt, unc_cfg;
     JetOrdering jet_ordering;
+    double qcd_ss_os_sf{0};
+    double qcd_ss_os_err{0};
     std::map<Channel, std::vector<std::string>> trigger;
     std::map<SelectionCut,analysis::EllipseParameters> massWindowParams;
     std::map<std::string, std::vector<std::string>> limit_setup_raw;

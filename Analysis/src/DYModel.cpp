@@ -69,9 +69,10 @@ DYModel::DYModel(const SampleDescriptor& sample,const std::string& working_path)
         for(int i=1; i<=nbins;i++){
             std::string scale_factor_name = scale_factor_histo->GetXaxis()->GetBinLabel(i);
             double value = scale_factor_histo->GetBinContent(i);
-            if(!scale_factor_name.empty()){
+            if(scale_factor_name.find("DY") != std::string::npos){
                 std::string sf_prefix = "SF_";
-                scale_factor_name.insert(7,sf_prefix);
+                if(scale_factor_name.find("DY_nlo") != std::string::npos) scale_factor_name.insert(7,sf_prefix);
+                else if(scale_factor_name.find("DY_lo") != std::string::npos) scale_factor_name.insert(6,sf_prefix);
                 scale_factor_maps[scale_factor_name] = value;
             }
         }
@@ -117,7 +118,7 @@ void DYModel::ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& 
     auto n_selected_gen_jets = event->lhe_n_partons;
     size_t n_bJets = event->lhe_n_b_partons;
 
-    if(sampleOrder == "LO"){
+    /*if(sampleOrder == "LO"){
         std::string lhe_category = "";
         if(n_selected_gen_jets==0) lhe_category = "0Jet";
         else if (n_selected_gen_jets == 1){
@@ -142,7 +143,7 @@ void DYModel::ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& 
             }
         }
         weight = weight*fractional_weight*pt_weight;
-    }
+    }*/
 
 
     //unsigned int n_bJets = event->jets_nTotal_hadronFlavour_b;
@@ -183,16 +184,23 @@ void DYModel::ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& 
         p.second = njet_wp;
     }
     else if(pt_found){
-        double gen_pt = 0;
+        double gen_pt;
+        if(sampleOrder == "LO") gen_pt= 0;
+        else if (sampleOrder == "NLO") gen_pt=25;
+        bool Z_found =false;
         for(size_t i=0;i<event->genParticles_p4.size();i++){
             if(event->genParticles_pdg.at(i) != 23) continue;
             gen_pt = event->genParticles_p4.at(i).Pt();
+            Z_found = true;
             break;
+        }
+        int gen_match_muon = static_cast<int>(GenMatch::Muon);
+        if(!Z_found){
+            if(event->gen_match_1 == gen_match_muon && event->gen_match_2 == gen_match_muon) gen_pt = (event->gen_p4_1 + event->gen_p4_2).Pt();
         }
         size_t pt_wp = Get2WP(gen_pt,pt_wp_set);
         p.second = pt_wp;
     }
-
 
     std::map<std::pair<size_t,size_t>,SampleDescriptorBase::Point>::iterator it = working_points_map.find(p);
     if(it == working_points_map.end())
