@@ -212,8 +212,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
             prevFullEvent = tupleEvent;
             prevFullEventPtr = &prevFullEvent;
         }
-
-        analysis::EventInfoBase event = analysis::EventInfoBase(tupleEvent,EventInfoBase::GetHiggsCandidateIndex(tupleEvent,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017),ana_setup.period,ana_setup.jet_ordering, &summary);
+        analysis::EventInfoBase event = CreateEventInfo(tupleEvent,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,ana_setup.period,ana_setup.jet_ordering, &summary);
         if(!ana_setup.energy_scales.count(event.GetEnergyScale())) continue;
         if(!event.GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) continue;
         bbtautau::AnaTupleWriter::DataIdMap dataIds;
@@ -280,7 +279,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
             const auto& regex_pattern = sync_descriptors.at(n).regex_pattern;
             for(auto& dataId : dataIds){
                 if(boost::regex_match(dataId.first.GetName(), *regex_pattern)){
-                    htt_sync::FillSyncTuple(event, *sync_descriptors.at(n).sync_tree, ana_setup.period);
+                    htt_sync::FillSyncTuple(event, *sync_descriptors.at(n).sync_tree, ana_setup.period,std::get<0>(dataId.second));
                     break;
                 }
             }

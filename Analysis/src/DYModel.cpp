@@ -184,7 +184,7 @@ void DYModel::ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& 
         p.second = njet_wp;
     }
     else if(pt_found){
-        double gen_pt;
+        double gen_pt = 0.0;
         if(sampleOrder == "LO") gen_pt= 0;
         else if (sampleOrder == "NLO") gen_pt=25;
         bool Z_found =false;
@@ -194,9 +194,9 @@ void DYModel::ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& 
             Z_found = true;
             break;
         }
-        int gen_match_muon = static_cast<int>(GenMatch::Muon);
+        //int gen_match_muon = static_cast<int>(GenLeptonMatch::Muon);
         if(!Z_found){
-            if(event->gen_match_1 == gen_match_muon && event->gen_match_2 == gen_match_muon) gen_pt = (event->gen_p4_1 + event->gen_p4_2).Pt();
+            if(event.GetLeg(1)->gen_match() == GenLeptonMatch::Muon && event.GetLeg(2)->gen_match() == GenLeptonMatch::Muon) gen_pt = (event.GetLeg(1)->gen_p4() + event.GetLeg(2)->gen_p4()).Pt();
         }
         size_t pt_wp = Get2WP(gen_pt,pt_wp_set);
         p.second = pt_wp;

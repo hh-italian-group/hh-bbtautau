@@ -30,12 +30,12 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().npv = event->npv;
     sync().npu = event->npu;
 
-    sync().pt_1 = event.GetLeg(1).GetMomentum().Pt();
+    sync().pt_1 = static_cast<float>(event.GetLeg(1).GetMomentum().Pt());
     sync().pt_tau_ES_up_1 = COND_VAL(event_tau_up, event_tau_up->GetLeg(1).GetMomentum().Pt());
     sync().pt_tau_ES_down_1 = COND_VAL(event_tau_down, event_tau_down->GetLeg(1).GetMomentum().Pt());
-    sync().phi_1 = event.GetLeg(1).GetMomentum().Phi();
-    sync().eta_1 = event.GetLeg(1).GetMomentum().Eta();
-    sync().m_1 = event.GetLeg(1).GetMomentum().mass();
+    sync().phi_1 = static_cast<float>(event.GetLeg(1).GetMomentum().Phi());
+    sync().eta_1 = static_cast<float>(event.GetLeg(1).GetMomentum().Eta());
+    sync().m_1 = static_cast<float>(event.GetLeg(1).GetMomentum().mass());
     sync().q_1 = event.GetLeg(1)->charge();
     sync().d0_1 = event.GetLeg(1)->dxy();
     sync().dZ_1 = event.GetLeg(1)->dz();
@@ -54,12 +54,12 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().byIsolationMVArun2v1DBoldDMwLTraw_1 = event.GetLeg(1)->GetRawValue(TauIdDiscriminator::byIsolationMVArun2v1DBoldDMwLT2016);
     sync().byIsolationMVArun2017v2DBoldDMwLTraw2017_1 = event.GetLeg(1)->GetRawValue(TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017);
 
-    sync().pt_2 = event.GetLeg(2).GetMomentum().Pt();
+    sync().pt_2 = static_cast<float>(event.GetLeg(2).GetMomentum().Pt());
     sync().pt_tau_ES_up_2 = COND_VAL(event_tau_up, event_tau_up->GetLeg(2).GetMomentum().Pt());
     sync().pt_tau_ES_down_2 = COND_VAL(event_tau_down, event_tau_down->GetLeg(2).GetMomentum().Pt());
-    sync().phi_2 = event.GetLeg(2).GetMomentum().Phi();
-    sync().eta_2 = event.GetLeg(2).GetMomentum().Eta();
-    sync().m_2 = event.GetLeg(2).GetMomentum().mass();
+    sync().phi_2 = static_cast<float>(event.GetLeg(2).GetMomentum().Phi());
+    sync().eta_2 = static_cast<float>(event.GetLeg(2).GetMomentum().Eta());
+    sync().m_2 = static_cast<float>(event.GetLeg(2).GetMomentum().mass());
     sync().q_2 = event.GetLeg(2)->charge();
     sync().d0_2 = event.GetLeg(2)->dxy();
     sync().dZ_2 = event.GetLeg(2)->dz();
@@ -78,16 +78,16 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().byIsolationMVArun2v1DBoldDMwLTraw_2 = event.GetLeg(2)->GetRawValue(TauIdDiscriminator::byIsolationMVArun2v1DBoldDMwLT2016);
     sync().byIsolationMVArun2017v2DBoldDMwLTraw2017_2 = event.GetLeg(2)->GetRawValue(TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017);
 
-    sync().pt_tt = (event.GetLeg(1).GetMomentum() + event.GetLeg(2).GetMomentum() + event.GetMET().GetMomentum()).Pt();
-    sync().m_vis = (event.GetLeg(1).GetMomentum() + event.GetLeg(2).GetMomentum()).M();
-    sync().m_sv = event.GetSVFitResults().momentum.M();
+    sync().pt_tt = static_cast<float>((event.GetLeg(1).GetMomentum() + event.GetLeg(2).GetMomentum() + event.GetMET().GetMomentum()).Pt());
+    sync().m_vis = static_cast<float>((event.GetLeg(1).GetMomentum() + event.GetLeg(2).GetMomentum()).M());
+    sync().m_sv = static_cast<float>(event.GetSVFitResults().momentum.M());
     sync().m_sv_tau_ES_up = COND_VAL(event_tau_up, event_tau_up->GetSVFitResults().momentum.M());
     sync().m_sv_tau_ES_down = COND_VAL(event_tau_down, event_tau_down->GetSVFitResults().momentum.M());
     sync().m_sv_jet_ES_up = COND_VAL(event_jet_up, event_jet_up->GetSVFitResults().momentum.M());
     sync().m_sv_jet_ES_down = COND_VAL(event_jet_down, event_jet_down->GetSVFitResults().momentum.M());
-    sync().mt_sv = event.GetSVFitResults().transverseMass;
+    sync().mt_sv = static_cast<float>(event.GetSVFitResults().transverseMass);
 
-    sync().met = event.GetMET().GetMomentum().Pt();
+    sync().met = static_cast<float>(event.GetMET().GetMomentum().Pt());
     sync().met_tau_ES_up = COND_VAL(event_tau_up, event_tau_up->GetMET().GetMomentum().Pt());
     sync().met_tau_ES_down = COND_VAL(event_tau_down, event_tau_down->GetMET().GetMomentum().Pt());
     sync().met_jet_ES_up = COND_VAL(event_jet_up, event_jet_up->GetMET().GetMomentum().Pt());
@@ -208,7 +208,7 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().mva_score_mm_400 = COND_VAL(mva_reader, mva_reader->Evaluate(analysis::mva_study::MvaReader::MvaKey{"mva_mmANkin", 400, 0}, &event));
     sync().mva_score_hm_650 = COND_VAL(mva_reader, mva_reader->Evaluate(analysis::mva_study::MvaReader::MvaKey{"mva_hmANkin", 650, 0}, &event));
 
-    sync().deltaR_ll = ROOT::Math::VectorUtil::DeltaR(event.GetLeg(1).GetMomentum(), event.GetLeg(2).GetMomentum());
+    sync().deltaR_ll = static_cast<float>(ROOT::Math::VectorUtil::DeltaR(event.GetLeg(1).GetMomentum(), event.GetLeg(2).GetMomentum()));
 
     sync().nFatJets = static_cast<unsigned>(event.GetFatJets().size());
     const auto fatJet = event.SelectFatJet(30, 0.4);
