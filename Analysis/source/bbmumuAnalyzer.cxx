@@ -18,8 +18,8 @@ protected:
             {DiscriminatorWP::VVLoose,2.0}, {DiscriminatorWP::Medium,0.15}
         };
 
-        const MuonCandidate& muon1 = eventInfoBase.GetFirstLeg();
-        const MuonCandidate& muon2 = eventInfoBase.GetSecondLeg();
+        const analysis::LepCandidate& muon1 = eventInfoBase.GetFirstLeg();
+        const analysis::LepCandidate& muon2 = eventInfoBase.GetSecondLeg();
 //        const HiggsBBCandidate& jets  = event.GetHiggsBB();
         if(muon1.GetMomentum().Pt() < 20 || muon2.GetMomentum().Pt() < 20) return EventRegion::Unknown();
 

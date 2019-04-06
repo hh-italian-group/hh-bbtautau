@@ -17,6 +17,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/TextIO.h"
 #include "h-tautau/Core/include/TauIdResults.h"
 #include "h-tautau/JetTools/include/BTagger.h"
+#include "h-tautau/Analysis/include/EventInfo.h"
 
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, output_file);
@@ -127,12 +128,14 @@ public:
                             || std::abs(event.jets_p4.at(1).eta()) >= cuts::btag_2017::eta)) continue;
 
                     auto bb = event.jets_p4.at(0) + event.jets_p4.at(1);
-                    if (!cuts::hh_bbtautau_2017::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(),bb.mass())) continue;
+                    boost::optional<EventInfoBase> eventInfo = CreateEventInfo(event,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017, args.period(),args.csv_type());
+                    if(!eventInfo.is_initialized()) continue;
+                    if (!cuts::hh_bbtautau_2017::hh_tag::IsInsideMassWindow(eventInfo->GetSVFitResults().momentum.mass(),bb.mass())) continue;
 
-                    std::string tau_sign = (event.q_1+event.q_2) == 0 ? "OS" : "SS";
+                    std::string tau_sign = (eventInfo->GetLeg(1)->charge()+eventInfo->GetLeg(1)->charge()) == 0 ? "OS" : "SS";
 
-                    const bool passTauId = (leg_types.first != LegType::tau || PassTauIdCut(event.tauId_flags_1))
-                            && (leg_types.second != LegType::tau || PassTauIdCut(event.tauId_flags_2));
+                    const bool passTauId = (leg_types.first != LegType::tau || eventInfo->GetLeg(1)->Passed(analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,DiscriminatorWP::Medium))
+                            && (leg_types.second != LegType::tau || eventInfo->GetLeg(2)->Passed(analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,DiscriminatorWP::Medium));
 
 
                     std::string tau_iso = passTauId ? "Iso" : "NonIso";
@@ -328,14 +331,14 @@ private:
                                                  {"valQ","ValidationCharge"} };
     std::map<std::string, DiscriminatorWP> btag_working_points;
 
-    static bool PassTauIdCut(TauIdResults::BitsContainer id_bits)
-    {
-        static const std::string disc_name = "byMediumIsolationMVArun2v1DBoldDMwLT";
-        static const size_t disc_index = TauIdResults::GetBitRefsByName().at(disc_name);
-
-        const TauIdResults id_results(id_bits);
-        return id_results.Result(disc_index);
-    }
+    // static bool PassTauIdCut(TauIdResults::BitsContainer id_bits)
+    // {
+    //     static const std::string disc_name = "byMediumIsolationMVArun2v1DBoldDMwLT";
+    //     static const size_t disc_index = TauIdResults::GetBitRefsByName().at(disc_name);
+    //
+    //     const TauIdResults id_results(id_bits);
+    //     return id_results.Result(disc_index);
+    // }
 
     static bool PassJetPuId(double pt, double mva, DiscriminatorWP wp)
     {

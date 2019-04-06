@@ -91,15 +91,16 @@ public:
             auto tuple = ntuple::CreateEventTuple(args.tree_name(), input_file.get(), true, ntuple::TreeState::Skimmed);
             for(const Event& event : *tuple) {
                 LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
+                boost::optional<EventInfoBase> eventbase = CreateEventInfo(event,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017, Period::Run2017, JetOrdering::DeepCSV);
+                if(!eventbase.is_initialized()) continue;
                 if (args.suffix() == "_ANcut"){
-                    if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(event.SVfit_p4.mass(),bb.mass())) continue;
+                    if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(eventbase->GetSVFitResults().momentum.mass(),bb.mass())) continue;
                 }
-                auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(args.tree_name()) ,event, Period::Run2017, JetOrdering::DeepCSV) ;
-                EventInfoBase& eventbase = *eventInfoPtr;
+
                 if (args.suffix() == "_newcut"){
-                    if (!cuts::hh_bbtautau_2016::hh_tag::new_m_hh_window().IsInside(eventbase.GetHiggsTTMomentum(false).M(),bb.mass())) continue;
+                    if (!cuts::hh_bbtautau_2016::hh_tag::new_m_hh_window().IsInside(eventbase->GetHiggsTTMomentum(false).M(),bb.mass())) continue;
                 }
-                vars.AddEvent(eventbase, entry.id, entry.spin, entry.weight);
+                vars.AddEvent(*eventbase, entry.id, entry.spin, entry.weight);
             }
             std::cout << entry << " number of events: " << tuple->size() << std::endl;
         }
@@ -115,19 +116,19 @@ public:
             auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
             auto tuple = ntuple::CreateEventTuple(args.tree_name(), input_file.get(), true, ntuple::TreeState::Full);
             for(const Event& event : *tuple) {
-
-                if (static_cast<EventEnergyScale>(event.eventEnergyScale) != EventEnergyScale::Central || (event.q_1+event.q_2) != 0 || event.jets_p4.size() < 2
+                boost::optional<EventInfoBase> eventbase = CreateEventInfo(event,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017, Period::Run2017, JetOrdering::DeepCSV);
+                if(!eventbase.is_initialized()) continue;
+                if (static_cast<EventEnergyScale>(event.eventEnergyScale) != EventEnergyScale::Central || (eventbase->GetLeg(1)->charge()+eventbase->GetLeg(2)->charge()) != 0 || event.jets_p4.size() < 2
                     || event.extraelec_veto == true || event.extramuon_veto == true || event.jets_p4[0].eta() > cuts::btag_2016::eta
                     || event.jets_p4[1].eta() > cuts::btag_2016::eta)
                     continue;
 
                 LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
-                if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(event.SVfit_p4.mass(),bb.mass())) continue;
+                if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(eventbase->GetSVFitResults().momentum.mass(),bb.mass())) continue;
                 if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
                 if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
-                auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(args.tree_name()) ,event, Period::Run2017, JetOrdering::DeepCSV) ;
-                EventInfoBase& eventbase = *eventInfoPtr;
-                vars.AddEvent(eventbase, entry.id, entry.spin, entry.weight);
+
+                vars.AddEvent(*eventbase, entry.id, entry.spin, entry.weight);
             }
             std::cout << entry << " number of events: " << tuple->size() << "  spin:" << entry.spin << "    " << entry.weight << std::endl;
         }

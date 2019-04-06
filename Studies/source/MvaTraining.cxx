@@ -466,8 +466,10 @@ public:
                 for(Event event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
                     LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
+                    boost::optional<EventInfoBase> eventbase = CreateEventInfo(event,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017, Period::Run2017, JetOrdering::DeepCSV);
+                    if(!eventbase.is_initialized()) continue;
                     if (args.suffix() == "_ANcut"){
-                        if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(event.SVfit_p4.mass(),bb.mass())) continue;
+                        if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(eventbase->GetSVFitResults().momentum.mass(),bb.mass())) continue;
                     }
 //                    if (event.p4_1.pt()<40 || event.p4_2.pt()<40) continue;
                     int which_set=0;
@@ -495,10 +497,9 @@ public:
                     }
                     tot_entries++;
 
-                    auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(s.channel), event, Period::Run2017, JetOrdering::DeepCSV) ;
-                    EventInfoBase& eventbase = *eventInfoPtr;
+
                     if (args.suffix() == "_newcut"){
-                        if (!cuts::hh_bbtautau_2016::hh_tag::new_m_hh_window().IsInside(eventbase.GetHiggsTTMomentum(false).M(),bb.mass())) continue;
+                        if (!cuts::hh_bbtautau_2016::hh_tag::new_m_hh_window().IsInside(eventbase->GetHiggsTTMomentum(false).M(),bb.mass())) continue;
                     }
 
                     if (!args.is_SM() && args.is_BSM())
@@ -513,12 +514,12 @@ public:
                             const auto& benchmark = benchmarks.at_index(which_benchmark);
                             pair_mass_spin = std::make_pair(SampleId::SM().mass, benchmark.point.kl);
                             const SampleId sample_bkg(SampleType::Bkg_TTbar, pair_mass_spin.first);
-                            vars->AddEvent(eventbase, sample_bkg, pair_mass_spin.second, entry.weight, which_set);
+                            vars->AddEvent(*eventbase, sample_bkg, pair_mass_spin.second, entry.weight, which_set);
                         }
                         else {
                             pair_mass_spin = mass_spin.at(it(gen));
                             const SampleId sample_bkg(SampleType::Bkg_TTbar, pair_mass_spin.first);
-                            vars->AddEvent(eventbase, sample_bkg, pair_mass_spin.second,entry.weight, which_set);
+                            vars->AddEvent(*eventbase, sample_bkg, pair_mass_spin.second,entry.weight, which_set);
                         }
                     }
                     else {
@@ -526,10 +527,10 @@ public:
                             size_t which_benchmark = bp(gen2);
                             const auto& benchmark = benchmarks.at_index(which_benchmark);
                             double benchmarkWeight = reweight5D->Get(event, benchmark.point);
-                            event.weight_total = eventbase->weight_total/eventbase->weight_bsm_to_sm*benchmarkWeight;
-                            vars->AddEvent(eventbase, entry.id, static_cast<int>(benchmark.point.kl), entry.weight , which_set);
+                            event.weight_total = (*eventbase)->weight_total/(*eventbase)->weight_bsm_to_sm*benchmarkWeight;
+                            vars->AddEvent(*eventbase, entry.id, static_cast<int>(benchmark.point.kl), entry.weight , which_set);
                         }
-                        else vars->AddEvent(eventbase, entry.id, entry.spin, entry.weight , which_set);
+                        else vars->AddEvent(*eventbase, entry.id, entry.spin, entry.weight , which_set);
                     }
                 }
                 std::cout << " channel " << s.channel << "    " << entry.filename << " number of events: " << tot_entries << std::endl;

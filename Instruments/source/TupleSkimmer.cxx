@@ -80,12 +80,13 @@ public:
 //            if(data.count(key))
 //                throw exception("Duplicated event %1% with ES = %2% in %3%.") % eventId % event.eventEnergyScale
 //                    % fileName;
-            analysis::EventInfoBase eventInfo(event);
-            data[key] = Value{eventInfo.GetLeg(1)->decayMode(), eventInfo.GetLeg(2)->decayMode()};
+            boost::optional<analysis::EventInfoBase> eventInfo = CreateEventInfo(event);
+            if(!eventInfo.is_initialized()) continue;
+            data[key] = Value{eventInfo->GetLeg(1)->decayMode(), eventInfo->GetLeg(2)->decayMode()};
         }
     }
 
-    
+
 private:
     Map data;
 };
@@ -457,7 +458,8 @@ private:
 
         storage_mode = ntuple::EventLoader::Load(full_event, prev_event.get());
 
-        analysis::EventInfoBase eventInfo = CreateEventInfo(full_event,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,setup.period,setup.jet_ordering);
+        boost::optional<EventInfoBase> eventInfo = CreateEventInfo(full_event,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,setup.period,setup.jet_ordering);
+        if(!eventInfo.is_initialized()) return false;
 
         const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
         if(!prev_event_stored) {
@@ -476,19 +478,19 @@ private:
 
         if(!setup.energy_scales.count(es) || full_event.extraelec_veto || full_event.extramuon_veto) return false;
 
-        if(setup.apply_bb_cut && !eventInfo.HasBjetPair()) return false;
+        if(setup.apply_bb_cut && !eventInfo->HasBjetPair()) return false;
 
         if(setup.apply_mass_cut) {
             bool pass_mass_cut = false;
-            if (!eventInfo.HasBjetPair()) return false;
-            const double mbb = eventInfo.GetHiggsBB().GetMomentum().mass();
-            const double mtautau = (eventInfo.GetLeg(1).GetMomentum() + eventInfo.GetLeg(2).GetMomentum()).mass();
+            if (!eventInfo->HasBjetPair()) return false;
+            const double mbb = eventInfo->GetHiggsBB().GetMomentum().mass();
+            const double mtautau = (eventInfo->GetLeg(1).GetMomentum() + eventInfo->GetLeg(2).GetMomentum()).mass();
             pass_mass_cut = pass_mass_cut
-                    || cuts::hh_bbtautau_2016::hh_tag::IsInsideBoostedMassWindow(eventInfo.GetSVFitResults().momentum.mass(),mbb);
+                    || cuts::hh_bbtautau_2016::hh_tag::IsInsideBoostedMassWindow(eventInfo->GetSVFitResults().momentum.mass(),mbb);
 
             if(setup.massWindowParams.count(SelectionCut::mh))
                 pass_mass_cut = pass_mass_cut || setup.massWindowParams.at(SelectionCut::mh)
-                        .IsInside(eventInfo.GetSVFitResults().momentum.mass(),mbb);
+                        .IsInside(eventInfo->GetSVFitResults().momentum.mass(),mbb);
 
             if(setup.massWindowParams.count(SelectionCut::mhVis))
                 pass_mass_cut = pass_mass_cut || setup.massWindowParams.at(SelectionCut::mhVis)
@@ -496,12 +498,12 @@ private:
 
             if(setup.massWindowParams.count(SelectionCut::mhMET))
                 pass_mass_cut = pass_mass_cut || setup.massWindowParams.at(SelectionCut::mhMET)
-                        .IsInside((eventInfo.GetLeg(1).GetMomentum() + eventInfo.GetLeg(2).GetMomentum() + full_event.pfMET_p4).mass(),mbb);
+                        .IsInside((eventInfo->GetLeg(1).GetMomentum() + eventInfo->GetLeg(2).GetMomentum() + full_event.pfMET_p4).mass(),mbb);
 
             if(!pass_mass_cut) return false;
         }
 
-        if (setup.apply_charge_cut && (eventInfo.GetLeg(1)->charge() + eventInfo.GetLeg(2)->charge()) != 0) return false;
+        if (setup.apply_charge_cut && (eventInfo->GetLeg(1)->charge() + eventInfo->GetLeg(2)->charge()) != 0) return false;
 
         // if(setup.ApplyTauIdCuts()) {
         //     const Channel channel = static_cast<Channel>(event.channelId);
@@ -511,54 +513,54 @@ private:
         // }
 
         if(setup.apply_kinfit){
-            event.kinFit_chi2.push_back(static_cast<Float_t>(eventInfo.GetKinFitResults().chi2));
-            event.kinFit_convergence.push_back(eventInfo.GetKinFitResults().convergence);
-            event.kinFit_m.push_back(static_cast<Float_t>(eventInfo.GetKinFitResults().mass));
-            event.kinFit_jetPairId.push_back(static_cast<unsigned>(ntuple::CombinationPairToIndex(eventInfo.GetSelectedSignalJets().selectedBjetPair, eventInfo.GetNJets())));
+            event.kinFit_chi2.push_back(static_cast<Float_t>(eventInfo->GetKinFitResults().chi2));
+            event.kinFit_convergence.push_back(eventInfo->GetKinFitResults().convergence);
+            event.kinFit_m.push_back(static_cast<Float_t>(eventInfo->GetKinFitResults().mass));
+            event.kinFit_jetPairId.push_back(static_cast<unsigned>(ntuple::CombinationPairToIndex(eventInfo->GetSelectedSignalJets().selectedBjetPair, eventInfo->GetNJets())));
         }
 
-        event.ht_other_jets = (eventInfo.HasBjetPair()) ? static_cast<Float_t>(eventInfo.GetHT(false,true)) : 0;
+        event.ht_other_jets = (eventInfo->HasBjetPair()) ? static_cast<Float_t>(eventInfo->GetHT(false,true)) : 0;
 
         event.weight_pu = weighting_mode.count(WeightType::PileUp)
-                        ? eventWeights_HH->GetWeight(eventInfo, WeightType::PileUp) : 1;
+                        ? eventWeights_HH->GetWeight(*eventInfo, WeightType::PileUp) : 1;
         if(weighting_mode.count(WeightType::LeptonTrigIdIso)) {
             auto lepton_wp = eventWeights_HH->GetProviderT<mc_corrections::LeptonWeights>(WeightType::LeptonTrigIdIso);
-            event.weight_lepton_trig = lepton_wp->GetTriggerWeight(eventInfo);
-            event.weight_lepton_id_iso = lepton_wp->GetIdIsoWeight(eventInfo);
+            event.weight_lepton_trig = lepton_wp->GetTriggerWeight(*eventInfo);
+            event.weight_lepton_id_iso = lepton_wp->GetIdIsoWeight(*eventInfo);
         } else {
             event.weight_lepton_trig = 1;
             event.weight_lepton_id_iso = 1;
         }
         event.weight_tau_id = weighting_mode.count(WeightType::TauId)
-                ? eventWeights_HH->GetWeight(full_event, WeightType::TauId) : 1;
+                ? eventWeights_HH->GetWeight(*eventInfo, WeightType::TauId) : 1;
         if(weighting_mode.count(WeightType::BTag)) {
             auto btag_wp = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(WeightType::BTag);
-            event.weight_btag = btag_wp->Get(eventInfo);
-            event.weight_btag_up = btag_wp->GetEx(eventInfo, UncertaintyScale::Up);
-            event.weight_btag_down = btag_wp->GetEx(eventInfo, UncertaintyScale::Down);
+            event.weight_btag = btag_wp->Get(*eventInfo);
+            event.weight_btag_up = btag_wp->GetEx(*eventInfo, UncertaintyScale::Up);
+            event.weight_btag_down = btag_wp->GetEx(*eventInfo, UncertaintyScale::Down);
         } else {
             event.weight_btag = 1;
             event.weight_btag_up = 1;
             event.weight_btag_down = 1;
         }
         event.weight_dy = weighting_mode.count(WeightType::DY)
-                ? eventWeights_HH->GetWeight(full_event, WeightType::DY) : 1;
+                ? eventWeights_HH->GetWeight(*eventInfo, WeightType::DY) : 1;
         event.weight_ttbar = weighting_mode.count(WeightType::TTbar)
-                ? eventWeights_HH->GetWeight(full_event, WeightType::TTbar) : 1;
+                ? eventWeights_HH->GetWeight(*eventInfo, WeightType::TTbar) : 1;
         event.weight_wjets = weighting_mode.count(WeightType::Wjets)
-                ? eventWeights_HH->GetWeight(full_event, WeightType::Wjets) : 1;
+                ? eventWeights_HH->GetWeight(*eventInfo, WeightType::Wjets) : 1;
         event.weight_bsm_to_sm = weighting_mode.count(WeightType::BSM_to_SM)
-                ? eventWeights_HH->GetWeight(full_event, WeightType::BSM_to_SM) : 1;
+                ? eventWeights_HH->GetWeight(*eventInfo, WeightType::BSM_to_SM) : 1;
 
         if(weighting_mode.count(WeightType::TopPt)) {
-            event.weight_top_pt = eventWeights_HH->GetWeight(full_event, WeightType::TopPt);
+            event.weight_top_pt = eventWeights_HH->GetWeight(*eventInfo, WeightType::TopPt);
             const auto wmode_withoutTopPt = weighting_mode - WeightingMode{WeightType::TopPt};
-            event.weight_total = eventWeights_HH->GetTotalWeight(full_event, wmode_withoutTopPt) * event.weight_xs;
-            event.weight_total_withTopPt = eventWeights_HH->GetTotalWeight(full_event, weighting_mode)
+            event.weight_total = eventWeights_HH->GetTotalWeight(*eventInfo, wmode_withoutTopPt) * event.weight_xs;
+            event.weight_total_withTopPt = eventWeights_HH->GetTotalWeight(*eventInfo, weighting_mode)
                     * event.weight_xs_withTopPt;
         } else {
             event.weight_top_pt = 1;
-            event.weight_total = eventWeights_HH->GetTotalWeight(full_event, weighting_mode) * event.weight_xs;
+            event.weight_total = eventWeights_HH->GetTotalWeight(*eventInfo, weighting_mode) * event.weight_xs;
             event.weight_total_withTopPt = 0;
         }
 
