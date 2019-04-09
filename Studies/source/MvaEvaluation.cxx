@@ -188,14 +188,15 @@ public:
                 for(Event event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
                     LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
+                    boost::optional<EventInfoBase> eventbase = CreateEventInfo(event);
+                    if(!eventbase.is_initialized()) continue;
                     if (args.suffix() == "_ANcut"){
-                        if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(event.SVfit_p4.mass(),bb.mass())) continue;
+                        if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(eventbase->GetSVFitResults().momentum.mass(),bb.mass())) continue;
                     }
                     auto step = (mergesummary.n_splits/2)/args.subdivisions();
-                    auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(s.channel), event, Period::Run2017, JetOrdering::DeepCSV) ;
-                    EventInfoBase& eventbase = *eventInfoPtr;
+
                     if (args.suffix() == "_newcut"){
-                        if (!cuts::hh_bbtautau_2016::hh_tag::new_m_hh_window().IsInside(eventbase.GetHiggsTTMomentum(false).M(),bb.mass())) continue;
+                        if (!cuts::hh_bbtautau_2016::hh_tag::new_m_hh_window().IsInside(eventbase->GetHiggsTTMomentum(false).M(),bb.mass())) continue;
                     }
                     size_t which_set=0;
                     if(!args.all_data()){
@@ -238,7 +239,7 @@ public:
                             ChannelSampleIdSpin id_ch_bkg_spin{args.channel(), bkg, parameter};
 
                             MvaReader::MvaKey key{args.method_name(), mass, parameter};
-                            double eval = reader.Evaluate(key, &eventbase);
+                            double eval = reader.Evaluate(key, &(*eventbase));
 
                             data[id_ch_sample_spin][which_set].push_back(eval);
                             data[id_ch_bkg_spin][which_set].push_back(eval);
@@ -251,9 +252,9 @@ public:
                         if (args.is_BSM()){
                             NonResHH_EFT::Point benchmarkparameters(args.kl(), 1, 0, 0, 0);
                             double benchmarkWeight = reweight5D->Get(event, benchmarkparameters);
-                            event.weight_total = eventbase->weight_total/eventbase->weight_bsm_to_sm*benchmarkWeight;
+                            event.weight_total = (*eventbase)->weight_total/(*eventbase)->weight_bsm_to_sm*benchmarkWeight;
                         }
-                        double eval = reader.Evaluate(key, &eventbase);
+                        double eval = reader.Evaluate(key, &(*eventbase));
                         ChannelSampleIdSpin id_ch_sample_spin{args.channel(), entry.id, parameter};
                         ChannelSampleIdSpin id_ch_tot_spin{args.channel(), mass_tot, parameter};
                         data[id_ch_sample_spin][which_set].push_back(eval);

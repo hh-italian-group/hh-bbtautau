@@ -176,19 +176,19 @@ public:
             auto sampleid = entry.id.IsSignal() ? SampleId::MassTot() : SampleId::Bkg();
 
             for(const Event& event : *tuple) {
-                auto eventInfoPtr =  analysis::MakeEventInfo(Parse<Channel>(args.tree_name()), event, Period::Run2017, JetOrdering::DeepCSV) ;
-                EventInfoBase& eventbase = *eventInfoPtr;
+                boost::optional<EventInfoBase> eventbase = CreateEventInfo(event);
+                if(!eventbase.is_initialized()) continue;
 //                if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(eventbase.GetHiggsTTMomentum(true).mass(), eventbase.GetHiggsBB().GetMomentum().mass()))
 //                    continue;
-                const auto& Hbb = eventbase.GetHiggsBB().GetMomentum();
+                const auto& Hbb = eventbase->GetHiggsBB().GetMomentum();
 //                const auto& Htt_sv = eventbase.GetHiggsTTMomentum(true);
-                const auto& Htt = eventbase.GetHiggsTTMomentum(false);
+                const auto& Htt = eventbase->GetHiggsTTMomentum(false);
 //                const auto& met = eventbase.GetMET().GetMomentum();
 //                element[sampleid].emplace_back(Hbb.M(), (Htt_sv).M(), eventbase->weight_total);
 //                element[sampleid].emplace_back(Hbb.M(), (Htt+met).M(), eventbase->weight_total);
-                element[sampleid].emplace_back(Hbb.M(), Htt.M(), eventbase->weight_total);
-                if (entry.id.IsBackground()) N_bkg += eventbase->weight_total;
-                if (entry.id.IsSignal()) N_sgn += eventbase->weight_total;
+                element[sampleid].emplace_back(Hbb.M(), Htt.M(), (*eventbase)->weight_total);
+                if (entry.id.IsBackground()) N_bkg += (*eventbase)->weight_total;
+                if (entry.id.IsSignal()) N_sgn += (*eventbase)->weight_total;
             }
             std::cout << entry << " number of events: " << tuple->size() << std::endl;
         }

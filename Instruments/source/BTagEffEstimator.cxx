@@ -17,6 +17,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/TextIO.h"
 #include "h-tautau/Core/include/TauIdResults.h"
 #include "h-tautau/JetTools/include/BTagger.h"
+#include "h-tautau/Analysis/include/EventInfo.h"
 
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, output_file);
@@ -115,24 +116,27 @@ public:
                 std::cout << "Processing " << name << "/" << channel << std::endl;
 
                 for(const Event& event : *tuple){
+                    boost::optional<EventInfoBase> eventInfo = CreateEventInfo(event,nullptr,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017, args.period(),args.csv_type());
+                    if(!eventInfo.is_initialized()) continue;
                     const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
                     if (args.period() == Period::Run2016 && (es != EventEnergyScale::Central || event.jets_p4.size() < 2 || event.extraelec_veto
                             || event.extramuon_veto
-                            || std::abs(event.jets_p4.at(0).eta()) >= cuts::btag_2016::eta
-                            || std::abs(event.jets_p4.at(1).eta()) >= cuts::btag_2016::eta)) continue;
+                            || std::abs(eventInfo->GetHiggsBB().GetFirstDaughter().GetMomentum().eta()) >= cuts::btag_2016::eta
+                            || std::abs(eventInfo->GetHiggsBB().GetSecondDaughter().GetMomentum().eta()) >= cuts::btag_2016::eta)) continue;
 
                     else if (args.period() == Period::Run2017 && (es != EventEnergyScale::Central || event.jets_p4.size() < 2 || event.extraelec_veto
                             || event.extramuon_veto
-                            || std::abs(event.jets_p4.at(0).eta()) >= cuts::btag_2017::eta
-                            || std::abs(event.jets_p4.at(1).eta()) >= cuts::btag_2017::eta)) continue;
+                            || std::abs(eventInfo->GetHiggsBB().GetFirstDaughter().GetMomentum().eta()) >= cuts::btag_2017::eta
+                            || std::abs(eventInfo->GetHiggsBB().GetSecondDaughter().GetMomentum().eta()) >= cuts::btag_2017::eta)) continue;
 
-                    auto bb = event.jets_p4.at(0) + event.jets_p4.at(1);
-                    if (!cuts::hh_bbtautau_2017::hh_tag::IsInsideMassWindow(event.SVfit_p4.mass(),bb.mass())) continue;
+                    auto bb = eventInfo->GetHiggsBB().GetFirstDaughter().GetMomentum() + eventInfo->GetHiggsBB().GetSecondDaughter().GetMomentum();
 
-                    std::string tau_sign = (event.q_1+event.q_2) == 0 ? "OS" : "SS";
+                    if (!cuts::hh_bbtautau_2017::hh_tag::IsInsideMassWindow(eventInfo->GetSVFitResults().momentum.mass(),bb.mass())) continue;
 
-                    const bool passTauId = (leg_types.first != LegType::tau || PassTauIdCut(event.tauId_flags_1))
-                            && (leg_types.second != LegType::tau || PassTauIdCut(event.tauId_flags_2));
+                    std::string tau_sign = (eventInfo->GetLeg(1)->charge()+eventInfo->GetLeg(1)->charge()) == 0 ? "OS" : "SS";
+
+                    const bool passTauId = (leg_types.first != LegType::tau || eventInfo->GetLeg(1)->Passed(analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,DiscriminatorWP::Medium))
+                            && (leg_types.second != LegType::tau || eventInfo->GetLeg(2)->Passed(analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,DiscriminatorWP::Medium));
 
 
                     std::string tau_iso = passTauId ? "Iso" : "NonIso";
@@ -148,7 +152,7 @@ public:
                                 double jet_mva = event.jets_mva.at(i);
                                 if(!PassJetPuId(jet.Pt(),jet_mva,pu_wp)) continue;
                             }*/
-                                if((event.jets_pu_id.at(i) & 2) == 0) continue;
+                                if((event.jets_pu_id.at(i) & (1 << 2)) == 0) continue;
                         }
 
                         int jet_hadronFlavour = event.jets_hadronFlavour.at(i);
@@ -328,14 +332,14 @@ private:
                                                  {"valQ","ValidationCharge"} };
     std::map<std::string, DiscriminatorWP> btag_working_points;
 
-    static bool PassTauIdCut(TauIdResults::BitsContainer id_bits)
-    {
-        static const std::string disc_name = "byMediumIsolationMVArun2v1DBoldDMwLT";
-        static const size_t disc_index = TauIdResults::GetBitRefsByName().at(disc_name);
-
-        const TauIdResults id_results(id_bits);
-        return id_results.Result(disc_index);
-    }
+    // static bool PassTauIdCut(TauIdResults::BitsContainer id_bits)
+    // {
+    //     static const std::string disc_name = "byMediumIsolationMVArun2v1DBoldDMwLT";
+    //     static const size_t disc_index = TauIdResults::GetBitRefsByName().at(disc_name);
+    //
+    //     const TauIdResults id_results(id_bits);
+    //     return id_results.Result(disc_index);
+    // }
 
     static bool PassJetPuId(double pt, double mva, DiscriminatorWP wp)
     {

@@ -5,6 +5,7 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 
 #include "AnalysisTools/Core/include/SmartTree.h"
 #include "h-tautau/Analysis/include/EventInfo.h"
+#include "h-tautau/Core/include/TauIdResults.h"
 #include "hh-bbtautau/Analysis/include/MvaReader.h"
 
 #define LVAR(type, name, pref) VAR(type, name##_##pref)

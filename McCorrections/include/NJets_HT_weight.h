@@ -17,7 +17,7 @@ public:
 
     NJets_HT_weight(const std::string& _name, const std::string& weight_file_name);
 
-    virtual double Get(const Event& event) const override;
+    virtual double Get(EventInfoBase& eventInfo) const override;
     virtual double Get(const ntuple::ExpressEvent& event) const override;
 
     double GetWeight(size_t n_partons, size_t n_b_partons, size_t ht_bin) const;

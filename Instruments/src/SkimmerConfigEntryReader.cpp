@@ -27,7 +27,6 @@ void SetupEntryReader::EndEntry()
     CheckReadParamCounts("massWindowParams", 0, Condition::greater_equal);
     CheckReadParamCounts("apply_kinfit", 1, Condition::less_equal);
 
-    current.UpdateTauIdIndices();
     ConfigEntryReaderT<Setup>::EndEntry();
 }
 

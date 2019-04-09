@@ -40,67 +40,6 @@ struct Arguments {
 namespace analysis {
 namespace tuple_skimmer {
 
-class DecayModeCollection {
-public:
-    struct Value { int decayMode_1, decayMode_2; };
-
-    struct Key {
-        EventIdentifier eventId;
-        int eventEnergyScale;
-        bool operator ==(const Key& other) const
-        {
-            return eventId == other.eventId && eventEnergyScale == other.eventEnergyScale;
-        }
-    };
-
-    struct Hash {
-        size_t operator()(const Key& key) const
-        {
-            size_t seed = 0;
-            boost::hash_combine(seed, key.eventId.runId);
-            boost::hash_combine(seed, key.eventId.lumiBlock);
-            boost::hash_combine(seed, key.eventId.eventId);
-            boost::hash_combine(seed, key.eventEnergyScale);
-            return seed;
-        }
-    };
-
-    using Map = std::unordered_map<Key, Value, Hash>;
-
-    DecayModeCollection(const std::string& inputPath, const std::string& fileName, const std::string& tupleName)
-    {
-        static const std::set<std::string> enabled_branches = {
-            "run", "lumi", "evt", "eventEnergyScale", "decayMode_1", "decayMode_2"
-        };
-        auto file = root_ext::OpenRootFile(inputPath + "/" + fileName);
-        ntuple::EventTuple tuple(tupleName, file.get(), true, {}, enabled_branches);
-        for(const ntuple::Event& event : tuple) {
-            const EventIdentifier eventId(event);
-            const Key key{eventId, event.eventEnergyScale};
-//            if(data.count(key))
-//                throw exception("Duplicated event %1% with ES = %2% in %3%.") % eventId % event.eventEnergyScale
-//                    % fileName;
-            data[key] = Value{event.decayMode_1, event.decayMode_2};
-        }
-    }
-
-    void UpdateEvent(ntuple::Event& event) const
-    {
-        const EventIdentifier eventId(event);
-        const Key key{eventId, event.eventEnergyScale};
-        auto iter = data.find(key);
-        if(iter == data.end())
-            throw exception("DM information not found for event %1% with ES = %2%.") % eventId
-                % event.eventEnergyScale;
-        const Value& v = iter->second;
-        event.decayMode_1 = v.decayMode_1;
-        event.decayMode_2 = v.decayMode_2;
-    }
-
-private:
-    Map data;
-};
-
 class TupleSkimmer {
 public:
     using Event = ntuple::Event;
@@ -447,15 +386,15 @@ private:
         return summary;
     }
 
-    bool ApplyTauIdCut(TauIdResults::BitsContainer id_bits) const
-    {
-        const TauIdResults id_results(id_bits);
-        for(size_t index : setup.tau_id_cut_indices) {
-            if(!id_results.Result(index))
-                return false;
-        }
-        return true;
-    }
+    // bool ApplyTauIdCut(TauIdResults::BitsContainer id_bits) const
+    // {
+    //     const TauIdResults id_results(id_bits);
+    //     for(size_t index : setup.tau_id_cut_indices) {
+    //         if(!id_results.Result(index))
+    //             return false;
+    //     }
+    //     return true;
+    // }
 
     bool ProcessEvent(Event& event, const std::shared_ptr<Event>& prev_event, ntuple::StorageMode& storage_mode,
                       bool prev_event_stored)
@@ -467,7 +406,9 @@ private:
         Event full_event = event;
 
         storage_mode = ntuple::EventLoader::Load(full_event, prev_event.get());
-        auto eventInfo = MakeEventInfo(static_cast<Channel>(full_event.channelId), full_event, setup.period, setup.jet_ordering);
+
+        boost::optional<EventInfoBase> eventInfo = CreateEventInfo(full_event,nullptr,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,setup.period,setup.jet_ordering);
+        if(!eventInfo.is_initialized()) return false;
 
         const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
         if(!prev_event_stored) {
@@ -492,13 +433,13 @@ private:
             bool pass_mass_cut = false;
             if (!eventInfo->HasBjetPair()) return false;
             const double mbb = eventInfo->GetHiggsBB().GetMomentum().mass();
-            const double mtautau = (full_event.p4_1 + full_event.p4_2).mass();
+            const double mtautau = (eventInfo->GetLeg(1).GetMomentum() + eventInfo->GetLeg(2).GetMomentum()).mass();
             pass_mass_cut = pass_mass_cut
-                    || cuts::hh_bbtautau_2016::hh_tag::IsInsideBoostedMassWindow(full_event.SVfit_p4.mass(),mbb);
+                    || cuts::hh_bbtautau_2016::hh_tag::IsInsideBoostedMassWindow(eventInfo->GetSVFitResults().momentum.mass(),mbb);
 
             if(setup.massWindowParams.count(SelectionCut::mh))
                 pass_mass_cut = pass_mass_cut || setup.massWindowParams.at(SelectionCut::mh)
-                        .IsInside(full_event.SVfit_p4.mass(),mbb);
+                        .IsInside(eventInfo->GetSVFitResults().momentum.mass(),mbb);
 
             if(setup.massWindowParams.count(SelectionCut::mhVis))
                 pass_mass_cut = pass_mass_cut || setup.massWindowParams.at(SelectionCut::mhVis)
@@ -506,19 +447,19 @@ private:
 
             if(setup.massWindowParams.count(SelectionCut::mhMET))
                 pass_mass_cut = pass_mass_cut || setup.massWindowParams.at(SelectionCut::mhMET)
-                        .IsInside((full_event.p4_1 + full_event.p4_2 + full_event.pfMET_p4).mass(),mbb);
+                        .IsInside((eventInfo->GetLeg(1).GetMomentum() + eventInfo->GetLeg(2).GetMomentum() + full_event.pfMET_p4).mass(),mbb);
 
             if(!pass_mass_cut) return false;
         }
 
-        if (setup.apply_charge_cut && (full_event.q_1+full_event.q_2) != 0) return false;
+        if (setup.apply_charge_cut && (eventInfo->GetLeg(1)->charge() + eventInfo->GetLeg(2)->charge()) != 0) return false;
 
-        if(setup.ApplyTauIdCuts()) {
-            const Channel channel = static_cast<Channel>(event.channelId);
-            const auto leg_types = GetChannelLegTypes(channel);
-            if(leg_types.first == LegType::tau && !ApplyTauIdCut(full_event.tauId_flags_1)) return false;
-            if(leg_types.second == LegType::tau && !ApplyTauIdCut(full_event.tauId_flags_2)) return false;
-        }
+        // if(setup.ApplyTauIdCuts()) {
+        //     const Channel channel = static_cast<Channel>(event.channelId);
+        //     const auto leg_types = GetChannelLegTypes(channel);
+        //     if(leg_types.first == LegType::tau && !ApplyTauIdCut(full_event.tauId_flags_1)) return false;
+        //     if(leg_types.second == LegType::tau && !ApplyTauIdCut(full_event.tauId_flags_2)) return false;
+        // }
 
         if(setup.apply_kinfit){
             event.kinFit_chi2.push_back(static_cast<Float_t>(eventInfo->GetKinFitResults().chi2));
@@ -530,45 +471,45 @@ private:
         event.ht_other_jets = (eventInfo->HasBjetPair()) ? static_cast<Float_t>(eventInfo->GetHT(false,true)) : 0;
 
         event.weight_pu = weighting_mode.count(WeightType::PileUp)
-                        ? eventWeights_HH->GetWeight(full_event, WeightType::PileUp) : 1;
+                        ? eventWeights_HH->GetWeight(*eventInfo, WeightType::PileUp) : 1;
         if(weighting_mode.count(WeightType::LeptonTrigIdIso)) {
             auto lepton_wp = eventWeights_HH->GetProviderT<mc_corrections::LeptonWeights>(WeightType::LeptonTrigIdIso);
-            event.weight_lepton_trig = lepton_wp->GetTriggerWeight(full_event);
-            event.weight_lepton_id_iso = lepton_wp->GetIdIsoWeight(full_event);
+            event.weight_lepton_trig = lepton_wp->GetTriggerWeight(*eventInfo);
+            event.weight_lepton_id_iso = lepton_wp->GetIdIsoWeight(*eventInfo);
         } else {
             event.weight_lepton_trig = 1;
             event.weight_lepton_id_iso = 1;
         }
         event.weight_tau_id = weighting_mode.count(WeightType::TauId)
-                ? eventWeights_HH->GetWeight(full_event, WeightType::TauId) : 1;
+                ? eventWeights_HH->GetWeight(*eventInfo, WeightType::TauId) : 1;
         if(weighting_mode.count(WeightType::BTag)) {
             auto btag_wp = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(WeightType::BTag);
-            event.weight_btag = btag_wp->Get(full_event);
-            event.weight_btag_up = btag_wp->GetEx(full_event, UncertaintyScale::Up);
-            event.weight_btag_down = btag_wp->GetEx(full_event, UncertaintyScale::Down);
+            event.weight_btag = btag_wp->Get(*eventInfo);
+            event.weight_btag_up = btag_wp->GetEx(*eventInfo, UncertaintyScale::Up);
+            event.weight_btag_down = btag_wp->GetEx(*eventInfo, UncertaintyScale::Down);
         } else {
             event.weight_btag = 1;
             event.weight_btag_up = 1;
             event.weight_btag_down = 1;
         }
         event.weight_dy = weighting_mode.count(WeightType::DY)
-                ? eventWeights_HH->GetWeight(full_event, WeightType::DY) : 1;
+                ? eventWeights_HH->GetWeight(*eventInfo, WeightType::DY) : 1;
         event.weight_ttbar = weighting_mode.count(WeightType::TTbar)
-                ? eventWeights_HH->GetWeight(full_event, WeightType::TTbar) : 1;
+                ? eventWeights_HH->GetWeight(*eventInfo, WeightType::TTbar) : 1;
         event.weight_wjets = weighting_mode.count(WeightType::Wjets)
-                ? eventWeights_HH->GetWeight(full_event, WeightType::Wjets) : 1;
+                ? eventWeights_HH->GetWeight(*eventInfo, WeightType::Wjets) : 1;
         event.weight_bsm_to_sm = weighting_mode.count(WeightType::BSM_to_SM)
-                ? eventWeights_HH->GetWeight(full_event, WeightType::BSM_to_SM) : 1;
+                ? eventWeights_HH->GetWeight(*eventInfo, WeightType::BSM_to_SM) : 1;
 
         if(weighting_mode.count(WeightType::TopPt)) {
-            event.weight_top_pt = eventWeights_HH->GetWeight(full_event, WeightType::TopPt);
+            event.weight_top_pt = eventWeights_HH->GetWeight(*eventInfo, WeightType::TopPt);
             const auto wmode_withoutTopPt = weighting_mode - WeightingMode{WeightType::TopPt};
-            event.weight_total = eventWeights_HH->GetTotalWeight(full_event, wmode_withoutTopPt) * event.weight_xs;
-            event.weight_total_withTopPt = eventWeights_HH->GetTotalWeight(full_event, weighting_mode)
+            event.weight_total = eventWeights_HH->GetTotalWeight(*eventInfo, wmode_withoutTopPt) * event.weight_xs;
+            event.weight_total_withTopPt = eventWeights_HH->GetTotalWeight(*eventInfo, weighting_mode)
                     * event.weight_xs_withTopPt;
         } else {
             event.weight_top_pt = 1;
-            event.weight_total = eventWeights_HH->GetTotalWeight(full_event, weighting_mode) * event.weight_xs;
+            event.weight_total = eventWeights_HH->GetTotalWeight(*eventInfo, weighting_mode) * event.weight_xs;
             event.weight_total_withTopPt = 0;
         }
 

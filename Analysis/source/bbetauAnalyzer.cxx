@@ -7,7 +7,6 @@ namespace analysis {
 
 class bbetauAnalyzer : public BaseEventAnalyzer {
 public:
-    using EventInfo = ::analysis::EventInfo<ElectronCandidate, TauCandidate>;
     bbetauAnalyzer(const AnalyzerArguments& _args) : BaseEventAnalyzer(_args, Channel::ETau) {}
 
 protected:
@@ -17,10 +16,8 @@ protected:
             DiscriminatorWP::VLoose, DiscriminatorWP::Loose, DiscriminatorWP::Medium
         };
 
-        EventInfo& event = *dynamic_cast<EventInfo*>(&eventInfoBase);
-
-        const ElectronCandidate& electron = event.GetFirstLeg();
-        const TauCandidate& tau = event.GetSecondLeg();
+        const LepCandidate& electron = eventInfoBase.GetFirstLeg();
+        const LepCandidate& tau = eventInfoBase.GetSecondLeg();
 
         EventRegion region;
 
@@ -28,7 +25,7 @@ protected:
         region.SetCharge(os);
 
         for(auto wp = working_points.rbegin(); wp != working_points.rend(); ++wp) {
-            if(tau->tauID(TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017, *wp)) {
+            if(tau->Passed(TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017, *wp)) {
                 region.SetLowerIso(*wp);
                 if(wp != working_points.rbegin())
                     region.SetUpperIso(*(--wp));

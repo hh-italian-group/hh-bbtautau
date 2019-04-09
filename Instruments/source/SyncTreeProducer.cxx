@@ -137,8 +137,7 @@ private:
         }
     }
 
-    void FillSyncTuple(SyncTuple& sync, const std::map<EventEnergyScale, ntuple::Event>& events,
-                       const SummaryInfo& summaryInfo) const
+    void FillSyncTuple(SyncTuple& sync, const std::map<EventEnergyScale, ntuple::Event>& events,const SummaryInfo& summaryInfo) const
     {
         static const std::map<Channel, std::vector<std::string>> triggerPaths = {
             { Channel::ETau, { "HLT_Ele32_WPTight_Gsf_v", "HLT_Ele35_WPTight_Gsf_v", "HLT_Ele24_eta2p1_WPTight_Gsf_LooseChargedIsoPFTau30_eta2p1_CrossL1_v" } },
@@ -160,10 +159,10 @@ private:
             if(syncMode == SyncMode::HH && (event.extraelec_veto || event.extramuon_veto)) continue;
 
             JetOrdering jet_ordering = run_period == Period::Run2017 ? JetOrdering::DeepCSV : JetOrdering::CSV;
-            auto event_info =  MakeEventInfo(channel, event, run_period, jet_ordering, &summaryInfo);
-
-            if(syncMode == SyncMode::HH && !event_info->HasBjetPair()) continue;
-            if(!event_info->GetTriggerResults().AnyAcceptAndMatch(triggerPaths.at(channel))) continue;
+            boost::optional<EventInfoBase> event_info_base = CreateEventInfo(event,&summaryInfo,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,run_period,jet_ordering);
+            if(!event_info_base.is_initialized()) continue;
+            if(syncMode == SyncMode::HH && !event_info_base->HasBjetPair()) continue;
+            if(!event_info_base->GetTriggerResults().AnyAcceptAndMatch(triggerPaths.at(channel))) continue;
 
             /*
             static const std::vector<std::string> trigger_patterns = {
@@ -184,19 +183,18 @@ private:
             if(!event_info->GetTriggerResults().AnyAcceptAndMatchEx(trigger_patterns, jet_trigger_match))
                 continue;
             */
+            std::shared_ptr<analysis::EventInfoBase> event_info = std::make_shared<analysis::EventInfoBase>(*event_info_base);
             event_infos[entry.first] = event_info;
         }
 
         if(!event_infos.count(EventEnergyScale::Central)) return;
 
         if(!args.jet_uncertainty().empty()) {
-            event_infos[EventEnergyScale::JetUp] = event_infos[EventEnergyScale::Central]
-                    ->ApplyShiftBase(Parse<UncertaintySource>(args.jet_uncertainty()), UncertaintyScale::Up);
-            event_infos[EventEnergyScale::JetDown] = event_infos[EventEnergyScale::Central]
-                    ->ApplyShiftBase(Parse<UncertaintySource>(args.jet_uncertainty()), UncertaintyScale::Down);
+            event_infos[EventEnergyScale::JetUp] = event_infos[EventEnergyScale::Central]->ApplyShift(Parse<UncertaintySource>(args.jet_uncertainty()), UncertaintyScale::Up);
+            event_infos[EventEnergyScale::JetDown] = event_infos[EventEnergyScale::Central]->ApplyShift(Parse<UncertaintySource>(args.jet_uncertainty()), UncertaintyScale::Down);
         }
 
-        htt_sync::FillSyncTuple(*event_infos[EventEnergyScale::Central], sync, run_period,
+        htt_sync::FillSyncTuple(*event_infos[EventEnergyScale::Central], sync, run_period, 1,
                                 mva_reader.get(),
                                 event_infos[EventEnergyScale::TauUp].get(),
                                 event_infos[EventEnergyScale::TauDown].get(),

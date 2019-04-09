@@ -7,7 +7,6 @@ namespace analysis {
 
 class bbmumuAnalyzer : public BaseEventAnalyzer {
 public:
-    using EventInfo = ::analysis::EventInfo<MuonCandidate, MuonCandidate>;
     using HiggsBBCandidate = EventInfoBase::HiggsBBCandidate;
 
     bbmumuAnalyzer(const AnalyzerArguments& _args) : BaseEventAnalyzer(_args, Channel::MuMu) {}
@@ -19,10 +18,8 @@ protected:
             {DiscriminatorWP::VVLoose,2.0}, {DiscriminatorWP::Medium,0.15}
         };
 
-        EventInfo& event = *dynamic_cast<EventInfo*>(&eventInfoBase);
-
-        const MuonCandidate& muon1 = event.GetFirstLeg();
-        const MuonCandidate& muon2 = event.GetSecondLeg();
+        const LepCandidate& muon1 = eventInfoBase.GetFirstLeg();
+        const LepCandidate& muon2 = eventInfoBase.GetSecondLeg();
 //        const HiggsBBCandidate& jets  = event.GetHiggsBB();
         if(muon1.GetMomentum().Pt() < 20 || muon2.GetMomentum().Pt() < 20) return EventRegion::Unknown();
 

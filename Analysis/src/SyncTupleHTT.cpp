@@ -20,6 +20,8 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
 
     static constexpr float default_value = std::numeric_limits<float>::lowest();
     static constexpr int default_int_value = std::numeric_limits<int>::lowest();
+    using TauIdDiscriminator = analysis::TauIdDiscriminator;
+    using DiscriminatorWP = analysis::DiscriminatorWP;
 
     sync().run = event->run;
     sync().lumi = event->lumi;
@@ -28,68 +30,66 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().npv = event->npv;
     sync().npu = event->npu;
 
-    sync().pt_1 = event->p4_1.Pt();
-    sync().pt_tau_ES_up_1 = COND_VAL(event_tau_up, (*event_tau_up)->p4_1.Pt());
-    sync().pt_tau_ES_down_1 = COND_VAL(event_tau_down, (*event_tau_down)->p4_1.Pt());
-    sync().phi_1 = event->p4_1.Phi();
-    sync().eta_1 = event->p4_1.Eta();
-    sync().m_1 = event->p4_1.mass();
-    sync().q_1 = event->q_1;
-    sync().d0_1 = event->dxy_1;
-    sync().dZ_1 = event->dz_1;
-    sync().pfmt_1 = static_cast<float>(analysis::Calculate_MT(event->p4_1, event->pfMET_p4));
-    sync().iso_1 =  event->iso_1;
-    sync().gen_match_1 = event->gen_match_1;
+    sync().pt_1 = static_cast<float>(event.GetLeg(1).GetMomentum().Pt());
+    sync().pt_tau_ES_up_1 = COND_VAL(event_tau_up, event_tau_up->GetLeg(1).GetMomentum().Pt());
+    sync().pt_tau_ES_down_1 = COND_VAL(event_tau_down, event_tau_down->GetLeg(1).GetMomentum().Pt());
+    sync().phi_1 = static_cast<float>(event.GetLeg(1).GetMomentum().Phi());
+    sync().eta_1 = static_cast<float>(event.GetLeg(1).GetMomentum().Eta());
+    sync().m_1 = static_cast<float>(event.GetLeg(1).GetMomentum().mass());
+    sync().q_1 = event.GetLeg(1)->charge();
+    sync().d0_1 = event.GetLeg(1)->dxy();
+    sync().dZ_1 = event.GetLeg(1)->dz();
+    sync().pfmt_1 = static_cast<float>(analysis::Calculate_MT(event.GetLeg(1).GetMomentum(), event.GetMET().GetMomentum()));
+    sync().iso_1 =  event.GetLeg(1)->iso();
+    sync().gen_match_1 = static_cast<float>(event.GetLeg(1)->gen_match());
 
-    const analysis::TauIdResults tauId_1(event->tauId_flags_1);
-    sync().againstElectronLooseMVA6_1 = tauId_1.Result("againstElectronLooseMVA6");
-    sync().againstElectronMediumMVA6_1 = tauId_1.Result("againstElectronMediumMVA6");
-    sync().againstElectronTightMVA6_1 = tauId_1.Result("againstElectronTightMVA6");
-    sync().againstElectronVLooseMVA6_1 = tauId_1.Result("againstElectronVLooseMVA6");
-    sync().againstElectronVTightMVA6_1 = tauId_1.Result("againstElectronVTightMVA6");
-    sync().againstMuonLoose3_1 = tauId_1.Result("againstMuonLoose3");
-    sync().againstMuonTight3_1 = tauId_1.Result("againstMuonTight3");
-    sync().byCombinedIsolationDeltaBetaCorrRaw3Hits_1 = event->tauId_byCombinedIsolationDeltaBetaCorrRaw3Hits_1;
-    sync().byIsolationMVArun2v1DBoldDMwLTraw_1 = event->tauId_byIsolationMVArun2v1DBoldDMwLTraw_1;
-    sync().byIsolationMVArun2017v2DBoldDMwLTraw2017_1 = event->tauId_byIsolationMVArun2017v2DBoldDMwLTraw2017_1;
+    sync().againstElectronLooseMVA6_1 = event.GetLeg(1)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::Loose);
+    sync().againstElectronMediumMVA6_1 = event.GetLeg(1)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::Medium);
+    sync().againstElectronTightMVA6_1 = event.GetLeg(1)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::Tight);
+    sync().againstElectronVLooseMVA6_1 = event.GetLeg(1)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::VLoose);
+    sync().againstElectronVTightMVA6_1 = event.GetLeg(1)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::VTight);
+    sync().againstMuonLoose3_1 = event.GetLeg(1)->Passed(TauIdDiscriminator::againstMuon3, DiscriminatorWP::Loose);
+    sync().againstMuonTight3_1 = event.GetLeg(1)->Passed(TauIdDiscriminator::againstMuon3, DiscriminatorWP::Tight);
+    sync().byCombinedIsolationDeltaBetaCorrRaw3Hits_1 = event.GetLeg(1)->GetRawValue(TauIdDiscriminator::byCombinedIsolationDeltaBetaCorr3Hits);
+    sync().byIsolationMVArun2v1DBoldDMwLTraw_1 = event.GetLeg(1)->GetRawValue(TauIdDiscriminator::byIsolationMVArun2v1DBoldDMwLT2016);
+    sync().byIsolationMVArun2017v2DBoldDMwLTraw2017_1 = event.GetLeg(1)->GetRawValue(TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017);
 
-    sync().pt_2 = event->p4_2.Pt();
-    sync().pt_tau_ES_up_2 = COND_VAL(event_tau_up, (*event_tau_up)->p4_2.Pt());
-    sync().pt_tau_ES_down_2 = COND_VAL(event_tau_down, (*event_tau_down)->p4_2.Pt());
-    sync().phi_2 = event->p4_2.Phi();
-    sync().eta_2 = event->p4_2.Eta();
-    sync().m_2 = event->p4_2.mass();
-    sync().q_2 = event->q_2;
-    sync().d0_2 = event->dxy_2;
-    sync().dZ_2 = event->dz_2;
-    sync().pfmt_2 = static_cast<float>(analysis::Calculate_MT(event->p4_2, event->pfMET_p4));
-    sync().iso_2 =  event->iso_2;
-    sync().gen_match_2 = event->gen_match_2;
+    sync().pt_2 = static_cast<float>(event.GetLeg(2).GetMomentum().Pt());
+    sync().pt_tau_ES_up_2 = COND_VAL(event_tau_up, event_tau_up->GetLeg(2).GetMomentum().Pt());
+    sync().pt_tau_ES_down_2 = COND_VAL(event_tau_down, event_tau_down->GetLeg(2).GetMomentum().Pt());
+    sync().phi_2 = static_cast<float>(event.GetLeg(2).GetMomentum().Phi());
+    sync().eta_2 = static_cast<float>(event.GetLeg(2).GetMomentum().Eta());
+    sync().m_2 = static_cast<float>(event.GetLeg(2).GetMomentum().mass());
+    sync().q_2 = event.GetLeg(2)->charge();
+    sync().d0_2 = event.GetLeg(2)->dxy();
+    sync().dZ_2 = event.GetLeg(2)->dz();
+    sync().pfmt_2 = static_cast<float>(analysis::Calculate_MT(event.GetLeg(2).GetMomentum(), event.GetMET().GetMomentum()));
+    sync().iso_2 =  event.GetLeg(2)->iso();
+    sync().gen_match_2 = static_cast<float>(event.GetLeg(2)->gen_match());
 
-    const analysis::TauIdResults tauId_2(event->tauId_flags_2);
-    sync().againstElectronLooseMVA6_2 = tauId_2.Result("againstElectronLooseMVA6");
-    sync().againstElectronMediumMVA6_2 = tauId_2.Result("againstElectronMediumMVA6");
-    sync().againstElectronTightMVA6_2 = tauId_2.Result("againstElectronTightMVA6");
-    sync().againstElectronVLooseMVA6_2 = tauId_2.Result("againstElectronVLooseMVA6");
-    sync().againstElectronVTightMVA6_2 = tauId_2.Result("againstElectronVTightMVA6");
-    sync().againstMuonLoose3_2 = tauId_2.Result("againstMuonLoose3");
-    sync().againstMuonTight3_2 = tauId_2.Result("againstMuonTight3");
-    sync().byCombinedIsolationDeltaBetaCorrRaw3Hits_2 = event->tauId_byCombinedIsolationDeltaBetaCorrRaw3Hits_2;
-    sync().byIsolationMVArun2v1DBoldDMwLTraw_2 = event->tauId_byIsolationMVArun2v1DBoldDMwLTraw_2;
-    sync().byIsolationMVArun2017v2DBoldDMwLTraw2017_2 = event->tauId_byIsolationMVArun2017v2DBoldDMwLTraw2017_2;
+    sync().againstElectronLooseMVA6_2 = event.GetLeg(2)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::Loose);
+    sync().againstElectronMediumMVA6_2 = event.GetLeg(2)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::Medium);
+    sync().againstElectronTightMVA6_2 = event.GetLeg(2)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::Tight);
+    sync().againstElectronVLooseMVA6_2 = event.GetLeg(2)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::VLoose);
+    sync().againstElectronVTightMVA6_2 = event.GetLeg(2)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::VTight);
+    sync().againstMuonLoose3_2 = event.GetLeg(2)->Passed(TauIdDiscriminator::againstMuon3, DiscriminatorWP::Loose);
+    sync().againstMuonTight3_2 = event.GetLeg(2)->Passed(TauIdDiscriminator::againstMuon3, DiscriminatorWP::Tight);
+    sync().byCombinedIsolationDeltaBetaCorrRaw3Hits_2 = event.GetLeg(2)->GetRawValue(TauIdDiscriminator::byCombinedIsolationDeltaBetaCorr3Hits);
+    sync().byIsolationMVArun2v1DBoldDMwLTraw_2 = event.GetLeg(2)->GetRawValue(TauIdDiscriminator::byIsolationMVArun2v1DBoldDMwLT2016);
+    sync().byIsolationMVArun2017v2DBoldDMwLTraw2017_2 = event.GetLeg(2)->GetRawValue(TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017);
 
-    sync().pt_tt = (event->p4_1 + event->p4_2 + event->pfMET_p4).Pt();
-    sync().m_vis = (event->p4_1 + event->p4_2).M();
-    sync().m_sv = event->SVfit_p4.M();
-    sync().m_sv_tau_ES_up = COND_VAL(event_tau_up, (*event_tau_up)->SVfit_p4.M());
-    sync().m_sv_tau_ES_down = COND_VAL(event_tau_down, (*event_tau_down)->SVfit_p4.M());
-    sync().m_sv_jet_ES_up = COND_VAL(event_jet_up, (*event_jet_up)->SVfit_p4.M());
-    sync().m_sv_jet_ES_down = COND_VAL(event_jet_down, (*event_jet_down)->SVfit_p4.M());
-    sync().mt_sv = event->SVfit_mt;
+    sync().pt_tt = static_cast<float>((event.GetLeg(1).GetMomentum() + event.GetLeg(2).GetMomentum() + event.GetMET().GetMomentum()).Pt());
+    sync().m_vis = static_cast<float>((event.GetLeg(1).GetMomentum() + event.GetLeg(2).GetMomentum()).M());
+    sync().m_sv = static_cast<float>(event.GetSVFitResults().momentum.M());
+    sync().m_sv_tau_ES_up = COND_VAL(event_tau_up, event_tau_up->GetSVFitResults().momentum.M());
+    sync().m_sv_tau_ES_down = COND_VAL(event_tau_down, event_tau_down->GetSVFitResults().momentum.M());
+    sync().m_sv_jet_ES_up = COND_VAL(event_jet_up, event_jet_up->GetSVFitResults().momentum.M());
+    sync().m_sv_jet_ES_down = COND_VAL(event_jet_down, event_jet_down->GetSVFitResults().momentum.M());
+    sync().mt_sv = static_cast<float>(event.GetSVFitResults().transverseMass);
 
-    sync().met = event->pfMET_p4.Pt();
-    sync().met_tau_ES_up = COND_VAL(event_tau_up, (*event_tau_up)->pfMET_p4.Pt());
-    sync().met_tau_ES_down = COND_VAL(event_tau_down, (*event_tau_down)->pfMET_p4.Pt());
+    sync().met = static_cast<float>(event.GetMET().GetMomentum().Pt());
+    sync().met_tau_ES_up = COND_VAL(event_tau_up, event_tau_up->GetMET().GetMomentum().Pt());
+    sync().met_tau_ES_down = COND_VAL(event_tau_down, event_tau_down->GetMET().GetMomentum().Pt());
     sync().met_jet_ES_up = COND_VAL(event_jet_up, event_jet_up->GetMET().GetMomentum().Pt());
     sync().met_jet_ES_down = COND_VAL(event_jet_down, event_jet_down->GetMET().GetMomentum().Pt());
 
@@ -99,14 +99,14 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().mt2_jet_ES_up = COND_VAL(event_jet_up && event_jet_up->HasBjetPair(), event_jet_up->GetMT2());
     sync().mt2_jet_ES_down = COND_VAL(event_jet_down && event_jet_down->HasBjetPair(), event_jet_down->GetMT2());
 
-    sync().metphi = static_cast<float>(TVector2::Phi_0_2pi(event->pfMET_p4.Phi()));
-    sync().metphi_tau_ES_up = COND_VAL(event_tau_up, TVector2::Phi_0_2pi((*event_tau_up)->pfMET_p4.Phi()));
-    sync().metphi_tau_ES_down = COND_VAL(event_tau_down, TVector2::Phi_0_2pi((*event_tau_down)->pfMET_p4.Phi()));
+    sync().metphi = static_cast<float>(TVector2::Phi_0_2pi(event.GetMET().GetMomentum().Phi()));
+    sync().metphi_tau_ES_up = COND_VAL(event_tau_up, TVector2::Phi_0_2pi(event_tau_up->GetMET().GetMomentum().Phi()));
+    sync().metphi_tau_ES_down = COND_VAL(event_tau_down, TVector2::Phi_0_2pi(event_tau_down->GetMET().GetMomentum().Phi()));
     sync().metphi_jet_ES_up = COND_VAL(event_jet_up,
                                        TVector2::Phi_0_2pi(event_jet_up->GetMET().GetMomentum().Phi()));
     sync().metphi_jet_ES_down = COND_VAL(event_jet_down,
                                          TVector2::Phi_0_2pi(event_jet_down->GetMET().GetMomentum().Phi()));
-    sync().pzetavis = static_cast<float>(analysis::Calculate_visiblePzeta(event->p4_1, event->p4_2));
+    sync().pzetavis = static_cast<float>(analysis::Calculate_visiblePzeta(event.GetLeg(1).GetMomentum(), event.GetLeg(2).GetMomentum()));
 
     sync().metcov00 = static_cast<float>(event->pfMET_cov[0][0]);
     sync().metcov01 = static_cast<float>(event->pfMET_cov[0][1]);
@@ -208,7 +208,7 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().mva_score_mm_400 = COND_VAL(mva_reader, mva_reader->Evaluate(analysis::mva_study::MvaReader::MvaKey{"mva_mmANkin", 400, 0}, &event));
     sync().mva_score_hm_650 = COND_VAL(mva_reader, mva_reader->Evaluate(analysis::mva_study::MvaReader::MvaKey{"mva_hmANkin", 650, 0}, &event));
 
-    sync().deltaR_ll = ROOT::Math::VectorUtil::DeltaR(event->p4_1, event->p4_2);
+    sync().deltaR_ll = static_cast<float>(ROOT::Math::VectorUtil::DeltaR(event.GetLeg(1).GetMomentum(), event.GetLeg(2).GetMomentum()));
 
     sync().nFatJets = static_cast<unsigned>(event.GetFatJets().size());
     const auto fatJet = event.SelectFatJet(30, 0.4);
@@ -273,22 +273,22 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
         sync().pt_htautau_sv = Htt_sv.Pt();
         sync().p_zeta = analysis::Calculate_Pzeta(t1, t2,  met);
         sync().p_zetavisible = analysis::Calculate_visiblePzeta(t1, t2);
-        sync().dphi_l1l2 = DeltaPhi(t1, t2);
-        sync().abs_dphi_b1b2 = std::abs(DeltaPhi(b1, b2));
-        sync().dphi_b1b2 = DeltaPhi(b1, b2);
-        sync().dphi_l1MET = DeltaPhi(t1, met);
-        sync().abs_dphi_METhtautau_sv = std::abs(DeltaPhi(Htt_sv, met));
-        sync().dphi_METhtautau_sv = DeltaPhi(Htt_sv, met);
-        sync().dphi_hbbMET = DeltaPhi(Hbb, met);
-        sync().abs_dphi_hbbhatutau_sv = std::abs(DeltaPhi(Hbb, Htt_sv));
+        sync().dphi_l1l2 = ROOT::Math::VectorUtil::DeltaPhi(t1, t2);
+        sync().abs_dphi_b1b2 = std::abs(ROOT::Math::VectorUtil::DeltaPhi(b1, b2));
+        sync().dphi_b1b2 = ROOT::Math::VectorUtil::DeltaPhi(b1, b2);
+        sync().dphi_l1MET = ROOT::Math::VectorUtil::DeltaPhi(t1, met);
+        sync().abs_dphi_METhtautau_sv = std::abs(ROOT::Math::VectorUtil::DeltaPhi(Htt_sv, met));
+        sync().dphi_METhtautau_sv = ROOT::Math::VectorUtil::DeltaPhi(Htt_sv, met);
+        sync().dphi_hbbMET = ROOT::Math::VectorUtil::DeltaPhi(Hbb, met);
+        sync().abs_dphi_hbbhatutau_sv = std::abs(ROOT::Math::VectorUtil::DeltaPhi(Hbb, Htt_sv));
         sync().abs_deta_b1b2 = std::abs(b1.eta() - b2.eta());
         sync().abs_deta_l2MET = std::abs(t2.eta()-met.eta());
         sync().abs_deta_hbbMET = std::abs(Hbb.eta()-met.eta());
-        sync().dR_l1l2 = DeltaR(t1, t2);
-        sync().dR_hbbMET = DeltaR(Hbb, met);
-        sync().dR_hbbhtautau = DeltaR(Hbb, Htt+met);
-        sync().dR_l1l2Pt_htautau = DeltaR(t1, t2)*(Htt+met).Pt();
-        sync().dR_l1l2Pt_htautau_sv = DeltaR(t1, t2)*Htt_sv.Pt();
+        sync().dR_l1l2 = ROOT::Math::VectorUtil::DeltaR(t1, t2);
+        sync().dR_hbbMET = ROOT::Math::VectorUtil::DeltaR(Hbb, met);
+        sync().dR_hbbhtautau = ROOT::Math::VectorUtil::DeltaR(Hbb, Htt+met);
+        sync().dR_l1l2Pt_htautau = ROOT::Math::VectorUtil::DeltaR(t1, t2)*(Htt+met).Pt();
+        sync().dR_l1l2Pt_htautau_sv = ROOT::Math::VectorUtil::DeltaR(t1, t2)*Htt_sv.Pt();
         sync().MT_l1 = analysis::Calculate_MT(t1,met);
         sync().MT_htautau = analysis::Calculate_MT(Htt+met, met);
         sync().MT_htautau_sv = analysis::Calculate_MT(Htt_sv, met);

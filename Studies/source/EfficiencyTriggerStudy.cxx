@@ -218,14 +218,15 @@ public:
                 const Period run_period = args.period();
                 const JetOrdering jet_ordering = run_period == Period::Run2017
                                                ? JetOrdering::DeepCSV : JetOrdering::CSV;
-                auto eventInfo = MakeEventInfo(channel, event, run_period, jet_ordering, summaryInfo.get());
 
+                boost::optional<EventInfoBase> eventInfo = CreateEventInfo(event,summaryInfo.get(),analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017, run_period, jet_ordering);
+                if(!eventInfo.is_initialized()) continue;
                 if((*eventInfo)->extraelec_veto || (*eventInfo)->extramuon_veto) continue;
                 if(eventInfo->GetEnergyScale() != EventEnergyScale::Central) continue;
                 if(!eventInfo->HasBjetPair()) continue;
                 if(!sample_desc.massWindowParams.IsInside(eventInfo->GetHiggsTTMomentum(true).M(),
                     eventInfo->GetHiggsBB().GetMomentum().M())) continue;
-                if((*eventInfo)->q_1 == (*eventInfo)->q_2) continue;
+                if(eventInfo->GetLeg(1)->charge() == eventInfo->GetLeg(2)->charge()) continue;
 
                 std::vector<ULong64_t> reco_jet_matches;
                 if(eventInfo->HasVBFjetPair()) {
@@ -302,20 +303,17 @@ private:
                        DiscriminatorWP wp) const
     {
         if(channel == Channel::ETau) {
-            auto event = dynamic_cast<EventInfo<ElectronCandidate, TauCandidate>*>(&event_base);
-            const auto& tau = event->GetSecondLeg();
-            return tau->tauID(discr, wp);
+            const auto& tau = event_base.GetSecondLeg();
+            return tau->Passed(discr, wp);
         }
         else if(channel == Channel::MuTau) {
-            auto event = dynamic_cast<EventInfo<MuonCandidate, TauCandidate>*>(&event_base);
-            const auto& tau = event->GetSecondLeg();
-            return tau->tauID(discr, wp);
+            const auto& tau = event_base.GetSecondLeg();
+            return tau->Passed(discr, wp);
         }
         else if(channel == Channel::TauTau) {
-            auto event = dynamic_cast<EventInfo<TauCandidate, TauCandidate>*>(&event_base);
-            const auto& tau1 = event->GetFirstLeg();
-            const auto& tau2 = event->GetSecondLeg();
-            return tau1->tauID(discr, wp) && tau2->tauID(discr, wp);
+            const auto& tau1 = event_base.GetFirstLeg();
+            const auto& tau2 = event_base.GetSecondLeg();
+            return tau1->Passed(discr, wp) && tau2->Passed(discr, wp);
         }
         else
             throw exception("channel not supported");
