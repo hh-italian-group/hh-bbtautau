@@ -219,7 +219,7 @@ public:
                 const JetOrdering jet_ordering = run_period == Period::Run2017
                                                ? JetOrdering::DeepCSV : JetOrdering::CSV;
 
-                boost::optional<EventInfoBase> eventInfo = CreateEventInfo(event,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017, run_period, jet_ordering, summaryInfo.get());
+                boost::optional<EventInfoBase> eventInfo = CreateEventInfo(event,summaryInfo.get(),analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017, run_period, jet_ordering);
                 if(!eventInfo.is_initialized()) continue;
                 if((*eventInfo)->extraelec_veto || (*eventInfo)->extramuon_veto) continue;
                 if(eventInfo->GetEnergyScale() != EventEnergyScale::Central) continue;

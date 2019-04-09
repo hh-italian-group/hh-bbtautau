@@ -116,20 +116,21 @@ public:
                 std::cout << "Processing " << name << "/" << channel << std::endl;
 
                 for(const Event& event : *tuple){
+                    boost::optional<EventInfoBase> eventInfo = CreateEventInfo(event,nullptr,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017, args.period(),args.csv_type());
+                    if(!eventInfo.is_initialized()) continue;
                     const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
                     if (args.period() == Period::Run2016 && (es != EventEnergyScale::Central || event.jets_p4.size() < 2 || event.extraelec_veto
                             || event.extramuon_veto
-                            || std::abs(GetHiggsBB().GetFirstDaughter().GetMomentum().eta()) >= cuts::btag_2016::eta
-                            || std::abs(GetHiggsBB().GetSecondDaughter().GetMomentum().eta()) >= cuts::btag_2016::eta)) continue;
+                            || std::abs(eventInfo->GetHiggsBB().GetFirstDaughter().GetMomentum().eta()) >= cuts::btag_2016::eta
+                            || std::abs(eventInfo->GetHiggsBB().GetSecondDaughter().GetMomentum().eta()) >= cuts::btag_2016::eta)) continue;
 
                     else if (args.period() == Period::Run2017 && (es != EventEnergyScale::Central || event.jets_p4.size() < 2 || event.extraelec_veto
                             || event.extramuon_veto
-                            || std::abs(GetHiggsBB().GetFirstDaughter().GetMomentum().eta()) >= cuts::btag_2017::eta
-                            || std::abs(GetHiggsBB().GetSecondDaughter().GetMomentum().eta()) >= cuts::btag_2017::eta)) continue;
+                            || std::abs(eventInfo->GetHiggsBB().GetFirstDaughter().GetMomentum().eta()) >= cuts::btag_2017::eta
+                            || std::abs(eventInfo->GetHiggsBB().GetSecondDaughter().GetMomentum().eta()) >= cuts::btag_2017::eta)) continue;
 
-                    auto bb = GetHiggsBB().GetFirstDaughter().GetMomentum() + GetHiggsBB().GetSecondDaughter().GetMomentum();
-                    boost::optional<EventInfoBase> eventInfo = CreateEventInfo(event,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017, args.period(),args.csv_type());
-                    if(!eventInfo.is_initialized()) continue;
+                    auto bb = eventInfo->GetHiggsBB().GetFirstDaughter().GetMomentum() + eventInfo->GetHiggsBB().GetSecondDaughter().GetMomentum();
+
                     if (!cuts::hh_bbtautau_2017::hh_tag::IsInsideMassWindow(eventInfo->GetSVFitResults().momentum.mass(),bb.mass())) continue;
 
                     std::string tau_sign = (eventInfo->GetLeg(1)->charge()+eventInfo->GetLeg(1)->charge()) == 0 ? "OS" : "SS";
@@ -151,7 +152,7 @@ public:
                                 double jet_mva = event.jets_mva.at(i);
                                 if(!PassJetPuId(jet.Pt(),jet_mva,pu_wp)) continue;
                             }*/
-                                if((event.jets_pu_id.at(n) & (1 << 2)) == 0) continue;
+                                if((event.jets_pu_id.at(i) & (1 << 2)) == 0) continue;
                         }
 
                         int jet_hadronFlavour = event.jets_hadronFlavour.at(i);

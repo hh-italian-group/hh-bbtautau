@@ -176,7 +176,7 @@ public:
             auto sampleid = entry.id.IsSignal() ? SampleId::MassTot() : SampleId::Bkg();
 
             for(const Event& event : *tuple) {
-                boost::optional<EventInfoBase> eventbase = CreateEventInfo(event,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017, Period::Run2017, JetOrdering::DeepCSV);
+                boost::optional<EventInfoBase> eventbase = CreateEventInfo(event);
                 if(!eventbase.is_initialized()) continue;
 //                if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(eventbase.GetHiggsTTMomentum(true).mass(), eventbase.GetHiggsBB().GetMomentum().mass()))
 //                    continue;
