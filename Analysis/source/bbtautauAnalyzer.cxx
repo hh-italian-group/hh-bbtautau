@@ -18,8 +18,8 @@ protected:
             DiscriminatorWP::VLoose, DiscriminatorWP::Loose, DiscriminatorWP::Medium
         };
 
-        const analysis::LepCandidate& tau_1 = eventInfoBase.GetFirstLeg();
-        const analysis::LepCandidate& tau_2 = eventInfoBase.GetSecondLeg();
+        const LepCandidate& tau_1 = eventInfoBase.GetFirstLeg();
+        const LepCandidate& tau_2 = eventInfoBase.GetSecondLeg();
 
 //        EventRegion region;
 

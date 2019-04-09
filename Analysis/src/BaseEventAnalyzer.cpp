@@ -212,7 +212,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
             prevFullEvent = tupleEvent;
             prevFullEventPtr = &prevFullEvent;
         }
-        boost::optional<analysis::EventInfoBase> event = CreateEventInfo(tupleEvent,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,ana_setup.period,ana_setup.jet_ordering, &summary);
+        boost::optional<analysis::EventInfoBase> event = CreateEventInfo(tupleEvent,&summary,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,ana_setup.period,ana_setup.jet_ordering);
         if(!event.is_initialized()) continue;
         if(!ana_setup.energy_scales.count(event->GetEnergyScale())) continue;
         if(!event->GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) continue;

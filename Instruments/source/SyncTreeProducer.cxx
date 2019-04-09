@@ -85,14 +85,14 @@ public:
         SyncTuple sync(args.tree_name(), outputFile.get(), false);
         auto summaryTuple = ntuple::CreateSummaryTuple("summary", originalFile.get(), true, ntuple::TreeState::Full);
         summaryTuple->GetEntry(0);
-        //SummaryInfo summaryInfo(summaryTuple->data(), args.jet_unc_source());
+        SummaryInfo summaryInfo(summaryTuple->data(), args.jet_unc_source());
         EventIdentifier current_id = EventIdentifier::Undef_event();
         std::map<EventEnergyScale, ntuple::Event> events;
         for(const auto& event : *originalTuple) {
             EventIdentifier event_id(event);
             if(event_id != current_id) {
                 if(!events.empty()) {
-                    FillSyncTuple(sync, events);
+                    FillSyncTuple(sync, events, summaryInfo);
                     events.clear();
                 }
                 current_id = event_id;
@@ -107,7 +107,7 @@ public:
         }
 
         if(!events.empty()){
-            FillSyncTuple(sync, events);
+            FillSyncTuple(sync, events, summaryInfo);
         }
 
         sync.Write();
@@ -137,7 +137,7 @@ private:
         }
     }
 
-    void FillSyncTuple(SyncTuple& sync, const std::map<EventEnergyScale, ntuple::Event>& events) const
+    void FillSyncTuple(SyncTuple& sync, const std::map<EventEnergyScale, ntuple::Event>& events,const SummaryInfo& summaryInfo) const
     {
         static const std::map<Channel, std::vector<std::string>> triggerPaths = {
             { Channel::ETau, { "HLT_Ele32_WPTight_Gsf_v", "HLT_Ele35_WPTight_Gsf_v", "HLT_Ele24_eta2p1_WPTight_Gsf_LooseChargedIsoPFTau30_eta2p1_CrossL1_v" } },
@@ -159,7 +159,7 @@ private:
             if(syncMode == SyncMode::HH && (event.extraelec_veto || event.extramuon_veto)) continue;
 
             JetOrdering jet_ordering = run_period == Period::Run2017 ? JetOrdering::DeepCSV : JetOrdering::CSV;
-            boost::optional<EventInfoBase> event_info_base = CreateEventInfo(event,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,run_period,jet_ordering);
+            boost::optional<EventInfoBase> event_info_base = CreateEventInfo(event,&summaryInfo,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,run_period,jet_ordering);
             if(!event_info_base.is_initialized()) continue;
             if(syncMode == SyncMode::HH && !event_info_base->HasBjetPair()) continue;
             if(!event_info_base->GetTriggerResults().AnyAcceptAndMatch(triggerPaths.at(channel))) continue;

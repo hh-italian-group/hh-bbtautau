@@ -119,15 +119,15 @@ public:
                     const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
                     if (args.period() == Period::Run2016 && (es != EventEnergyScale::Central || event.jets_p4.size() < 2 || event.extraelec_veto
                             || event.extramuon_veto
-                            || std::abs(event.jets_p4.at(0).eta()) >= cuts::btag_2016::eta
-                            || std::abs(event.jets_p4.at(1).eta()) >= cuts::btag_2016::eta)) continue;
+                            || std::abs(GetHiggsBB().GetFirstDaughter().GetMomentum().eta()) >= cuts::btag_2016::eta
+                            || std::abs(GetHiggsBB().GetSecondDaughter().GetMomentum().eta()) >= cuts::btag_2016::eta)) continue;
 
                     else if (args.period() == Period::Run2017 && (es != EventEnergyScale::Central || event.jets_p4.size() < 2 || event.extraelec_veto
                             || event.extramuon_veto
-                            || std::abs(event.jets_p4.at(0).eta()) >= cuts::btag_2017::eta
-                            || std::abs(event.jets_p4.at(1).eta()) >= cuts::btag_2017::eta)) continue;
+                            || std::abs(GetHiggsBB().GetFirstDaughter().GetMomentum().eta()) >= cuts::btag_2017::eta
+                            || std::abs(GetHiggsBB().GetSecondDaughter().GetMomentum().eta()) >= cuts::btag_2017::eta)) continue;
 
-                    auto bb = event.jets_p4.at(0) + event.jets_p4.at(1);
+                    auto bb = GetHiggsBB().GetFirstDaughter().GetMomentum() + GetHiggsBB().GetSecondDaughter().GetMomentum();
                     boost::optional<EventInfoBase> eventInfo = CreateEventInfo(event,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017, args.period(),args.csv_type());
                     if(!eventInfo.is_initialized()) continue;
                     if (!cuts::hh_bbtautau_2017::hh_tag::IsInsideMassWindow(eventInfo->GetSVFitResults().momentum.mass(),bb.mass())) continue;
@@ -151,7 +151,7 @@ public:
                                 double jet_mva = event.jets_mva.at(i);
                                 if(!PassJetPuId(jet.Pt(),jet_mva,pu_wp)) continue;
                             }*/
-                                if((event.jets_pu_id.at(i) & 2) == 0) continue;
+                                if((event.jets_pu_id.at(n) & (1 << 2)) == 0) continue;
                         }
 
                         int jet_hadronFlavour = event.jets_hadronFlavour.at(i);

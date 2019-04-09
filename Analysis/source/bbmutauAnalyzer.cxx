@@ -16,8 +16,8 @@ protected:
             DiscriminatorWP::VLoose, DiscriminatorWP::Loose, DiscriminatorWP::Medium
         };
 
-        const analysis::LepCandidate& muon = eventInfoBase.GetFirstLeg();
-        const analysis::LepCandidate& tau = eventInfoBase.GetSecondLeg();
+        const LepCandidate& muon = eventInfoBase.GetFirstLeg();
+        const LepCandidate& tau = eventInfoBase.GetSecondLeg();
 
         EventRegion region;
 

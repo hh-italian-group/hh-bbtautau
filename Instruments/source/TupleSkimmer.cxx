@@ -40,57 +40,6 @@ struct Arguments {
 namespace analysis {
 namespace tuple_skimmer {
 
-class DecayModeCollection {
-public:
-    struct Value { int decayMode_1, decayMode_2; };
-
-    struct Key {
-        EventIdentifier eventId;
-        int eventEnergyScale;
-        bool operator ==(const Key& other) const
-        {
-            return eventId == other.eventId && eventEnergyScale == other.eventEnergyScale;
-        }
-    };
-
-    struct Hash {
-        size_t operator()(const Key& key) const
-        {
-            size_t seed = 0;
-            boost::hash_combine(seed, key.eventId.runId);
-            boost::hash_combine(seed, key.eventId.lumiBlock);
-            boost::hash_combine(seed, key.eventId.eventId);
-            boost::hash_combine(seed, key.eventEnergyScale);
-            return seed;
-        }
-    };
-
-    using Map = std::unordered_map<Key, Value, Hash>;
-
-    DecayModeCollection(const std::string& inputPath, const std::string& fileName, const std::string& tupleName)
-    {
-        static const std::set<std::string> enabled_branches = {
-            "run", "lumi", "evt", "eventEnergyScale", "decayMode_1", "decayMode_2"
-        };
-        auto file = root_ext::OpenRootFile(inputPath + "/" + fileName);
-        ntuple::EventTuple tuple(tupleName, file.get(), true, {}, enabled_branches);
-        for(const ntuple::Event& event : tuple) {
-            const EventIdentifier eventId(event);
-            const Key key{eventId, event.eventEnergyScale};
-//            if(data.count(key))
-//                throw exception("Duplicated event %1% with ES = %2% in %3%.") % eventId % event.eventEnergyScale
-//                    % fileName;
-            boost::optional<analysis::EventInfoBase> eventInfo = CreateEventInfo(event);
-            if(!eventInfo.is_initialized()) continue;
-            data[key] = Value{eventInfo->GetLeg(1)->decayMode(), eventInfo->GetLeg(2)->decayMode()};
-        }
-    }
-
-
-private:
-    Map data;
-};
-
 class TupleSkimmer {
 public:
     using Event = ntuple::Event;
@@ -458,7 +407,7 @@ private:
 
         storage_mode = ntuple::EventLoader::Load(full_event, prev_event.get());
 
-        boost::optional<EventInfoBase> eventInfo = CreateEventInfo(full_event,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,setup.period,setup.jet_ordering);
+        boost::optional<EventInfoBase> eventInfo = CreateEventInfo(full_event,nullptr,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,setup.period,setup.jet_ordering);
         if(!eventInfo.is_initialized()) return false;
 
         const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
