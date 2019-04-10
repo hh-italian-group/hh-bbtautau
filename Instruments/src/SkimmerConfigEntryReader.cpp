@@ -26,6 +26,7 @@ void SetupEntryReader::EndEntry()
     CheckReadParamCounts("tau_id_cuts", 1, Condition::less_equal);
     CheckReadParamCounts("massWindowParams", 0, Condition::greater_equal);
     CheckReadParamCounts("apply_kinfit", 1, Condition::less_equal);
+    CheckReadParamCounts("applyTauId", 1, Condition::less_equal);
 
     ConfigEntryReaderT<Setup>::EndEntry();
 }
@@ -51,6 +52,7 @@ void SetupEntryReader::ReadParameter(const std::string& /*param_name*/, const st
     ParseEntryList("tau_id_cuts", current.tau_id_cuts);
     ParseEntry("massWindowParams", current.massWindowParams);
     ParseEntry("apply_kinfit",current.apply_kinfit);
+    ParseEntry("applyTauId",current.applyTauId);
 }
 
 void SkimJobEntryReader::EndEntry()

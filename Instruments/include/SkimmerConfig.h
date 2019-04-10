@@ -27,6 +27,7 @@ struct Setup {
     bool apply_mass_cut{false}, apply_charge_cut{false}, apply_bb_cut{true};
     bool keep_genJets{false}, keep_genParticles{false}, keep_MET_cov{true};
     bool apply_kinfit{true};
+    bool applyTauId{true};
     std::set<std::string> tau_id_cuts;
     std::set<size_t> tau_id_cut_indices;
 
