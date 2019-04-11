@@ -47,7 +47,7 @@ public:
     static constexpr float default_value = std::numeric_limits<float>::lowest();
     static constexpr int default_int_value = std::numeric_limits<int>::lowest();
 
-    SyncTreeProducer(const Arguments& _args) : args(_args), eventWeights(Period::Run2016, JetOrdering::DeepCSV, DiscriminatorWP::Medium)
+    SyncTreeProducer(const Arguments& _args) : args(_args), eventWeights(Period::Run2016, JetOrdering::DeepCSV, DiscriminatorWP::Medium, true)
     {
         std::istringstream ss_mode(args.mode());
         ss_mode >> syncMode;

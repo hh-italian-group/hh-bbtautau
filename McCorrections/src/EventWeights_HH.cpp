@@ -11,8 +11,8 @@ namespace analysis {
 namespace mc_corrections {
 
 EventWeights_HH::EventWeights_HH(Period period, JetOrdering jet_ordering, DiscriminatorWP btag_wp,
-                                 bool use_LLR_weights, WeightingMode mode) :
-    EventWeights(period, jet_ordering, btag_wp, mode)
+                                 bool use_LLR_weights, bool applyTauId, WeightingMode mode) :
+    EventWeights(period, jet_ordering, btag_wp, applyTauId, mode)
 {
     if (period == Period::Run2016){
         std::string dy_weights = use_LLR_weights ? Full_Cfg_Name("2016/dyjets_weights_LLR.cfg")
