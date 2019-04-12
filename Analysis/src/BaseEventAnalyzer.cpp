@@ -35,7 +35,8 @@ BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel cha
          if(sample.sampleType == SampleType::DY)
              dymod[sample.name] = std::make_shared<DYModel>(sample,args.working_path());
     }
-    tauIdWeight = std::make_shared<mc_corrections::TauIdWeight2017>();
+    eventWeights_HH = std::make_shared<mc_corrections::EventWeights_HH>(ana_setup.period, ana_setup.jet_ordering, DiscriminatorWP::Medium,
+                                                                        false,true);
 }
 
 void BaseEventAnalyzer::Run()
@@ -119,7 +120,6 @@ EventSubCategory BaseEventAnalyzer::DetermineEventSubCategory(EventInfoBase& eve
     using MvaKey = mva_study::MvaReader::MvaKey;
 
     EventSubCategory sub_category;
-
     double mbb = 0;
     if(event.HasBjetPair()){
         mbb = event.GetHiggsBB().GetMomentum().mass();
@@ -133,12 +133,15 @@ EventSubCategory BaseEventAnalyzer::DetermineEventSubCategory(EventInfoBase& eve
             if(ana_setup.massWindowParams.count(SelectionCut::mh))
                 sub_category.SetCutResult(SelectionCut::mh,ana_setup.massWindowParams.at(SelectionCut::mh)
                         .IsInside(event.GetHiggsTTMomentum(true).mass(),mbb));
+
             if(ana_setup.massWindowParams.count(SelectionCut::mhVis))
                 sub_category.SetCutResult(SelectionCut::mhVis,ana_setup.massWindowParams.at(SelectionCut::mhVis)
                         .IsInside(event.GetHiggsTTMomentum(false).mass(),mbb));
+
             if(ana_setup.massWindowParams.count(SelectionCut::mhMET))
                 sub_category.SetCutResult(SelectionCut::mhMET,ana_setup.massWindowParams.at(SelectionCut::mhMET)
                         .IsInside((event.GetHiggsTTMomentum(false) + event.GetMET().GetMomentum()).mass(),mbb));
+
         }
         if(args.runKinFit())
             sub_category.SetCutResult(SelectionCut::KinematicFitConverged, event.GetKinFitResults().HasValidMass());
@@ -262,8 +265,10 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
 
                         // const double weight = (((*event)->weight_total * sample.cross_section * ana_setup.int_lumi)
                         //        / (summary->totalShapeWeight )) * mva_weight_scale ;
+                        auto lepton_wp = eventWeights_HH->GetProviderT<mc_corrections::LeptonWeights>(mc_corrections::WeightType::LeptonTrigIdIso);
+                        double total_lepton_weight = lepton_wp->Get(*event);
 
-                        const double weight = (*event)->weight_total * sample.cross_section * ana_setup.int_lumi
+                        const double weight = (*event)->weight_total * sample.cross_section * ana_setup.int_lumi * total_lepton_weight
                                             / summary->totalShapeWeight * mva_weight_scale;
                         if(sample.sampleType == SampleType::MC) {
                             dataIds[anaDataId] = std::make_tuple(weight, mva_score);
@@ -274,7 +279,6 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                 }
             }
         }
-
         anaTupleWriter.AddEvent(*event, dataIds);
         for (size_t n = 0; n < sync_descriptors.size(); ++n) {
             const auto& regex_pattern = sync_descriptors.at(n).regex_pattern;
