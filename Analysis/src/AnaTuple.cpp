@@ -6,9 +6,9 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 namespace analysis {
 namespace bbtautau {
 
-AnaTupleWriter::AnaTupleWriter(const std::string& file_name, Channel channel, bool _runKinFit) :
+AnaTupleWriter::AnaTupleWriter(const std::string& file_name, Channel channel, bool _runKinFit, bool _runSVfit) :
     file(root_ext::CreateRootFile(file_name)), tuple(ToString(channel), file.get(), false),
-    aux_tuple(file.get(), false), runKinFit(_runKinFit)
+    aux_tuple(file.get(), false), runKinFit(_runKinFit), runSVfit(_runSVfit)
 {
 }
 
@@ -57,10 +57,16 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
     tuple().weight = def_val;
     tuple().mva_score = def_val;
     tuple().has_2jets = event.HasBjetPair();
-    tuple().m_sv = static_cast<float>(event.GetHiggsTTMomentum(true).M());
+    if(runSVfit)
+        tuple().m_sv = static_cast<float>(event.GetHiggsTTMomentum(true).M());
+    else
+        tuple().m_sv = def_val;
 
     if(event.HasBjetPair()) {
-        tuple().m_ttbb = static_cast<float>(event.GetResonanceMomentum(true, false).M());
+        if(runSVfit)
+            tuple().m_ttbb = static_cast<float>(event.GetResonanceMomentum(true, false).M());
+        else
+            tuple().m_ttbb = def_val;
         if(runKinFit){
             const auto& kinfit = event.GetKinFitResults();
             tuple().m_ttbb_kinfit = kinfit.HasValidMass() ? static_cast<float>(kinfit.mass) : def_val;
@@ -96,15 +102,24 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
     tuple().mt_2 = static_cast<float>(Calculate_MT(t2.GetMomentum(), event.GetMET().GetMomentum()));
     tuple().dR_l1l2 = static_cast<float>(DeltaR(t1.GetMomentum(),t2.GetMomentum()));
     tuple().abs_dphi_l1MET = static_cast<float>(std::abs(DeltaPhi(t1.GetMomentum(), event.GetMET().GetMomentum())));
-    tuple().dphi_htautauMET = static_cast<float>(DeltaPhi(event.GetHiggsTTMomentum(true),
+    if(runSVfit)
+        tuple().dphi_htautauMET = static_cast<float>(DeltaPhi(event.GetHiggsTTMomentum(true),
                                                           event.GetMET().GetMomentum()));
+    else
+        tuple().dphi_htautauMET = def_val;
     tuple().dR_l1l2MET = static_cast<float>(DeltaR(event.GetHiggsTTMomentum(false), event.GetMET().GetMomentum()));
-    tuple().dR_l1l2Pt_htautau = static_cast<float>(DeltaR(t1.GetMomentum(), t2.GetMomentum())
+    if(runSVfit)
+        tuple().dR_l1l2Pt_htautau = static_cast<float>(DeltaR(t1.GetMomentum(), t2.GetMomentum())
                                                    * event.GetHiggsTTMomentum(true).pt());
+    else
+        tuple().dR_l1l2Pt_htautau = def_val;
     tuple().mass_l1l2MET = static_cast<float>((event.GetHiggsTTMomentum(false) + event.GetMET().GetMomentum()).M());
     tuple().pt_l1l2MET = static_cast<float>((event.GetHiggsTTMomentum(false) + event.GetMET().GetMomentum()).pt());
-    tuple().MT_htautau = static_cast<float>(Calculate_MT(event.GetHiggsTTMomentum(true),
+    if(runSVfit)
+        tuple().MT_htautau = static_cast<float>(Calculate_MT(event.GetHiggsTTMomentum(true),
                                                          event.GetMET().GetMomentum()));
+    else
+        tuple().MT_htautau = def_val;
     tuple().npv = event->npv;
     tuple().MET = static_cast<float>(event.GetMET().GetMomentum().Pt());
     tuple().phiMET = static_cast<float>(event.GetMET().GetMomentum().Phi());
@@ -172,8 +187,14 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
         tuple().m_b2 = static_cast<float>(b2.GetMomentum().M());
         tuple().csv_b2 = b2->csv();
         tuple().deepcsv_b2 = b2->deepcsv();
-        tuple().dphi_hbbhtautau = static_cast<float>(DeltaPhi(Hbb.GetMomentum(), event.GetHiggsTTMomentum(true)));
-        tuple().deta_hbbhtautau = static_cast<float>((Hbb.GetMomentum()-event.GetHiggsTTMomentum(true)).Eta());
+        if(runSVfit)
+            tuple().dphi_hbbhtautau = static_cast<float>(DeltaPhi(Hbb.GetMomentum(), event.GetHiggsTTMomentum(true)));
+        else
+            tuple().dphi_hbbhtautau = def_val;
+        if(runSVfit)
+            tuple().deta_hbbhtautau = static_cast<float>((Hbb.GetMomentum()-event.GetHiggsTTMomentum(true)).Eta());
+        else
+            tuple().deta_hbbhtautau = def_val;
         tuple().costheta_METhbb = static_cast<float>(four_bodies::Calculate_cosTheta_2bodies(
                                                          event.GetMET().GetMomentum(), Hbb.GetMomentum()));
         tuple().dR_b1b2 = static_cast<float>(DeltaR(b1.GetMomentum(), b2.GetMomentum()));

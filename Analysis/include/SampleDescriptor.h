@@ -19,6 +19,7 @@ struct AnalyzerSetup {
     Period period;
     std::vector<std::string> final_variables;
     bool apply_mass_cut{false}, apply_os_cut{true}, apply_iso_cut{true};
+    bool run_kinFit{false}, run_SVfit{false};
     EventEnergyScaleSet energy_scales;
     EventCategorySet categories;
     EventSubCategorySet sub_categories;

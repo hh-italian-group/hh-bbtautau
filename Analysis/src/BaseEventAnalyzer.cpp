@@ -19,7 +19,7 @@ SyncDescriptor::SyncDescriptor(const std::string& desc_str, std::shared_ptr<TFil
 }
 
 BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel channel) :
-    EventAnalyzerCore(_args, channel), args(_args), anaTupleWriter(args.output(), channel, args.runKinFit()),
+    EventAnalyzerCore(_args, channel), args(_args), anaTupleWriter(args.output(), channel, ana_setup.run_kinFit, ana_setup.run_SVfit),
     trigger_patterns(ana_setup.trigger.at(channel))
 {
     InitializeMvaReader();
@@ -124,12 +124,14 @@ EventSubCategory BaseEventAnalyzer::DetermineEventSubCategory(EventInfoBase& eve
     if(event.HasBjetPair()){
         mbb = event.GetHiggsBB().GetMomentum().mass();
         if(category.HasBoostConstraint() && category.IsBoosted()){
-            bool isInsideBoostedCut = IsInsideBoostedMassWindow(event.GetHiggsTTMomentum(true).mass(),mbb);
-            sub_category.SetCutResult(SelectionCut::mh,isInsideBoostedCut);
-            sub_category.SetCutResult(SelectionCut::mhVis,isInsideBoostedCut);
-            sub_category.SetCutResult(SelectionCut::mhMET,isInsideBoostedCut);
+            if(ana_setup.run_SVfit){
+                bool isInsideBoostedCut = IsInsideBoostedMassWindow(event.GetHiggsTTMomentum(true).mass(),mbb);
+                sub_category.SetCutResult(SelectionCut::mh,isInsideBoostedCut);
+            }
         }
         else{
+            if(!ana_setup.run_SVfit && (sub_categories_to_process.count(EventSubCategory::Parse("mh")) || ana_setup.massWindowParams.count(SelectionCut::mh)))
+                throw exception("Category mh inconsistent with the false requirement of SVfit.");
             if(ana_setup.massWindowParams.count(SelectionCut::mh))
                 sub_category.SetCutResult(SelectionCut::mh,ana_setup.massWindowParams.at(SelectionCut::mh)
                         .IsInside(event.GetHiggsTTMomentum(true).mass(),mbb));
@@ -143,7 +145,7 @@ EventSubCategory BaseEventAnalyzer::DetermineEventSubCategory(EventInfoBase& eve
                         .IsInside((event.GetHiggsTTMomentum(false) + event.GetMET().GetMomentum()).mass(),mbb));
 
         }
-        if(args.runKinFit())
+        if(ana_setup.run_kinFit)
             sub_category.SetCutResult(SelectionCut::KinematicFitConverged, event.GetKinFitResults().HasValidMass());
     }
     if(mva_setup.is_initialized()) {
