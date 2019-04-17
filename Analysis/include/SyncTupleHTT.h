@@ -262,6 +262,7 @@ namespace htt_sync {
 
 
 void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, analysis::Period run_period,
+                   bool apply_svFit,
                    double weight,
                    //double dy_weight,
                    analysis::mva_study::MvaReader* mva_reader = nullptr,

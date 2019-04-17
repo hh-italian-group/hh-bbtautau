@@ -140,7 +140,6 @@ std::string EventRegion::ToString() const
     if(*this == Unknown()) return "Unknown";
     if(!EventRegionMapToString().right.count(*this))
         throw exception("Unknown EventRegion. No conversion to String");
-
     return EventRegionMapToString().right.at(*this);
 }
 

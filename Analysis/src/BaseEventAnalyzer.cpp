@@ -130,7 +130,7 @@ EventSubCategory BaseEventAnalyzer::DetermineEventSubCategory(EventInfoBase& eve
             }
         }
         else{
-            if(!ana_setup.run_SVfit && (sub_categories_to_process.count(EventSubCategory::Parse("mh")) || ana_setup.massWindowParams.count(SelectionCut::mh)))
+            if(!ana_setup.run_SVfit && ana_setup.massWindowParams.count(SelectionCut::mh))
                 throw exception("Category mh inconsistent with the false requirement of SVfit.");
             if(ana_setup.massWindowParams.count(SelectionCut::mh))
                 sub_category.SetCutResult(SelectionCut::mh,ana_setup.massWindowParams.at(SelectionCut::mh)
@@ -286,7 +286,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
             const auto& regex_pattern = sync_descriptors.at(n).regex_pattern;
             for(auto& dataId : dataIds){
                 if(boost::regex_match(dataId.first.GetName(), *regex_pattern)){
-                    htt_sync::FillSyncTuple(*event, *sync_descriptors.at(n).sync_tree, ana_setup.period,std::get<0>(dataId.second));
+                    htt_sync::FillSyncTuple(*event, *sync_descriptors.at(n).sync_tree, ana_setup.period,ana_setup.run_SVfit,std::get<0>(dataId.second));
                     break;
                 }
             }
