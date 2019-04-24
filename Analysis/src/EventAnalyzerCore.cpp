@@ -32,7 +32,10 @@ EventAnalyzerCore::EventAnalyzerCore(const CoreAnalyzerArguments& args, Channel 
     config_reader.AddEntryReader("SAMPLE_CMB", combined_entry_reader, false);
 
     config_reader.ReadConfig(args.sources());
-    mva_config_reader.ReadConfig(args.mva_sources());
+
+    if(args.mva_sources().size()) {
+        mva_config_reader.ReadConfig(args.mva_sources());
+    }
 
     if(!ana_setup_collection.count(args.setup()))
         throw exception("Setup '%1%' not found in the configuration file '%2%'.") % args.setup() % args.sources();

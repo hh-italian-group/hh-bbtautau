@@ -9,6 +9,7 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 namespace htt_sync {
 
 void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, analysis::Period run_period,
+                   bool apply_svFit,
                    double weight,
                    //double dy_weight,
                    analysis::mva_study::MvaReader* mva_reader,
@@ -22,6 +23,7 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     static constexpr int default_int_value = std::numeric_limits<int>::lowest();
     using TauIdDiscriminator = analysis::TauIdDiscriminator;
     using DiscriminatorWP = analysis::DiscriminatorWP;
+    using LegType = analysis::LegType;
 
     sync().run = event->run;
     sync().lumi = event->lumi;
@@ -43,16 +45,16 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().iso_1 =  event.GetLeg(1)->iso();
     sync().gen_match_1 = static_cast<float>(event.GetLeg(1)->gen_match());
 
-    sync().againstElectronLooseMVA6_1 = event.GetLeg(1)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::Loose);
-    sync().againstElectronMediumMVA6_1 = event.GetLeg(1)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::Medium);
-    sync().againstElectronTightMVA6_1 = event.GetLeg(1)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::Tight);
-    sync().againstElectronVLooseMVA6_1 = event.GetLeg(1)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::VLoose);
-    sync().againstElectronVTightMVA6_1 = event.GetLeg(1)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::VTight);
-    sync().againstMuonLoose3_1 = event.GetLeg(1)->Passed(TauIdDiscriminator::againstMuon3, DiscriminatorWP::Loose);
-    sync().againstMuonTight3_1 = event.GetLeg(1)->Passed(TauIdDiscriminator::againstMuon3, DiscriminatorWP::Tight);
-    sync().byCombinedIsolationDeltaBetaCorrRaw3Hits_1 = event.GetLeg(1)->GetRawValue(TauIdDiscriminator::byCombinedIsolationDeltaBetaCorr3Hits);
-    sync().byIsolationMVArun2v1DBoldDMwLTraw_1 = event.GetLeg(1)->GetRawValue(TauIdDiscriminator::byIsolationMVArun2v1DBoldDMwLT2016);
-    sync().byIsolationMVArun2017v2DBoldDMwLTraw2017_1 = event.GetLeg(1)->GetRawValue(TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017);
+    sync().againstElectronLooseMVA6_1 = event.GetLeg(1)->leg_type() == LegType::tau ? event.GetLeg(1)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::Loose) : default_value;
+    sync().againstElectronMediumMVA6_1 = event.GetLeg(1)->leg_type() == LegType::tau ? event.GetLeg(1)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::Medium) : default_value;
+    sync().againstElectronTightMVA6_1 = event.GetLeg(1)->leg_type() == LegType::tau ? event.GetLeg(1)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::Tight) : default_value;
+    sync().againstElectronVLooseMVA6_1 = event.GetLeg(1)->leg_type() == LegType::tau ? event.GetLeg(1)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::VLoose) : default_value;
+    sync().againstElectronVTightMVA6_1 = event.GetLeg(1)->leg_type() == LegType::tau ? event.GetLeg(1)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::VTight) : default_value;
+    sync().againstMuonLoose3_1 = event.GetLeg(1)->leg_type() == LegType::tau ? event.GetLeg(1)->Passed(TauIdDiscriminator::againstMuon3, DiscriminatorWP::Loose) : default_value;
+    sync().againstMuonTight3_1 = event.GetLeg(1)->leg_type() == LegType::tau ? event.GetLeg(1)->Passed(TauIdDiscriminator::againstMuon3, DiscriminatorWP::Tight) : default_value;
+    sync().byCombinedIsolationDeltaBetaCorrRaw3Hits_1 = event.GetLeg(1)->leg_type() == LegType::tau ? event.GetLeg(1)->GetRawValue(TauIdDiscriminator::byCombinedIsolationDeltaBetaCorr3Hits) : default_value;
+    sync().byIsolationMVArun2v1DBoldDMwLTraw_1 = event.GetLeg(1)->leg_type() == LegType::tau ? event.GetLeg(1)->GetRawValue(TauIdDiscriminator::byIsolationMVArun2v1DBoldDMwLT2016) : default_value;
+    sync().byIsolationMVArun2017v2DBoldDMwLTraw2017_1 = event.GetLeg(1)->leg_type() == LegType::tau ? event.GetLeg(1)->GetRawValue(TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017) : default_value;
 
     sync().pt_2 = static_cast<float>(event.GetLeg(2).GetMomentum().Pt());
     sync().pt_tau_ES_up_2 = COND_VAL(event_tau_up, event_tau_up->GetLeg(2).GetMomentum().Pt());
@@ -67,25 +69,25 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().iso_2 =  event.GetLeg(2)->iso();
     sync().gen_match_2 = static_cast<float>(event.GetLeg(2)->gen_match());
 
-    sync().againstElectronLooseMVA6_2 = event.GetLeg(2)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::Loose);
-    sync().againstElectronMediumMVA6_2 = event.GetLeg(2)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::Medium);
-    sync().againstElectronTightMVA6_2 = event.GetLeg(2)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::Tight);
-    sync().againstElectronVLooseMVA6_2 = event.GetLeg(2)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::VLoose);
-    sync().againstElectronVTightMVA6_2 = event.GetLeg(2)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::VTight);
-    sync().againstMuonLoose3_2 = event.GetLeg(2)->Passed(TauIdDiscriminator::againstMuon3, DiscriminatorWP::Loose);
-    sync().againstMuonTight3_2 = event.GetLeg(2)->Passed(TauIdDiscriminator::againstMuon3, DiscriminatorWP::Tight);
-    sync().byCombinedIsolationDeltaBetaCorrRaw3Hits_2 = event.GetLeg(2)->GetRawValue(TauIdDiscriminator::byCombinedIsolationDeltaBetaCorr3Hits);
-    sync().byIsolationMVArun2v1DBoldDMwLTraw_2 = event.GetLeg(2)->GetRawValue(TauIdDiscriminator::byIsolationMVArun2v1DBoldDMwLT2016);
-    sync().byIsolationMVArun2017v2DBoldDMwLTraw2017_2 = event.GetLeg(2)->GetRawValue(TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017);
+    sync().againstElectronLooseMVA6_2 = event.GetLeg(2)->leg_type() == LegType::tau ? event.GetLeg(2)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::Loose) : default_value;
+    sync().againstElectronMediumMVA6_2 = event.GetLeg(2)->leg_type() == LegType::tau ? event.GetLeg(2)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::Medium) : default_value;
+    sync().againstElectronTightMVA6_2 = event.GetLeg(2)->leg_type() == LegType::tau ? event.GetLeg(2)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::Tight) : default_value;
+    sync().againstElectronVLooseMVA6_2 = event.GetLeg(2)->leg_type() == LegType::tau ? event.GetLeg(2)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::VLoose) : default_value;
+    sync().againstElectronVTightMVA6_2 = event.GetLeg(2)->leg_type() == LegType::tau ? event.GetLeg(2)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::VTight) : default_value;
+    sync().againstMuonLoose3_2 = event.GetLeg(2)->leg_type() == LegType::tau ? event.GetLeg(2)->Passed(TauIdDiscriminator::againstMuon3, DiscriminatorWP::Loose) : default_value;
+    sync().againstMuonTight3_2 = event.GetLeg(2)->leg_type() == LegType::tau ? event.GetLeg(2)->Passed(TauIdDiscriminator::againstMuon3, DiscriminatorWP::Tight) : default_value;
+    sync().byCombinedIsolationDeltaBetaCorrRaw3Hits_2 = event.GetLeg(2)->leg_type() == LegType::tau ? event.GetLeg(2)->GetRawValue(TauIdDiscriminator::byCombinedIsolationDeltaBetaCorr3Hits) : default_value;
+    sync().byIsolationMVArun2v1DBoldDMwLTraw_2 = event.GetLeg(2)->leg_type() == LegType::tau ? event.GetLeg(2)->GetRawValue(TauIdDiscriminator::byIsolationMVArun2v1DBoldDMwLT2016) : default_value;
+    sync().byIsolationMVArun2017v2DBoldDMwLTraw2017_2 = event.GetLeg(2)->leg_type() == LegType::tau ? event.GetLeg(2)->GetRawValue(TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017) : default_value;
 
     sync().pt_tt = static_cast<float>((event.GetLeg(1).GetMomentum() + event.GetLeg(2).GetMomentum() + event.GetMET().GetMomentum()).Pt());
     sync().m_vis = static_cast<float>((event.GetLeg(1).GetMomentum() + event.GetLeg(2).GetMomentum()).M());
-    sync().m_sv = static_cast<float>(event.GetSVFitResults().momentum.M());
-    sync().m_sv_tau_ES_up = COND_VAL(event_tau_up, event_tau_up->GetSVFitResults().momentum.M());
-    sync().m_sv_tau_ES_down = COND_VAL(event_tau_down, event_tau_down->GetSVFitResults().momentum.M());
-    sync().m_sv_jet_ES_up = COND_VAL(event_jet_up, event_jet_up->GetSVFitResults().momentum.M());
-    sync().m_sv_jet_ES_down = COND_VAL(event_jet_down, event_jet_down->GetSVFitResults().momentum.M());
-    sync().mt_sv = static_cast<float>(event.GetSVFitResults().transverseMass);
+    sync().m_sv = COND_VAL(apply_svFit, event.GetSVFitResults().momentum.M());
+    sync().m_sv_tau_ES_up = COND_VAL(event_tau_up && apply_svFit, event_tau_up->GetSVFitResults().momentum.M());
+    sync().m_sv_tau_ES_down = COND_VAL(event_tau_down && apply_svFit, event_tau_down->GetSVFitResults().momentum.M());
+    sync().m_sv_jet_ES_up = COND_VAL(event_jet_up && apply_svFit, event_jet_up->GetSVFitResults().momentum.M());
+    sync().m_sv_jet_ES_down = COND_VAL(event_jet_down && apply_svFit, event_jet_down->GetSVFitResults().momentum.M());
+    sync().mt_sv = COND_VAL(apply_svFit, event.GetSVFitResults().transverseMass);
 
     sync().met = static_cast<float>(event.GetMET().GetMomentum().Pt());
     sync().met_tau_ES_up = COND_VAL(event_tau_up, event_tau_up->GetMET().GetMomentum().Pt());
@@ -257,7 +259,7 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     if(event.HasBjetPair()){
         using namespace ROOT::Math::VectorUtil;
         const auto& Htt = event.GetHiggsTTMomentum(false);
-        const auto& Htt_sv = event.GetHiggsTTMomentum(true);
+        //const auto& Htt_sv = event.GetHiggsTTMomentum(true);
         const auto& t1 = event.GetLeg(1).GetMomentum();
         const auto& t2 = event.GetLeg(2).GetMomentum();
 
@@ -270,17 +272,17 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
         sync().pt_hbb = Hbb.Pt();
         sync().pt_l1l2 = (t1+t2).Pt();
         sync().pt_htautau = (Htt+met).Pt();
-        sync().pt_htautau_sv = Htt_sv.Pt();
+        sync().pt_htautau_sv = COND_VAL(apply_svFit, event.GetHiggsTTMomentum(true).Pt());
         sync().p_zeta = analysis::Calculate_Pzeta(t1, t2,  met);
         sync().p_zetavisible = analysis::Calculate_visiblePzeta(t1, t2);
         sync().dphi_l1l2 = ROOT::Math::VectorUtil::DeltaPhi(t1, t2);
         sync().abs_dphi_b1b2 = std::abs(ROOT::Math::VectorUtil::DeltaPhi(b1, b2));
         sync().dphi_b1b2 = ROOT::Math::VectorUtil::DeltaPhi(b1, b2);
         sync().dphi_l1MET = ROOT::Math::VectorUtil::DeltaPhi(t1, met);
-        sync().abs_dphi_METhtautau_sv = std::abs(ROOT::Math::VectorUtil::DeltaPhi(Htt_sv, met));
-        sync().dphi_METhtautau_sv = ROOT::Math::VectorUtil::DeltaPhi(Htt_sv, met);
+        sync().abs_dphi_METhtautau_sv = COND_VAL(apply_svFit, std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.GetHiggsTTMomentum(true), met)));
+        sync().dphi_METhtautau_sv = COND_VAL(apply_svFit, ROOT::Math::VectorUtil::DeltaPhi(event.GetHiggsTTMomentum(true), met));
         sync().dphi_hbbMET = ROOT::Math::VectorUtil::DeltaPhi(Hbb, met);
-        sync().abs_dphi_hbbhatutau_sv = std::abs(ROOT::Math::VectorUtil::DeltaPhi(Hbb, Htt_sv));
+        sync().abs_dphi_hbbhatutau_sv = COND_VAL(apply_svFit, std::abs(ROOT::Math::VectorUtil::DeltaPhi(Hbb, event.GetHiggsTTMomentum(true))));
         sync().abs_deta_b1b2 = std::abs(b1.eta() - b2.eta());
         sync().abs_deta_l2MET = std::abs(t2.eta()-met.eta());
         sync().abs_deta_hbbMET = std::abs(Hbb.eta()-met.eta());
@@ -288,26 +290,26 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
         sync().dR_hbbMET = ROOT::Math::VectorUtil::DeltaR(Hbb, met);
         sync().dR_hbbhtautau = ROOT::Math::VectorUtil::DeltaR(Hbb, Htt+met);
         sync().dR_l1l2Pt_htautau = ROOT::Math::VectorUtil::DeltaR(t1, t2)*(Htt+met).Pt();
-        sync().dR_l1l2Pt_htautau_sv = ROOT::Math::VectorUtil::DeltaR(t1, t2)*Htt_sv.Pt();
+        sync().dR_l1l2Pt_htautau_sv = COND_VAL(apply_svFit, ROOT::Math::VectorUtil::DeltaR(t1, t2)*event.GetHiggsTTMomentum(true).Pt());
         sync().MT_l1 = analysis::Calculate_MT(t1,met);
         sync().MT_htautau = analysis::Calculate_MT(Htt+met, met);
-        sync().MT_htautau_sv = analysis::Calculate_MT(Htt_sv, met);
+        sync().MT_htautau_sv = COND_VAL(apply_svFit, analysis::Calculate_MT(event.GetHiggsTTMomentum(true), met));
         sync().MT_tot = analysis::Calculate_TotalMT(t1, t2,met);
         sync().MT2 = event.GetMT2();
         sync().mass_top1 = analysis::four_bodies::Calculate_topPairMasses(t1, t2, b1, b2, met).first;
         sync().mass_X = analysis::four_bodies::Calculate_MX(t1, t2, b1, b2, met);
         sync().mass_H = InvariantMass(Hbb, Htt+met);
-        sync().mass_H_sv = InvariantMass(Hbb, Htt_sv);
+        sync().mass_H_sv = COND_VAL(apply_svFit, InvariantMass(Hbb, event.GetHiggsTTMomentum(true)));
         sync().mass_H_vis = InvariantMass(Hbb, t1+t2);
         sync().mass_H_kinfit_chi2 = event.GetKinFitResults().chi2;
-        sync().phi_sv = analysis::four_bodies::Calculate_phi(t1, t2, b1, b2, Htt_sv, Hbb);
-        sync().phi_1_sv = analysis::four_bodies::Calculate_phi1(t1, t2, Htt_sv, Hbb);
-        sync().phi_2_sv = analysis::four_bodies::Calculate_phi1(b1, b2, Htt_sv, Hbb);
-        sync().costheta_METhtautau_sv = analysis::four_bodies::Calculate_cosTheta_2bodies(met, Htt_sv);
+        sync().phi_sv = COND_VAL(apply_svFit, analysis::four_bodies::Calculate_phi(t1, t2, b1, b2, event.GetHiggsTTMomentum(true), Hbb));
+        sync().phi_1_sv = COND_VAL(apply_svFit, analysis::four_bodies::Calculate_phi1(t1, t2, event.GetHiggsTTMomentum(true), Hbb));
+        sync().phi_2_sv = COND_VAL(apply_svFit, analysis::four_bodies::Calculate_phi1(b1, b2, event.GetHiggsTTMomentum(true), Hbb));
+        sync().costheta_METhtautau_sv = COND_VAL(apply_svFit, analysis::four_bodies::Calculate_cosTheta_2bodies(met, event.GetHiggsTTMomentum(true)));
         sync().costheta_METhbb = analysis::four_bodies::Calculate_cosTheta_2bodies(met, Hbb);
         sync().costheta_b1hbb = analysis::four_bodies::Calculate_cosTheta_2bodies(b1, Hbb);
-        sync().costheta_htautau_svhhMET = analysis::four_bodies::Calculate_cosTheta_2bodies(Htt_sv,
-                                          event.GetResonanceMomentum(false,true));
+        sync().costheta_htautau_svhhMET = COND_VAL(apply_svFit, analysis::four_bodies::Calculate_cosTheta_2bodies(event.GetHiggsTTMomentum(true),
+                                          event.GetResonanceMomentum(false,true)));
     }
 
     select_jets(event_tau_up);

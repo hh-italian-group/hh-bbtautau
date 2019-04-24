@@ -194,7 +194,7 @@ private:
             event_infos[EventEnergyScale::JetDown] = event_infos[EventEnergyScale::Central]->ApplyShift(Parse<UncertaintySource>(args.jet_uncertainty()), UncertaintyScale::Down);
         }
 
-        htt_sync::FillSyncTuple(*event_infos[EventEnergyScale::Central], sync, run_period, 1,
+        htt_sync::FillSyncTuple(*event_infos[EventEnergyScale::Central], sync, run_period, false, 1,
                                 mva_reader.get(),
                                 event_infos[EventEnergyScale::TauUp].get(),
                                 event_infos[EventEnergyScale::TauDown].get(),

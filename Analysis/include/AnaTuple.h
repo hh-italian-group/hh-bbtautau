@@ -75,7 +75,7 @@ public:
     using Range = ::analysis::Range<double>;
     using RangeMap = std::map<SelectionCut, Range>;
 
-    AnaTupleWriter(const std::string& file_name, Channel channel, bool _runKinFit);
+    AnaTupleWriter(const std::string& file_name, Channel channel, bool _runKinFit, bool _runSVfit);
     ~AnaTupleWriter();
     void AddEvent(EventInfoBase& event, const DataIdMap& dataIds);
 
@@ -84,6 +84,7 @@ private:
     AnaTuple tuple;
     AnaAuxTuple aux_tuple;
     bool runKinFit;
+    bool runSVfit;
     DataIdBiMap known_data_ids;
     RangeMap mva_ranges;
 };
