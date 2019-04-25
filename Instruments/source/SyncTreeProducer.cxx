@@ -47,7 +47,7 @@ public:
     static constexpr float default_value = std::numeric_limits<float>::lowest();
     static constexpr int default_int_value = std::numeric_limits<int>::lowest();
 
-    SyncTreeProducer(const Arguments& _args) : args(_args), eventWeights(Period::Run2016, JetOrdering::DeepCSV, DiscriminatorWP::Medium, true)
+    SyncTreeProducer(const Arguments& _args) : args(_args), eventWeights(analysis::EnumNameMap<analysis::Period>::GetDefault().Parse(args.period()), JetOrdering::DeepCSV, DiscriminatorWP::Medium, true)
     {
         std::istringstream ss_mode(args.mode());
         ss_mode >> syncMode;
@@ -162,7 +162,9 @@ private:
             boost::optional<EventInfoBase> event_info_base = CreateEventInfo(event,&summaryInfo,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,run_period,jet_ordering);
             if(!event_info_base.is_initialized()) continue;
             if(syncMode == SyncMode::HH && !event_info_base->HasBjetPair()) continue;
-            if(!event_info_base->GetTriggerResults().AnyAcceptAndMatch(triggerPaths.at(channel))) continue;
+            if(syncMode == SyncMode::HH && !event_info_base->GetTriggerResults().AnyAcceptAndMatch(triggerPaths.at(channel))) continue;
+            if(syncMode == SyncMode::HTT && !event_info_base->GetTriggerResults().AnyAccept(triggerPaths.at(channel))) continue;
+
 
             /*
             static const std::vector<std::string> trigger_patterns = {
