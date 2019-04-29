@@ -8,6 +8,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/JetTools/include/BTagger.h"
 #include "h-tautau/McCorrections/include/WeightingMode.h"
 #include "hh-bbtautau/Analysis/include/AnalysisCategories.h"
+#include "h-tautau/Analysis/include/SignalObjectSelector.h"
 
 namespace analysis {
 namespace tuple_skimmer {
@@ -17,6 +18,7 @@ struct Setup {
     std::set<EventEnergyScale> energy_scales;
     std::set<Channel> channels;
     Period period;
+    SignalMode mode;
     DiscriminatorWP btag_wp;
     mc_corrections::WeightingMode common_weights;
     JetOrdering jet_ordering;

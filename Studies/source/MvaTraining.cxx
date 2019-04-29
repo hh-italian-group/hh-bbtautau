@@ -38,6 +38,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "hh-bbtautau/Studies/include/MvaVariablesStudy.h"
 #include "hh-bbtautau/Studies/include/MvaMethods.h"
 #include "hh-bbtautau/McCorrections/include/HH_nonResonant_weight.h"
+#include "h-tautau/Analysis/include/SignalObjectSelector.h"
 
 struct Arguments { // list of all program arguments
         REQ_ARG(std::string, input_path);
@@ -58,6 +59,7 @@ struct Arguments { // list of all program arguments
         OPT_ARG(bool, is_BSM, false);
         OPT_ARG(std::string, coeffFile, "");
         OPT_ARG(std::string, input_histo, "");
+        REQ_ARG(analysis::SignalMode, mode);
 };
 
 namespace analysis {
@@ -204,7 +206,8 @@ public:
     std::vector<ChannelSpin> set;
 
     MVATraining(const Arguments& _args): args(_args),
-        outfile(root_ext::CreateRootFile(args.output_file()+"_"+std::to_string(args.which_test())+".root"))
+        outfile(root_ext::CreateRootFile(args.output_file()+"_"+std::to_string(args.which_test())+".root")),
+        signalObjectSelector(args.mode())
     {
         MvaSetupCollection setups;
         SampleEntryListCollection samples_list;
@@ -466,7 +469,7 @@ public:
                 for(Event event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
                     LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
-                    boost::optional<EventInfoBase> eventbase = CreateEventInfo(event);
+                    boost::optional<EventInfoBase> eventbase = CreateEventInfo(event,signalObjectSelector);
                     if(!eventbase.is_initialized()) continue;
                     if (args.suffix() == "_ANcut"){
                         if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(eventbase->GetSVFitResults().momentum.mass(),bb.mass())) continue;
@@ -813,6 +816,7 @@ private:
     std::uniform_int_distribution<uint_fast32_t> test_vs_training;
     std::shared_ptr<NonResHH_EFT::WeightProvider> reweight5D;
     NonResHH_EFT::BenchmarkCollection benchmarks;
+    SignalObjectSelector signalObjectSelector;
 };
 
 }

@@ -7,6 +7,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/PropertyConfigReader.h"
 #include "AnalysisTools/Print/include/PlotPrimitives.h"
 #include "h-tautau/Core/include/AnalysisTypes.h"
+#include "h-tautau/Analysis/include/SignalObjectSelector.h"
 #include "h-tautau/JetTools/include/BTagger.h"
 #include "AnalysisCategories.h"
 #include "EventAnalyzerDataId.h"
@@ -17,6 +18,7 @@ struct AnalyzerSetup {
     std::string name;
     double int_lumi{0};
     Period period;
+    SignalMode mode;
     std::vector<std::string> final_variables;
     bool apply_mass_cut{false}, apply_os_cut{true}, apply_iso_cut{true};
     bool run_kinFit{false}, run_SVfit{false};

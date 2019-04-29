@@ -17,6 +17,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
 #include "hh-bbtautau/Studies/include/MvaMethods.h"
 #include "hh-bbtautau/Analysis/include/MvaConfigReader.h"
+#include "h-tautau/Analysis/include/SignalObjectSelector.h"
 
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, input_path);
@@ -24,6 +25,7 @@ struct Arguments { // list of all program arguments
     REQ_ARG(std::string, tree_name);
     REQ_ARG(int, spin);
     REQ_ARG(double, efficiency);
+    REQ_ARG(analysis::SignalMode, mode);
 };
 
 namespace analysis {
@@ -36,7 +38,7 @@ public:
     using Event = ntuple::Event;
     using EventTuple = ntuple::EventTuple;
 
-    MassCutStudy(const Arguments& _args): args(_args), reporter(std::make_shared<TimeReporter>())
+    MassCutStudy(const Arguments& _args): args(_args), reporter(std::make_shared<TimeReporter>()), signalObjectSelector(args.mode())
     {
         MvaSetupCollection setups;
         SampleEntryListCollection samples_list;
@@ -176,7 +178,7 @@ public:
             auto sampleid = entry.id.IsSignal() ? SampleId::MassTot() : SampleId::Bkg();
 
             for(const Event& event : *tuple) {
-                boost::optional<EventInfoBase> eventbase = CreateEventInfo(event);
+                boost::optional<EventInfoBase> eventbase = CreateEventInfo(event,signalObjectSelector);
                 if(!eventbase.is_initialized()) continue;
 //                if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(eventbase.GetHiggsTTMomentum(true).mass(), eventbase.GetHiggsBB().GetMomentum().mass()))
 //                    continue;
@@ -237,6 +239,7 @@ private:
     Arguments args;
     std::shared_ptr<TimeReporter> reporter;
     SampleEntryCollection samples;
+    SignalObjectSelector signalObjectSelector;
 };
 }
 }

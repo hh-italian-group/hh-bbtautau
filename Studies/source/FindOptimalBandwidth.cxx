@@ -17,6 +17,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Core/include/AnalysisTypes.h"
 #include "AnalysisTools/Core/include/RootExt.h"
 #include "hh-bbtautau/Analysis/include/MvaConfigReader.h"
+#include "h-tautau/Analysis/include/SignalObjectSelector.h"
 
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, input_path);
@@ -27,7 +28,7 @@ struct Arguments { // list of all program arguments
     REQ_ARG(std::string, suffix);
     OPT_ARG(Long64_t, number_events, 15000);
     OPT_ARG(bool, is_SM, false);
-
+    REQ_ARG(analysis::SignalMode, mode);
 
 };
 
@@ -49,7 +50,7 @@ public:
     std::vector<ChannelSpin> set;
 
     FindOptimalBandwidth(const Arguments& _args): args(_args), vars(1, 12345678,{}, {"channel", "mass", "spin"}),
-        reporter(std::make_shared<TimeReporter>())
+        reporter(std::make_shared<TimeReporter>()), signalObjectSelector(args.mode())
     {
         MvaSetupCollection setups;
         SampleEntryListCollection samples_list;
@@ -78,7 +79,7 @@ public:
                 for(const Event& event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
                     LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
-                    boost::optional<EventInfoBase> eventbase = CreateEventInfo(event,nullptr,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017, Period::Run2017, JetOrdering::DeepCSV);
+                    boost::optional<EventInfoBase> eventbase = CreateEventInfo(event,signalObjectSelector,nullptr,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017, Period::Run2017, JetOrdering::DeepCSV);
                     if(!eventbase.is_initialized()) continue;
                     if (args.suffix() == "_ANcut"){
                         if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(eventbase->GetSVFitResults().momentum.mass(),bb.mass())) continue;
@@ -169,6 +170,7 @@ private:
     std::vector<Range<int>> massranges;
     std::map<ChannelSpin,SampleIdVarData> samples_mass, samples_range;
     std::map<ChannelSpin,SampleIdNameElement> bandwidth, bandwidth_range;
+    SignalObjectSelector signalObjectSelector;
 };
 }
 }

@@ -11,6 +11,7 @@ void SetupEntryReader::EndEntry()
     CheckReadParamCounts("energy_scales", 1, Condition::less_equal);
     CheckReadParamCounts("channels", 1, Condition::less_equal);
     CheckReadParamCounts("period", 1, Condition::less_equal);
+    CheckReadParamCounts("mode", 1, Condition::less_equal);
     CheckReadParamCounts("btag_wp", 1, Condition::less_equal);
     CheckReadParamCounts("common_weights", 1, Condition::less_equal);
     CheckReadParamCounts("n_splits", 1, Condition::less_equal);
@@ -37,6 +38,7 @@ void SetupEntryReader::ReadParameter(const std::string& /*param_name*/, const st
     ParseEnumList("energy_scales", current.energy_scales);
     ParseEnumList("channels", current.channels);
     ParseEntry("period", current.period);
+    ParseEntry("mode", current.mode);
     ParseEntry("btag_wp", current.btag_wp);
     ParseEntryList("common_weights", current.common_weights);
     ParseEntry("n_splits", current.n_splits);

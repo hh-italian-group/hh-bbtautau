@@ -6,6 +6,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/McCorrections/include/LeptonWeights.h"
 #include "h-tautau/McCorrections/include/TauIdWeight.h"
 #include "hh-bbtautau/McCorrections/include/EventWeights_HH.h"
+#include "h-tautau/Analysis/include/SignalObjectSelector.h"
 #include "DYModel.h"
 #include "EventAnalyzerCore.h"
 #include "MvaReader.h"
@@ -60,9 +61,11 @@ protected:
     std::shared_ptr<TFile> outputFile_sync;
     std::vector<SyncDescriptor> sync_descriptors;
     std::map<std::string,std::shared_ptr<DYModel>> dymod;
+    std::map<std::string,std::shared_ptr<DYModel_HTT>> dymod_HTT;
     std::shared_ptr<NonResModel> nonResModel;
     const std::vector<std::string> trigger_patterns;
     std::shared_ptr<mc_corrections::EventWeights_HH> eventWeights_HH;
+    SignalObjectSelector signalObjectSelector;
 };
 
 } // namespace analysis

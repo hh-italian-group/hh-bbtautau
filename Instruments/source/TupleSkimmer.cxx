@@ -26,6 +26,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/McCorrections/include/TauIdWeight.h"
 #include "h-tautau/McCorrections/include/GenEventWeight.h"
 #include "hh-bbtautau/McCorrections/include/HH_nonResonant_weight.h"
+#include "h-tautau/Analysis/include/SignalObjectSelector.h"
 
 struct Arguments {
     REQ_ARG(std::string, cfg);
@@ -56,7 +57,7 @@ public:
     static constexpr size_t max_queue_size = 100000;
 
     TupleSkimmer(const Arguments& _args) :
-        args(_args), processQueue(max_queue_size), writeQueue(max_queue_size)
+        args(_args), processQueue(max_queue_size), writeQueue(max_queue_size), signalObjectSelector(setup.mode)
     {
         std::cout << "TupleSkimmer started.\nReading config... " << std::flush;
         ROOT::EnableThreadSafety();
@@ -407,7 +408,7 @@ private:
 
         storage_mode = ntuple::EventLoader::Load(full_event, prev_event.get());
 
-        boost::optional<EventInfoBase> eventInfo = CreateEventInfo(full_event,nullptr,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,setup.period,setup.jet_ordering);
+        boost::optional<EventInfoBase> eventInfo = CreateEventInfo(full_event,signalObjectSelector,nullptr,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,setup.period,setup.jet_ordering);
         if(!eventInfo.is_initialized()) return false;
 
         const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
@@ -421,7 +422,7 @@ private:
         if (!event_metFilters.Pass(Filter::PrimaryVertex)  || !event_metFilters.Pass(Filter::BeamHalo) ||
             !event_metFilters.Pass(Filter::HBHE_noise)  || !event_metFilters.Pass(Filter::HBHEiso_noise) ||
             !event_metFilters.Pass(Filter::ECAL_TP) || !event_metFilters.Pass(Filter::badMuon) ||
-            !event_metFilters.Pass(Filter::badChargedHadron)) return false;
+            !event_metFilters.Pass(Filter::ecalBadCalib)) return false;
 
         if(event.isData && !event_metFilters.Pass(Filter::ee_badSC_noise)) return false;
 
@@ -550,6 +551,7 @@ private:
     std::shared_ptr<mc_corrections::EventWeights_HH> eventWeights_HH;
 	std::shared_ptr<TFile> outputFile;
     mc_corrections::WeightingMode weighting_mode;
+    SignalObjectSelector signalObjectSelector;
 };
 
 } // namespace tuple_skimmer

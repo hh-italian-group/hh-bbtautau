@@ -21,8 +21,10 @@ protected:
 
         EventRegion region;
 
-        double mt = analysis::Calculate_MT(muon.GetMomentum(),eventInfoBase.GetMET().GetMomentum());
-        if(mt >= 50) return EventRegion::Unknown();
+        if(ana_setup.mode == SignalMode::HTT || ana_setup.mode == SignalMode::HTT_sync){
+            double mt = analysis::Calculate_MT(muon.GetMomentum(),eventInfoBase.GetMET().GetMomentum());
+            if(mt >= 50) return EventRegion::Unknown();
+        }
 
         const bool os = !ana_setup.apply_os_cut || muon.GetCharge() * tau.GetCharge() == -1;
         region.SetCharge(os);
