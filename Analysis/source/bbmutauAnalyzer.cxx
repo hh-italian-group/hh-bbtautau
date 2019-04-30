@@ -18,8 +18,13 @@ protected:
 
         const LepCandidate& muon = eventInfoBase.GetFirstLeg();
         const LepCandidate& tau = eventInfoBase.GetSecondLeg();
-
+        
         EventRegion region;
+
+        if(ana_setup.mode == SignalMode::HTT || ana_setup.mode == SignalMode::HTT_sync){
+            double mt = analysis::Calculate_MT(muon.GetMomentum(),eventInfoBase.GetMET().GetMomentum());
+            if(mt >= cuts::H_tautau_2016::mt) return EventRegion::Unknown();
+        }
 
         const bool os = !ana_setup.apply_os_cut || muon.GetCharge() * tau.GetCharge() == -1;
         region.SetCharge(os);

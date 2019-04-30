@@ -7,15 +7,25 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "hh-bbtautau/Analysis/include/SampleDescriptor.h"
 #include "hh-bbtautau/Analysis/include/AnaTuple.h"
 #include "hh-bbtautau/Analysis/include/EventAnalyzerDataId.h"
+#include "RooWorkspace.h"
+#include "RooRealVar.h"
 
 namespace analysis{
 
-class DYModel {
+class DYModelBase {
+public:
+    virtual ~DYModelBase(){} //destructor
+    virtual void ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& event, double weight,
+                      bbtautau::AnaTupleWriter::DataIdMap& dataIds) = 0;
+
+};
+
+class DYModel : public DYModelBase {
 public:
     DYModel(const SampleDescriptor& sample,const std::string& working_path);
 
-    void ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& event, double weight,
-                      bbtautau::AnaTupleWriter::DataIdMap& dataIds);
+    virtual void ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& event, double weight,
+                      bbtautau::AnaTupleWriter::DataIdMap& dataIds) override;
 
     template<typename T>
     static size_t Get2WP(T value, std::set<size_t>& wp_set)
@@ -53,4 +63,17 @@ private:
     std::string sampleOrder;
 
 };
+
+class DYModel_HTT : public DYModelBase {
+public:
+    DYModel_HTT(const SampleDescriptor& sample,const std::string& working_path);
+
+    virtual void ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& event, double weight,
+                      bbtautau::AnaTupleWriter::DataIdMap& dataIds) override;
+
+private:
+    std::shared_ptr<RooWorkspace> workspace;
+
+};
+
 }

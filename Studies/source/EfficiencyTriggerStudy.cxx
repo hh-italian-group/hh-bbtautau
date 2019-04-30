@@ -13,6 +13,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Analysis/include/EventInfo.h"
 #include "AnalysisTools/Core/include/PropertyConfigReader.h"
 #include "AnalysisTools/Core/include/AnalysisMath.h"
+#include "h-tautau/Analysis/include/SignalObjectSelector.h"
 
 struct Arguments {
     run::Argument<std::string> output_file{"output_file", "Output pdf file"};
@@ -21,6 +22,7 @@ struct Arguments {
     run::Argument<std::string> sample_type{"sample_type", "", ""};
     run::Argument<std::string> file_cfg_name{"file_cfg_name", "file cfg"};
     run::Argument<std::string> input_path{"input_path", ""};
+    run::Argument<analysis::SignalMode> mode{"mode", "signal mode"};
 };
 
 namespace analysis {
@@ -45,7 +47,7 @@ public:
     };
 
     EfficiencyStudy(const Arguments& _args) :
-        args(_args), canvas("","", 600, 600)
+        args(_args), canvas("","", 600, 600), signalObjectSelector(args.mode())
     {
         gStyle->SetOptStat(0);
         canvas.SetGrid();
@@ -219,7 +221,7 @@ public:
                 const JetOrdering jet_ordering = run_period == Period::Run2017
                                                ? JetOrdering::DeepCSV : JetOrdering::CSV;
 
-                boost::optional<EventInfoBase> eventInfo = CreateEventInfo(event,summaryInfo.get(),analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017, run_period, jet_ordering);
+                boost::optional<EventInfoBase> eventInfo = CreateEventInfo(event,signalObjectSelector,summaryInfo.get(),analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017, run_period, jet_ordering);
                 if(!eventInfo.is_initialized()) continue;
                 if((*eventInfo)->extraelec_veto || (*eventInfo)->extramuon_veto) continue;
                 if(eventInfo->GetEnergyScale() != EventEnergyScale::Central) continue;
@@ -324,6 +326,7 @@ private:
     TCanvas canvas;
     std::vector<TriggerDesc> trigger_descs;
     SampleDesc sample_desc;
+    SignalObjectSelector signalObjectSelector;
 };
 }
 PROGRAM_MAIN(analysis::EfficiencyStudy, Arguments)

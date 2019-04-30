@@ -14,6 +14,7 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 #include "h-tautau/McCorrections/include/EventWeights.h"
 #include "hh-bbtautau/Analysis/include/SampleDescriptorConfigEntryReader.h"
 #include "hh-bbtautau/Analysis/include/SyncTupleHTT.h"
+#include "h-tautau/Analysis/include/SignalObjectSelector.h"
 
 struct Arguments {
     REQ_ARG(std::string, mode);
@@ -47,12 +48,9 @@ public:
     static constexpr float default_value = std::numeric_limits<float>::lowest();
     static constexpr int default_int_value = std::numeric_limits<int>::lowest();
 
-    SyncTreeProducer(const Arguments& _args) : args(_args), eventWeights(Period::Run2016, JetOrdering::DeepCSV, DiscriminatorWP::Medium, true)
+    SyncTreeProducer(const Arguments& _args) : args(_args), syncMode(Parse<SyncMode>(args.mode())), run_period(Parse<analysis::Period>(args.period())), eventWeights(Parse<analysis::Period>(args.period()), JetOrdering::DeepCSV, DiscriminatorWP::Medium, true),
+                                               signalObjectSelector(ConvertMode(syncMode))
     {
-        std::istringstream ss_mode(args.mode());
-        ss_mode >> syncMode;
-        run_period = analysis::EnumNameMap<analysis::Period>::GetDefault().Parse(args.period());
-
         if(args.mva_setup().size()) {
             ConfigReader config_reader;
 
@@ -137,6 +135,15 @@ private:
         }
     }
 
+    SignalMode ConvertMode(SyncMode syncMode)
+    {
+        std::map<SyncMode,SignalMode> signalMode_map ={
+            {SyncMode::HTT, SignalMode::HTT},
+            {SyncMode::HH, SignalMode::HH}
+        };
+        return signalMode_map.at(syncMode);
+    }
+
     void FillSyncTuple(SyncTuple& sync, const std::map<EventEnergyScale, ntuple::Event>& events,const SummaryInfo& summaryInfo) const
     {
         static const std::map<Channel, std::vector<std::string>> triggerPaths = {
@@ -159,10 +166,12 @@ private:
             if(syncMode == SyncMode::HH && (event.extraelec_veto || event.extramuon_veto)) continue;
 
             JetOrdering jet_ordering = run_period == Period::Run2017 ? JetOrdering::DeepCSV : JetOrdering::CSV;
-            boost::optional<EventInfoBase> event_info_base = CreateEventInfo(event,&summaryInfo,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,run_period,jet_ordering);
+            boost::optional<EventInfoBase> event_info_base = CreateEventInfo(event,signalObjectSelector,&summaryInfo,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,run_period,jet_ordering);
             if(!event_info_base.is_initialized()) continue;
             if(syncMode == SyncMode::HH && !event_info_base->HasBjetPair()) continue;
-            if(!event_info_base->GetTriggerResults().AnyAcceptAndMatch(triggerPaths.at(channel))) continue;
+            if(syncMode == SyncMode::HH && !event_info_base->GetTriggerResults().AnyAcceptAndMatch(triggerPaths.at(channel))) continue;
+            if(syncMode == SyncMode::HTT && !event_info_base->GetTriggerResults().AnyAccept(triggerPaths.at(channel))) continue;
+
 
             /*
             static const std::vector<std::string> trigger_patterns = {
@@ -209,6 +218,7 @@ private:
     mc_corrections::EventWeights eventWeights;
     boost::optional<MvaReaderSetup> mva_setup;
     std::shared_ptr<analysis::mva_study::MvaReader> mva_reader;
+    SignalObjectSelector signalObjectSelector;
 };
 
 } // namespace analysis

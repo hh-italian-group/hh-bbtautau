@@ -21,6 +21,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, output_file);
+    REQ_ARG(analysis::SignalMode, mode);
     OPT_ARG(std::string, apply_pu_id_cut,"no");
     OPT_ARG(unsigned, n_threads, 1);
     OPT_ARG(analysis::JetOrdering, csv_type,analysis::JetOrdering::DeepCSV);
@@ -48,7 +49,7 @@ public:
     using EventTuple = ntuple::EventTuple;
 
     BTagEffEstimator(const Arguments& _args) :
-        args(_args), outfile(root_ext::CreateRootFile(args.output_file()))
+        args(_args), outfile(root_ext::CreateRootFile(args.output_file())), signalObjectSelector(args.mode())
     {
         ROOT::EnableThreadSafety();
         if(args.n_threads() > 1)
@@ -116,7 +117,7 @@ public:
                 std::cout << "Processing " << name << "/" << channel << std::endl;
 
                 for(const Event& event : *tuple){
-                    boost::optional<EventInfoBase> eventInfo = CreateEventInfo(event,nullptr,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017, args.period(),args.csv_type());
+                    boost::optional<EventInfoBase> eventInfo = CreateEventInfo(event,signalObjectSelector,nullptr,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017, args.period(),args.csv_type());
                     if(!eventInfo.is_initialized()) continue;
                     const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
                     if (args.period() == Period::Run2016 && (es != EventEnergyScale::Central || event.jets_p4.size() < 2 || event.extraelec_veto
@@ -331,6 +332,7 @@ private:
     std::map<std::string,std::string> valMap = { {"valCha","ValidationChannel"} , {"valIso","ValidationIsolation"},
                                                  {"valQ","ValidationCharge"} };
     std::map<std::string, DiscriminatorWP> btag_working_points;
+    SignalObjectSelector signalObjectSelector;
 
     // static bool PassTauIdCut(TauIdResults::BitsContainer id_bits)
     // {

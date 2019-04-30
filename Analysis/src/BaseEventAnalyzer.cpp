@@ -20,7 +20,7 @@ SyncDescriptor::SyncDescriptor(const std::string& desc_str, std::shared_ptr<TFil
 
 BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel channel) :
     EventAnalyzerCore(_args, channel), args(_args), anaTupleWriter(args.output(), channel, ana_setup.run_kinFit, ana_setup.run_SVfit),
-    trigger_patterns(ana_setup.trigger.at(channel))
+    trigger_patterns(ana_setup.trigger.at(channel)),signalObjectSelector(ana_setup.mode)
 {
     InitializeMvaReader();
     if(ana_setup.syncDataIds.size()){
@@ -32,8 +32,12 @@ BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel cha
     }
     for(auto& x: sample_descriptors) {
         SampleDescriptor& sample = x.second;
-         if(sample.sampleType == SampleType::DY)
-             dymod[sample.name] = std::make_shared<DYModel>(sample,args.working_path());
+        if(sample.sampleType == SampleType::DY){
+            if(sample.fit_method == DYFitModel::Htt)
+                dymod[sample.name] = std::make_shared<DYModel_HTT>(sample,args.working_path());
+            else
+                dymod[sample.name] = std::make_shared<DYModel>(sample,args.working_path());
+        }
     }
     eventWeights_HH = std::make_shared<mc_corrections::EventWeights_HH>(ana_setup.period, ana_setup.jet_ordering, DiscriminatorWP::Medium,
                                                                         false,true);
@@ -217,7 +221,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
             prevFullEvent = tupleEvent;
             prevFullEventPtr = &prevFullEvent;
         }
-        boost::optional<analysis::EventInfoBase> event = CreateEventInfo(tupleEvent,&summary,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,ana_setup.period,ana_setup.jet_ordering);
+        boost::optional<analysis::EventInfoBase> event = CreateEventInfo(tupleEvent,signalObjectSelector,&summary,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,ana_setup.period,ana_setup.jet_ordering);
         if(!event.is_initialized()) continue;
         if(!ana_setup.energy_scales.count(event->GetEnergyScale())) continue;
         if(!event->GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) continue;
@@ -281,6 +285,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                 }
             }
         }
+        //dataId
         anaTupleWriter.AddEvent(*event, dataIds);
         for (size_t n = 0; n < sync_descriptors.size(); ++n) {
             const auto& regex_pattern = sync_descriptors.at(n).regex_pattern;
@@ -299,7 +304,7 @@ void BaseEventAnalyzer::ProcessSpecialEvent(const SampleDescriptor& sample,
                                             const EventAnalyzerDataId& anaDataId, EventInfoBase& event, double weight,
                                             double shape_weight, bbtautau::AnaTupleWriter::DataIdMap& dataIds)
 {
-    if(sample.sampleType == SampleType::DY) {
+    if(sample.sampleType == SampleType::DY){
         dymod.at(sample.name)->ProcessEvent(anaDataId,event,weight,dataIds);
     } else if(sample.sampleType == SampleType::TT) {
         dataIds[anaDataId] = std::make_tuple(weight, event.GetMvaScore());

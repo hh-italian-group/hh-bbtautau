@@ -231,4 +231,25 @@ void DYModel::ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& 
     dataIds[finalId] = std::make_tuple(weight * norm_sf, event.GetMvaScore());
 }
 
+DYModel_HTT::DYModel_HTT(const SampleDescriptor& sample,const std::string& working_path) //constructor
+{
+    auto input_file = root_ext::OpenRootFile(working_path+"/"+sample.norm_sf_file);
+    workspace =  std::shared_ptr<RooWorkspace>(root_ext::ReadObject<RooWorkspace>(*input_file,"w"));
+}
+
+void DYModel_HTT::ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& event, double weight,
+                           bbtautau::AnaTupleWriter::DataIdMap& dataIds)
+{
+    double norm_sf = 1;
+    for(size_t i=0;i<event->genParticles_p4.size();i++){
+        if(event->genParticles_pdg.at(i) != 23) continue;
+        workspace->var("z_gen_mass")->setVal(event->genParticles_p4.at(i).M());
+        workspace->var("z_gen_pt")->setVal(event->genParticles_p4.at(i).Pt());
+        norm_sf = workspace->function("zptmass_weight_nom")->getVal();
+        break;
+    }
+
+    dataIds[anaDataId] = std::make_tuple(weight * norm_sf, event.GetMvaScore());
+}
+
 }
