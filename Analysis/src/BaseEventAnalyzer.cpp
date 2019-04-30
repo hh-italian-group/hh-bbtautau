@@ -34,7 +34,7 @@ BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel cha
         SampleDescriptor& sample = x.second;
         if(sample.sampleType == SampleType::DY){
             if(sample.fit_method == DYFitModel::Htt)
-                dymod_HTT[sample.name] = std::make_shared<DYModel_HTT>(sample,args.working_path());
+                dymod[sample.name] = std::make_shared<DYModel_HTT>(sample,args.working_path());
             else
                 dymod[sample.name] = std::make_shared<DYModel>(sample,args.working_path());
         }
@@ -305,10 +305,7 @@ void BaseEventAnalyzer::ProcessSpecialEvent(const SampleDescriptor& sample,
                                             double shape_weight, bbtautau::AnaTupleWriter::DataIdMap& dataIds)
 {
     if(sample.sampleType == SampleType::DY){
-        if(sample.fit_method == DYFitModel::Htt)
-            dymod_HTT.at(sample.name)->ProcessEvent(anaDataId,event,weight,dataIds);
-        else
-            dymod.at(sample.name)->ProcessEvent(anaDataId,event,weight,dataIds);
+        dymod.at(sample.name)->ProcessEvent(anaDataId,event,weight,dataIds);
     } else if(sample.sampleType == SampleType::TT) {
         dataIds[anaDataId] = std::make_tuple(weight, event.GetMvaScore());
         if(anaDataId.Get<EventEnergyScale>() == EventEnergyScale::Central) {

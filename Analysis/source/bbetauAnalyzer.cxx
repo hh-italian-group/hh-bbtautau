@@ -23,7 +23,7 @@ protected:
 
         if(ana_setup.mode == SignalMode::HTT || ana_setup.mode == SignalMode::HTT_sync){
             double mt = analysis::Calculate_MT(electron.GetMomentum(),eventInfoBase.GetMET().GetMomentum());
-            if(mt >= 50) return EventRegion::Unknown();
+            if(mt >= cuts::H_tautau_2016::mt) return EventRegion::Unknown();
         }
 
         const bool os = !ana_setup.apply_os_cut || electron.GetCharge() * tau.GetCharge() == -1;

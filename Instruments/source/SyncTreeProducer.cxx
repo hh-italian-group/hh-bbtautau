@@ -51,10 +51,6 @@ public:
     SyncTreeProducer(const Arguments& _args) : args(_args), syncMode(Parse<SyncMode>(args.mode())), run_period(Parse<analysis::Period>(args.period())), eventWeights(Parse<analysis::Period>(args.period()), JetOrdering::DeepCSV, DiscriminatorWP::Medium, true),
                                                signalObjectSelector(ConvertMode(syncMode))
     {
-        // std::istringstream ss_mode(args.mode());
-        // ss_mode >> syncMode;
-        // run_period = analysis::EnumNameMap<analysis::Period>::GetDefault().Parse(args.period());
-        ConvertMode(syncMode);
         if(args.mva_setup().size()) {
             ConfigReader config_reader;
 
