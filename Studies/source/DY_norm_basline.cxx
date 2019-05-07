@@ -314,34 +314,34 @@ public:
                                                    static_cast<std::string>("_QCD")).c_str()),
                                 ProjWData(rooCategories,combData),LineColor(kBlack),LineStyle(kDashed)) ;*/
 
-                gPad->SetLeftMargin(0.15) ; frame->GetYaxis()->SetTitleOffset(static_cast<float>(1.4)) ; frame->Draw() ;
+                gPad->SetLeftMargin(0.15f) ; frame->GetYaxis()->SetTitleOffset(1.4f) ; frame->Draw() ;
 
                 TLatex *tex = new TLatex(0.87,   0.83,"CMS");
                 tex->SetNDC(true);
                 tex->SetTextFont(61);
                 tex->SetTextAlign(31);
-                tex->SetTextSize(0.06);
+                tex->SetTextSize(0.06f);
                 tex->Draw();
 
                 tex = new TLatex(0.87,   0.76,GetCategoryName(cat).c_str());
                 tex->SetNDC(true);
                 tex->SetTextFont(52);
                 tex->SetTextAlign(31);
-                tex->SetTextSize(0.0456);
+                tex->SetTextSize(0.0456f);
                 tex->Draw();
 
                 tex = new TLatex(0.87,   0.78,"Unpublished");
                 tex->SetNDC(true);
                 tex->SetTextFont(52);
                 tex->SetTextAlign(31);
-                tex->SetTextSize(0.04);
+                tex->SetTextSize(0.04f);
                 tex->Draw();
 
                 tex = new TLatex(0.9,   0.91,"28.6 fb^{-1} (13 TeV)");
                 tex->SetNDC(true);
                 tex->SetTextFont(42);
                 tex->SetTextAlign(31);
-                tex->SetTextSize(0.048);
+                tex->SetTextSize(0.048f);
                 tex->Draw();
 
                 c->Write();
