@@ -40,7 +40,7 @@ BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel cha
         }
     }
     eventWeights_HH = std::make_shared<mc_corrections::EventWeights_HH>(ana_setup.period, ana_setup.jet_ordering, DiscriminatorWP::Medium,
-                                                                        false,true);
+                                                                        false,ana_setup.applyTauID);
 }
 
 void BaseEventAnalyzer::Run()
@@ -221,7 +221,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
             prevFullEvent = tupleEvent;
             prevFullEventPtr = &prevFullEvent;
         }
-        boost::optional<analysis::EventInfoBase> event = CreateEventInfo(tupleEvent,signalObjectSelector,&summary,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,ana_setup.period,ana_setup.jet_ordering);
+        boost::optional<analysis::EventInfoBase> event = CreateEventInfo(tupleEvent,signalObjectSelector,&summary,ana_setup.tauIdDiscriminator,ana_setup.period,ana_setup.jet_ordering);
         if(!event.is_initialized()) continue;
         if(!ana_setup.energy_scales.count(event->GetEnergyScale())) continue;
         if(!event->GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) continue;
