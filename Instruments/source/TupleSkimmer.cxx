@@ -408,7 +408,7 @@ private:
 
         storage_mode = ntuple::EventLoader::Load(full_event, prev_event.get());
 
-        boost::optional<EventInfoBase> eventInfo = CreateEventInfo(full_event,signalObjectSelector,nullptr,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,setup.period,setup.jet_ordering);
+        boost::optional<EventInfoBase> eventInfo = CreateEventInfo(full_event,signalObjectSelector,nullptr,setup.period,setup.jet_ordering);
         if(!eventInfo.is_initialized()) return false;
 
         const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);

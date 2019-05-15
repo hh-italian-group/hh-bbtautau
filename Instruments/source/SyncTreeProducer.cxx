@@ -166,7 +166,7 @@ private:
             if(syncMode == SyncMode::HH && (event.extraelec_veto || event.extramuon_veto)) continue;
 
             JetOrdering jet_ordering = run_period == Period::Run2017 ? JetOrdering::DeepCSV : JetOrdering::CSV;
-            boost::optional<EventInfoBase> event_info_base = CreateEventInfo(event,signalObjectSelector,&summaryInfo,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,run_period,jet_ordering);
+            boost::optional<EventInfoBase> event_info_base = CreateEventInfo(event,signalObjectSelector,&summaryInfo,run_period,jet_ordering);
             if(!event_info_base.is_initialized()) continue;
             if(syncMode == SyncMode::HH && !event_info_base->HasBjetPair()) continue;
             if(syncMode == SyncMode::HH && !event_info_base->GetTriggerResults().AnyAcceptAndMatch(triggerPaths.at(channel))) continue;
