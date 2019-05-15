@@ -25,7 +25,7 @@ protected:
         
         EventRegion region;
 
-        if(ana_setup.mode == SignalMode::HTT || ana_setup.mode == SignalMode::HTT_sync){
+	if(ana_setup.mode != SignalMode::HH && ana_setup.mode != SignalMode::HTT_sync){
             double mt = analysis::Calculate_MT(muon.GetMomentum(),eventInfoBase.GetMET().GetMomentum());
             if(mt >= cuts::H_tautau_2016::mt) return EventRegion::Unknown();
 	    double m_tt_vis = (muon.GetMomentum() + tau.GetMomentum()).M();
@@ -38,7 +38,13 @@ protected:
         const bool os = !ana_setup.apply_os_cut || muon.GetCharge() * tau.GetCharge() == -1;
         region.SetCharge(os);
 
-	if(!tau->Passed(ana_setup.tauIdDiscriminator, ana_setup.workingPoint)) return EventRegion::Unknown();
+	TauIdDiscriminator tauIdDiscriminator = TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017;
+	if(ana_setup.mode == SignalMode::TauPOG_deepTauVsJet || ana_setup.mode == SignalMode::TauPOG_deepTauVsJet_full)
+		tauIdDiscriminator = TauIdDiscriminator::byDeepTau2017v1VSjet;
+	if(ana_setup.mode == SignalMode::TauPOG_dpfTau)
+		tauIdDiscriminator = TauIdDiscriminator::byDpfTau2016v0VSall;
+
+	if(!tau->Passed(tauIdDiscriminator, ana_setup.tauID_wp)) return EventRegion::Unknown();
 
         //for(auto wp = working_points.rbegin(); wp != working_points.rend(); ++wp) {
           //  if(tau->Passed(TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017, *wp)) {

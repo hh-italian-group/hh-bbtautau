@@ -19,8 +19,7 @@ struct AnalyzerSetup {
     double int_lumi{0};
     Period period;
     SignalMode mode;
-    TauIdDiscriminator tauIdDiscriminator;
-    DiscriminatorWP workingPoint;
+    DiscriminatorWP tauID_wp;
     std::vector<std::string> final_variables;
     bool apply_mass_cut{false}, apply_os_cut{true}, apply_iso_cut{true};
     bool run_kinFit{false}, run_SVfit{false}, applyTauID{true};
