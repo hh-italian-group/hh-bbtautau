@@ -10,7 +10,6 @@ void AnalyzerConfigEntryReader::EndEntry()
     CheckReadParamCounts("int_lumi", 1, Condition::less_equal);
     CheckReadParamCounts("period", 1, Condition::less_equal);
     CheckReadParamCounts("mode", 1, Condition::less_equal);
-    CheckReadParamCounts("useDeepTau", 1, Condition::less_equal);
     CheckReadParamCounts("tauIdDiscriminator", 1, Condition::less_equal);
     CheckReadParamCounts("workingPoint", 1, Condition::less_equal);
     CheckReadParamCounts("final_variables", 1, Condition::less_equal);
@@ -51,7 +50,6 @@ void AnalyzerConfigEntryReader::ReadParameter(const std::string& /*param_name*/,
     ParseEntry("int_lumi", current.int_lumi);
     ParseEntry("period", current.period);
     ParseEntry("mode", current.mode);
-    ParseEntry("useDeepTau", current.useDeepTau);
     ParseEntry("tauIdDiscriminator", current.tauIdDiscriminator);
     ParseEntry("workingPoint", current.workingPoint);
     ParseEntryList("final_variables", current.final_variables);

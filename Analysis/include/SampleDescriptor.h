@@ -19,7 +19,6 @@ struct AnalyzerSetup {
     double int_lumi{0};
     Period period;
     SignalMode mode;
-    bool useDeepTau{false};
     TauIdDiscriminator tauIdDiscriminator;
     DiscriminatorWP workingPoint;
     std::vector<std::string> final_variables;

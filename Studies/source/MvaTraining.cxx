@@ -60,7 +60,6 @@ struct Arguments { // list of all program arguments
         OPT_ARG(std::string, coeffFile, "");
         OPT_ARG(std::string, input_histo, "");
         REQ_ARG(analysis::SignalMode, mode);
-	REQ_ARG(bool, useDeepTau);
 };
 
 namespace analysis {
@@ -208,7 +207,7 @@ public:
 
     MVATraining(const Arguments& _args): args(_args),
         outfile(root_ext::CreateRootFile(args.output_file()+"_"+std::to_string(args.which_test())+".root")),
-        signalObjectSelector(args.mode(),args.useDeepTau())
+        signalObjectSelector(args.mode())
     {
         MvaSetupCollection setups;
         SampleEntryListCollection samples_list;

@@ -37,7 +37,6 @@ struct Arguments { // list of all program arguments
     REQ_ARG(unsigned, number_threads);
     REQ_ARG(size_t, number_variables);
     REQ_ARG(analysis::SignalMode, mode);
-    REQ_ARG(bool, useDeepTau);
     OPT_ARG(Long64_t, number_events, 1000000);
     OPT_ARG(size_t, number_sets, 0);
     OPT_ARG(size_t, set, 0);
@@ -83,7 +82,7 @@ public:
                                                                     "deta_METhtautau_sv", "abs_deta_METhtautau_sv","dphi_hbbhtautau_sv", "abs_dphi_hbbhatutau_sv",
                                                                     "dphi_hbbhtautau_sv", "abs_dphi_hbbhatutau_sv", "dphi_METhtautau_sv", "abs_dphi_METhtautau_sv","pt_htautau_sv"
 }),
-              reporter(std::make_shared<TimeReporter>()), signalObjectSelector(args.mode(),args.useDeepTau())
+              reporter(std::make_shared<TimeReporter>()), signalObjectSelector(args.mode())
     {
         MvaSetupCollection setups;
         SampleEntryListCollection samples_list;
@@ -317,7 +316,7 @@ public:
                 for(const Event& event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
                     LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
-                    boost::optional<EventInfoBase> eventbase = CreateEventInfo(event,signalObjectSelector,nullptr,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,Period::Run2017, JetOrdering::DeepCSV);
+                    boost::optional<EventInfoBase> eventbase = CreateEventInfo(event,signalObjectSelector,nullptr,Period::Run2017, JetOrdering::DeepCSV);
                     if(!eventbase.is_initialized()) continue;
                     if (args.suffix() == "_ANcut"){
                         if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(eventbase->GetSVFitResults().momentum.mass(),bb.mass())) continue;

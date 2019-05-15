@@ -26,7 +26,6 @@ struct Arguments { // list of all program arguments
     REQ_ARG(int, spin);
     REQ_ARG(double, efficiency);
     REQ_ARG(analysis::SignalMode, mode);
-    REQ_ARG(bool, useDeepTau);
 };
 
 namespace analysis {
@@ -40,7 +39,7 @@ public:
     using EventTuple = ntuple::EventTuple;
 
     MassCutStudy(const Arguments& _args): args(_args), reporter(std::make_shared<TimeReporter>()),
-					  signalObjectSelector(args.mode(),args.useDeepTau())
+					  signalObjectSelector(args.mode())
     {
         MvaSetupCollection setups;
         SampleEntryListCollection samples_list;

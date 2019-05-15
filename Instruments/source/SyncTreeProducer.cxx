@@ -22,7 +22,6 @@ struct Arguments {
     REQ_ARG(std::string, tree_name);
     REQ_ARG(std::string, period);
     REQ_ARG(std::string, output_file);
-    REQ_ARG(bool, useDeepTau);
     OPT_ARG(std::string, mva_setup, "");
     OPT_ARG(bool, fill_tau_es_vars, false);
     OPT_ARG(bool, fill_jet_es_vars, false);
@@ -50,7 +49,7 @@ public:
     static constexpr int default_int_value = std::numeric_limits<int>::lowest();
 
     SyncTreeProducer(const Arguments& _args) : args(_args), syncMode(Parse<SyncMode>(args.mode())), run_period(Parse<analysis::Period>(args.period())), eventWeights(Parse<analysis::Period>(args.period()), JetOrdering::DeepCSV, DiscriminatorWP::Medium, true),
-                                               signalObjectSelector(ConvertMode(syncMode),args.useDeepTau())
+                                               signalObjectSelector(ConvertMode(syncMode))
     {
         if(args.mva_setup().size()) {
             ConfigReader config_reader;
@@ -167,7 +166,7 @@ private:
             if(syncMode == SyncMode::HH && (event.extraelec_veto || event.extramuon_veto)) continue;
 
             JetOrdering jet_ordering = run_period == Period::Run2017 ? JetOrdering::DeepCSV : JetOrdering::CSV;
-            boost::optional<EventInfoBase> event_info_base = CreateEventInfo(event,signalObjectSelector,&summaryInfo,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,run_period,jet_ordering);
+            boost::optional<EventInfoBase> event_info_base = CreateEventInfo(event,signalObjectSelector,&summaryInfo,run_period,jet_ordering);
             if(!event_info_base.is_initialized()) continue;
             if(syncMode == SyncMode::HH && !event_info_base->HasBjetPair()) continue;
             if(syncMode == SyncMode::HH && !event_info_base->GetTriggerResults().AnyAcceptAndMatch(triggerPaths.at(channel))) continue;

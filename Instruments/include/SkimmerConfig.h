@@ -19,7 +19,6 @@ struct Setup {
     std::set<Channel> channels;
     Period period;
     SignalMode mode;
-    bool useDeepTau{false};
     DiscriminatorWP btag_wp;
     mc_corrections::WeightingMode common_weights;
     JetOrdering jet_ordering;

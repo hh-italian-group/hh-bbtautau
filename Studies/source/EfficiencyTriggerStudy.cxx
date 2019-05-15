@@ -23,7 +23,6 @@ struct Arguments {
     run::Argument<std::string> file_cfg_name{"file_cfg_name", "file cfg"};
     run::Argument<std::string> input_path{"input_path", ""};
     run::Argument<analysis::SignalMode> mode{"mode", "signal mode"};
-    run::Argument<bool> useDeepTau{"useDeepTau", "use deep tau discriminator for ele and muon"};
 };
 
 namespace analysis {
@@ -48,7 +47,7 @@ public:
     };
 
     EfficiencyStudy(const Arguments& _args) :
-        args(_args), canvas("","", 600, 600), signalObjectSelector(args.mode(),args.useDeepTau())
+        args(_args), canvas("","", 600, 600), signalObjectSelector(args.mode())
     {
         gStyle->SetOptStat(0);
         canvas.SetGrid();
@@ -222,7 +221,7 @@ public:
                 const JetOrdering jet_ordering = run_period == Period::Run2017
                                                ? JetOrdering::DeepCSV : JetOrdering::CSV;
 
-                boost::optional<EventInfoBase> eventInfo = CreateEventInfo(event,signalObjectSelector,summaryInfo.get(),analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017, run_period, jet_ordering);
+                boost::optional<EventInfoBase> eventInfo = CreateEventInfo(event,signalObjectSelector,summaryInfo.get(), run_period, jet_ordering);
                 if(!eventInfo.is_initialized()) continue;
                 if((*eventInfo)->extraelec_veto || (*eventInfo)->extramuon_veto) continue;
                 if(eventInfo->GetEnergyScale() != EventEnergyScale::Central) continue;

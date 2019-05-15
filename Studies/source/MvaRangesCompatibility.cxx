@@ -32,7 +32,6 @@ struct Arguments { // list of all program arguments
     REQ_ARG(unsigned, number_threads);
     REQ_ARG(size_t, number_variables);
     REQ_ARG(analysis::SignalMode, mode);
-    REQ_ARG(bool, useDeepTau);
     OPT_ARG(Long64_t, number_events, 1000000);
     OPT_ARG(size_t, number_sets, 0);
     OPT_ARG(size_t, set, 0);
@@ -70,7 +69,7 @@ public:
                                                                     "deta_METhtautau_sv", "abs_deta_METhtautau_sv","dphi_hbbhtautau_sv", "abs_dphi_hbbhatutau_sv",
                                                                     "dphi_hbbhtautau_sv", "abs_dphi_hbbhatutau_sv", "dphi_METhtautau_sv", "abs_dphi_METhtautau_sv"
                                                                     "pt_htautau_sv"}),
-        reporter(std::make_shared<TimeReporter>()), signalObjectSelector(args.mode(),args.useDeepTau())
+        reporter(std::make_shared<TimeReporter>()), signalObjectSelector(args.mode())
     {
         MvaSetupCollection setups;
         SampleEntryListCollection samples_list;

@@ -20,7 +20,7 @@ SyncDescriptor::SyncDescriptor(const std::string& desc_str, std::shared_ptr<TFil
 
 BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel channel) :
     EventAnalyzerCore(_args, channel), args(_args), anaTupleWriter(args.output(), channel, ana_setup.run_kinFit, ana_setup.run_SVfit),
-    trigger_patterns(ana_setup.trigger.at(channel)),signalObjectSelector(ana_setup.mode,ana_setup.useDeepTau)
+    trigger_patterns(ana_setup.trigger.at(channel)),signalObjectSelector(ana_setup.mode)
 {
     InitializeMvaReader();
     if(ana_setup.syncDataIds.size()){
@@ -221,7 +221,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
             prevFullEvent = tupleEvent;
             prevFullEventPtr = &prevFullEvent;
         }
-        boost::optional<analysis::EventInfoBase> event = CreateEventInfo(tupleEvent,signalObjectSelector,&summary,ana_setup.tauIdDiscriminator,ana_setup.period,ana_setup.jet_ordering);
+        boost::optional<analysis::EventInfoBase> event = CreateEventInfo(tupleEvent,signalObjectSelector,&summary,ana_setup.period,ana_setup.jet_ordering);
         if(!event.is_initialized()) continue;
         if(!ana_setup.energy_scales.count(event->GetEnergyScale())) continue;
         if(!event->GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) continue;
