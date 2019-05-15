@@ -24,6 +24,7 @@ struct Arguments { // list of all program arguments
     REQ_ARG(bool, skimmed);
     REQ_ARG(std::string, suffix);
     REQ_ARG(analysis::SignalMode, mode);
+    REQ_ARG(bool, useDeepTau);
 };
 
 namespace analysis {
@@ -37,7 +38,8 @@ public:
     using EventTuple = ntuple::EventTuple;
 
     VariablesDistribution(const Arguments& _args): args(_args),
-        outfile(root_ext::CreateRootFile(args.output_file())), reporter(std::make_shared<TimeReporter>()), signalObjectSelector(args.mode())
+        outfile(root_ext::CreateRootFile(args.output_file())), reporter(std::make_shared<TimeReporter>()), 
+	signalObjectSelector(args.mode(),args.useDeepTau())
     {
         MvaSetupCollection setups;
         SampleEntryListCollection samples_list;

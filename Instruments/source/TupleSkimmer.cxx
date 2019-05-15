@@ -57,7 +57,7 @@ public:
     static constexpr size_t max_queue_size = 100000;
 
     TupleSkimmer(const Arguments& _args) :
-        args(_args), processQueue(max_queue_size), writeQueue(max_queue_size), signalObjectSelector(setup.mode)
+        args(_args), processQueue(max_queue_size), writeQueue(max_queue_size), signalObjectSelector(setup.mode,setup.useDeepTau)
     {
         std::cout << "TupleSkimmer started.\nReading config... " << std::flush;
         ROOT::EnableThreadSafety();

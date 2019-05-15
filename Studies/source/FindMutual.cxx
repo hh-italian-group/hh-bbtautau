@@ -30,6 +30,7 @@ struct Arguments { // list of all program arguments
     OPT_ARG(Long64_t, number_events, 15000);
     OPT_ARG(bool, is_SM, false);
     REQ_ARG(analysis::SignalMode, mode);
+    REQ_ARG(bool, useDeepTau);
 };
 
 namespace analysis {
@@ -49,7 +50,7 @@ public:
                                  {"muTau",bkg_spin}, {"eTau",bkg_spin}, {"tauTau",bkg_spin}};
     std::vector<ChannelSpin> set;
 
-    FindJSD(const Arguments& _args): args(_args), vars(1, 12345678,{}, {"channel", "mass", "spin"}), reporter(std::make_shared<TimeReporter>()), signalObjectSelector(args.mode())
+    FindJSD(const Arguments& _args): args(_args), vars(1, 12345678,{}, {"channel", "mass", "spin"}), reporter(std::make_shared<TimeReporter>()), signalObjectSelector(args.mode(),args.useDeepTau())
     {
         MvaSetupCollection setups;
         SampleEntryListCollection samples_list;

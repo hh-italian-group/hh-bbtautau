@@ -20,7 +20,7 @@ SyncDescriptor::SyncDescriptor(const std::string& desc_str, std::shared_ptr<TFil
 
 BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel channel) :
     EventAnalyzerCore(_args, channel), args(_args), anaTupleWriter(args.output(), channel, ana_setup.run_kinFit, ana_setup.run_SVfit),
-    trigger_patterns(ana_setup.trigger.at(channel)),signalObjectSelector(ana_setup.mode)
+    trigger_patterns(ana_setup.trigger.at(channel)),signalObjectSelector(ana_setup.mode,ana_setup.useDeepTau)
 {
     InitializeMvaReader();
     if(ana_setup.syncDataIds.size()){

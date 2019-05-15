@@ -22,6 +22,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, output_file);
     REQ_ARG(analysis::SignalMode, mode);
+    REQ_ARG(bool, useDeepTau);
     OPT_ARG(std::string, apply_pu_id_cut,"no");
     OPT_ARG(unsigned, n_threads, 1);
     OPT_ARG(analysis::JetOrdering, csv_type,analysis::JetOrdering::DeepCSV);
@@ -49,7 +50,7 @@ public:
     using EventTuple = ntuple::EventTuple;
 
     BTagEffEstimator(const Arguments& _args) :
-        args(_args), outfile(root_ext::CreateRootFile(args.output_file())), signalObjectSelector(args.mode())
+        args(_args), outfile(root_ext::CreateRootFile(args.output_file())), signalObjectSelector(args.mode(),args.useDeepTau())
     {
         ROOT::EnableThreadSafety();
         if(args.n_threads() > 1)

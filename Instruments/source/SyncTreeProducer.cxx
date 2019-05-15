@@ -22,6 +22,7 @@ struct Arguments {
     REQ_ARG(std::string, tree_name);
     REQ_ARG(std::string, period);
     REQ_ARG(std::string, output_file);
+    REQ_ARG(bool, useDeepTau);
     OPT_ARG(std::string, mva_setup, "");
     OPT_ARG(bool, fill_tau_es_vars, false);
     OPT_ARG(bool, fill_jet_es_vars, false);
@@ -49,7 +50,7 @@ public:
     static constexpr int default_int_value = std::numeric_limits<int>::lowest();
 
     SyncTreeProducer(const Arguments& _args) : args(_args), syncMode(Parse<SyncMode>(args.mode())), run_period(Parse<analysis::Period>(args.period())), eventWeights(Parse<analysis::Period>(args.period()), JetOrdering::DeepCSV, DiscriminatorWP::Medium, true),
-                                               signalObjectSelector(ConvertMode(syncMode))
+                                               signalObjectSelector(ConvertMode(syncMode),args.useDeepTau())
     {
         if(args.mva_setup().size()) {
             ConfigReader config_reader;

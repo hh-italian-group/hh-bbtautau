@@ -23,6 +23,7 @@ struct Arguments {
     run::Argument<std::string> file_cfg_name{"file_cfg_name", "file cfg"};
     run::Argument<std::string> input_path{"input_path", ""};
     run::Argument<analysis::SignalMode> mode{"mode", "signal mode"};
+    run::Argument<bool> useDeepTau{"useDeepTau", "use deep tau discriminator for ele and muon"};
 };
 
 namespace analysis {
@@ -47,7 +48,7 @@ public:
     };
 
     EfficiencyStudy(const Arguments& _args) :
-        args(_args), canvas("","", 600, 600), signalObjectSelector(args.mode())
+        args(_args), canvas("","", 600, 600), signalObjectSelector(args.mode(),args.useDeepTau())
     {
         gStyle->SetOptStat(0);
         canvas.SetGrid();
