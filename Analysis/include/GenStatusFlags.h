@@ -111,7 +111,7 @@ public:
     bool isLastCopyBeforeFSR() const { return flags[kIsLastCopyBeforeFSR]; }
     void setIsLastCopyBeforeFSR(bool b) { flags[kIsLastCopyBeforeFSR] = b; }
 
-private:
+// private:
      std::bitset<15> flags;
 
 

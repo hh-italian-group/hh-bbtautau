@@ -6,10 +6,14 @@
 #include "h-tautau/Core/include/EventTuple.h"
 #include "GenStatusFlags.h"
 #include "hh-bbtautau/Analysis/include/Particle.h"
-#include "SimDataFormats/GeneratorProducts/interface/LHEEventProduct.h"
+#include "TextIO.h"
+
 
 // #include "Particle.h"
 #include "exception.h"
+#include <iostream>
+#include <fstream>
+
 
 namespace analysis {
 
@@ -76,7 +80,7 @@ public:
                 primaryParticles.insert(&genParticle);
 
 
-            if (genParticle.genStatusFlags.isPrompt()) // particle.genStatusFlags.isLastCopy()){
+            // if (genParticle.genStatusFlags.isPrompt()) // particle.genStatusFlags.isLastCopy()){
                 particleCodeMap[std::abs(genParticle.pdg)].insert(&genParticle);
 
         // else if(genParticle.genStatusFlags.fromHardProcess())
@@ -84,19 +88,91 @@ public:
         }
     }
 
-    GenParticleSet GetParticles(int particle_pgd, double pt = 0) const {
+    GenParticleSet GetParticles(int particle_pgd/*, double pt = 0*/) const {
         GenParticleSet results;
         const ParticleCodeMap::const_iterator code_iter = particleCodeMap.find(particle_pgd);
 
         if (code_iter != particleCodeMap.end()){
             for (const GenParticle* particle : code_iter->second){
                 // if (particle->momentum.Pt() <= pt) continue;
-                 if(!particle->genStatusFlags.isLastCopy()) continue;
-
+                if(!particle->genStatusFlags.isLastCopy()) continue;
                 results.insert(particle);
             }
         }
         return results;
+    }
+
+    GenParticleSet GetBaryons(int particle_pgd) const {
+        GenParticleSet results;
+        const ParticleCodeMap::const_iterator code_iter = particleCodeMap.find(particle_pgd);
+
+        if (code_iter != particleCodeMap.end()){
+            for (const GenParticle* particle : code_iter->second){
+                if(!particle->genStatusFlags.isLastCopy() && !particle->genStatusFlags.isPrompt()
+                    && particle_types[particle_pgd] != "baryon" ) continue;
+                results.insert(particle);
+            }
+        }
+        return results;
+    }
+
+    GenParticleSet GetMeson(int particle_pgd) const {
+        GenParticleSet results;
+        const ParticleCodeMap::const_iterator code_iter = particleCodeMap.find(particle_pgd);
+
+        if (code_iter != particleCodeMap.end()){
+            for (const GenParticle* particle : code_iter->second){
+                if(!particle->genStatusFlags.isLastCopy() && !particle->genStatusFlags.isPrompt()
+                    && particle_types[particle_pgd] != "meson" ) continue;
+                results.insert(particle);
+            }
+        }
+        return results;
+    }
+
+    static const std::string& GetParticleName(int pdgId)
+    {
+        auto iter = particle_names.find(pdgId);
+        if(iter == particle_names.end()) throw exception("Name not found for particle with pdgId = %1%") % pdgId;
+        return iter->second;
+    }
+
+    static void intializeNames(const std::string& fileName, const std::string& typesFileName)
+    {
+        particle_names.clear();
+        particle_types.clear();
+        std::ifstream f(fileName.c_str());
+        std::ifstream g(typesFileName.c_str());
+        if(!f.is_open() || !g.is_open())
+            throw analysis::exception("Unable to read the configuration file ");
+        while(f.good()) {
+            std::string line;
+            std::getline(f, line);
+            if(!line.length() || line[0] == '#')
+                continue;
+            auto value_name = SplitValueList(line, false, ",");
+            if(value_name.size() != 2)
+                throw exception("Invalid particle definition: '%1%'") % line;
+            const int value = Parse<int>(value_name.at(0)); // cambiare nome a PdgID
+            const std::string& name = value_name.at(1);
+            if(particle_names.count(value))
+                throw exception("Duplicated definition of particle with pdgId = %1%") % value;
+            particle_names[value] = name;
+        }
+        while(g.good()) {
+            std::string line;
+            std::getline(f, line);
+            if(!line.length() || line[0] == '#')
+                continue;
+            auto value_name = SplitValueList(line, false, ",");
+            if(value_name.size() != 2)
+                throw exception("Invalid particle definition: '%1%'") % line;
+            const int value = Parse<int>(value_name.at(0)); // cambiare nome a PdgID
+            const std::string& type = value_name.at(1);
+            if(particle_types.count(value))
+                throw exception("Duplicated definition of particle with pdgId = %1%") % value;
+            particle_types[value] = type;
+        }
     }
 
     void Print() const
@@ -105,23 +181,38 @@ public:
             PrintChain(particle);
         }
     }
-    
+
     void PrintChain(const GenParticle* particle, unsigned iteration = 0) const
     {
         const int pdgParticle = particle->pdg;
+        const auto particleName = GetParticleName(pdgParticle);
         const int particleStatus = particle->status;
         const LorentzVectorM_Float genParticle_momentum = particle->momentum;
-        // const GenStatusFlags genStatusFlags = particle->genStatusFlags;
+        const std::bitset<15> genStatusFlags_ = particle->genStatusFlags.flags ;
         for (unsigned n = 0; n < iteration; ++n)
             std::cout << "  ";
-        std::cout << "index=" << particle->index << " name=" << pdgParticle << " status=" << particleStatus
-                  <<  " pt= " << genParticle_momentum.Pt() <<"\n";
+        auto mother_index = particle->mothers.size() > 0 ?  particle->mothers.at(0)->index : -1;
+        std::cout <<particleName  << " <" << pdgParticle << ">" <<  " pt= " << genParticle_momentum.Pt()
+            << " eta= " << genParticle_momentum.Eta() << " phi= " << genParticle_momentum.Phi()
+            << " E= " << genParticle_momentum.E()  << " m= " << genParticle_momentum.M() << " index=" << particle->index
+            << " mother_index=" << mother_index << " status=" << particleStatus  << " statusFlags=" << genStatusFlags_ << std::endl;
+
         for(unsigned n = 0; n < particle->daughters.size(); ++n) {
             const GenParticle* daughter = particle->daughters.at(n);
-                PrintChain(daughter,iteration+1);
+                PrintChain(daughter ,iteration+1);
         }
     }
+
+
+
+private:
+    static std::map<int, std::string> particle_names;
+    static std::map<int, std::string> particle_types;
 };
+
+std::map<int, std::string> GenEvent::particle_names;
+std::map<int, std::string> GenEvent::particle_types;
+
 class VisibleGenObject {
 public:
     const GenParticle* origin;
@@ -245,8 +336,6 @@ LorentzVectorM_Float GetFinalStateMomentum(const GenParticle& particle, std::vec
 
 typedef std::vector<VisibleGenObject> VisibleGenObjectVector;
 
-// inline bool HasMatchWithMCObject(const LorentzVectorM_Float& candidateMomentum, const LorentzVectorM_Float& momentum_reco,
-//                                  const VisibleGenObject* genObject, double deltaR, bool useVisibleMomentum = false)
 inline bool HasMatchWithMCObject(const GenParticle& particle, std::vector<const GenParticle*>& visible_daughters,
                                  const LorentzVectorM_Float& momentum_reco, double deltaR, bool useVisibleMomentum = false)
 {
@@ -254,27 +343,4 @@ inline bool HasMatchWithMCObject(const GenParticle& particle, std::vector<const 
     const LorentzVectorM_Float& momentum = useVisibleMomentum ? visibleMomentum : particle.momentum;
     return ROOT::Math::VectorUtil::DeltaR(momentum, momentum_reco) < deltaR;
 }
-
-// inline bool HasMatchWithMCObject(const LorentzVectorM_Float& candidateMomentum_1,
-//                                  const LorentzVectorM_Float& candidateMomentum_2,
-//                                  double deltaR)
-// {
-//     return ROOT::Math::VectorUtil::DeltaR(candidateMomentum_1, candidateMomentum_2) < deltaR;
-// }
-
-// template<typename Container>
-// inline VisibleGenObjectVector FindMatchedObjects(const LorentzVectorM_Float& candidateMomentum_1,
-//                                                  const LorentzVectorM_Float& candidateMomentum_2,
-//                                                  const Container& genObjects, double deltaR)
-// {
-//     VisibleGenObjectVector matchedGenObjects;
-//     for (const VisibleGenObject& genObject : genObjects){
-//         if (HasMatchWithMCObject(candidateMomentum_1, candidateMomentum_2, &genObjects, deltaR))
-//             matchedGenObjects.push_back(genObject);
-//     }
-//     return matchedGenObjects;
-// }
-
-
-
 } //analysis
