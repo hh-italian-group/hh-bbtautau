@@ -30,6 +30,8 @@ class FileMerger : public root_ext::AnalyzerData {
      TH1D_ENTRY(h_bb_matchesV1, 10, -0.5, 9.5)
      TH1D_ENTRY(h_bb_matchesV2, 10, -0.5, 9.5)
      TH1D_ENTRY(B_star_zero, 10, -0.5, 9.5)
+     TH1D_ENTRY(n_Baryons, 10, -0.5, 9.5)
+     TH1D_ENTRY(n_Mesons, 10, -0.5, 9.5)
      TH1D_ENTRY(num, 10, -0.5, 9.5)
      TH1D_ENTRY(number_of_b, 10, -0.5, 9.5)
      TH1D_ENTRY(dR_1, 50, 0, 1)
@@ -76,6 +78,12 @@ public:
             const GenParticleSet higgsPair = genEvent.GetParticles(particles::ParticleCode::higgs);
             const GenParticleSet B_star_zero = genEvent.GetParticles(513);
             const GenParticleSet Lambda_b0 = genEvent.GetParticles(5122);
+            const GenParticleSet Baryons = genEvent.GetBaryons("baryon");
+            const GenParticleSet Mesons = genEvent.GetBaryons("meson");
+            // for(const auto& baryon : Baryons)
+            //     std::cout << "Baryons " << Baryons.size()<< " indice=" << baryon->index << '\n';
+            // for(const auto& meson : Mesons)
+            //     std::cout << "Mesons " << Mesons.size() <<" indice=" << meson->index << '\n';
             if(higgsPair.size() != 2)
                 throw analysis::exception("Higgs pair size must be 2, insteed has a size of '%1%'") %higgsPair.size(); //Stampare eventId e albero
 
@@ -177,6 +185,8 @@ public:
             anaData.h_bb_matchesV1().Fill(n_b_matches_v1);
             anaData.h_bb_matchesV2().Fill(n_b_matches_v2);
             anaData.B_star_zero().Fill(B_star_zero.size());
+            anaData.n_Baryons().Fill(Baryons.size());
+            anaData.n_Mesons().Fill(Mesons.size());
             if(B_star_zero.size() != 2)
                 anaData.num("Lambda_b0").Fill(Lambda_b0.size());
         }
