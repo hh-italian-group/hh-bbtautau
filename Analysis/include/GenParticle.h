@@ -102,6 +102,23 @@ public:
         return results;
     }
 
+    bool areParented(std::set<const GenParticle*>& daughters, const GenParticle& possible_mother){
+        bool family = false;
+        for(const auto& daughter: daughters){
+            if(!daughter->daughters.size()) {
+                for (size_t i = 0; i < daughter->mothers.size(); i++) {
+                    if((daughter->mothers.at(i)) == &possible_mother){
+                        std::cout << "Nutella" << '\n';
+                        family = true;
+                    }
+                }
+            }
+        }
+        for(const auto& nonna : possible_mother.mothers)
+            areParented(daughters,*nonna);
+        return family;
+    }
+
     GenParticleSet GetBaryons(int particle_pgd) const {
         GenParticleSet results;
         const ParticleCodeMap::const_iterator code_iter = particleCodeMap.find(particle_pgd);
