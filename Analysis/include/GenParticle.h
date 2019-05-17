@@ -102,14 +102,21 @@ public:
         return results;
     }
 
-    GenParticleSet GetBaryons(int particle_pgd) const {
+    GenParticleSet GetBaryons(std::string particle_type) const
+    {
+        std::vector<int> baryons_pgd;
+        for(auto map : particle_types){
+            if(map.second == particle_type){
+                baryons_pgd.push_back(map.first);
+            }
+        }
         GenParticleSet results;
-        const ParticleCodeMap::const_iterator code_iter = particleCodeMap.find(particle_pgd);
-
-        if (code_iter != particleCodeMap.end()){
+        for (const auto& code : baryons_pgd){
+            const ParticleCodeMap::const_iterator code_iter = particleCodeMap.find(code);
+            if (code_iter == particleCodeMap.end())
+                continue;
             for (const GenParticle* particle : code_iter->second){
-                if(!particle->genStatusFlags.isLastCopy() && !particle->genStatusFlags.isPrompt()
-                    && particle_types[particle_pgd] != "baryon" ) continue;
+                if(!particle->genStatusFlags.isLastCopy() && !particle->genStatusFlags.isPrompt()) continue;
                 results.insert(particle);
             }
         }
@@ -145,34 +152,62 @@ public:
         std::ifstream g(typesFileName.c_str());
         if(!f.is_open() || !g.is_open())
             throw analysis::exception("Unable to read the configuration file ");
-        while(f.good()) {
+
+        while(f.good() && g.good()) {
             std::string line;
             std::getline(f, line);
             if(!line.length() || line[0] == '#')
                 continue;
             auto value_name = SplitValueList(line, false, ",");
             if(value_name.size() != 2)
-                throw exception("Invalid particle definition: '%1%'") % line;
+                throw exception("Invalid particle definition (1): '%1%'") % line;
             const int value = Parse<int>(value_name.at(0)); // cambiare nome a PdgID
             const std::string& name = value_name.at(1);
             if(particle_names.count(value))
                 throw exception("Duplicated definition of particle with pdgId = %1%") % value;
             particle_names[value] = name;
-        }
-        while(g.good()) {
-            std::string line;
-            std::getline(f, line);
-            if(!line.length() || line[0] == '#')
+
+            std::string line_2;
+            std::getline(g, line_2);
+            if(!line_2.length() || line_2[0] == '#')
                 continue;
-            auto value_name = SplitValueList(line, false, ",");
-            if(value_name.size() != 2)
-                throw exception("Invalid particle definition: '%1%'") % line;
-            const int value = Parse<int>(value_name.at(0)); // cambiare nome a PdgID
-            const std::string& type = value_name.at(1);
-            if(particle_types.count(value))
-                throw exception("Duplicated definition of particle with pdgId = %1%") % value;
-            particle_types[value] = type;
+            auto value_type = SplitValueList(line_2, false, ",");
+            if(value_type.size() != 2) continue;
+                // throw exception("Invalid particle definition (2): '%1%'") % line_2;
+            const int PdgID = Parse<int>(value_type.at(0)); // cambiare nome a PdgID
+            const std::string& type = value_type.at(1);
+            if(particle_types.count(PdgID))
+                throw exception("Duplicated definition of particle with pdgId = %1%") % PdgID;
+            particle_types[PdgID] = type;
         }
+        // while(f.good()) {
+        //     std::string line;
+        //     std::getline(f, line);
+        //     if(!line.length() || line[0] == '#')
+        //         continue;
+        //     auto value_name = SplitValueList(line, false, ",");
+        //     if(value_name.size() != 2)
+        //         throw exception("Invalid particle definition: '%1%'") % line;
+        //     const int value = Parse<int>(value_name.at(0)); // cambiare nome a PdgID
+        //     const std::string& name = value_name.at(1);
+        //     if(particle_names.count(value))
+        //         throw exception("Duplicated definition of particle with pdgId = %1%") % value;
+        //     particle_names[value] = name;
+        // }
+        // while(g.good()) {
+        //     std::string line;
+        //     std::getline(f, line);
+        //     if(!line.length() || line[0] == '#')
+        //         continue;
+        //     auto value_name = SplitValueList(line, false, ",");
+        //     if(value_name.size() != 2)
+        //         throw exception("Invalid particle definition: '%1%'") % line;
+        //     const int value = Parse<int>(value_name.at(0)); // cambiare nome a PdgID
+        //     const std::string& type = value_name.at(1);
+        //     if(particle_types.count(value))
+        //         throw exception("Duplicated definition of particle with pdgId = %1%") % value;
+        //     particle_types[value] = type;
+        // }
     }
 
     void Print() const
@@ -195,7 +230,8 @@ public:
         std::cout <<particleName  << " <" << pdgParticle << ">" <<  " pt= " << genParticle_momentum.Pt()
             << " eta= " << genParticle_momentum.Eta() << " phi= " << genParticle_momentum.Phi()
             << " E= " << genParticle_momentum.E()  << " m= " << genParticle_momentum.M() << " index=" << particle->index
-            << " mother_index=" << mother_index << " status=" << particleStatus  << " statusFlags=" << genStatusFlags_ << std::endl;
+            << " mother_index=" << mother_index << " status=" << particleStatus  << " statusFlags=" << genStatusFlags_
+            << " type=" << std::endl;
 
         for(unsigned n = 0; n < particle->daughters.size(); ++n) {
             const GenParticle* daughter = particle->daughters.at(n);
@@ -293,6 +329,19 @@ private:
         }
     }
 };
+
+bool areParented(std::set<const GenParticle*>& daughters, const GenParticle& possible_mother){
+    for(const auto& daughter: daughters){
+        if(!daughter->daughters.size()) {
+            for (size_t i = 0; i < daughter->mothers.size(); i++) {
+                if(daughter->mothers.at(i) == possible_mother){
+                    std::cout << "Nutella" << '\n';
+                    return true;
+                }
+            }
+        }
+    }
+}
 
 void FindFinalStateDaughters(const GenParticle& particle, std::set<const GenParticle*>& daughters,
                              const std::set<int>& pdg_to_exclude)
