@@ -14,7 +14,6 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "hh-bbtautau/McCorrections/include/EventWeights_HH.h"
 #include "hh-bbtautau/Instruments/include/SkimmerConfigEntryReader.h"
 #include "AnalysisTools/Core/include/ConfigReader.h"
-#include "h-tautau/Analysis/include/EventLoader.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
 #include "hh-bbtautau/Analysis/include/AnalysisCategories.h"
 #include "h-tautau/Analysis/include/MetFilters.h"
@@ -244,8 +243,6 @@ private:
                                       << desc_iter->inputs.at(n) << "'." << std::endl;
                         }
                         if(!tuple) continue;
-                        EventIdentifier prev_event_id = EventIdentifier::Undef_event();
-                        unsigned split_id = 0;
 
                         for(const Event& event : *tuple) {
                             const FullEventId fullId{EventIdentifier(event.run, event.lumi, event.evt),
@@ -265,10 +262,7 @@ private:
                             event_ptr->isData = job.isData;
                             if(split_distr) {
                                 const EventIdentifier event_id(event);
-                                event_ptr->split_id = event_id == prev_event_id
-                                                    ? split_id : (*split_distr)(gen_map.at(channel));
-                                prev_event_id = event_id;
-                                split_id = event_ptr->split_id;
+                                event_ptr->split_id = (*split_distr)(gen_map.at(channel));
                             }
                             event_ptr->split_id = split_distr ? (*split_distr)(gen_map.at(channel)) : 0;
                             processQueue.Push(event_ptr);
@@ -301,18 +295,11 @@ private:
     void ProcessThread()
     {
         try {
-            EventPtr event, prev_full_event;
-            bool prev_full_event_stored = false;
+            EventPtr event;
             while(processQueue.Pop(event)) {
-                ntuple::StorageMode storage_mode;
-                const EventEnergyScale es = static_cast<EventEnergyScale>(event->eventEnergyScale);
-                const bool store_event = ProcessEvent(*event, prev_full_event, storage_mode, prev_full_event_stored);
+                const bool store_event = ProcessEvent(*event);
                 if(store_event)
                     writeQueue.Push(event);
-                if(storage_mode.IsFull() && es == EventEnergyScale::Central) {
-                    prev_full_event = event;
-                    prev_full_event_stored = store_event;
-                }
             }
             writeQueue.SetAllDone();
         } catch(std::exception& e) {
@@ -397,28 +384,18 @@ private:
     //     return true;
     // }
 
-    bool ProcessEvent(Event& event, const std::shared_ptr<Event>& prev_event, ntuple::StorageMode& storage_mode,
-                      bool prev_event_stored)
+    bool ProcessEvent(Event& event)
     {
         // using EventPart = ntuple::StorageMode::EventPart;
         using WeightType = mc_corrections::WeightType;
         using WeightingMode = mc_corrections::WeightingMode;
 
-        Event full_event = event;
-
-        storage_mode = ntuple::EventLoader::Load(full_event, prev_event.get());
-
-        boost::optional<EventInfoBase> eventInfo = CreateEventInfo(full_event,signalObjectSelector,nullptr,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,setup.period,setup.jet_ordering);
+        boost::optional<EventInfoBase> eventInfo = CreateEventInfo(event,signalObjectSelector,nullptr,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,setup.period,setup.jet_ordering);
         if(!eventInfo.is_initialized()) return false;
 
         const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
-        if(!prev_event_stored) {
-            event = full_event;
-            storage_mode = ntuple::StorageMode::Full();
-            event.storageMode = static_cast<UInt_t>(storage_mode.Mode());
-        }
 
-        auto event_metFilters = ntuple::MetFilters(full_event.metFilters);
+        auto event_metFilters = ntuple::MetFilters(event.metFilters);
         if (!event_metFilters.Pass(Filter::PrimaryVertex)  || !event_metFilters.Pass(Filter::BeamHalo) ||
             !event_metFilters.Pass(Filter::HBHE_noise)  || !event_metFilters.Pass(Filter::HBHEiso_noise) ||
             !event_metFilters.Pass(Filter::ECAL_TP) || !event_metFilters.Pass(Filter::badMuon) ||
@@ -426,7 +403,7 @@ private:
 
         if(event.isData && !event_metFilters.Pass(Filter::ee_badSC_noise)) return false;
 
-        if(!setup.energy_scales.count(es) || full_event.extraelec_veto || full_event.extramuon_veto) return false;
+        if(!setup.energy_scales.count(es) || event.extraelec_veto || event.extramuon_veto) return false;
 
         if(setup.apply_bb_cut && !eventInfo->HasBjetPair()) return false;
 
@@ -448,7 +425,7 @@ private:
 
             if(setup.massWindowParams.count(SelectionCut::mhMET))
                 pass_mass_cut = pass_mass_cut || setup.massWindowParams.at(SelectionCut::mhMET)
-                        .IsInside((eventInfo->GetLeg(1).GetMomentum() + eventInfo->GetLeg(2).GetMomentum() + full_event.pfMET_p4).mass(),mbb);
+                        .IsInside((eventInfo->GetLeg(1).GetMomentum() + eventInfo->GetLeg(2).GetMomentum() + event.pfMET_p4).mass(),mbb);
 
             if(!pass_mass_cut) return false;
         }
@@ -458,8 +435,8 @@ private:
         // if(setup.ApplyTauIdCuts()) {
         //     const Channel channel = static_cast<Channel>(event.channelId);
         //     const auto leg_types = GetChannelLegTypes(channel);
-        //     if(leg_types.first == LegType::tau && !ApplyTauIdCut(full_event.tauId_flags_1)) return false;
-        //     if(leg_types.second == LegType::tau && !ApplyTauIdCut(full_event.tauId_flags_2)) return false;
+        //     if(leg_types.first == LegType::tau && !ApplyTauIdCut(event.tauId_flags_1)) return false;
+        //     if(leg_types.second == LegType::tau && !ApplyTauIdCut(event.tauId_flags_2)) return false;
         // }
 
         if(setup.apply_kinfit){
