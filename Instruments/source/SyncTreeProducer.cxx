@@ -7,7 +7,6 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 #include "AnalysisTools/Core/include/AnalysisMath.h"
 #include "AnalysisTools/Core/include/TextIO.h"
 #include "h-tautau/Analysis/include/EventInfo.h"
-#include "h-tautau/Analysis/include/EventLoader.h"
 #include "h-tautau/Core/include/AnalysisTypes.h"
 #include "h-tautau/Cuts/include/Btag_2016.h"
 #include "h-tautau/Cuts/include/Btag_2017.h"
@@ -95,13 +94,9 @@ public:
                 }
                 current_id = event_id;
             }
-
-            auto central_evt_iter = events.find(EventEnergyScale::Central);
-            const ntuple::Event* central_evt = central_evt_iter != events.end() ? &central_evt_iter->second : nullptr;
-            Event full_event = event;
-            ntuple::EventLoader::Load(full_event, central_evt);
+            
             const auto es = static_cast<EventEnergyScale>(event.eventEnergyScale);
-            events[es] = full_event;
+            events[es] = event;
         }
 
         if(!events.empty()){

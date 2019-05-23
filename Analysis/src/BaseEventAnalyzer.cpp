@@ -5,7 +5,6 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "hh-bbtautau/Analysis/include/BaseEventAnalyzer.h"
 
 #include "AnalysisTools/Run/include/MultiThread.h"
-#include "h-tautau/Analysis/include/EventLoader.h"
 
 namespace analysis {
 
@@ -215,12 +214,8 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                           const ntuple::ProdSummary& prod_summary)
 {
     const SummaryInfo summary(prod_summary);
-    Event prevFullEvent, *prevFullEventPtr = nullptr;
     for(auto tupleEvent : *tuple) {
-        if(ntuple::EventLoader::Load(tupleEvent, prevFullEventPtr).IsFull()) {
-            prevFullEvent = tupleEvent;
-            prevFullEventPtr = &prevFullEvent;
-        }
+        
         boost::optional<analysis::EventInfoBase> event = CreateEventInfo(tupleEvent,signalObjectSelector,&summary,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,ana_setup.period,ana_setup.jet_ordering);
         if(!event.is_initialized()) continue;
         if(!ana_setup.energy_scales.count(event->GetEnergyScale())) continue;
