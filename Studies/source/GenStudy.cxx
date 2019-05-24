@@ -7,6 +7,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/AnalyzerData.h"
 #include "AnalysisTools/Core/include/EventIdentifier.h"
 #include "h-tautau/Core/include/AnalysisTypes.h"
+#include "h-tautau/Analysis/src/EventInfo.cpp"
 
 
 struct Arguments {
@@ -91,7 +92,7 @@ public:
                 std::vector<const GenParticle*> visible_daughters;
                 if(std::abs(h_tautau->daughters.at(tau_index)->momentum.eta()) > 2.3 ) continue;
                 auto visibleMomentum = genEvent.GetFinalStateMomentum(*h_tautau->daughters.at(tau_index), visible_daughters, true, false);
-                for (size_t reco_tau_index = 0; reco_tau_index < 2; reco_tau_index++) {
+                for (size_t reco_tau_index = 0; reco_tau_index < 2; reco_tau_index++) { 
                     auto reco_tau_momentum = reco_tau_index == 0 ? event.p4_1 : event.p4_2;
                     if(ROOT::Math::VectorUtil::DeltaR(visibleMomentum, reco_tau_momentum) < deltaR_value)
                         ++n_tau_matches;
