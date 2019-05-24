@@ -1,9 +1,10 @@
+/*! Definition of data and event categories used in HH->bbTauTau analysis.
+This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
+
 #include "AnalysisTools/Run/include/program_main.h"
 #include "AnalysisTools/Core/include/RootExt.h"
-#include "hh-bbtautau/Analysis/include/GenParticle.h"
-//#include "hh-bbtautau/Analysis/include/Particle.h"
+#include "h-tautau/Analysis/include/GenParticle.h"
 #include "AnalysisTools/Core/include/AnalyzerData.h"
-
 #include "AnalysisTools/Core/include/EventIdentifier.h"
 #include "h-tautau/Core/include/AnalysisTypes.h"
 
@@ -89,7 +90,7 @@ public:
             for (size_t tau_index = 0; tau_index < h_tautau->daughters.size(); tau_index++) {
                 std::vector<const GenParticle*> visible_daughters;
                 if(std::abs(h_tautau->daughters.at(tau_index)->momentum.eta()) > 2.3 ) continue;
-                auto visibleMomentum = GetFinalStateMomentum(*h_tautau->daughters.at(tau_index), visible_daughters, true, false);
+                auto visibleMomentum = genEvent.GetFinalStateMomentum(*h_tautau->daughters.at(tau_index), visible_daughters, true, false);
                 for (size_t reco_tau_index = 0; reco_tau_index < 2; reco_tau_index++) {
                     auto reco_tau_momentum = reco_tau_index == 0 ? event.p4_1 : event.p4_2;
                     if(ROOT::Math::VectorUtil::DeltaR(visibleMomentum, reco_tau_momentum) < deltaR_value)
@@ -118,7 +119,6 @@ public:
             most_energetic_pair.push_back(baryons_plus_mesons.at(max_i));
             most_energetic_pair.push_back(baryons_plus_mesons.at(second_max_i));
 
-
             int mb_matches_1 = 0;
             int mb_matches_2 = 0;
             int mb_matches = 0;
@@ -129,7 +129,7 @@ public:
             for (size_t i = 0; i < most_energetic_pair.size(); i++) {
                 if(std::abs(most_energetic_pair.at(i)->momentum.eta()) > 2.3) continue;
                 std::vector<const GenParticle*> visible_daughters;
-                auto visibleMomentum = GetFinalStateMomentum(*most_energetic_pair.at(i), visible_daughters, false, false);
+                auto visibleMomentum = genEvent.GetFinalStateMomentum(*most_energetic_pair.at(i), visible_daughters, false, false);
 
                 for (size_t reco_b_index = 0; reco_b_index < event.jets_p4.size(); reco_b_index++) {
                     if(ROOT::Math::VectorUtil::DeltaR(visibleMomentum, event.jets_p4.at(reco_b_index)) < deltaR_value)
