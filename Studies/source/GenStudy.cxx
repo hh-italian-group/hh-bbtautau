@@ -93,8 +93,7 @@ public:
                 if(std::abs(h_tautau->daughters.at(tau_index)->momentum.eta()) > 2.3 ) continue;
                 auto visibleMomentum = genEvent.GetFinalStateMomentum(*h_tautau->daughters.at(tau_index), visible_daughters, true, false);
                 for (size_t reco_tau_index = 0; reco_tau_index < 2; reco_tau_index++) { 
-                    auto reco_tau_momentum = reco_tau_index == 0 ? event.p4_1 : event.p4_2;
-                    if(ROOT::Math::VectorUtil::DeltaR(visibleMomentum, reco_tau_momentum) < deltaR_value)
+                    if(ROOT::Math::VectorUtil::DeltaR(visibleMomentum, event.lep_p4.at(reco_tau_index)) < deltaR_value)
                         ++n_tau_matches;
                 }
             }
