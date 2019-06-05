@@ -112,32 +112,32 @@ public:
         auto n_selected_gen_jets = event->lhe_n_partons;
         size_t n_bJets = event->lhe_n_b_partons;
 
-        if(sampleOrder == "LO"){
-            std::string lhe_category = "";
-            if(n_selected_gen_jets==0) lhe_category = "0Jet";
-            else if (n_selected_gen_jets == 1){
-                if(n_bJets==0) lhe_category= "1Jet_0bJet";
-                else if (n_bJets==1) lhe_category="1Jet_1bJet";
-            }
-            else if (n_selected_gen_jets==2){
-                if(n_bJets==0) lhe_category="2Jet_0bJet";
-                else if(n_bJets==1) lhe_category="2Jet_1bJet";
-                else if (n_bJets==2) lhe_category="2Jet_2bJet";
-            }
-
-            double fractional_weight = 0;
-            double pt_weight =0;
-            if (n_selected_gen_jets <= 2){
-                fractional_weight = fractional_weight_map[lhe_category];
-
-                for(size_t i=0;i<event->genParticles_p4.size();i++){
-                    if(event->genParticles_pdg.at(i) != 23) continue;
-                    double pt = event->genParticles_p4.at(i).Pt();
-                    pt_weight = pt_weight_histo_map[lhe_category]->GetBinContent(pt_weight_histo_map[lhe_category]->FindBin(pt));
-                }
-            }
-            weight = weight*fractional_weight*pt_weight;
-        }
+        // if(sampleOrder == "LO"){
+        //     std::string lhe_category = "";
+        //     if(n_selected_gen_jets==0) lhe_category = "0Jet";
+        //     else if (n_selected_gen_jets == 1){
+        //         if(n_bJets==0) lhe_category= "1Jet_0bJet";
+        //         else if (n_bJets==1) lhe_category="1Jet_1bJet";
+        //     }
+        //     else if (n_selected_gen_jets==2){
+        //         if(n_bJets==0) lhe_category="2Jet_0bJet";
+        //         else if(n_bJets==1) lhe_category="2Jet_1bJet";
+        //         else if (n_bJets==2) lhe_category="2Jet_2bJet";
+        //     }
+        //
+        //     double fractional_weight = 0;
+        //     double pt_weight =0;
+        //     if (n_selected_gen_jets <= 2){
+        //         fractional_weight = fractional_weight_map[lhe_category];
+        //
+        //         for(size_t i=0;i<event->genParticles_p4.size();i++){
+        //             if(event->genParticles_pdg.at(i) != 23) continue;
+        //             double pt = event->genParticles_p4.at(i).Pt();
+        //             pt_weight = pt_weight_histo_map[lhe_category]->GetBinContent(pt_weight_histo_map[lhe_category]->FindBin(pt));
+        //         }
+        //     }
+        //     weight = weight*fractional_weight*pt_weight;
+        // }
 
 
         //unsigned int n_bJets = event->jets_nTotal_hadronFlavour_b;

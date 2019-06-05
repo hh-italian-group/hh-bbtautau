@@ -13,13 +13,14 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 namespace analysis {
 
-enum class Sample_Index { Signal_NonRes = -125, Signal_Radion_M250 = -250,
-                          Signal_Radion_M260 = -260, Signal_Radion_M270 = -270, Signal_Radion_M280 = -280,
-                          Signal_Radion_M300 = -300, Signal_Radion_M320 = -320, Signal_Radion_M340 = -340,
-                          Signal_Radion_M350 = -350, Signal_Radion_M400 = -400, Signal_Radion_M450 = -450,
-                          Signal_Radion_M500 = -500, Signal_Radion_M550 = -550, Signal_Radion_M600 = -600,
-                          Signal_Radion_M650 = -650, Signal_Radion_M750 = -750, Signal_Radion_M800 = -800,
-                          Signal_Radion_M900 = -900, Data = 0, TT = 1, DY = 2, Wjets= 3, SM_Higgs = 4, other_bkg = 5 };
+enum class Sample_Index {
+    Signal_NonRes = -125, Signal_Radion_M250 = -250, Signal_Radion_M260 = -260, Signal_Radion_M270 = -270,
+    Signal_Radion_M280 = -280, Signal_Radion_M300 = -300, Signal_Radion_M320 = -320, Signal_Radion_M340 = -340,
+    Signal_Radion_M350 = -350, Signal_Radion_M400 = -400, Signal_Radion_M450 = -450, Signal_Radion_M500 = -500,
+    Signal_Radion_M550 = -550, Signal_Radion_M600 = -600, Signal_Radion_M650 = -650, Signal_Radion_M750 = -750,
+    Signal_Radion_M800 = -800, Signal_Radion_M900 = -900, Data = 0, TT = 1, DY = 2, Wjets= 3, ZH = 4, WW = 5,
+    WZ = 6, ZZ = 7, EWK = 8, tW = 9
+};
 ENUM_NAMES(Sample_Index) = {
         { Sample_Index::Signal_NonRes, "Signal_NonRes" },
         { Sample_Index::Signal_Radion_M250, "Signal_Radion_M250" },
@@ -41,7 +42,8 @@ ENUM_NAMES(Sample_Index) = {
         { Sample_Index::Signal_Radion_M900, "Signal_Radion_M900" },
         { Sample_Index::Data, "Data" },
         { Sample_Index::TT, "TT" }, { Sample_Index::DY, "DY" }, { Sample_Index::Wjets, "Wjets" },
-        { Sample_Index::SM_Higgs, "SM_Higgs" }, { Sample_Index::other_bkg, "other_bkg" }
+        { Sample_Index::ZH, "ZH" }, { Sample_Index::WW, "WW" }, { Sample_Index::WZ, "WZ" }, { Sample_Index::ZZ, "ZZ" },
+        { Sample_Index::EWK, "EWK" }, { Sample_Index::tW, "tW" },
 };
 
 enum class Region_Index { Other = 0, OS_Isolated = 1, OS_AntiIsolated = 2, SS_Isolated = 3, SS_AntiIsolated = 4 };
@@ -50,6 +52,9 @@ enum class Region_Index { Other = 0, OS_Isolated = 1, OS_AntiIsolated = 2, SS_Is
 #define VAR_LIST(type, ...) BOOST_PP_SEQ_FOR_EACH(CREATE_VAR, type, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
 
 #define ANA_EVENT_DATA() \
+    VAR(UInt_t, run) /* run */ \
+    VAR(UInt_t, lumi) /* lumi section */ \
+    VAR(ULong64_t, evt) /* event number */ \
     VAR(std::vector<size_t>, dataIds) /* EventAnalyzerDataId */ \
     VAR(std::vector<double>, all_weights) /* all weight */ \
     VAR(std::vector<float>, all_mva_scores) /* all mva scores */ \
@@ -60,7 +65,8 @@ enum class Region_Index { Other = 0, OS_Isolated = 1, OS_AntiIsolated = 2, SS_Is
     VAR(uint16_t, iso_wp_1) \
     VAR(uint16_t, iso_wp_2) \
     VAR(int, region_id) \
-    VAR_LIST(float, m_ttbb, m_ttbb_kinfit, m_sv, pt_sv, eta_sv, phi_sv, MT2, mt_tot, deta_hbbhtautau, dphi_hbbhtautau, m_tt_vis, pt_H_tt, \
+    VAR(int, energy_scale_id) \
+    VAR_LIST(float, m_ttbb, m_ttbb_kinfit, m_ttbb_kinfit_chi2, m_sv, pt_sv, eta_sv, phi_sv, MT2, mt_tot, deta_hbbhtautau, dphi_hbbhtautau, m_tt_vis, pt_H_tt, \
              pt_H_tt_MET, pt_1, eta_1, phi_1, E_1, iso_1, q_1, mt_1, pt_2, eta_2, phi_2, E_2, iso_2, q_2, mt_2, dR_l1l2, abs_dphi_l1MET, \
              dphi_htautauMET, dR_l1l2MET, dR_l1l2Pt_htautau, mass_l1l2MET, pt_l1l2MET, MT_htautau, npv, MET, phiMET, \
              pt_MET, m_bb, pt_H_bb, pt_b1, eta_b1, phi_b1, E_b1, csv_b1, pt_b2, eta_b2, phi_b2, E_b2, csv_b2, costheta_METhbb, dR_b1b2, \
@@ -94,6 +100,20 @@ DECLARE_TREE(bbtautau, AnaAux, AnaAuxTuple, ANA_AUX_DATA, "aux")
 INITIALIZE_TREE(bbtautau, AnaAuxTuple, ANA_AUX_DATA)
 #undef VAR
 #undef ANA_AUX_DATA
+
+
+#define ANA_SCORE_DATA() \
+    VAR(float, dnn_score) /* DNN based score */ \
+    /**/
+
+#define VAR(type, name) DECLARE_BRANCH_VARIABLE(type, name)
+DECLARE_TREE(bbtautau, AnaScore, AnaScoreTuple, ANA_SCORE_DATA, "score")
+#undef VAR
+
+#define VAR(type, name) ADD_DATA_TREE_BRANCH(name)
+INITIALIZE_TREE(bbtautau, AnaScoreTuple, ANA_SCORE_DATA)
+#undef VAR
+#undef ANA_SCORE_DATA
 
 namespace bbtautau {
 class AnaTupleWriter {
@@ -139,16 +159,9 @@ public:
             return analysis::Parse<Sample_Index>("Signal_Radion_"+ vector_name.at(2));
         else if (iter_data != vector_name.end())
             return Sample_Index::Data;
-        else if (sample_name == "TT")
-            return Sample_Index::TT;
         else if (iter_DY != vector_name.end())
             return Sample_Index::DY;
-        else if (sample_name == "Wjets")
-            return Sample_Index::Wjets;
-        else if (sample_name == "ZH")
-            return Sample_Index::SM_Higgs;
-        else
-            return Sample_Index::other_bkg;
+        return analysis::Parse<Sample_Index>(sample_name);
     }
 
     static Region_Index GetRegionId(const EventRegion& region)
@@ -172,6 +185,7 @@ public:
 
         if(!dataIds.size()) return;
         Region_Index region_id = Region_Index::Other;
+        int energy_scale_id = -1;
         for(const auto& entry : dataIds) {
             if(!known_data_ids.left.count(entry.first)) {
                 const size_t hash = std::hash<std::string>{}(entry.first.GetName());
@@ -196,6 +210,11 @@ public:
                     throw exception("Overlapping regions.");
                 region_id = entry_region_id;
             }
+
+            const int entry_es_id = static_cast<int>(entry.first.Get<EventEnergyScale>());
+            if(energy_scale_id != -1 && entry_es_id != energy_scale_id)
+                throw exception("inconsistent energy scales");
+            energy_scale_id = entry_es_id;
         }
         const std::string sample_name = dataIds.begin()->first.Get<std::string>();
         //std::cout << "sample_name in AnaTuple: " << sample_name << std::endl;
@@ -203,10 +222,13 @@ public:
         //std::cout << "sample_Id: " << static_cast<int>(GetSampleId(sample_name)) << std::endl;
 //        std::cout << "weight, first: " << std::get<0>(dataIds.begin()->second) << ", second: " <<
 //                     std::get<1>(dataIds.begin()->second) << std::endl;
-
+        tuple().run = event->run;
+        tuple().lumi = event->lumi;
+        tuple().evt = event->evt;
         tuple().weight = std::get<0>(dataIds.begin()->second);
         tuple().sample_id = static_cast<int>(GetSampleId(sample_name));
         tuple().region_id = static_cast<int>(region_id);
+        tuple().energy_scale_id = energy_scale_id;
         tuple().mva_score = def_val;
         tuple().has_2jets = event.HasBjetPair();
         tuple().m_sv = static_cast<float>(event.GetHiggsTTMomentum(true).M());
@@ -218,10 +240,12 @@ public:
             tuple().m_ttbb = static_cast<float>(event.GetResonanceMomentum(true, false).M());
             const auto& kinfit = event.GetKinFitResults();
             tuple().m_ttbb_kinfit = kinfit.HasValidMass() ? static_cast<float>(kinfit.mass) : def_val;
+            tuple().m_ttbb_kinfit_chi2 = kinfit.HasValidMass() ? static_cast<float>(kinfit.chi2) : def_val;
             tuple().MT2 = static_cast<float>(event.GetMT2());
         } else {
             tuple().m_ttbb = def_val;
             tuple().m_ttbb_kinfit = def_val;
+            tuple().m_ttbb_kinfit_chi2 = def_val;
             tuple().MT2 = def_val;
         }
 
@@ -238,7 +262,7 @@ public:
         tuple().E_1 = static_cast<float>(t1.GetMomentum().E());
         tuple().q_1 = event->q_1;
         tuple().iso_1 = static_cast<float>(t1.GetIsolation());
-        tuple().iso_wp_1 = t1->iso_wp().GetResultBits();
+        // tuple().iso_wp_1 = t1->iso_wp().GetResultBits();
         tuple().mt_1 = static_cast<float>(Calculate_MT(t1.GetMomentum(), event.GetMET().GetMomentum()));
         tuple().pt_2 = static_cast<float>(t2.GetMomentum().pt());
         tuple().eta_2 = static_cast<float>(t2.GetMomentum().eta());
@@ -246,7 +270,7 @@ public:
         tuple().E_2 = static_cast<float>(t2.GetMomentum().E());
         tuple().q_2 = event->q_2;
         tuple().iso_2 = static_cast<float>(t2.GetIsolation());
-        tuple().iso_wp_2 = t2->iso_wp().GetResultBits();
+        // tuple().iso_wp_2 = t2->iso_wp().GetResultBits();
         tuple().mt_2 = static_cast<float>(Calculate_MT(t2.GetMomentum(), event.GetMET().GetMomentum()));
         tuple().dR_l1l2 = static_cast<float>(DeltaR(t1.GetMomentum(),t2.GetMomentum()));
         tuple().abs_dphi_l1MET = static_cast<float>(std::abs(DeltaPhi(t1.GetMomentum(), event.GetMET().GetMomentum())));
@@ -334,7 +358,8 @@ public:
     using Range = ::analysis::Range<double>;
     using RangeMap = std::map<SelectionCut, Range>;
 
-    AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names) :
+    AnaTupleReader(const std::string& file_name, const std::string& score_file_name, Channel channel,
+                   NameSet& active_var_names) :
         file(root_ext::OpenRootFile(file_name))
     {
         static const NameSet essential_branches = {
@@ -361,6 +386,11 @@ public:
         aux_tuple.GetEntry(0);
         ExtractDataIds(aux_tuple());
         ExtractMvaRanges(aux_tuple());
+
+        if(!score_file_name.empty()) {
+            score_file = root_ext::OpenRootFile(score_file_name);
+            score_tuple = std::make_shared<AnaScoreTuple>(ToString(channel), score_file.get(), true);
+        }
     }
 
     const DataId& GetDataIdByHash(Hash hash) const
@@ -380,14 +410,17 @@ public:
 
     AnaTuple& GetAnaTuple() { return *tuple; }
 
-    void UpdateSecondaryBranches(const DataId& dataId, size_t dataId_index)
+    void UpdateSecondaryBranches(const DataId& dataId, Long64_t entryIndex, size_t dataId_index)
     {
         if(dataId_index >= (*tuple)().dataIds.size())
             throw exception("DataId index is out of range.");
         if(dataId_index >= (*tuple)().all_weights.size())
             throw exception("Inconsistent AnaTuple entry.");
         (*tuple)().weight = (*tuple)().all_weights.at(dataId_index);
-        if(dataId_index < (*tuple)().all_mva_scores.size()) {
+        if(score_file) {
+            score_tuple->GetEntry(entryIndex);
+            (*tuple)().mva_score = (*score_tuple)().dnn_score;
+        } else if(dataId_index < (*tuple)().all_mva_scores.size()) {
             const auto raw_score = (*tuple)().all_mva_scores.at(dataId_index);
             (*tuple)().mva_score =  GetNormalizedMvaScore(dataId, raw_score);
         } else {
@@ -449,8 +482,9 @@ private:
     }
 
 private:
-    std::shared_ptr<TFile> file;
+    std::shared_ptr<TFile> file, score_file;
     std::shared_ptr<AnaTuple> tuple;
+    std::shared_ptr<AnaScoreTuple> score_tuple;
     DataIdBiMap known_data_ids;
     NameSet var_branch_names;
     RangeMap mva_ranges;

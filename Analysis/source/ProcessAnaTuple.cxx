@@ -13,6 +13,7 @@ struct AnalyzerArguments : CoreAnalyzerArguments {
     REQ_ARG(Channel, channel);
     REQ_ARG(std::string, input);
     REQ_ARG(std::string, output);
+    OPT_ARG(std::string, input_dnn, "");
     OPT_ARG(bool, shapes, true);
     OPT_ARG(bool, draw, true);
     OPT_ARG(std::string, vars, "");
@@ -27,7 +28,7 @@ public:
 
     ProcessAnaTuple(const AnalyzerArguments& _args) :
         EventAnalyzerCore(_args, _args.channel()), args(_args), activeVariables(ParseVarSet(args.vars())),
-        tupleReader(args.input(), args.channel(), activeVariables),
+        tupleReader(args.input(), args.input_dnn(), args.channel(), activeVariables),
         outputFile(root_ext::CreateRootFile(args.output() + "_full.root"))
     {
         histConfig.Parse(FullPath(ana_setup.hist_cfg));
@@ -84,9 +85,10 @@ public:
                                                         cmb_sample_descriptors);
                 for(const std::string& hist_name : ana_setup.final_variables) {
                     if(!activeVariables.count(hist_name)) continue;
-                    for(const auto& subCategory : subCategories)
+                    for(const auto& subCategory : subCategories) {
                         limitsInputProducer.Produce(args.output(), hist_name, ana_setup.limit_categories, subCategory,
                                                     ana_setup.energy_scales, ana_setup.regions, mva_sel_aliases);
+                    }
                 }
             }
 
@@ -115,7 +117,7 @@ private:
             for(size_t n = 0; n < tuple().dataIds.size(); ++n) {
                 const auto& dataId = tupleReader.GetDataIdByIndex(n);
                 if(!subCategories.count(dataId.Get<EventSubCategory>())) continue;
-                tupleReader.UpdateSecondaryBranches(dataId, n);
+                tupleReader.UpdateSecondaryBranches(dataId, entryIndex, n);
                 anaDataCollection.Fill(dataId, tuple().weight);
             }
         }

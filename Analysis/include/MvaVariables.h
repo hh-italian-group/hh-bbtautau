@@ -140,7 +140,7 @@ public:
     {
     }
 
-    virtual ~MvaVariables() {}
+    virtual ~MvaVariables() override {}
     virtual void SetValue(const std::string& name, double value, char type = 'F') = 0;
     virtual void AddEventVariables(size_t which_set, const SampleId& mass, double weight, double sampleweight, int spin, std::string channel) = 0;
     const std::unordered_set<std::string>& GetDisabledVars() const{
