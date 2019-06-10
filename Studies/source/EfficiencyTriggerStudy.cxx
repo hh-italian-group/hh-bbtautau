@@ -230,7 +230,7 @@ public:
                     eventInfo->GetHiggsBB().GetMomentum().M())) continue;
                 if(eventInfo->GetLeg(1)->charge() == eventInfo->GetLeg(2)->charge()) continue;
 
-                std::vector<ULong64_t> reco_jet_matches;
+                std::vector<TriggerDescriptorCollection::BitsContainer> reco_jet_matches;
                 if(eventInfo->HasVBFjetPair()) {
                     reco_jet_matches.push_back(eventInfo->GetVBFJet(1)->triggerFilterMatch());
                     reco_jet_matches.push_back(eventInfo->GetVBFJet(2)->triggerFilterMatch());
