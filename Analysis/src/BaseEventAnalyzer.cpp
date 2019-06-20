@@ -39,7 +39,7 @@ BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel cha
         }
     }
     eventWeights_HH = std::make_shared<mc_corrections::EventWeights_HH>(ana_setup.period, ana_setup.jet_ordering, DiscriminatorWP::Medium,
-                                                                        false,true);
+                                                                        false,ana_setup.applyTauID);
 }
 
 void BaseEventAnalyzer::Run()

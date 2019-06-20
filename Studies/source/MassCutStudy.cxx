@@ -38,7 +38,8 @@ public:
     using Event = ntuple::Event;
     using EventTuple = ntuple::EventTuple;
 
-    MassCutStudy(const Arguments& _args): args(_args), reporter(std::make_shared<TimeReporter>()), signalObjectSelector(args.mode())
+    MassCutStudy(const Arguments& _args): args(_args), reporter(std::make_shared<TimeReporter>()),
+					  signalObjectSelector(args.mode())
     {
         MvaSetupCollection setups;
         SampleEntryListCollection samples_list;

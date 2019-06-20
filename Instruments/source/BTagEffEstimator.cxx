@@ -117,7 +117,8 @@ public:
                 std::cout << "Processing " << name << "/" << channel << std::endl;
 
                 for(const Event& event : *tuple){
-                    boost::optional<EventInfoBase> eventInfo = CreateEventInfo(event,signalObjectSelector,nullptr,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017, args.period(),args.csv_type());
+                    boost::optional<EventInfoBase> eventInfo = CreateEventInfo(event,signalObjectSelector,nullptr,
+										args.period(),args.csv_type());
                     if(!eventInfo.is_initialized()) continue;
                     const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
                     if (args.period() == Period::Run2016 && (es != EventEnergyScale::Central || event.jets_p4.size() < 2 || event.extraelec_veto
