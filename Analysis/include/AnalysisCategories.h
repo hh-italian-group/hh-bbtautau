@@ -12,6 +12,11 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 namespace analysis {
 
+enum class QCDmethod { invert_muon = 0, invert_tau = 1};
+ENUM_NAMES(QCDmethod) = {
+    { QCDmethod::invert_muon, "invert_muon" }, { QCDmethod::invert_tau, "invert_tau" }
+};
+
 enum class SampleType { Data, MC, DY, QCD, TT, NonResHH };
 ENUM_NAMES(SampleType) = {
     { SampleType::Data, "Data" }, { SampleType::MC, "MC" }, { SampleType::DY, "DY" }, { SampleType::QCD, "QCD" },
