@@ -57,6 +57,8 @@ protected:
            if(muon.GetIsolation() > 0.15 && muon.GetIsolation() < 0.3) return EventRegion::Unknown();
         }
         else {
+          if(muon.GetIsolation() >= cuts::hh_bbtautau_2017::MuTau::muonID::pfRelIso04) return EventRegion::Unknown();
+
           for(auto wp = working_points_tau.rbegin(); wp != working_points_tau.rend(); ++wp) {
              if(tau->Passed(tauIdDiscriminator, *wp)) {
                  region.SetLowerIso(*wp);
