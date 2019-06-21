@@ -55,24 +55,24 @@ public:
                           << std::endl;
                 std::string filename = args.input_path()  + "/" + single_file_path;
                 auto inputFile = root_ext::OpenRootFile(filename);
-                ntuple::SummaryTuple summaryTuple(args.tree_name(), inputFile.get(), true);
+                ntuple::ExpressTuple summaryTuple(args.tree_name(), inputFile.get(), true);
                 const Long64_t n_entries = summaryTuple.GetEntries();
 
+                size_t nevents = 0;
+                double weight = 1;
                 for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) { //loop on entries
                     summaryTuple.GetEntry(current_entry);
-                    for (size_t i = 0; i < summaryTuple.data().lhe_n_partons.size(); ++i){ // loop on gen event info
 
-                        size_t nevents = summaryTuple.data().lhe_n_events.at(i);
-                        UInt_t n_partons = summaryTuple.data().lhe_n_partons.at(i);
-                        UInt_t n_b_partons =  summaryTuple.data().lhe_n_b_partons.at(i);
-                        UInt_t ht =  summaryTuple.data().lhe_ht10_bin.at(i);
-                        double weight = dy_weight.GetWeight(n_partons,n_b_partons,ht);
-                        double weight_prime = nevents * weight;
-                        totalWeight += weight_prime;
+                    ++nevents;
+                    UInt_t n_partons = summaryTuple.data().lhe_n_partons;
+                    UInt_t n_b_partons =  summaryTuple.data().lhe_n_b_partons;
+                    UInt_t ht =  summaryTuple.data().lhe_ht10_bin;
+                    weight = dy_weight.GetWeight(n_partons,n_b_partons,ht);
 
-                    } // end loop on gen event info
+
                 } //end loop on entries
-
+                double weight_prime = nevents * weight;
+                totalWeight += weight_prime;
             } // end loop on files
 
         } //end loop n file_descriptors

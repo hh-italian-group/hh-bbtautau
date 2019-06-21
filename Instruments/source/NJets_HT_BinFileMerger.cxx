@@ -81,26 +81,25 @@ private:
                           << std::endl;
                 std::string filename = args.input_path()  + "/" + single_file_path;
                 auto inputFile = root_ext::OpenRootFile(filename);
-                ntuple::SummaryTuple summaryTuple(args.tree_name(), inputFile.get(), true);
+                ntuple::ExpressTuple summaryTuple(args.tree_name(), inputFile.get(), true);
                 const Long64_t n_entries = summaryTuple.GetEntries();
 
                 for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) { //loop on entries
                     summaryTuple.GetEntry(current_entry);
-                    for (size_t i = 0; i < summaryTuple.data().lhe_n_partons.size(); ++i){ // loop on gen event info
-                        const ntuple::GenId genId(summaryTuple.data().lhe_n_partons.at(i),
-                                                  summaryTuple.data().lhe_n_b_partons.at(i),
-                                                  summaryTuple.data().lhe_ht10_bin.at(i));
-                        if (!sample_desc.bin.Contains(genId))
-                            throw exception("sample_desc bin doesn't contain genId");
-                        if(!OutputBinContains(genId))
-                            throw exception("It doesn't exist at least an output bin which contains genId");
-                        size_t nevents = summaryTuple.data().lhe_n_events.at(i);
-                        sample_desc.gen_counts[genId] += nevents;
-                        global_map.gen_counts[genId] += nevents;
-                        if (file_descriptor_element.fileType == FileType::inclusive)
-                            inclusive.gen_counts[genId] += nevents;
+                    // for (size_t i = 0; i < summaryTuple.lhe_n_partons.size(); ++i){ // loop on gen event info
+                      const ntuple::GenId genId(summaryTuple.data().lhe_n_partons,
+                                                summaryTuple.data().lhe_n_b_partons,
+                                                summaryTuple.data().lhe_ht10_bin);
+                      if (!sample_desc.bin.Contains(genId))
+                          throw exception("sample_desc bin doesn't contain genId");
+                      if(!OutputBinContains(genId))
+                          throw exception("It doesn't exist at least an output bin which contains genId");
+                      sample_desc.gen_counts[genId]++;
+                      global_map.gen_counts[genId]++;
+                      if (file_descriptor_element.fileType == FileType::inclusive)
+                          inclusive.gen_counts[genId]++;
 
-                    } // end loop on gen event info
+                    //} // end loop on gen event info
                 } //end loop on entries
 
             } // end loop on files
