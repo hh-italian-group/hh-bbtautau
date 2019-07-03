@@ -109,7 +109,7 @@ public:
 
                 eff.SetTitle(name.c_str());
                 canvas.Clear();
-                const std::vector<unsigned long> x_bins = {25,30,35,40,45,50,60,70,80,90,100,120,160,200,300,400,600,800,1000};
+                const std::vector<int> x_bins = {25,30,35,40,45,50,60,70,80,90,100,120,160,200,300,400,600,800,1000};
                 double min = 1, max = 0;
                 for(int n = 1; n <= passed.GetNbinsX(); ++n) {
                     min = std::min(eff.GetEfficiency(n), min);
@@ -256,51 +256,19 @@ public:
 
             //H->tautau
 
-            //order tau legs according to Pt
-            if(args.channel() == Channel::TauTau){
-                if(HH_Gen_Event.h_tautau->daughters.at(0)->momentum.Pt() > HH_Gen_Event.h_tautau->daughters.at(1)->momentum.Pt()){
-                    HH_Gen_Event.tau[0] = HH_Gen_Event.h_tautau->daughters.at(0);
-                    HH_Gen_Event.tau[1] = HH_Gen_Event.h_tautau->daughters.at(1);
-                }
-                else{
-                    HH_Gen_Event.tau[0] = HH_Gen_Event.h_tautau->daughters.at(1);
-                    HH_Gen_Event.tau[1] = HH_Gen_Event.h_tautau->daughters.at(0);
-                }
-            }  //order tau legs according to leptonic or hadronic tau
-            //FIX ME PLEASE =(
-            else{
-                for (size_t tau_index = 0; tau_index < HH_Gen_Event.h_tautau->daughters.size(); tau_index++) {
-                    auto tau = HH_Gen_Event.h_tautau->daughters.at(tau_index);
-                    for(size_t daughter_index = 0 ; daughter_index < tau->daughters.size(); ++daughter_index ){
-                        if(std::abs(tau->daughters.at(daughter_index)->pdg) == particles::ParticleCode::e || std::abs(tau->daughters.at(daughter_index)->pdg) == particles::ParticleCode::mu){
-                            HH_Gen_Event.tau[0] = tau;
-                        }
-                        else
-                            HH_Gen_Event.tau[1] = tau;
-                    }
-                }
-            }
-
             for (size_t tau_index = 0; tau_index < HH_Gen_Event.h_tautau->daughters.size(); tau_index++) {
-//                HH_Gen_Event.tau[tau_index] = HH_Gen_Event.h_tautau->daughters.at(tau_index);
 
-                std::vector<const GenParticle*> visible_daughters;
-                HH_Gen_Event.vis_tau[tau_index] = genEvent.GetFinalStateMomentum(*HH_Gen_Event.tau[tau_index], visible_daughters, true, false);
+               auto tau = HH_Gen_Event.h_tautau->daughters.at(tau_index);
+               std::set<int> pdg_daughters;
+               for(size_t daughter_index = 0 ; daughter_index < tau->daughters.size(); ++daughter_index )
+                   pdg_daughters.insert(std::abs(tau->daughters.at(daughter_index)->pdg));
 
-               auto particle_charge = GenEvent::particleCharge();
-               for(size_t vis_daughter_index = 0 ; vis_daughter_index <visible_daughters.size(); ++vis_daughter_index ){
-                   if (std::abs(visible_daughters.at(vis_daughter_index)->pdg) == particles::ParticleCode::e )
-                       HH_Gen_Event.tau_decay[tau_index] = GenDecayMode::Electron;
-
-                   else if (std::abs(visible_daughters.at(vis_daughter_index)->pdg) == particles::ParticleCode::mu )
-                       HH_Gen_Event.tau_decay[tau_index] = GenDecayMode::Muon;
-
-                   else
-                       HH_Gen_Event.tau_decay[tau_index] = GenDecayMode::Hadrons;
-
-                    if(particle_charge[visible_daughters.at(vis_daughter_index)->pdg] != 0)
-                        HH_Gen_Event.vis_charged_tau[tau_index] += visible_daughters.at(vis_daughter_index)->momentum;
-                }
+               if(pdg_daughters.count(particles::ParticleCode::e))
+                   HH_Gen_Event.tau_decay[tau_index] = GenDecayMode::Electron;
+               else if(pdg_daughters.count(particles::ParticleCode::mu))
+                   HH_Gen_Event.tau_decay[tau_index] = GenDecayMode::Muon;
+               else
+                  HH_Gen_Event.tau_decay[tau_index] = GenDecayMode::Hadrons;
             }
 
             //Channel control
@@ -351,6 +319,41 @@ public:
 
             if(!isCorrectChannel(HH_Gen_Event, args.channel())) continue;
             anaData.n("correct_channel").Fill(isCorrectChannel(HH_Gen_Event, args.channel()));
+
+            //order tau legs according to Pt
+            if(args.channel() == Channel::TauTau){
+                if(HH_Gen_Event.h_tautau->daughters.at(0)->momentum.Pt() > HH_Gen_Event.h_tautau->daughters.at(1)->momentum.Pt()){
+                    HH_Gen_Event.tau[0] = HH_Gen_Event.h_tautau->daughters.at(0);
+                    HH_Gen_Event.tau[1] = HH_Gen_Event.h_tautau->daughters.at(1);
+                }
+                else{
+                    HH_Gen_Event.tau[0] = HH_Gen_Event.h_tautau->daughters.at(1);
+                    HH_Gen_Event.tau[1] = HH_Gen_Event.h_tautau->daughters.at(0);
+                }
+            }
+            //order tau legs according to leptonic or hadronic tau
+            else if(args.channel() == Channel::ETau || args.channel() == Channel::MuTau){
+                if((HH_Gen_Event.tau_decay.at(0) == GenDecayMode::Electron &&  HH_Gen_Event.tau_decay.at(1)  == GenDecayMode::Hadrons) ||
+                        (HH_Gen_Event.tau_decay.at(0) == GenDecayMode::Muon &&  HH_Gen_Event.tau_decay.at(1)  == GenDecayMode::Hadrons)){
+                    HH_Gen_Event.tau[0] = HH_Gen_Event.h_tautau->daughters.at(0);
+                    HH_Gen_Event.tau[1] = HH_Gen_Event.h_tautau->daughters.at(1);
+                }
+                else if((HH_Gen_Event.tau_decay.at(1) == GenDecayMode::Electron &&  HH_Gen_Event.tau_decay.at(0)  == GenDecayMode::Hadrons) ||
+                        (HH_Gen_Event.tau_decay.at(1) == GenDecayMode::Muon &&  HH_Gen_Event.tau_decay.at(0)  == GenDecayMode::Hadrons)){
+                    HH_Gen_Event.tau[0] = HH_Gen_Event.h_tautau->daughters.at(1);
+                    HH_Gen_Event.tau[1] = HH_Gen_Event.h_tautau->daughters.at(0);
+                }
+             }
+
+            for (size_t tau_index = 0; tau_index < HH_Gen_Event.h_tautau->daughters.size(); tau_index++) {
+                std::vector<const GenParticle*> visible_daughters;
+                HH_Gen_Event.vis_tau[tau_index] = genEvent.GetFinalStateMomentum(*HH_Gen_Event.tau[tau_index], visible_daughters, true, false);
+                auto particle_charge = GenEvent::particleCharge();
+                for(size_t vis_daughter_index = 0 ; vis_daughter_index <visible_daughters.size(); ++vis_daughter_index ){
+                    if(particle_charge[visible_daughters.at(vis_daughter_index)->pdg] != 0)
+                        HH_Gen_Event.vis_charged_tau[tau_index] += visible_daughters.at(vis_daughter_index)->momentum;
+                }
+            }
 
             //H->bb
 
@@ -533,8 +536,8 @@ public:
                          "", true, "pass b acceptance" );
         CreateEfficiency(anaData.n("pass_b_plus_taus_acceptance"),anaData.n("correct_channel"), " ", ToString(args.channel()),
                          "", true, "pass tau plus b acceptance" );
-        CreateEfficiency(anaData.n("pass_taus_acceptance"), anaData.n("pass_b_acceptance"), " ", ToString(args.channel()),
-                         "", true, "pass tau acceptance/pass b acceptance" );
+//        CreateEfficiency(anaData.n("pass_taus_acceptance"), anaData.n("pass_b_acceptance"), " ", ToString(args.channel()),
+//                         "", true, "pass tau acceptance/pass b acceptance" );
 
         anaData.h_tautau_matches("jets").SetLineColor(kBlue+2);
         anaData.h_tautau_matches("jets").SetLineWidth(2);
