@@ -14,8 +14,8 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "TStyle.h"
 #include <TLegend.h>
 #include <TCanvas.h>
-#include <functional>   // std::greater
-#include <iostream>     // std::cout
+#include <functional>
+#include <iostream>
 #include <algorithm>
 
 
@@ -47,9 +47,8 @@ class FileMerger : public root_ext::AnalyzerData {
 
     TH1D_ENTRY(jet_matches, 10, -0.5, 9.5)
     TH1D_ENTRY(n, 8, -0.5, 7.5)
-    TH1D_ENTRY(m, 10, -0.5, 9.5)
-    TH1D_ENTRY_EX(Higgs_Pt, 50, 0, 1600, "Pt [GeV]", "events", true, 1, false, true)
 
+    TH1D_ENTRY_EX(Higgs_Pt, 50, 0, 1600, "Pt [GeV]", "events", true, 1, false, true)
     TH1D_ENTRY_EX(jets_energy, 80, 0, 1.5, "Energy [GeV]", "events", true, 1, false, true)
     TH1D_ENTRY_EX(jets_momentum, 80, 0, 1.5, "Pt [GeV]", "events", true, 1, false, true)
 
@@ -62,8 +61,7 @@ class FileMerger : public root_ext::AnalyzerData {
 
     TH1D_ENTRY_EX(pt_tau, 50, 0, 500, "Pt [GeV]", "events", true, 1, false, true)
     TH1D_ENTRY_EX(eta_tau, 60, -3, 3,"#eta ", "events", true, 1, false, true)
-    TH1D_ENTRY_EX(phi_tau, 60, -3, 3,"#eta ", "events", true, 1, false, true)
-
+    TH1D_ENTRY_EX(phi_tau, 60, -3, 3,"#phi ", "events", true, 1, false, true)
     TH1D_ENTRY_EX(deta_tau, 25, -5, 5,"#Delta#eta (#tau_{reco}, #tau_{gen}) ", "events", true, 1, false, true)
     TH1D_ENTRY_EX(dphi_tau, 20, -4, 4,"#Delta#phi (#tau_{reco}, #tau_{gen})  ", "events", true, 1, false, true)
     TH2D_ENTRY_EX(delta_eta_vs_delta_phi, 25, -5, 5, 25, -5, 5, "#Delta#eta (#tau_{reco}, #tau_{gen}) ", "#Delta#phi (#tau_{reco}, #tau_{gen}) ", false, 1, true)
@@ -111,7 +109,7 @@ public:
 
                 eff.SetTitle(name.c_str());
                 canvas.Clear();
-                const std::vector<double> x_bins = {25,30,35,40,45,50,60,70,80,90,100,120,160,200,300,400,600,800,1000};
+                const std::vector<unsigned long> x_bins = {25,30,35,40,45,50,60,70,80,90,100,120,160,200,300,400,600,800,1000};
                 double min = 1, max = 0;
                 for(int n = 1; n <= passed.GetNbinsX(); ++n) {
                     min = std::min(eff.GetEfficiency(n), min);
@@ -170,29 +168,28 @@ public:
 
     bool isTauInsideAcceptance(const HHGenEvent& hh_event, Channel channel)
     {
+        //vector[0]=tau_lep_cut, vector[1]=tau_had_cut,
+        static const std::map<Channel, std::vector<int>> channel_pt_cuts = {
+            { Channel::ETau, {24,20} },
+            { Channel::MuTau, {20,20} },
+            { Channel::TauTau, {35,35} } };
+
         for(size_t tau_index = 0; tau_index < hh_event.h_tautau->daughters.size(); ++tau_index){
             double eta_cut = (hh_event.tau_decay.at(tau_index) == GenDecayMode::Electron ||
                               hh_event.tau_decay.at(tau_index) == GenDecayMode::Muon) ? 2.1 : 2.3;
-
-            //vector[0]=tau_lep_cut, vector[1]=tau_had_cut,
-            static const std::map<Channel, std::vector<int>> channel_pt_cuts = {
-                { Channel::ETau, {24,20} },
-                { Channel::MuTau, {20,20} },
-                { Channel::TauTau, {35,35} } };
 
             auto pt_cuts= channel_pt_cuts.at(channel);
             if(std::abs(hh_event.vis_tau[tau_index].Eta()) > eta_cut || hh_event.vis_tau[0].Pt() < pt_cuts.at(0) ||
                     hh_event.vis_tau[1].Pt() < pt_cuts.at(1))
                 return false;
         }
-
         if(HasMatchWithMCObject(hh_event.vis_tau[0], hh_event.vis_tau[1], 0.1))
             return false;
 
         return true;
     }
 
-    bool isBInsideAcceptance(const HHGenEvent& hh_event/*, std::vector<GenJet>jets*/, Channel channel)
+    bool isBInsideAcceptance(const HHGenEvent& hh_event)
     {
         double pt_cut = 20;
         double eta_cut = 2.4;
@@ -394,14 +391,14 @@ public:
             }
             if(isTauInsideAcceptance(HH_Gen_Event, args.channel()))
                 anaData.n("pass_taus_acceptance").Fill(isTauInsideAcceptance(HH_Gen_Event, args.channel()));
-            if(isBInsideAcceptance(HH_Gen_Event, args.channel()))
-            anaData.n("pass_b_acceptance").Fill(isBInsideAcceptance(HH_Gen_Event, args.channel()));
+            if(isBInsideAcceptance(HH_Gen_Event))
+            anaData.n("pass_b_acceptance").Fill(isBInsideAcceptance(HH_Gen_Event));
 
 
             if(!isTauInsideAcceptance(HH_Gen_Event, args.channel())) continue;
-            if(!isBInsideAcceptance(HH_Gen_Event, args.channel())) continue;
+            if(!isBInsideAcceptance(HH_Gen_Event)) continue;
 
-            anaData.n("pass_b_plus_taus_acceptance").Fill(isBInsideAcceptance(HH_Gen_Event, args.channel()));
+            anaData.n("pass_b_plus_taus_acceptance").Fill(isBInsideAcceptance(HH_Gen_Event));
 
             HH_Gen_Event.h_bb_vis = (HH_Gen_Event.b_jets[0] + HH_Gen_Event.b_jets[1]);
 
@@ -423,11 +420,10 @@ public:
                     auto dPhi = HH_Gen_Event.tau[tau_index]->momentum.Phi() - event.lep_p4.at(reco_tau_index).Phi();
                     anaData.deta_tau().Fill(dEta);
                     anaData.dphi_tau().Fill(dPhi);
-//                    anaData.delta_eta_vs_delta_phi(dEta, dPhi);
+                    anaData.delta_eta_vs_delta_phi().Fill(dEta, dPhi);
                     if(HasMatchWithMCObject(visibleMomentum, event.lep_p4.at(reco_tau_index), deltaR_value)){
                         tau_matches_total.insert(reco_tau_index);
                         tau_matches[tau_index].insert(reco_tau_index);
-//                    }
                     }
                 }
             }
@@ -505,7 +501,6 @@ public:
                 anaData.jets_momentum("relative").Fill(HH_Gen_Event.h_bb_vis_all.Pt()/HH_Gen_Event.h_bb->momentum.Pt());
             }
 
-//            anaData.n("jets").Fill(gen_jets.size());
             anaData.n("baryons_mesons").Fill(baryons_plus_mesons.size());
             anaData.bm_vs_jets().Fill(gen_jets.size(), baryons_plus_mesons.size());
 
