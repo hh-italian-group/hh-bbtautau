@@ -168,9 +168,10 @@ private:
             for(unsigned n = 0; n < triggerDescriptors.size(); ++n){
 
             }
-            if(syncMode == SyncMode::HH && !event_info_base->GetTriggerResults().AnyAcceptAndMatch(triggerPaths.at(channel))) continue;
+            //if(syncMode == SyncMode::HH && !event_info_base->GetTriggerResults().AnyAcceptAndMatch(triggerPaths.at(channel))) continue;
             if(syncMode == SyncMode::HTT && !event_info_base->GetTriggerResults().AnyAccept(triggerPaths.at(channel))) continue;
-
+            if(syncMode == SyncMode::HH && !event_info->GetTriggerResults().AnyAcceptAndMatchEx(triggerPaths.at(channel), event_info_base->GetFirstLeg().GetMomentum().pt(),
+                                                                                                event_info_base->GetSecondLeg().GetMomentum().pt())) continue;
 
 
             static const std::vector<std::string> trigger_patterns_vbf = {
