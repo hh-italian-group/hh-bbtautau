@@ -14,7 +14,7 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 #include "hh-bbtautau/Analysis/include/SampleDescriptorConfigEntryReader.h"
 #include "hh-bbtautau/Analysis/include/SyncTupleHTT.h"
 #include "h-tautau/Analysis/include/SignalObjectSelector.h"
-#include "h-tautau/Production/interface/TriggerTools.h"
+//#include "h-tautau/Production/interface/TriggerTools.h"
 
 struct Arguments {
     REQ_ARG(std::string, mode);
@@ -165,12 +165,9 @@ private:
             if(!event_info_base.is_initialized()) continue;
             if(syncMode == SyncMode::HH && !event_info_base->HasBjetPair()) continue;
 
-            for(unsigned n = 0; n < triggerDescriptors.size(); ++n){
-
-            }
             //if(syncMode == SyncMode::HH && !event_info_base->GetTriggerResults().AnyAcceptAndMatch(triggerPaths.at(channel))) continue;
             if(syncMode == SyncMode::HTT && !event_info_base->GetTriggerResults().AnyAccept(triggerPaths.at(channel))) continue;
-            if(syncMode == SyncMode::HH && !event_info->GetTriggerResults().AnyAcceptAndMatchEx(triggerPaths.at(channel), event_info_base->GetFirstLeg().GetMomentum().pt(),
+            if(syncMode == SyncMode::HH && !event_info_base->GetTriggerResults().AnyAcceptAndMatchEx(triggerPaths.at(channel), event_info_base->GetFirstLeg().GetMomentum().pt(),
                                                                                                 event_info_base->GetSecondLeg().GetMomentum().pt())) continue;
 
 
@@ -178,18 +175,22 @@ private:
                 "HLT_VBF_DoubleLooseChargedIsoPFTau20_Trk1_eta2p1_Reg_v"
             };
             analysis::EventInfoBase::JetCollection jets_vbf;
-            analysis::EventInfoBase::JetPair vbf_jet_pair;
-            jets_vbf = event_info->SelectJets(30, 5, std::numeric_limits<double>::lowest(),analysis::JetOrdering::Pt,
-                                              event.GetSelectedBjetIndicesSet());
-            vbf_jet_pair = event_info->SelectVBFJetPair(jets_vbf);
-            if(vbf_jet_pair.first >= (*event_info)->jets_p4.size()
-                    || vbf_jet_pair.second >= (*event_info)->jets_p4.size())
-                continue;
-            std::vector<ULong64_t> jet_trigger_match = {
-                (*event_info)->jets_triggerFilterMatch.at(vbf_jet_pair.first),
-                (*event_info)->jets_triggerFilterMatch.at(vbf_jet_pair.second)
+            //analysis::EventInfoBase::JetPair vbf_jet_pair;
+            jets_vbf = event_info_base->SelectJets(30, 5, false, false,analysis::JetOrdering::Pt,
+                                              event_info_base->GetSelectedBjetIndicesSet());
+            //vbf_jet_pair = event_info_base->SelectVBFJetPair(jets_vbf);
+            const auto first_vbf_jet = event_info_base->GetVBFJet(1);
+            const auto second_vbf_jet = event_info_base->GetVBFJet(2);
+            // if(first_vbf_jet >= (*event_info_base)->jets_p4.size()
+            //         || second_vbf_jet >= (*event_info_base)->jets_p4.size())
+            //     continue;
+            std::vector<boost::multiprecision::uint256_t> jet_trigger_match = {
+                //(*event_info_base)->jets_triggerFilterMatch.at(vbf_jet_pair.first),
+                //(*event_info_base)->jets_triggerFilterMatch.at(vbf_jet_pair.second)
+                first_vbf_jet->triggerFilterMatch(),
+                second_vbf_jet->triggerFilterMatch()
             };
-            if(syncMode == SyncMode::HH && !event_info->GetTriggerResults().AnyAcceptAndMatchEx(trigger_patterns_vbf, event_info_base->GetFirstLeg().GetMomentum().pt(),
+            if(syncMode == SyncMode::HH && !event_info_base->GetTriggerResults().AnyAcceptAndMatchEx(trigger_patterns_vbf, event_info_base->GetFirstLeg().GetMomentum().pt(),
                                                                                                 event_info_base->GetSecondLeg().GetMomentum().pt(), jet_trigger_match))
                 continue;
 
