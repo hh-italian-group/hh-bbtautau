@@ -207,7 +207,7 @@ public:
             auto summaryTuple = ntuple::CreateSummaryTuple("summary", file.get(), true,
                                                            ntuple::TreeState::Full);
             auto summary = MergeSummaryTuple(*summaryTuple);
-            std::shared_ptr<SummaryInfo> summaryInfo(new SummaryInfo(summary));
+            std::shared_ptr<SummaryInfo> summaryInfo(new SummaryInfo(summary,args.channel()));
             auto originalTuple = ntuple::CreateEventTuple(ToString(args.channel()), file.get(), true,
                                                           ntuple::TreeState::Full);
             const Channel channel = args.channel();
@@ -241,6 +241,8 @@ public:
                     if(PassIsolation(channel, *eventInfo, trigger_descs.at(desc_id).tauId,
                                      trigger_descs.at(desc_id).tauIdWP)
                     && eventInfo->GetTriggerResults().AnyAcceptAndMatchEx(trigger_descs.at(desc_id).trigger,
+                                                                          eventInfo->GetFirstLeg().GetMomentum().pt(),
+                                                                          eventInfo->GetSecondLeg().GetMomentum().pt(),
                                                                           reco_jet_matches))
                         ++passed.at(desc_id);
                 }

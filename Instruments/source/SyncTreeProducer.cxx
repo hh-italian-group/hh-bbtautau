@@ -14,13 +14,16 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 #include "hh-bbtautau/Analysis/include/SampleDescriptorConfigEntryReader.h"
 #include "hh-bbtautau/Analysis/include/SyncTupleHTT.h"
 #include "h-tautau/Analysis/include/SignalObjectSelector.h"
+//#include "h-tautau/Production/interface/TriggerTools.h"
 
 struct Arguments {
     REQ_ARG(std::string, mode);
     REQ_ARG(std::string, input_file);
     REQ_ARG(std::string, tree_name);
     REQ_ARG(std::string, period);
+    REQ_ARG(std::string, trigger_cfg);
     REQ_ARG(std::string, output_file);
+    REQ_ARG(bool, apply_trigger_vbf);
     REQ_ARG(bool, isData);
     OPT_ARG(std::string, mva_setup, "");
     OPT_ARG(bool, fill_tau_es_vars, false);
@@ -68,8 +71,6 @@ public:
             mva_reader = std::make_shared<analysis::mva_study::MvaReader>();
             InitializeMvaReader();
         }
-
-
     }
 
     void Run()
@@ -83,7 +84,7 @@ public:
         SyncTuple sync(args.tree_name(), outputFile.get(), false);
         auto summaryTuple = ntuple::CreateSummaryTuple("summary", originalFile.get(), true, ntuple::TreeState::Full);
         summaryTuple->GetEntry(0);
-        SummaryInfo summaryInfo(summaryTuple->data(), args.jet_unc_source());
+        SummaryInfo summaryInfo(summaryTuple->data(), Parse<Channel>(args.tree_name()), args.jet_unc_source(),args.trigger_cfg());
         EventIdentifier current_id = EventIdentifier::Undef_event();
         std::map<EventEnergyScale, ntuple::Event> events;
         for(const auto& event : *originalTuple) {
