@@ -172,13 +172,13 @@ private:
             //if(!lepton.Passed(TauIdDiscriminator::byDeepTau2017v2VSjet,DiscriminatorWP::Medium)) return false;
             if(syncMode == SyncMode::HH && !signalObjectSelector.PassLeptonVetoSelection(event)) continue;
             if(syncMode == SyncMode::HH && !signalObjectSelector.PassMETfilters(event,run_period,args.isData())) continue;
-            if(channel == Channel::MuTau || channel == ETau){
-              const LepCandidate& tau = eventInfoBase->GetSecondLeg();
+            if(channel == Channel::MuTau || channel == Channel::ETau){
+              const LepCandidate& tau = event_info_base->GetSecondLeg();
               if(!tau->Passed(TauIdDiscriminator::byDeepTau2017v2VSjet, DiscriminatorWP::Medium)) continue;
             }
             if(channel == Channel::TauTau){
-              const LepCandidate& tau_1 = eventInfoBase->GetFirstLeg();
-              const LepCandidate& tau_2 = eventInfoBase->GetSecondLeg();
+              const LepCandidate& tau_1 = event_info_base->GetFirstLeg();
+              const LepCandidate& tau_2 = event_info_base->GetSecondLeg();
               if(!tau_1->Passed(TauIdDiscriminator::byDeepTau2017v2VSjet, DiscriminatorWP::Medium) ||
                  !tau_2->Passed(TauIdDiscriminator::byDeepTau2017v2VSjet, DiscriminatorWP::Medium)) continue;
             }
