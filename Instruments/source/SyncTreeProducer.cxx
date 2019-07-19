@@ -21,6 +21,7 @@ struct Arguments {
     REQ_ARG(std::string, tree_name);
     REQ_ARG(std::string, period);
     REQ_ARG(std::string, output_file);
+    REQ_ARG(bool, isData);
     OPT_ARG(std::string, mva_setup, "");
     OPT_ARG(bool, fill_tau_es_vars, false);
     OPT_ARG(bool, fill_jet_es_vars, false);
@@ -94,7 +95,7 @@ public:
                 }
                 current_id = event_id;
             }
-            
+
             const auto es = static_cast<EventEnergyScale>(event.eventEnergyScale);
             events[es] = event;
         }
@@ -160,13 +161,26 @@ private:
                     && (es == EventEnergyScale::JetUp || es == EventEnergyScale::JetDown)) continue;
             if(syncMode == SyncMode::HH && (event.extraelec_veto || event.extramuon_veto)) continue;
 
-            JetOrdering jet_ordering = run_period == Period::Run2017 ? JetOrdering::DeepCSV : JetOrdering::CSV;
+            //JetOrdering jet_ordering = run_period == Period::Run2017 ? JetOrdering::DeepCSV : JetOrdering::CSV;
+            JetOrdering jet_ordering = JetOrdering::DeepFlavour;
             boost::optional<EventInfoBase> event_info_base = CreateEventInfo(event,signalObjectSelector,&summaryInfo,run_period,jet_ordering);
             if(!event_info_base.is_initialized()) continue;
             if(syncMode == SyncMode::HH && !event_info_base->HasBjetPair()) continue;
             if(syncMode == SyncMode::HH && !event_info_base->GetTriggerResults().AnyAcceptAndMatch(triggerPaths.at(channel))) continue;
             if(syncMode == SyncMode::HTT && !event_info_base->GetTriggerResults().AnyAccept(triggerPaths.at(channel))) continue;
-
+            //if(!lepton.Passed(TauIdDiscriminator::byDeepTau2017v2VSjet,DiscriminatorWP::Medium)) return false;
+            if(syncMode == SyncMode::HH && !signalObjectSelector.PassLeptonVetoSelection(event)) continue;
+            if(syncMode == SyncMode::HH && !signalObjectSelector.PassMETfilters(event,run_period,args.isData())) continue;
+            if(channel == Channel::MuTau || channel == ETau){
+              const LepCandidate& tau = eventInfoBase->GetSecondLeg();
+              if(!tau->Passed(TauIdDiscriminator::byDeepTau2017v2VSjet, DiscriminatorWP::Medium)) continue;
+            }
+            if(channel == Channel::TauTau){
+              const LepCandidate& tau_1 = eventInfoBase->GetFirstLeg();
+              const LepCandidate& tau_2 = eventInfoBase->GetSecondLeg();
+              if(!tau_1->Passed(TauIdDiscriminator::byDeepTau2017v2VSjet, DiscriminatorWP::Medium) ||
+                 !tau_2->Passed(TauIdDiscriminator::byDeepTau2017v2VSjet, DiscriminatorWP::Medium)) continue;
+            }
 
             /*
             static const std::vector<std::string> trigger_patterns = {
