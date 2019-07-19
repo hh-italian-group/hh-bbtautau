@@ -213,7 +213,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                           std::shared_ptr<ntuple::EventTuple> tuple,
                                           const ntuple::ProdSummary& prod_summary)
 {
-    const SummaryInfo summary(prod_summary);
+    const SummaryInfo summary(prod_summary,channelId);
     for(auto tupleEvent : *tuple) {
 
         boost::optional<analysis::EventInfoBase> event = CreateEventInfo(tupleEvent,signalObjectSelector,&summary,ana_setup.period,ana_setup.jet_ordering);
