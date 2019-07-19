@@ -23,7 +23,7 @@ struct Arguments {
     REQ_ARG(std::string, period);
     REQ_ARG(std::string, trigger_cfg);
     REQ_ARG(std::string, output_file);
-    REQ_ARG(std::vector<std::string>, trigger_patterns_vbf); //"HLT_VBF_DoubleLooseChargedIsoPFTau20_Trk1_eta2p1_Reg_v"
+    REQ_ARG(bool, apply_trigger_vbf);
     OPT_ARG(std::string, mva_setup, "");
     OPT_ARG(bool, fill_tau_es_vars, false);
     OPT_ARG(bool, fill_jet_es_vars, false);
@@ -171,16 +171,21 @@ private:
             if(syncMode == SyncMode::HH && !event_info_base->GetTriggerResults().AnyAcceptAndMatchEx(triggerPaths.at(channel), event_info_base->GetFirstLeg().GetMomentum().pt(),
                                                                                                 event_info_base->GetSecondLeg().GetMomentum().pt())) continue;
 
-            const auto first_vbf_jet = event_info_base->GetVBFJet(1);
-            const auto second_vbf_jet = event_info_base->GetVBFJet(2);
+            if(args.apply_trigger_vbf()){
+                static const std::vector<std::string> trigger_patterns_vbf = {
+                  "HLT_VBF_DoubleLooseChargedIsoPFTau20_Trk1_eta2p1_Reg_v"
+                };
+                const auto first_vbf_jet = event_info_base->GetVBFJet(1);
+                const auto second_vbf_jet = event_info_base->GetVBFJet(2);
 
-            std::vector<boost::multiprecision::uint256_t> jet_trigger_match = {
-                first_vbf_jet->triggerFilterMatch(),
-                second_vbf_jet->triggerFilterMatch()
-            };
-            if(syncMode == SyncMode::HH && !event_info_base->GetTriggerResults().AnyAcceptAndMatchEx(args.trigger_patterns_vbf(), event_info_base->GetFirstLeg().GetMomentum().pt(),
-                                                                                                event_info_base->GetSecondLeg().GetMomentum().pt(), jet_trigger_match))
-                continue;
+                std::vector<boost::multiprecision::uint256_t> jet_trigger_match = {
+                    first_vbf_jet->triggerFilterMatch(),
+                    second_vbf_jet->triggerFilterMatch()
+                };
+                if(syncMode == SyncMode::HH && !event_info_base->GetTriggerResults().AnyAcceptAndMatchEx(trigger_patterns_vbf, event_info_base->GetFirstLeg().GetMomentum().pt(),
+                                                                                                    event_info_base->GetSecondLeg().GetMomentum().pt(), jet_trigger_match))
+                    continue;
+            }
 
             std::shared_ptr<analysis::EventInfoBase> event_info = std::make_shared<analysis::EventInfoBase>(*event_info_base);
             event_infos[entry.first] = event_info;
