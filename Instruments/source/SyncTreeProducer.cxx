@@ -14,7 +14,6 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 #include "hh-bbtautau/Analysis/include/SampleDescriptorConfigEntryReader.h"
 #include "hh-bbtautau/Analysis/include/SyncTupleHTT.h"
 #include "h-tautau/Analysis/include/SignalObjectSelector.h"
-//#include "h-tautau/Production/interface/TriggerTools.h"
 
 struct Arguments {
     REQ_ARG(std::string, mode);
@@ -166,22 +165,16 @@ private:
             JetOrdering jet_ordering = JetOrdering::DeepFlavour;
             boost::optional<EventInfoBase> event_info_base = CreateEventInfo(event,signalObjectSelector,&summaryInfo,run_period,jet_ordering);
             if(!event_info_base.is_initialized()) continue;
-            if(syncMode == SyncMode::HH && !event_info_base->HasBjetPair()) continue;
-            if(syncMode == SyncMode::HH && !event_info_base->GetTriggerResults().AnyAcceptAndMatch(triggerPaths.at(channel))) continue;
-            if(syncMode == SyncMode::HTT && !event_info_base->GetTriggerResults().AnyAccept(triggerPaths.at(channel))) continue;
-            if(syncMode == SyncMode::HH && !event_info_base->GetTriggerResults().AnyAcceptAndMatchEx(triggerPaths.at(channel), event_info_base->GetFirstLeg().GetMomentum().pt(),
+            if(!event_info_base->GetTriggerResults().AnyAcceptAndMatchEx(triggerPaths.at(channel), event_info_base->GetFirstLeg().GetMomentum().pt(),
                                                                                                 event_info_base->GetSecondLeg().GetMomentum().pt())) continue;
+            if(syncMode == SyncMode::HH && !event_info_base->HasBjetPair()) continue;
             if(syncMode == SyncMode::HH && !signalObjectSelector.PassLeptonVetoSelection(event)) continue;
             if(syncMode == SyncMode::HH && !signalObjectSelector.PassMETfilters(event,run_period,args.isData())) continue;
-            if(channel == Channel::MuTau || channel == Channel::ETau){
-              const LepCandidate& tau = event_info_base->GetSecondLeg();
-              if(!tau->Passed(TauIdDiscriminator::byDeepTau2017v2VSjet, DiscriminatorWP::Medium)) continue;
-            }
-            if(channel == Channel::TauTau){
-              const LepCandidate& tau_1 = event_info_base->GetFirstLeg();
-              const LepCandidate& tau_2 = event_info_base->GetSecondLeg();
-              if(!tau_1->Passed(TauIdDiscriminator::byDeepTau2017v2VSjet, DiscriminatorWP::Medium) ||
-                 !tau_2->Passed(TauIdDiscriminator::byDeepTau2017v2VSjet, DiscriminatorWP::Medium)) continue;
+            for(size_t leg_id = 0; leg_id < 2; ++leg_id) {
+                const LepCandidate& lepton = event_info_base->GetLeg(leg_id);
+                if(lepton->leg_type() == LegType::tau){
+                    if(!lepton->Passed(TauIdDiscriminator::byDeepTau2017v2VSjet, DiscriminatorWP::Medium)) continue;
+                }
             }
 
             if(args.apply_trigger_vbf()){
