@@ -169,7 +169,8 @@ private:
             if(syncMode == SyncMode::HH && !event_info_base->HasBjetPair()) continue;
             if(syncMode == SyncMode::HH && !event_info_base->GetTriggerResults().AnyAcceptAndMatch(triggerPaths.at(channel))) continue;
             if(syncMode == SyncMode::HTT && !event_info_base->GetTriggerResults().AnyAccept(triggerPaths.at(channel))) continue;
-            //if(!lepton.Passed(TauIdDiscriminator::byDeepTau2017v2VSjet,DiscriminatorWP::Medium)) return false;
+            if(syncMode == SyncMode::HH && !event_info_base->GetTriggerResults().AnyAcceptAndMatchEx(triggerPaths.at(channel), event_info_base->GetFirstLeg().GetMomentum().pt(),
+                                                                                                event_info_base->GetSecondLeg().GetMomentum().pt())) continue;
             if(syncMode == SyncMode::HH && !signalObjectSelector.PassLeptonVetoSelection(event)) continue;
             if(syncMode == SyncMode::HH && !signalObjectSelector.PassMETfilters(event,run_period,args.isData())) continue;
             if(channel == Channel::MuTau || channel == Channel::ETau){
@@ -183,25 +184,22 @@ private:
                  !tau_2->Passed(TauIdDiscriminator::byDeepTau2017v2VSjet, DiscriminatorWP::Medium)) continue;
             }
 
-            /*
-            static const std::vector<std::string> trigger_patterns = {
-                "HLT_VBF_DoubleLooseChargedIsoPFTau20_Trk1_eta2p1_Reg_v"
-            };
-            analysis::EventInfoBase::JetCollection jets_vbf;
-            analysis::EventInfoBase::JetPair vbf_jet_pair;
-            jets_vbf = event_info->SelectJets(30, 5, std::numeric_limits<double>::lowest(),analysis::JetOrdering::Pt,
-                                              event.GetSelectedBjetIndicesSet());
-            vbf_jet_pair = event_info->SelectVBFJetPair(jets_vbf);
-            if(vbf_jet_pair.first >= (*event_info)->jets_p4.size()
-                    || vbf_jet_pair.second >= (*event_info)->jets_p4.size())
-                continue;
-            std::vector<ULong64_t> jet_trigger_match = {
-                (*event_info)->jets_triggerFilterMatch.at(vbf_jet_pair.first),
-                (*event_info)->jets_triggerFilterMatch.at(vbf_jet_pair.second)
-            };
-            if(!event_info->GetTriggerResults().AnyAcceptAndMatchEx(trigger_patterns, jet_trigger_match))
-                continue;
-            */
+            if(args.apply_trigger_vbf()){
+                static const std::vector<std::string> trigger_patterns_vbf = {
+                  "HLT_VBF_DoubleLooseChargedIsoPFTau20_Trk1_eta2p1_Reg_v"
+                };
+                const auto first_vbf_jet = event_info_base->GetVBFJet(1);
+                const auto second_vbf_jet = event_info_base->GetVBFJet(2);
+
+                std::vector<boost::multiprecision::uint256_t> jet_trigger_match = {
+                    first_vbf_jet->triggerFilterMatch(),
+                    second_vbf_jet->triggerFilterMatch()
+                };
+                if(syncMode == SyncMode::HH && !event_info_base->GetTriggerResults().AnyAcceptAndMatchEx(trigger_patterns_vbf, event_info_base->GetFirstLeg().GetMomentum().pt(),
+                                                                                                    event_info_base->GetSecondLeg().GetMomentum().pt(), jet_trigger_match))
+                    continue;
+            }
+
             std::shared_ptr<analysis::EventInfoBase> event_info = std::make_shared<analysis::EventInfoBase>(*event_info_base);
             event_infos[entry.first] = event_info;
         }
