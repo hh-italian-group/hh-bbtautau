@@ -75,11 +75,17 @@ private:
                 std::string filename = args.input_path()  + "/" + single_file_path;
                 auto inputFile = root_ext::OpenRootFile(filename);
 
-                auto summaryTuple =
-                        ntuple::CreateSummaryTuple(args.tree_name(), inputFile.get(), true, ntuple::TreeState::Full);
-                auto summary = ntuple::MergeSummaryTuple(*summaryTuple);
+                ntuple::ExpressTuple summaryTuple(args.tree_name(), inputFile.get(), true);
+                const Long64_t n_entries = summaryTuple.GetEntries();
 
-                ntuple::GenEventTypeCountMap genEventTypeCountMap = ntuple::ExtractGenEventTypeCountMap(summary);
+                ntuple::GenEventTypeCountMap genEventTypeCountMap;
+                for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) { //loop on entries
+                    summaryTuple.GetEntry(current_entry);
+                    analysis::GenEventType genEventType = static_cast<analysis::GenEventType>(summaryTuple.data().genEventType);
+                    if(genEventTypeCountMap.count(genEventType))
+                        throw analysis::exception("Duplicated genEventType in express.");
+                    genEventTypeCountMap[genEventType]++;
+                }
 
                 for(const auto& bin : genEventTypeCountMap){
                     sample_desc.gen_counts[bin.first] += bin.second;

@@ -390,7 +390,7 @@ private:
         using WeightType = mc_corrections::WeightType;
         using WeightingMode = mc_corrections::WeightingMode;
 
-        boost::optional<EventInfoBase> eventInfo = CreateEventInfo(event,signalObjectSelector,nullptr,analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,setup.period,setup.jet_ordering);
+        boost::optional<EventInfoBase> eventInfo = CreateEventInfo(event,signalObjectSelector,nullptr,setup.period,setup.jet_ordering);
         if(!eventInfo.is_initialized()) return false;
 
         const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);

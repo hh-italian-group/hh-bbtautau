@@ -207,7 +207,7 @@ public:
             auto summaryTuple = ntuple::CreateSummaryTuple("summary", file.get(), true,
                                                            ntuple::TreeState::Full);
             auto summary = MergeSummaryTuple(*summaryTuple);
-            std::shared_ptr<SummaryInfo> summaryInfo(new SummaryInfo(summary));
+            std::shared_ptr<SummaryInfo> summaryInfo(new SummaryInfo(summary,args.channel()));
             auto originalTuple = ntuple::CreateEventTuple(ToString(args.channel()), file.get(), true,
                                                           ntuple::TreeState::Full);
             const Channel channel = args.channel();
@@ -221,7 +221,7 @@ public:
                 const JetOrdering jet_ordering = run_period == Period::Run2017
                                                ? JetOrdering::DeepCSV : JetOrdering::CSV;
 
-                boost::optional<EventInfoBase> eventInfo = CreateEventInfo(event,signalObjectSelector,summaryInfo.get(),analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017, run_period, jet_ordering);
+                boost::optional<EventInfoBase> eventInfo = CreateEventInfo(event,signalObjectSelector,summaryInfo.get(), run_period, jet_ordering);
                 if(!eventInfo.is_initialized()) continue;
                 if((*eventInfo)->extraelec_veto || (*eventInfo)->extramuon_veto) continue;
                 if(eventInfo->GetEnergyScale() != EventEnergyScale::Central) continue;
@@ -230,7 +230,7 @@ public:
                     eventInfo->GetHiggsBB().GetMomentum().M())) continue;
                 if(eventInfo->GetLeg(1)->charge() == eventInfo->GetLeg(2)->charge()) continue;
 
-                std::vector<ULong64_t> reco_jet_matches;
+                std::vector<TriggerDescriptorCollection::BitsContainer> reco_jet_matches;
                 if(eventInfo->HasVBFjetPair()) {
                     reco_jet_matches.push_back(eventInfo->GetVBFJet(1)->triggerFilterMatch());
                     reco_jet_matches.push_back(eventInfo->GetVBFJet(2)->triggerFilterMatch());
@@ -241,6 +241,8 @@ public:
                     if(PassIsolation(channel, *eventInfo, trigger_descs.at(desc_id).tauId,
                                      trigger_descs.at(desc_id).tauIdWP)
                     && eventInfo->GetTriggerResults().AnyAcceptAndMatchEx(trigger_descs.at(desc_id).trigger,
+                                                                          eventInfo->GetFirstLeg().GetMomentum().pt(),
+                                                                          eventInfo->GetSecondLeg().GetMomentum().pt(),
                                                                           reco_jet_matches))
                         ++passed.at(desc_id);
                 }
