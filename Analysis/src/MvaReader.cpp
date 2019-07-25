@@ -67,7 +67,7 @@ void LegacyMvaVariables::AddEvent(analysis::EventInfoBase& eventbase, const Samp
     const auto& b1 = Hbb.GetFirstDaughter();
     const auto& b2 = Hbb.GetSecondDaughter();
 
-    const auto& met = eventbase.GetMET();
+    const auto& met = eventbase.GetEventCandidate().GetMET();
 
     dphi_mumet = static_cast<float>(std::abs(ROOT::Math::VectorUtil::DeltaPhi(t1.GetMomentum(), met.GetMomentum())));
     dphi_metsv = static_cast<float>(std::abs(ROOT::Math::VectorUtil::DeltaPhi(Htt_sv, met.GetMomentum())));

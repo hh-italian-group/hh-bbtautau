@@ -145,7 +145,7 @@ EventSubCategory BaseEventAnalyzer::DetermineEventSubCategory(EventInfoBase& eve
 
             if(ana_setup.massWindowParams.count(SelectionCut::mhMET))
                 sub_category.SetCutResult(SelectionCut::mhMET,ana_setup.massWindowParams.at(SelectionCut::mhMET)
-                        .IsInside((event.GetHiggsTTMomentum(false) + event.GetMET().GetMomentum()).mass(),mbb));
+                        .IsInside((event.GetHiggsTTMomentum(false) + event.GetEventCandidate().GetMET().GetMomentum()).mass(),mbb));
 
         }
         if(ana_setup.run_kinFit)

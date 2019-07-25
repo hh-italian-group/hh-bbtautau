@@ -83,7 +83,7 @@ public:
         SyncTuple sync(args.tree_name(), outputFile.get(), false);
         auto summaryTuple = ntuple::CreateSummaryTuple("summary", originalFile.get(), true, ntuple::TreeState::Full);
         summaryTuple->GetEntry(0);
-        SummaryInfo summaryInfo(summaryTuple->data(), Parse<Channel>(args.tree_name()), args.jet_unc_source(),args.trigger_cfg());
+        SummaryInfo summaryInfo(summaryTuple->data(), Parse<Channel>(args.tree_name()), args.trigger_cfg());
         EventIdentifier current_id = EventIdentifier::Undef_event();
         std::map<EventEnergyScale, ntuple::Event> events;
         for(const auto& event : *originalTuple) {
@@ -168,8 +168,8 @@ private:
             if(!event_info_base->GetTriggerResults().AnyAcceptAndMatchEx(triggerPaths.at(channel), event_info_base->GetFirstLeg().GetMomentum().pt(),
                                                                                                 event_info_base->GetSecondLeg().GetMomentum().pt())) continue;
             if(syncMode == SyncMode::HH && !event_info_base->HasBjetPair()) continue;
-            if(syncMode == SyncMode::HH && !signalObjectSelector.PassLeptonVetoSelection(event)) continue;
-            if(syncMode == SyncMode::HH && !signalObjectSelector.PassMETfilters(event,run_period,args.isData())) continue;
+            if(syncMode == SyncMode::HH && !signalObjectSelector.PassLeptonVetoSelection(event_info_base->GetEventCandidate())) continue;
+            if(syncMode == SyncMode::HH && !signalObjectSelector.PassMETfilters(event_info_base->GetEventCandidate(),run_period,args.isData())) continue;
             for(size_t leg_id = 0; leg_id < 2; ++leg_id) {
                 const LepCandidate& lepton = event_info_base->GetLeg(leg_id);
                 if(lepton->leg_type() == LegType::tau){
@@ -199,17 +199,21 @@ private:
 
         if(!event_infos.count(EventEnergyScale::Central)) return;
 
-        if(!args.jet_uncertainty().empty()) {
-            event_infos[EventEnergyScale::JetUp] = event_infos[EventEnergyScale::Central]->ApplyShift(Parse<UncertaintySource>(args.jet_uncertainty()), UncertaintyScale::Up);
-            event_infos[EventEnergyScale::JetDown] = event_infos[EventEnergyScale::Central]->ApplyShift(Parse<UncertaintySource>(args.jet_uncertainty()), UncertaintyScale::Down);
-        }
+        // if(!args.jet_uncertainty().empty()) {
+        //     event_infos[EventEnergyScale::JetUp] = event_infos[EventEnergyScale::Central]->ApplyShift(Parse<UncertaintySource>(args.jet_uncertainty()), UncertaintyScale::Up);
+        //     event_infos[EventEnergyScale::JetDown] = event_infos[EventEnergyScale::Central]->ApplyShift(Parse<UncertaintySource>(args.jet_uncertainty()), UncertaintyScale::Down);
+        // }
 
         htt_sync::FillSyncTuple(*event_infos[EventEnergyScale::Central], sync, run_period, false, 1,
                                 mva_reader.get(),
-                                event_infos[EventEnergyScale::TauUp].get(),
-                                event_infos[EventEnergyScale::TauDown].get(),
-                                event_infos[EventEnergyScale::JetUp].get(),
-                                event_infos[EventEnergyScale::JetDown].get());
+                                // event_infos[EventEnergyScale::TauUp].get(),
+                                // event_infos[EventEnergyScale::TauDown].get(),
+                                // event_infos[EventEnergyScale::JetUp].get(),
+                                // event_infos[EventEnergyScale::JetDown].get());
+                                nullptr,
+                                nullptr,
+                                nullptr,
+                                nullptr);
     }
 
 private:
