@@ -123,7 +123,7 @@ void MvaVariables::AddEvent(analysis::EventInfoBase& eventbase, const SampleId& 
     const auto& b1 = eventbase.GetHiggsBB().GetFirstDaughter().GetMomentum();
     const auto& b2 = eventbase.GetHiggsBB().GetSecondDaughter().GetMomentum();
 
-    const auto& met = eventbase.GetEventCandidate().GetMET().GetMomentum();
+    const auto& met = eventbase.GetMET().GetMomentum();
     const bool SVfit_is_valid = eventbase.GetSVFitResults().has_valid_momentum;
     const auto& kinfit_results = eventbase.GetKinFitResults();
     const bool kinfit_is_valid = kinfit_results.HasValidMass();

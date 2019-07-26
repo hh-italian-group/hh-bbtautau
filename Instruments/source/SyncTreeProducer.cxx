@@ -168,8 +168,8 @@ private:
             if(!event_info_base->GetTriggerResults().AnyAcceptAndMatchEx(triggerPaths.at(channel), event_info_base->GetFirstLeg().GetMomentum().pt(),
                                                                                                 event_info_base->GetSecondLeg().GetMomentum().pt())) continue;
             if(syncMode == SyncMode::HH && !event_info_base->HasBjetPair()) continue;
-            if(syncMode == SyncMode::HH && !signalObjectSelector.PassLeptonVetoSelection(event_info_base->GetEventCandidate())) continue;
-            if(syncMode == SyncMode::HH && !signalObjectSelector.PassMETfilters(event_info_base->GetEventCandidate(),run_period,args.isData())) continue;
+            if(syncMode == SyncMode::HH && !signalObjectSelector.PassLeptonVetoSelection(event)) continue;
+            if(syncMode == SyncMode::HH && !signalObjectSelector.PassMETfilters(event,run_period,args.isData())) continue;
             for(size_t leg_id = 0; leg_id < 2; ++leg_id) {
                 const LepCandidate& lepton = event_info_base->GetLeg(leg_id);
                 if(lepton->leg_type() == LegType::tau){
