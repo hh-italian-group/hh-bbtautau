@@ -26,7 +26,7 @@ protected:
         EventRegion region;
 
       	if(ana_setup.mode != SignalMode::HH && ana_setup.mode != SignalMode::HTT_sync){
-                  double mt = analysis::Calculate_MT(muon.GetMomentum(),eventInfoBase.GetEventCandidate().GetMET().GetMomentum());
+                  double mt = analysis::Calculate_MT(muon.GetMomentum(),eventInfoBase.GetMET().GetMomentum());
                   if(mt >= cuts::H_tautau_2016::mt) return EventRegion::Unknown();
       	    double m_tt_vis = (muon.GetMomentum() + tau.GetMomentum()).M();
       	    if(m_tt_vis <= 50) return EventRegion::Unknown();

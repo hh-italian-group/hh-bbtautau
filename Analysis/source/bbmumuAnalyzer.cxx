@@ -80,7 +80,7 @@ protected:
                               .IsInside(mass_muMu,mass_jj));
         }
         else sub_category.SetCutResult(SelectionCut::mh, false);
-        sub_category.SetCutResult(SelectionCut::lowMET, event.GetEventCandidate().GetMET().GetMomentum().Pt() < 45);
+        sub_category.SetCutResult(SelectionCut::lowMET, event.GetMET().GetMomentum().Pt() < 45);
         sub_category.SetCutResult(SelectionCut::lowHT, event->ht_other_jets <= 20);
         sub_category.SetCutResult(SelectionCut::medHT,  event->ht_other_jets > 20 && event->ht_other_jets <= 250);
         sub_category.SetCutResult(SelectionCut::highHT, event->ht_other_jets > 250);

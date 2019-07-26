@@ -81,13 +81,13 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
     tuple().pt_H_tt = static_cast<float>(Htt.Pt());
     tuple().eta_H_tt = static_cast<float>(Htt.Eta());
     tuple().phi_H_tt = static_cast<float>(Htt.Phi());
-    tuple().pt_H_tt_MET = static_cast<float>((Htt + event.GetEventCandidate().GetMET().GetMomentum()).Pt());
+    tuple().pt_H_tt_MET = static_cast<float>((Htt + event.GetMET().GetMomentum()).Pt());
     tuple().pt_1 = static_cast<float>(t1.GetMomentum().pt());
     tuple().eta_1 = static_cast<float>(t1.GetMomentum().eta());
     tuple().phi_1 = static_cast<float>(t1.GetMomentum().phi());
     tuple().m_1 = static_cast<float>(t1.GetMomentum().M());
     tuple().iso_1 = static_cast<float>(t1.GetIsolation());
-    tuple().mt_1 = static_cast<float>(Calculate_MT(t1.GetMomentum(), event.GetEventCandidate().GetMET().GetMomentum()));
+    tuple().mt_1 = static_cast<float>(Calculate_MT(t1.GetMomentum(), event.GetMET().GetMomentum()));
     tuple().pt_2 = static_cast<float>(t2.GetMomentum().pt());
     tuple().eta_2 = static_cast<float>(t2.GetMomentum().eta());
     tuple().phi_2 = static_cast<float>(t2.GetMomentum().phi());
@@ -97,27 +97,27 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
     tuple().deepTau_vs_mu_2 = static_cast<float>(t2->GetRawValue(TauIdDiscriminator::byDeepTau2017v2VSmu));
     tuple().deepTau_vs_jet_2 = static_cast<float>(t2->GetRawValue(TauIdDiscriminator::byDeepTau2017v2VSjet));
     tuple().tauId_default = static_cast<float>(t2->GetRawValue(TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017));
-    tuple().mt_2 = static_cast<float>(Calculate_MT(t2.GetMomentum(), event.GetEventCandidate().GetMET().GetMomentum()));
+    tuple().mt_2 = static_cast<float>(Calculate_MT(t2.GetMomentum(), event.GetMET().GetMomentum()));
     tuple().dR_l1l2 = static_cast<float>(DeltaR(t1.GetMomentum(),t2.GetMomentum()));
-    tuple().abs_dphi_l1MET = static_cast<float>(std::abs(DeltaPhi(t1.GetMomentum(), event.GetEventCandidate().GetMET().GetMomentum())));
+    tuple().abs_dphi_l1MET = static_cast<float>(std::abs(DeltaPhi(t1.GetMomentum(), event.GetMET().GetMomentum())));
     tuple().dphi_htautauMET = runSVfit ? static_cast<float>(DeltaPhi(event.GetHiggsTTMomentum(true),
-                                                      event.GetEventCandidate().GetMET().GetMomentum())) : def_val;
-    tuple().dR_l1l2MET = static_cast<float>(DeltaR(event.GetHiggsTTMomentum(false), event.GetEventCandidate().GetMET().GetMomentum()));
+                                                      event.GetMET().GetMomentum())) : def_val;
+    tuple().dR_l1l2MET = static_cast<float>(DeltaR(event.GetHiggsTTMomentum(false), event.GetMET().GetMomentum()));
     tuple().dR_l1l2Pt_htautau = runSVfit ? static_cast<float>(DeltaR(t1.GetMomentum(), t2.GetMomentum())
                                                    * event.GetHiggsTTMomentum(true).pt()) : def_val;
-    tuple().mass_l1l2MET = static_cast<float>((event.GetHiggsTTMomentum(false) + event.GetEventCandidate().GetMET().GetMomentum()).M());
-    tuple().pt_l1l2MET = static_cast<float>((event.GetHiggsTTMomentum(false) + event.GetEventCandidate().GetMET().GetMomentum()).pt());
+    tuple().mass_l1l2MET = static_cast<float>((event.GetHiggsTTMomentum(false) + event.GetMET().GetMomentum()).M());
+    tuple().pt_l1l2MET = static_cast<float>((event.GetHiggsTTMomentum(false) + event.GetMET().GetMomentum()).pt());
     tuple().MT_htautau = runSVfit ? static_cast<float>(Calculate_MT(event.GetHiggsTTMomentum(true),
-                                                         event.GetEventCandidate().GetMET().GetMomentum())) : def_val;
+                                                         event.GetMET().GetMomentum())) : def_val;
     tuple().npv = event->npv;
-    tuple().MET = static_cast<float>(event.GetEventCandidate().GetMET().GetMomentum().Pt());
-    tuple().phiMET = static_cast<float>(event.GetEventCandidate().GetMET().GetMomentum().Phi());
-    tuple().pt_MET = static_cast<float>(event.GetEventCandidate().GetMET().GetMomentum().pt());
+    tuple().MET = static_cast<float>(event.GetMET().GetMomentum().Pt());
+    tuple().phiMET = static_cast<float>(event.GetMET().GetMomentum().Phi());
+    tuple().pt_MET = static_cast<float>(event.GetMET().GetMomentum().pt());
     tuple().p_zeta = static_cast<float>(Calculate_Pzeta(t1.GetMomentum(), t2.GetMomentum(),
-                                                        event.GetEventCandidate().GetMET().GetMomentum()));
+                                                        event.GetMET().GetMomentum()));
     tuple().p_zetavisible = static_cast<float>(Calculate_visiblePzeta(t1.GetMomentum(), t2.GetMomentum()));
     tuple().mt_tot = static_cast<float>(Calculate_TotalMT(t1.GetMomentum(),t2.GetMomentum(),
-                                                          event.GetEventCandidate().GetMET().GetMomentum()));
+                                                          event.GetMET().GetMomentum()));
     tuple().HT_otherjets = event->ht_other_jets;
     tuple().HT_otherjets_gen = static_cast<float>(event.GetHT(false,true));
     tuple().HT_total_gen = static_cast<float>(event.GetHT(true,true));
@@ -179,17 +179,17 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
         tuple().dphi_hbbhtautau = runSVfit ? static_cast<float>(DeltaPhi(Hbb.GetMomentum(), event.GetHiggsTTMomentum(true))) : def_val;
         tuple().deta_hbbhtautau = runSVfit ? static_cast<float>((Hbb.GetMomentum()-event.GetHiggsTTMomentum(true)).Eta()) : def_val;
         tuple().costheta_METhbb = static_cast<float>(four_bodies::Calculate_cosTheta_2bodies(
-                                                         event.GetEventCandidate().GetMET().GetMomentum(), Hbb.GetMomentum()));
+                                                         event.GetMET().GetMomentum(), Hbb.GetMomentum()));
         tuple().dR_b1b2 = static_cast<float>(DeltaR(b1.GetMomentum(), b2.GetMomentum()));
         tuple().dR_b1b2_boosted = static_cast<float>(four_bodies::Calculate_dR_boosted(
                                                          b1.GetMomentum(), b2.GetMomentum(), Hbb.GetMomentum()));
 
         tuple().mass_top1 = static_cast<float>(four_bodies::Calculate_topPairMasses(
                                                    t1.GetMomentum(), t2.GetMomentum(), b1.GetMomentum(),
-                                                   b2.GetMomentum(), event.GetEventCandidate().GetMET().GetMomentum()).first);
+                                                   b2.GetMomentum(), event.GetMET().GetMomentum()).first);
         tuple().mass_top2 = static_cast<float>(four_bodies::Calculate_topPairMasses(
                                                    t1.GetMomentum(), t2.GetMomentum(), b1.GetMomentum(),
-                                                   b2.GetMomentum(), event.GetEventCandidate().GetMET().GetMomentum()).second);
+                                                   b2.GetMomentum(), event.GetMET().GetMomentum()).second);
         tuple().HT_total = static_cast<float>(b1.GetMomentum().pt() + b2.GetMomentum().Pt() + event->ht_other_jets);
     } else {
         tuple().m_bb = def_val;
