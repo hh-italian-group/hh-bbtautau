@@ -115,8 +115,8 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().metcov10 = static_cast<float>(event->pfMET_cov[1][0]);
     sync().metcov11 = static_cast<float>(event->pfMET_cov[1][1]);
 
-    analysis::EventInfoBase::JetCollection jets_pt20;
-    analysis::EventInfoBase::JetCollection jets_pt30;
+    analysis::JetCollection jets_pt20;
+    analysis::JetCollection jets_pt30;
 
     auto select_jets = [&](analysis::EventInfoBase* event_info) {
         jets_pt20.clear();

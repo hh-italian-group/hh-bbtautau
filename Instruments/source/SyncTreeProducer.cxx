@@ -170,7 +170,7 @@ private:
             if(syncMode == SyncMode::HH && !event_info_base->HasBjetPair()) continue;
             if(syncMode == SyncMode::HH && !signalObjectSelector.PassLeptonVetoSelection(event)) continue;
             if(syncMode == SyncMode::HH && !signalObjectSelector.PassMETfilters(event,run_period,args.isData())) continue;
-            for(size_t leg_id = 0; leg_id < 2; ++leg_id) {
+            for(size_t leg_id = 1; leg_id <= 2; ++leg_id) {
                 const LepCandidate& lepton = event_info_base->GetLeg(leg_id);
                 if(lepton->leg_type() == LegType::tau){
                     if(!lepton->Passed(TauIdDiscriminator::byDeepTau2017v2VSjet, DiscriminatorWP::Medium)) continue;
