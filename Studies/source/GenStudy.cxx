@@ -52,8 +52,8 @@ class GenStudyHist : public root_ext::AnalyzerData {
     TH1D_ENTRY(n, 8, -0.5, 7.5)
 
     TH1D_ENTRY_EX(Higgs_Pt, 50, 0, 1600, "Pt [GeV]", "events", true, 1, false, true)
-    TH1D_ENTRY_EX(jets_energy, 80, 0, 20, "Energy [GeV]", "events", true, 1, false, true)
-    TH1D_ENTRY_EX(jets_momentum, 80, 0, 25, "Pt [GeV]", "events", true, 1, false, true)
+    TH1D_ENTRY_EX(jets_energy, 20, 0, 0.5, "Energy [GeV]", "events", true, 1, false, true)
+    TH1D_ENTRY_EX(jets_momentum, 20, 0, 0.5, "Pt [GeV]", "events", true, 1, false, true)
 
     TH1D_ENTRY_EX(pt_charged_vis_tau, 50, 0, 500, "Pt [GeV]", "events", true, 1, false, true)
 
@@ -66,6 +66,8 @@ class GenStudyHist : public root_ext::AnalyzerData {
     TH1D_ENTRY_CUSTOM_EX(pt_vis_gen_tau, x_bins(), "Pt vis [GeV]", "Efficiency", true, 1, false, true)
 
     TH1D_ENTRY_EX(inv_mass_jets, 50, 0, 150, "M_{jets} [GeV]", "events", true, 1, false, true)
+
+    TH1D_ENTRY_EX(diff, 60, -40, 1, "diff [GeV]", "events", true, 1, false, true)
 
     TH1D_ENTRY_EX(pt_tau, 50, 0, 500, "Pt [GeV]", "events", true, 1, false, true)
     TH1D_ENTRY_EX(eta_tau, 60, -3, 3,"#eta ", "events", true, 1, false, true)
@@ -85,16 +87,17 @@ using GenJet = std::vector<const GenParticle*>;
 class GenStudy {
 public:
     GenStudy(const Arguments& _args) :
-        args(_args), output(root_ext::CreateRootFile(args.outputFile())), anaData(output), canvas("","", 600, 600)
+        args(_args), output(root_ext::CreateRootFile(args.outputFile())), anaData(output), canvas("","", 600, 600)//, new_tuple(ntuple::CreateEventTuple("all_events", root_ext::CreateRootFile("new_output_file.root").get(), false, ntuple::TreeState::Full))
         {
             GenEvent::InitializeParticleDataTable(args.particleNameTypeFile());
 
             gStyle->SetOptStat(0);
             canvas.Print((args.outputFile() + ".pdf[").c_str());
             canvas.Draw();
+//            histo_file.cd()
         }
 
-    void CreateEfficiency(const TH1& passed, const TH1& total, const std::string& prefix, const std::string& channel,
+    void CreateEfficiency(const TH1& passed, const TH1& total, const std::string& channel,
                               const std::string& hist_name, bool print_info = false, const std::string& info_name = "")
     {
         constexpr static double oneSigma = 0.682689492137;
@@ -108,14 +111,14 @@ public:
 
         if(print_info)
             std::cout << info_name <<"=" << eff.GetEfficiency(2) << " error_up=" << eff.GetEfficiencyErrorUp(2)
-                      << " error_low=" << eff.GetEfficiencyErrorLow(2)  << std::endl;
+                      << " error_low=" << eff.GetEfficiencyErrorLow(2) << "number of entries num=" << passed.GetEntries()
+                      << " number of entries deno=" << total.GetEntries()<< std::endl;
         else{
             std::ostringstream ss_name;
             ss_name  << channel << "_" << hist_name;
             std::string name = ss_name.str();
 
             eff.SetTitle(name.c_str());
-            eff.SetDirectory(output.get());
             eff.Write();
             root_ext::WriteObject(eff, output.get(), name);
 
@@ -131,20 +134,63 @@ public:
         }
     }
 
-    static Channel genChannel(const HHGenEvent& hh_event)
+    bool isCorrectChannel(const HHGenEvent& hh_event, Channel channel)
     {
-        if((hh_event.tau_decay.at(0) == TauGenDecayMode::Electron &&  hh_event.tau_decay.at(1)  == TauGenDecayMode::Hadrons) ||
-                (hh_event.tau_decay.at(1) == TauGenDecayMode::Electron &&  hh_event.tau_decay.at(0)  == TauGenDecayMode::Hadrons))
-            return Channel::ETau;
-
-        else if((hh_event.tau_decay.at(0) == TauGenDecayMode::Muon &&  hh_event.tau_decay.at(1)  == TauGenDecayMode::Hadrons) ||
+        if(channel == Channel::ETau){
+            if((hh_event.tau_decay.at(0) == TauGenDecayMode::Electron &&  hh_event.tau_decay.at(1)  == TauGenDecayMode::Hadrons) ||
+                    (hh_event.tau_decay.at(1) == TauGenDecayMode::Electron &&  hh_event.tau_decay.at(0)  == TauGenDecayMode::Hadrons))
+                return true;
+        }
+        else if(channel == Channel::MuTau){
+            if((hh_event.tau_decay.at(0) == TauGenDecayMode::Muon &&  hh_event.tau_decay.at(1)  == TauGenDecayMode::Hadrons) ||
                     (hh_event.tau_decay.at(1) == TauGenDecayMode::Muon &&  hh_event.tau_decay.at(0)  == TauGenDecayMode::Hadrons))
-            return Channel::MuTau;
+                return true;
+        }
+        else if(channel == Channel::TauTau){
+            if((hh_event.tau_decay.at(0) == TauGenDecayMode::Hadrons &&  hh_event.tau_decay.at(1)  == TauGenDecayMode::Hadrons))
+                return true;
+        }
+        return false;
+    }
 
-        else if((hh_event.tau_decay.at(0) == TauGenDecayMode::Hadrons &&  hh_event.tau_decay.at(1)  == TauGenDecayMode::Hadrons))
-            return Channel::TauTau;
-//        else
-//            throw exception ("Unsupported channel.");
+//    static Channel genChannel(const HHGenEvent& hh_event, Event event, Channel channel)
+//    {
+//        if((hh_event.tau_decay.at(0) == TauGenDecayMode::Electron &&  hh_event.tau_decay.at(1)  == TauGenDecayMode::Hadrons) ||
+//                (hh_event.tau_decay.at(1) == TauGenDecayMode::Electron &&  hh_event.tau_decay.at(0)  == TauGenDecayMode::Hadrons))
+//            return Channel::ETau;
+
+//        else if((hh_event.tau_decay.at(0) == TauGenDecayMode::Muon &&  hh_event.tau_decay.at(1)  == TauGenDecayMode::Hadrons) ||
+//                    (hh_event.tau_decay.at(1) == TauGenDecayMode::Muon &&  hh_event.tau_decay.at(0)  == TauGenDecayMode::Hadrons))
+//            return Channel::MuTau;
+
+//        else if((hh_event.tau_decay.at(0) == TauGenDecayMode::Hadrons &&  hh_event.tau_decay.at(1)  == TauGenDecayMode::Hadrons))
+//            return Channel::TauTau;
+//        else{
+//            if(!TryGetChannel(hh_event, channel)) continue;
+
+////            std::cout << event.run << ":" << event.lumi << ":" << event.evt << std::endl;
+////            throw exception ("Unsupported channel '%1%', '%2%'.") % hh_event.tau_decay.at(0) %hh_event.tau_decay.at(1);
+//        }
+//    }
+
+
+    static bool TryGetChannel(const HHGenEvent& hh_event, Channel channel)
+    {
+        if(channel == Channel::ETau){
+            if((hh_event.tau_decay.at(0) == TauGenDecayMode::Electron &&  hh_event.tau_decay.at(1)  == TauGenDecayMode::Hadrons) ||
+                    (hh_event.tau_decay.at(1) == TauGenDecayMode::Electron &&  hh_event.tau_decay.at(0)  == TauGenDecayMode::Hadrons))
+                return true;
+        }
+        else if(channel == Channel::MuTau){
+            if((hh_event.tau_decay.at(0) == TauGenDecayMode::Muon &&  hh_event.tau_decay.at(1)  == TauGenDecayMode::Hadrons) ||
+                    (hh_event.tau_decay.at(1) == TauGenDecayMode::Muon &&  hh_event.tau_decay.at(0)  == TauGenDecayMode::Hadrons))
+                return true;
+        }
+        else if(channel == Channel::TauTau){
+            if((hh_event.tau_decay.at(0) == TauGenDecayMode::Hadrons &&  hh_event.tau_decay.at(1)  == TauGenDecayMode::Hadrons))
+                return true;
+        }
+        return false;
     }
 
     static bool isTauInsideAcceptance(const HHGenEvent& hh_event, Channel channel)
@@ -154,16 +200,19 @@ public:
             { Channel::MuTau, { {25,20}, {21,32} } },
             { Channel::TauTau,{ {40,40} } } };
 
+        bool pt_cuts_passed = false;
         for(size_t n = 0; n < channel_pt_cuts.at(channel).size(); ++n){
-            auto pt_cuts= channel_pt_cuts.at(channel).at(n);
-            if(hh_event.vis_tau[0].Pt() < pt_cuts.at(0) || hh_event.vis_tau[1].Pt() < pt_cuts.at(1))
-                return false;
+            auto pt_cuts = channel_pt_cuts.at(channel).at(n);
+            if(hh_event.vis_tau[0].Pt() > pt_cuts.at(0) && hh_event.vis_tau[1].Pt() > pt_cuts.at(1)){
+                pt_cuts_passed = true;
+                break;
+            }
         }
+        if(!pt_cuts_passed)
+            return false;
 
+        double eta_cut = 2.1;
         for(size_t tau_index = 0; tau_index < hh_event.h_tautau->daughters.size(); ++tau_index){
-            double eta_cut = (hh_event.tau_decay.at(tau_index) == TauGenDecayMode::Electron ||
-                              hh_event.tau_decay.at(tau_index) == TauGenDecayMode::Muon) ? 2.1 : 2.3;
-
             if(std::abs(hh_event.vis_tau[tau_index].Eta()) > eta_cut)
                 return false;
         }
@@ -194,24 +243,28 @@ public:
         auto file = root_ext::OpenRootFile(args.inputPath());
         auto tuple = ntuple::CreateEventTuple(ToString(args.channel()), file.get(), true, ntuple::TreeState::Full);
 
-        //output ntuple with only matched events
-        new_output_file = root_ext::CreateRootFile("new_output_file.root");
+//        //output ntuple with only matched events
+        new_output_file = root_ext::CreateRootFile(("new_output_file_" + ToString(args.channel()) +".root").c_str());
         auto new_tuple = ntuple::CreateEventTuple("all_events", new_output_file.get(), false, ntuple::TreeState::Full);
 
         const double deltaR_value = 0.2;
         const double deltaR_jet_value = 0.4;
-
+//        int evt_ctr=0;
         for(const auto& event : *tuple) {
            if(static_cast<EventEnergyScale>(event.eventEnergyScale) != EventEnergyScale::Central) continue;
+
+//           ++evt_ctr;
+//           if (evt_ctr > 10) break;
+
+           GenEvent genEvent(event);
 
            if(args.debug()) {
                const EventIdentifier EventId(event.run, event.lumi, event.evt);
                const EventIdentifier EventIdTest(args.eventIdBranches());
                if(!(EventId == EventIdTest)) continue;
-           }
+//               genEvent.Print();
 
-            GenEvent genEvent(event);
-//            genEvent.Print();
+           }
             const GenParticleSet higgsPair = genEvent.GetParticles(particles::ParticleCode::higgs, true);
             if(higgsPair.size() != 2)
                 throw analysis::exception("Higgs pair size must be 2, insteed has a size of '%1%'.") %higgsPair.size();
@@ -256,6 +309,7 @@ public:
                 std::vector<const GenParticle*> daughters_vector (daughters_set.begin(), daughters_set.end());
 
                 std::set<int> pdg_daughters;
+//                for(size_t daughter_index = 0 ; daughter_index < daughters_vector.size(); ++daughter_index )
                 for(size_t daughter_index = 0 ; daughter_index < daughters_vector.size(); ++daughter_index )
                    pdg_daughters.insert(std::abs(daughters_vector.at(daughter_index)->pdg));
 
@@ -267,20 +321,27 @@ public:
                     HH_Gen_Event.tau_decay[tau_index] = TauGenDecayMode::Hadrons;
             }
 
+            anaData.n("correct_channel").Fill(isCorrectChannel(HH_Gen_Event, args.channel()));
+            if(!isCorrectChannel(HH_Gen_Event, args.channel())) continue;
+//            anaData.n("correct_channel").Fill(isCorrectChannel(HH_Gen_Event, args.channel()));
             //Channel control
-            if(genChannel(HH_Gen_Event) == args.channel())
-                anaData.n("correct_channel").Fill(1);
-            else {
-               anaData.n("correct_channel").Fill(0);
-               continue;
-            }
+//            if(genChannel(HH_Gen_Event,  event, args.channel()) == args.channel())
+//                anaData.n("correct_channel").Fill(isCorrectChannel(HH_Gen_Event, args.channel()));
+//            else {
+//               anaData.n("correct_channel").Fill(0);
+//               continue;
+//            }
 
             //order tau legs according to Pt and leptonic or hadronic tau
             size_t first_daughter_index = 0;
-            if((args.channel() == Channel::TauTau && HH_Gen_Event.h_tautau->daughters.at(0)->momentum.Pt() < HH_Gen_Event.h_tautau->daughters.at(1)->momentum.Pt()) || ((args.channel() == Channel::ETau || args.channel() == Channel::MuTau) && HH_Gen_Event.tau_decay.at(0)  == TauGenDecayMode::Hadrons))
+            if((args.channel() == Channel::TauTau && HH_Gen_Event.h_tautau->daughters.at(0)->momentum.Pt() < HH_Gen_Event.h_tautau->daughters.at(1)->momentum.Pt()) ||
+                    ((args.channel() == Channel::ETau || args.channel() == Channel::MuTau) && HH_Gen_Event.tau_decay.at(0)  == TauGenDecayMode::Hadrons))
                 ++first_daughter_index;
             HH_Gen_Event.tau[0] = HH_Gen_Event.h_tautau->daughters.at(first_daughter_index);
             HH_Gen_Event.tau[1] = HH_Gen_Event.h_tautau->daughters.at((first_daughter_index + 1) % 2);
+
+            if(first_daughter_index != 0)
+                std::swap(HH_Gen_Event.tau_decay[0], HH_Gen_Event.tau_decay[1]);
 
             //Calculate sum visible momentum of particles
             for (size_t tau_index = 0; tau_index < HH_Gen_Event.h_tautau->daughters.size(); tau_index++) {
@@ -292,6 +353,8 @@ public:
                 }
             }
 
+            //=======================================================================================
+            //=======================================================================================
             //H->bb
 
             GenParticleSet baryons_plus_mesons_set;
@@ -304,8 +367,30 @@ public:
                 return a->momentum.E() > b->momentum.E();
             });
 
+            // Sum 4-momentum of all the selected baryons and mesons
+
+            // std::cout<< "============= new event =======================" << std::endl;
+
+
+            LorentzVectorXYZ bm_all;
+            for(size_t bm_index = 0; bm_index < baryons_plus_mesons.size(); ++bm_index){
+                bm_all += baryons_plus_mesons.at(bm_index)->momentum;
+            }
+
+            // Sum 4-momentum of the discarded baryons and mesons
+            LorentzVectorXYZ bm_others;
+            for(size_t bm_index = 2; bm_index < baryons_plus_mesons.size(); ++bm_index){
+                bm_others += baryons_plus_mesons.at(bm_index)->momentum;
+            }
+
+            //Relative histograms of the energy and momentum of the baryons and mesons discarded in the selection
+
             if(baryons_plus_mesons.size() < 2)
                 throw analysis::exception("There're less than two barions or mesons.");
+
+            //=======================================================================================
+            // ============================= NEW METHOD =============================
+            //=======================================================================================
 
             const auto gen_jets = CreateGenJets(baryons_plus_mesons, 0.4);
 
@@ -315,22 +400,32 @@ public:
 
             if(gen_jets.size() < 2) continue;
 
-            // Sum momentum of all the gen b jets created
+            // Sum 4-momentum of all the gen b jets created
             for(size_t jet_index = 0; jet_index < gen_jets.size(); ++jet_index){
-                for(size_t particle_index = 2; particle_index < gen_jets.at(jet_index).size(); ++particle_index)
+                for(size_t particle_index = 0; particle_index < gen_jets.at(jet_index).size(); ++particle_index){
                     HH_Gen_Event.h_bb_vis_all += gen_jets.at(jet_index).at(particle_index)->momentum;
+                }
             }
-            // Sum momentum of the gen b jets used for the match
+
+            // Sum 4-momentum of the gen b jets used for the match
             for(size_t jet_index = 0; jet_index < 2; ++jet_index){
                 for(size_t particle_index = 0; particle_index < gen_jets.at(jet_index).size(); ++particle_index)
                     HH_Gen_Event.b_jets[jet_index] += gen_jets.at(jet_index).at(particle_index)->momentum;      
-                HH_Gen_Event.h_bb_vis += HH_Gen_Event.b_jets[0];
+                HH_Gen_Event.h_bb_vis += HH_Gen_Event.b_jets[jet_index];
             }
-            // Sum momentum of the gen b jets discarded
-            for(size_t jet_index = 2; jet_index < gen_jets.size(); ++jet_index){
-                for(size_t particle_index = 0; particle_index < gen_jets.at(jet_index).size(); ++particle_index)
-                    HH_Gen_Event.b_jets_others[jet_index] += gen_jets.at(jet_index).at(particle_index)->momentum;
-                HH_Gen_Event.h_bb_others_vis += HH_Gen_Event.b_jets_others[jet_index];
+
+            // Sum 4-momentum of the gen b jets discarded
+            if(gen_jets.size() > 2) {
+                for(size_t jet_index = 2; jet_index < gen_jets.size(); ++jet_index){
+                    for(size_t particle_index = 0; particle_index < gen_jets.at(jet_index).size(); ++particle_index){
+                        if (particle_index == 0)
+                            HH_Gen_Event.b_jets_others.push_back(gen_jets.at(jet_index).at(particle_index)->momentum);
+                        else
+                            HH_Gen_Event.b_jets_others[jet_index-2] += gen_jets.at(jet_index).at(particle_index)->momentum;
+                    }
+                    HH_Gen_Event.h_bb_others_vis += HH_Gen_Event.b_jets_others[jet_index-2];
+
+                }
             }
 
             if(isBInsideAcceptance(HH_Gen_Event))
@@ -344,45 +439,67 @@ public:
             anaData.n("pass_b_plus_taus_acceptance").Fill(isBInsideAcceptance(HH_Gen_Event) &&isTauInsideAcceptance(HH_Gen_Event, args.channel()));
 
             //Matching Taus
-            std::set<size_t> tau_matches_total;
+            std::set<size_t> tau_matches_total;    
             std::map<size_t, std::set<size_t>> tau_matches;
 
             for (size_t tau_index = 0; tau_index < HH_Gen_Event.tau.size(); tau_index++) {
+
                 const auto& visibleMomentum = HH_Gen_Event.vis_tau[tau_index];
                 HH_Gen_Event.h_tautau_vis += HH_Gen_Event.vis_tau[tau_index];
+
                 for (size_t reco_tau_index = 0; reco_tau_index < event.lep_p4.size(); reco_tau_index++) {
                     if(!isCompatible(static_cast<LegType>(event.lep_type.at(reco_tau_index)), HH_Gen_Event.tau_decay[tau_index] )) continue;
 //                    if(args.channel() != Channel::TauTau && reco_tau_index != 0 &&
 //                        hasDeltaRMatch(event.lep_p4.at(0), event.lep_p4.at(reco_tau_index), 0.2)) continue;
 //                        if(HH_Gen_Event.tau_decay[tau_index] != TauGenDecayMode::Hadrons) continue;
 
+                    //matches combined tau legs
                     if(hasDeltaRMatch(visibleMomentum, event.lep_p4.at(reco_tau_index), deltaR_value)){
                         tau_matches_total.insert(reco_tau_index);
                         tau_matches[tau_index].insert(reco_tau_index);
                     }
+
                     auto dEta = visibleMomentum.Eta() - event.lep_p4.at(reco_tau_index).Eta();
                     auto dPhi = ROOT::Math::VectorUtil::DeltaPhi(visibleMomentum, event.lep_p4.at(reco_tau_index));
-                    anaData.deta_tau(HH_Gen_Event.tau_decay[tau_index]).Fill(dEta);
-                    anaData.dphi_tau(HH_Gen_Event.tau_decay[tau_index]).Fill(dPhi);
-                    anaData.delta_eta_vs_delta_phi(HH_Gen_Event.tau_decay[tau_index]).Fill(dEta, dPhi);
+                    anaData.deta_tau(tau_index).Fill(dEta);
+                    anaData.dphi_tau(tau_index).Fill(dPhi);
+                    anaData.delta_eta_vs_delta_phi(tau_index).Fill(dEta, dPhi);
                 }
             }
 
+            std::set<size_t> tau_lep_matches;
+            std::set<size_t> tau_had_matches;
+            for (size_t reco_tau_index = 0; reco_tau_index < event.lep_p4.size(); reco_tau_index++) {
+                if(args.channel() == Channel::ETau || args.channel() == Channel::MuTau){
+                    //matches only leptonic tau leg
+                    if(hasDeltaRMatch(HH_Gen_Event.vis_tau[0], event.lep_p4.at(reco_tau_index), deltaR_value))
+                        tau_lep_matches.insert(reco_tau_index);
+
+                    //matches only leptonic tau leg
+                    if(hasDeltaRMatch(HH_Gen_Event.vis_tau[1], event.lep_p4.at(reco_tau_index), deltaR_value))
+                        tau_had_matches.insert(reco_tau_index);
+                }
+            }
+
+
             std::set<size_t> tau_jet_matches_total;
+            std::set<size_t> tau_lep_matches_jet;
+            std::set<size_t> tau_had_matches_jet;
             std::map<size_t, std::set<size_t>> tau_jet_matches;
             for (size_t tau_index = 0; tau_index < HH_Gen_Event.h_tautau->daughters.size(); tau_index++) {
-                if(HH_Gen_Event.tau_decay[tau_index] != TauGenDecayMode::Hadrons) continue;
+//                if(HH_Gen_Event.tau_decay[tau_index] != TauGenDecayMode::Hadrons) continue;
                 const auto& visibleMomentum = HH_Gen_Event.vis_tau[tau_index];
                 for (size_t reco_tau_index = 0; reco_tau_index < event.jets_p4.size(); reco_tau_index++) {
                     if(hasDeltaRMatch(visibleMomentum, event.jets_p4.at(reco_tau_index), deltaR_jet_value)){
                         tau_jet_matches_total.insert(reco_tau_index);
                         tau_jet_matches[tau_index].insert(reco_tau_index);
                     }
+
                     auto dEta = visibleMomentum.Eta() - event.jets_p4.at(reco_tau_index).Eta();
                     auto dPhi = ROOT::Math::VectorUtil::DeltaPhi(visibleMomentum, event.jets_p4.at(reco_tau_index));
 
                     std::ostringstream ss_tau_leg;
-                    ss_tau_leg << "jet_"<< HH_Gen_Event.tau_decay[tau_index];
+                    ss_tau_leg << "jet_"<< tau_index;
                     std::string tau_leg = ss_tau_leg.str();
 
                     anaData.deta_tau(tau_leg).Fill(dEta);
@@ -390,7 +507,17 @@ public:
                     anaData.delta_eta_vs_delta_phi(tau_leg).Fill(dEta, dPhi);
                 }
             }
+            for (size_t reco_tau_index = 0; reco_tau_index < event.jets_p4.size(); reco_tau_index++){
+                if(args.channel() == Channel::ETau || args.channel() == Channel::MuTau ){
+                    //matches only leptonic tau leg
+                    if(hasDeltaRMatch(HH_Gen_Event.vis_tau[0], event.jets_p4.at(reco_tau_index), deltaR_value))
+                        tau_lep_matches_jet.insert(reco_tau_index);
 
+                    //matches only hadronic tau leg
+                    if(hasDeltaRMatch(HH_Gen_Event.vis_tau[1], event.jets_p4.at(reco_tau_index), deltaR_value))
+                        tau_had_matches_jet.insert(reco_tau_index);
+                }
+            }
             for (size_t tau_index = 0; tau_index < HH_Gen_Event.h_tautau->daughters.size(); tau_index++) {
                 if(tau_matches[tau_index].size() > 1)
                     anaData.double_match_gen().Fill(tau_index);
@@ -413,7 +540,22 @@ public:
                     }
                 }
             }
+            std::set<size_t> bm_matches_total;
+            std::map<size_t, std::set<size_t>> bm_matches;
+            for (size_t bm_index = 0; bm_index < 2; bm_index++){
+                for (size_t reco_b_index = 0; reco_b_index < event.jets_p4.size(); reco_b_index++){
+                    if(hasDeltaRMatch(baryons_plus_mesons.at(bm_index)->momentum, event.jets_p4.at(reco_b_index), deltaR_value)){
+                        bm_matches_total.insert(reco_b_index);
+                        bm_matches[bm_index].insert(reco_b_index);
+                    }
+                }
+            }
 
+            for (size_t reco_b_index = 0; reco_b_index < event.jets_p4.size(); reco_b_index++){
+
+            }
+            std::set<size_t> bm_1;
+            std::set<size_t> bm_2;
             for (size_t jet_index = 0; jet_index < HH_Gen_Event.b_jets.size(); jet_index++) {
                 if(b_matches[jet_index].size() > 1)
                     anaData.double_match_gen("b_jets").Fill(jet_index);
@@ -422,6 +564,10 @@ public:
             if(b_matches[0].size() == 1 && b_matches[1].size() == 1
                     && *b_matches[0].begin() == *b_matches[1].begin())
                 anaData.double_match("b_jets").Fill(1);
+
+            if(bm_matches[0].size() == 1 && bm_matches[1].size() == 1
+                    && *bm_matches[0].begin() == *bm_matches[1].begin())
+                anaData.double_match("bm_jets").Fill(1);
 
 
             size_t hadron_flavour_b = 0;
@@ -435,9 +581,25 @@ public:
             anaData.leg_matches().Fill(tau_matches[0].size(), tau_matches[1].size());
             anaData.leg_matches("jets").Fill(tau_jet_matches[0].size(), tau_jet_matches[1].size());
 
+            anaData.leg_matches("bm").Fill(bm_matches[0].size(), bm_matches[1].size());
+
+
 //            if(tau_matches[tau_index].size() < 1){ // double-counting control
             anaData.h_tautau_matches().Fill(tau_matches_total.size());
             anaData.h_tautau_matches("jets").Fill(tau_jet_matches_total.size());
+
+            if(args.channel() == Channel::ETau || args.channel() == Channel::MuTau ){
+                anaData.h_tautau_matches("leptonic_leg").Fill(tau_matches[0].size());
+                anaData.h_tautau_matches("leptonic_leg_jets").Fill(tau_jet_matches[0].size());
+
+                anaData.h_tautau_matches("had_leg").Fill(tau_matches[1].size());
+                anaData.h_tautau_matches("had_leg_jets").Fill(tau_jet_matches[1].size());
+
+//                if(tau_matches[0].size() == 2)
+//                    anaData.h_tautau_matches("2_lep_0_had").Fill(1);
+//                if(tau_matches[0].size() == 0 &&  tau_matches[1].size() == 2 )
+//                    anaData.h_tautau_matches("2_lep_0_had").Fill(0);
+            }
 
             for(size_t tau_index = 0; tau_index < 2; ++tau_index) {
                 if(HH_Gen_Event.tau_decay.at(tau_index) != TauGenDecayMode::Hadrons) continue;
@@ -455,24 +617,38 @@ public:
                 anaData.Higgs_Pt("normal").Fill(HH_Gen_Event.h_bb->momentum.Pt());
 
             if(gen_jets.size() > 2) {
-                anaData.jets_energy().Fill(HH_Gen_Event.h_bb_vis_all.E());
-                anaData.jets_momentum().Fill(HH_Gen_Event.h_bb_vis_all.Pt());
                 anaData.jets_energy("relative").Fill(HH_Gen_Event.h_bb_others_vis.E()/HH_Gen_Event.h_bb_vis_all.E());
                 anaData.jets_momentum("relative").Fill(HH_Gen_Event.h_bb_others_vis.Pt()/HH_Gen_Event.h_bb_vis_all.Pt());
+
+            }
+
+            if(HH_Gen_Event.h_bb_others_vis.E() > bm_others.E())
+                anaData.n("stocazzo").Fill(1);
+            else
+                anaData.n("stocazzo").Fill(0);
+
+            //if(baryons_plus_mesons.size() > 2) {
+            if(gen_jets.size() > 2) {
+                anaData.jets_energy("baryons_and_mesons_relative").Fill(bm_others.E()/bm_all.E());
+                anaData.jets_momentum("baryons_and_mesons_relative").Fill(bm_others.Pt()/bm_all.Pt());
+                anaData.diff().Fill(HH_Gen_Event.h_bb_others_vis.E() - bm_others.E());
             }
 
             anaData.n("baryons_mesons").Fill(baryons_plus_mesons.size());
             anaData.bm_vs_jets().Fill(gen_jets.size(), baryons_plus_mesons.size());
 
             anaData.n("jets_matches").Fill(b_jet_matches_total.size());
+            anaData.n("bm_matches").Fill(bm_matches_total.size());
 
             anaData.inv_mass_jets().Fill(HH_Gen_Event.h_bb_vis.M());
+            anaData.inv_mass_jets("bm").Fill((baryons_plus_mesons.at(0)->momentum + baryons_plus_mesons.at(1)->momentum).M());
             anaData.inv_mass_jets("all").Fill(HH_Gen_Event.h_bb_vis_all.M());
 
             anaData.pt_tau("1").Fill(HH_Gen_Event.vis_tau[0].Pt());
             anaData.eta_tau("1").Fill(HH_Gen_Event.vis_tau[0].Eta());
             anaData.pt_tau("2").Fill(HH_Gen_Event.vis_tau[1].Pt());
             anaData.eta_tau("2").Fill(HH_Gen_Event.vis_tau[1].Eta());
+
 
             if(tau_matches_total.size() == 1) {
                 for(size_t tau_index = 0; tau_index < 2; ++tau_index) {
@@ -482,44 +658,50 @@ public:
                 }
             }
             if(b_jet_matches_total.size() == 2 && tau_matches_total.size() ==2) {
-                anaData.n("2_matches_for_all").Fill(1);
-                for (size_t reco_tau_index = 0; reco_tau_index < event.lep_p4.size(); reco_tau_index++) {
-                    int matched_gen_tau = -1;
-                    for (int gen_tau_index = 0; gen_tau_index < HH_Gen_Event.tau.size(); gen_tau_index++) {
-                        if(tau_matches.at(gen_tau_index).count(reco_tau_index)) {
-                            matched_gen_tau = gen_tau_index;
-                            break;
+                if(tau_matches.at(0).size() == 1 && tau_matches.at(1).size() == 1 && b_matches.at(0).size() == 1 &&
+                        b_matches.at(1).size() == 1){
+                    anaData.n("2_matches_for_all").Fill(1);
+
+                    (*new_tuple)() = event;
+
+                    for (size_t reco_tau_index = 0; reco_tau_index < event.lep_p4.size(); reco_tau_index++) {
+                        size_t matched_gen_tau = 10;
+                        for (size_t gen_tau_index = 0; gen_tau_index < HH_Gen_Event.tau.size(); gen_tau_index++) {
+                            if(tau_matches.at(gen_tau_index).count(reco_tau_index)) {
+                                matched_gen_tau = gen_tau_index;
+                                break;
+                            }
                         }
+                        (*new_tuple)().lep_genTauIndex.push_back(matched_gen_tau);
                     }
-                    (*new_tuple)().lep_genTauIndex.push_back(matched_gen_tau);
+
+                    for (size_t reco_b_index = 0; reco_b_index < event.jets_p4.size(); reco_b_index++) {
+                        size_t matched_gen_b = 10;
+                        for (size_t gen_b_index = 0; gen_b_index < HH_Gen_Event.b_jets.size(); gen_b_index++) {
+                            if(b_matches.at(gen_b_index).count(reco_b_index)) {
+                                matched_gen_b = gen_b_index;
+                                break;
+                            }
+                        }
+                        (*new_tuple)().jets_genJetIndex.push_back(matched_gen_b);
+
+                    }
+
                     new_tuple->Fill();
                 }
-                for (size_t reco_b_index = 0; reco_b_index < event.jets_p4.size(); reco_b_index++) {
-                    int matched_gen_b = -1;
-                    for (int gen_b_index = 0; gen_b_index < HH_Gen_Event.b_jets.size(); gen_b_index++) {
-                        if(b_matches.at(gen_b_index).count(reco_b_index)) {
-                            matched_gen_b = gen_b_index;
-                            break;
-                        }
-                    }
-                    (*new_tuple)().jets_genJetIndex.push_back(matched_gen_b);
-                    new_tuple->Fill();
-                }
-                (*new_tuple)() = event;
-                new_tuple->Fill();
             }
             else
                 anaData.n("2_matches_for_all").Fill(0);
         }
         new_tuple->Write();
 
-        CreateEfficiency(anaData.n("pass_taus_acceptance"),anaData.n("correct_channel"), " ", ToString(args.channel()),
+        CreateEfficiency(anaData.n("pass_taus_acceptance"),anaData.n("correct_channel"), ToString(args.channel()),
                          "", true, "pass tau acceptance" );
-        CreateEfficiency(anaData.n("pass_b_acceptance"),anaData.n("correct_channel"), " ", ToString(args.channel()),
+        CreateEfficiency(anaData.n("pass_b_acceptance"),anaData.n("correct_channel"), ToString(args.channel()),
                          "", true, "pass b acceptance" );
-        CreateEfficiency(anaData.n("pass_b_plus_taus_acceptance"),anaData.n("correct_channel"), " ", ToString(args.channel()),
+        CreateEfficiency(anaData.n("pass_b_plus_taus_acceptance"),anaData.n("correct_channel"), ToString(args.channel()),
                          "", true, "pass tau plus b acceptance" );
-        CreateEfficiency(anaData.n("pass_b_plus_taus_acceptance"), anaData.n("pass_taus_acceptance"), " ", ToString(args.channel()),
+        CreateEfficiency(anaData.n("pass_b_plus_taus_acceptance"), anaData.n("pass_taus_acceptance"), ToString(args.channel()),
                          "", true, "pass tau plus b acceptance/pass tau acceptance" );
 
         anaData.h_tautau_matches("jets").SetLineColor(kBlue+2);
@@ -530,17 +712,43 @@ public:
         anaData.h_tautau_matches().SetLineColor(kRed+2);
         anaData.h_tautau_matches().Draw("same");
 
+//        anaData.leg_matches("jets").Fill(tau_jet_matches[0].size(), tau_jet_matches[1].size());
+
         std::shared_ptr<TLegend> legend(new TLegend (0.62, 0.65, 0.87, 0.80));
         legend->AddEntry(&anaData.h_tautau_matches(), "matches with taus");
         legend->AddEntry(&anaData.h_tautau_matches("jets"), "matches with jets");
         legend->SetTextSize(0.025f);
         legend->Draw();
-        canvas.Print((ToString(args.channel()) +"_h_tautau" + "_matches.pdf]").c_str());
 
-        CreateEfficiency(anaData.pt_vis_gen_tau("matched"), anaData.pt_vis_gen_tau("all"), "leptons", "tauTau", "eff match with taus");
-        CreateEfficiency(anaData.pt_vis_gen_tau("matched_jets"), anaData.pt_vis_gen_tau("all"), "jets", "tauTau", "eff match with jets");
+        canvas.Print((args.outputFile() + ".pdf").c_str());
+//        canvas.Print((ToString(args.channel()) +"_h_tautau" + "_matches.pdf").c_str());
 
-        canvas.Print((args.outputFile() + ".pdf]").c_str());
+        anaData.leg_matches().GetYaxis()->SetTitleOffset(1.2f);
+        anaData.leg_matches().SetMarkerSize(1.8);
+        anaData.leg_matches().Draw("TEXT");
+
+        canvas.Print((args.outputFile() + ".pdf").c_str(), "Title:Peloso<4");
+
+        anaData.leg_matches("jets").GetYaxis()->SetTitleOffset(1.2f);
+        anaData.leg_matches("jets").SetMarkerSize(1.8);
+        anaData.leg_matches("jets").Draw("TEXT");
+
+        canvas.Print((args.outputFile() + ".pdf").c_str(), "Title:Peloso<8");
+
+//           canvas.Print((ToString(args.channel()) +"_h_tautau" + "_matches.pdf]").c_str());
+
+        CreateEfficiency(anaData.pt_vis_gen_tau("matched"), anaData.pt_vis_gen_tau("all"), "tauTau", "eff_match_taus");
+        CreateEfficiency(anaData.pt_vis_gen_tau("matched_jets"), anaData.pt_vis_gen_tau("all"), "tauTau", "eff_match_jets");
+
+        canvas.Print((args.outputFile() + ".pdf]").c_str(), "Title:Peloso<3"); // only closes PDF
+
+        printStats(anaData.h_tautau_matches(), 1, "h-tautau");
+        printStats(anaData.h_tautau_matches(), 2, "h-tautau");
+        printStats(anaData.h_tautau_matches(), 3, "h-tautau");
+        printStats(anaData.h_tautau_matches("jets"), 1, "h-tautau jets");
+        printStats(anaData.h_tautau_matches("jets"), 2, "h-tautau jets");
+        printStats(anaData.h_tautau_matches("jets"), 3, "h-tautau jets");
+         printStats(anaData.h_tautau_matches("jets"), 4, "h-tautau jets");
     }
 
 
@@ -569,19 +777,27 @@ private:
                                                               {LegType::mu, TauGenDecayMode::Muon},
                                                               {LegType::tau, TauGenDecayMode::Hadrons},
                                                               {LegType::jet, TauGenDecayMode::Hadrons} };
-        if(reco_gen_decays.count(leg_type)){
-            if(reco_gen_decays.at(leg_type) == tau_decay) return true;
-            else
-                return false;
-        }
+        if(reco_gen_decays.count(leg_type))
+            return reco_gen_decays.at(leg_type) == tau_decay;
         else
             throw exception ("reco leg type '%1%' now allowed") %leg_type ;
     }
+
+    void printStats(const TH1D& histo, int binIndex, std::string tag)
+    {
+        double histoContent = histo.GetEntries();
+        double binContent = histo.GetBinContent(binIndex);
+        double ratio = binContent / histoContent;
+        std::cout << "using bin #" << binIndex << ", rate of " << tag << " : " << binContent << "/" <<  histoContent
+                  << " = " << ratio*100 << std::endl;
+    }
+
 
 private:
     Arguments args;
     std::shared_ptr<TFile> output;
     std::shared_ptr<TFile> new_output_file;
+//    std::shared_ptr<ntuple::EventTuple> new_tuple;
     GenStudyHist anaData;
     TCanvas canvas;
 };
