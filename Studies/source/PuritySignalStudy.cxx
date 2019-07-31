@@ -66,10 +66,14 @@ public:
         auto file = root_ext::OpenRootFile(args.inputPath());
         auto tuple = ntuple::CreateEventTuple("all_events", file.get(), true, ntuple::TreeState::Full);
 
-        int count = 0;
+        taus_legs = { {LegType::e, false},
+                      {LegType::mu, false},
+                      {LegType::tau, true} };
+
+        lep_wp_deep_tau = { {Channel::ETau,  0.0630386},
+                            {Channel::MuTau, 0.1058354} };
+
         for(const auto& event : *tuple) {
-            ++count;
-//            if(count > 5) break;
            if(static_cast<EventEnergyScale>(event.eventEnergyScale) != EventEnergyScale::Central) continue;
 
            if(args.debug()) {
@@ -146,63 +150,46 @@ private:
 
     size_t calculateMatchesJets(const Event& event, JetOrdering jet_ordering)
     {
-        auto best_two = getBestTwoJetsIndexes(orderJets(event, jet_ordering ));
+        auto orded_jets = orderJets(event, jet_ordering );
+        std::vector<size_t> best_two;
+        int ctr = 0;
 
+        for (auto input_i : orded_jets) {
+            best_two.push_back(input_i.index);
+            ++ctr;
+            if (ctr==2)
+                break;
+        }
         // find indexes that refer to the elements with match
         std::vector<size_t> index_matched_jet;
-        int counter = 0;
-        for(auto i : event.jets_genJetIndex){
-            if(i != 10) // 10 is the defult value of this branch on the ntuple
-                index_matched_jet.push_back(counter);
-            ++counter;
+        int count = 0;
+        for(auto index : best_two){
+            if(event.jets_genJetIndex.at(index) != 10) ++count; // 10 is the defult value of this branch on the ntuple
         }
+        anaData.jet_matches(ToString(jet_ordering)).Fill(count);
 
-        // find common elements between the indexes that refer to the two best indexes after ordering
-        // and the indexes that refer to the elements with match
-        auto common_indexes = intersection(index_matched_jet, best_two);
-        anaData.jet_matches(ToString(jet_ordering)).Fill(common_indexes.size());
-
-        return common_indexes.size();
+        return count;
     }
 
     size_t calculateMatchesTaus(const Event& event, TauIdDiscriminator tau_id_discriminator, Channel channel, bool is_descending_order = true)
     {
         std::vector<size_t> ordered_indexes = orderTaus(event, tau_id_discriminator, is_descending_order);
+        //Cases for eTau & muTau with zero taus remaning after applied cut
+        if(ordered_indexes.empty())
+            return 0;
         std::vector<size_t> best_two = {ordered_indexes.at(0)};
 
         if(args.channel() == Channel::TauTau)
             best_two.push_back(ordered_indexes.at(1));
 
-        // find indexes that refer to the elements with match
         std::vector<size_t> index_matched_tau;
-        int counter = 0;
-        for(auto i : event.lep_genTauIndex){
-            if(i != 10) // 10 is the defult value of this branch on the ntuple
-                index_matched_tau.push_back(counter);
-            ++counter;
+        int count = 0;
+        for(size_t index : best_two){
+            if(event.lep_genTauIndex.at(index) != 10)  ++count;
         }
+        anaData.lep_matches(ToString(tau_id_discriminator)).Fill(count);
 
-        // find common elements between the indexes that refer to the two best indexes after ordering
-        // and the indexes that refer to the elements with match
-        auto common_indexes = intersection(index_matched_tau, best_two);
-
-        anaData.lep_matches(ToString(tau_id_discriminator)).Fill(common_indexes.size());
-
-        return common_indexes.size();
-    }
-
-    std::vector<size_t> getBestTwoJetsIndexes(std::vector<analysis::jet_ordering::JetInfo<LorentzVector>> input)
-    {
-        std::vector<size_t> output;
-        int ctr = 0;
-
-        for (auto input_i : input) {
-            output.push_back(input_i.index);
-            ++ctr;
-            if (ctr==2)
-                break;
-        }
-       return output;
+        return count;
     }
 
 private:
@@ -221,26 +208,29 @@ private:
 
     std::vector<size_t> orderTaus(const Event& event, TauIdDiscriminator tau_id_discriminator, bool is_descending_order = true)
     {
-       std::vector<float> raw_values;
-       for(size_t lep_index = 0; lep_index < event.lep_p4.size(); ++lep_index){
+        std::vector<float> raw_values;
+        for(size_t lep_index = 0; lep_index < event.lep_p4.size(); ++lep_index){
            if (static_cast<LegType>(event.lep_type.at(lep_index)) == analysis::LegType::tau ) {
                auto lepton = std::make_shared<ntuple::TupleLepton>(event, lep_index);
                auto raw = static_cast<float>(lepton->GetRawValue(tau_id_discriminator));
-               raw_values.push_back(raw);
+               if((args.channel() == Channel::ETau || args.channel() == Channel::MuTau) && raw > lep_wp_deep_tau[args.channel()])
+                   raw_values.push_back(raw);
+               else if (args.channel() == Channel::TauTau)
+                   raw_values.push_back(raw);
            }
            else
                 raw_values.push_back(0);
-       }
+        }
 
+        std::vector<size_t> index_sorted_had_taus;
+        std::vector<size_t> sorted = sort_indexes(raw_values, is_descending_order);
 
-       std::vector<size_t> sorted_had_taus;
-       std::vector<size_t> sorted = sort_indexes(raw_values, is_descending_order);
-
-       for (const auto& index : sorted){
-               if(isHadronicTau(static_cast<LegType>(event.lep_type.at(index))))
-                   sorted_had_taus.push_back((index));
-       }
-       return sorted_had_taus;
+        for (const auto& index : sorted){
+            if(taus_legs.count(static_cast<LegType>(event.lep_type.at(index))) &&
+                    taus_legs[static_cast<LegType>(event.lep_type.at(index))])
+                index_sorted_had_taus.push_back((index));
+        }
+        return index_sorted_had_taus;
     }
 
     std::vector<size_t> sort_indexes(const std::vector<float> &v, bool is_descending_order = true) {
@@ -260,19 +250,6 @@ private:
       return idx;
     }
 
-    std::vector<size_t> intersection(std::vector<size_t> &v1, std::vector<size_t> &v2)
-    {
-        std::vector<size_t> v3;
-
-        std::sort(v1.begin(), v1.end());
-        std::sort(v2.begin(), v2.end());
-
-        std::set_intersection(v1.begin(),v1.end(),
-                              v2.begin(),v2.end(),
-                              back_inserter(v3));
-        return v3;
-    }
-
     void printStats(const TH1D& histo, int binIndex, std::string tag)
     {
         double histoContent = histo.GetEntries();
@@ -282,25 +259,15 @@ private:
                   << " = " << ratio << std::endl;
     }
 
-    static bool isHadronicTau(const LegType& leg_type)
-    {
-        std::map<LegType,bool> taus_legs = { {LegType::e, false},
-                                                              {LegType::mu, false},
-                                                              {LegType::tau, true}};
-        if(taus_legs.count(leg_type))
-            return taus_legs[leg_type];
-        else
-            throw exception ("reco leg type '%1%' now allowed") %leg_type ;
-    }
-
 private:
     Arguments args;
     std::shared_ptr<TFile> output;
     SignalPurityStudyHist anaData;
     TCanvas canvas;
+    std::map<LegType,bool> taus_legs;
+    std::map<Channel,double> lep_wp_deep_tau ;
 
 };
-
 } // namespace analysis
 PROGRAM_MAIN(analysis::SignalPurityStudy, Arguments)
 
