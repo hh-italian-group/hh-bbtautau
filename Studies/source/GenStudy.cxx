@@ -57,9 +57,9 @@ class GenStudyHist : public root_ext::AnalyzerData {
 
     TH1D_ENTRY_EX(pt_charged_vis_tau, 50, 0, 500, "Pt [GeV]", "events", true, 1, false, true)
 
-    static std::vector<double> x_bins()
+    static const std::vector<double>& x_bins()
     {
-        std::vector<double> x_bins = {25,30,35,40,45,50,60,70,80,90,100,120,160,200,300,400,600,800,1000};
+        static const std::vector<double> x_bins = {25,30,35,40,45,50,60,70,80,90,100,120,160,200,300,400,600,800,1000};
         return x_bins;
     }
 
@@ -90,7 +90,6 @@ public:
             gStyle->SetOptStat(0);
             canvas.Print((args.outputFile() + ".pdf[").c_str());
             canvas.Draw();
-//            histo_file.cd()
         }
 
     void CreateEfficiency(const TH1& passed, const TH1& total, const std::string& channel,
@@ -115,7 +114,6 @@ public:
             std::string name = ss_name.str();
 
             eff.SetTitle(name.c_str());
-            eff.Write();
             root_ext::WriteObject(eff, output.get(), name);
 
             canvas.Print((args.outputFile()+".pdf").c_str(), ("Title:"+name).c_str());
@@ -123,59 +121,40 @@ public:
         }
     }
 
-    static void CreateEfficiencies(std::vector<TEfficiency> eff_plots){
+    static void CreateEfficiencies(std::vector<TEfficiency>& eff_plots){
         eff_plots.at(0).Draw();
         for(size_t plot_index = 1; plot_index < eff_plots.size(); ++plot_index){
             eff_plots.at(plot_index).Draw("SAME");
         }
     }
 
-    bool isCorrectChannel(const HHGenEvent& hh_event, Channel channel)
+    static bool TryGetChannel(const HHGenEvent& hh_event, Channel channel)
     {
-        if(channel == Channel::ETau){
-            if((hh_event.tau_decay.at(0) == TauGenDecayMode::Electron &&  hh_event.tau_decay.at(1)  == TauGenDecayMode::Hadrons) ||
-                    (hh_event.tau_decay.at(1) == TauGenDecayMode::Electron &&  hh_event.tau_decay.at(0)  == TauGenDecayMode::Hadrons))
-                return true;
+      try{
+        channel = genChannel(hh_event);
         }
-        else if(channel == Channel::MuTau){
-            if((hh_event.tau_decay.at(0) == TauGenDecayMode::Muon &&  hh_event.tau_decay.at(1)  == TauGenDecayMode::Hadrons) ||
-                    (hh_event.tau_decay.at(1) == TauGenDecayMode::Muon &&  hh_event.tau_decay.at(0)  == TauGenDecayMode::Hadrons))
-                return true;
+        catch (std::exception&){
+            return false;
         }
-        else if(channel == Channel::TauTau){
-            if((hh_event.tau_decay.at(0) == TauGenDecayMode::Hadrons &&  hh_event.tau_decay.at(1)  == TauGenDecayMode::Hadrons))
-                return true;
-        }
-        return false;
+      return true;
     }
 
-//    static bool TryGetChannel(const HHGenEvent& hh_event/*, Channel& channel*/)
-//    {
-//      try{
-//        channel = genChannel(hh_event);
-//        }
-//        catch (std::exception&){
-//            return false;
-//        }
-//      return true;
-//    }
+    static Channel genChannel(const HHGenEvent& hh_event)
+    {
+        if((hh_event.tau_decay.at(0) == TauGenDecayMode::Electron &&  hh_event.tau_decay.at(1)  == TauGenDecayMode::Hadrons) ||
+                (hh_event.tau_decay.at(1) == TauGenDecayMode::Electron &&  hh_event.tau_decay.at(0)  == TauGenDecayMode::Hadrons))
+            return Channel::ETau;
 
-//    static Channel genChannel(const HHGenEvent& hh_event)
-//    {
-//        if((hh_event.tau_decay.at(0) == TauGenDecayMode::Electron &&  hh_event.tau_decay.at(1)  == TauGenDecayMode::Hadrons) ||
-//                (hh_event.tau_decay.at(1) == TauGenDecayMode::Electron &&  hh_event.tau_decay.at(0)  == TauGenDecayMode::Hadrons))
-//            return Channel::ETau;
+        else if((hh_event.tau_decay.at(0) == TauGenDecayMode::Muon &&  hh_event.tau_decay.at(1)  == TauGenDecayMode::Hadrons) ||
+                    (hh_event.tau_decay.at(1) == TauGenDecayMode::Muon &&  hh_event.tau_decay.at(0)  == TauGenDecayMode::Hadrons))
+            return Channel::MuTau;
 
-//        else if((hh_event.tau_decay.at(0) == TauGenDecayMode::Muon &&  hh_event.tau_decay.at(1)  == TauGenDecayMode::Hadrons) ||
-//                    (hh_event.tau_decay.at(1) == TauGenDecayMode::Muon &&  hh_event.tau_decay.at(0)  == TauGenDecayMode::Hadrons))
-//            return Channel::MuTau;
-
-//        else if((hh_event.tau_decay.at(0) == TauGenDecayMode::Hadrons &&  hh_event.tau_decay.at(1)  == TauGenDecayMode::Hadrons))
-//            return Channel::TauTau;
-//        else{
-//            throw exception ("Unsupported channel '%1%', '%2%'.") % hh_event.tau_decay.at(0) %hh_event.tau_decay.at(1);
-//        }
-//    }
+        else if((hh_event.tau_decay.at(0) == TauGenDecayMode::Hadrons &&  hh_event.tau_decay.at(1)  == TauGenDecayMode::Hadrons))
+            return Channel::TauTau;
+        else{
+            throw exception ("Unsupported channel '%1%', '%2%'.") % hh_event.tau_decay.at(0) %hh_event.tau_decay.at(1);
+        }
+    }
 
     static bool isTauInsideAcceptance(const HHGenEvent& hh_event, Channel channel)
     {
@@ -304,21 +283,13 @@ public:
                     HH_Gen_Event.tau_decay[tau_index] = TauGenDecayMode::Hadrons;
             }
 
-//            anaData.n("correct_channel").Fill(TryGetChannel(HH_Gen_Event, args.channel()));
-              anaData.n("correct_channel").Fill(isCorrectChannel(HH_Gen_Event,args.channel()));
-
-
-            if(!isCorrectChannel(HH_Gen_Event, args.channel())) continue;
-//            if(!TryGetChannel(HH_Gen_Event, args.channel())) continue;
-
-//            anaData.n("correct_channel").Fill(isCorrectChannel(HH_Gen_Event, args.channel()));
             //Channel control
-//            if(genChannel(HH_Gen_Event,  event, args.channel()) == args.channel())
-//                anaData.n("correct_channel").Fill(isCorrectChannel(HH_Gen_Event, args.channel()));
-//            else {
-//               anaData.n("correct_channel").Fill(0);
-//               continue;
-//            }
+            if(TryGetChannel(HH_Gen_Event, args.channel()))
+                anaData.n("correct_channel").Fill(TryGetChannel(HH_Gen_Event, args.channel()));
+            else {
+               anaData.n("correct_channel").Fill(0);
+               continue;
+            }
 
             //order tau legs according to Pt and leptonic or hadronic tau
             size_t first_daughter_index = 0;
@@ -420,7 +391,7 @@ public:
             anaData.n("pass_b_plus_taus_acceptance").Fill(isBInsideAcceptance(HH_Gen_Event) &&isTauInsideAcceptance(HH_Gen_Event, args.channel()));
 
             //Matching Taus
-            std::set<size_t> tau_matches_total;    
+            std::set<size_t> tau_matches_total;
             std::map<size_t, std::set<size_t>> tau_matches;
 
             for (size_t tau_index = 0; tau_index < HH_Gen_Event.tau.size(); tau_index++) {
