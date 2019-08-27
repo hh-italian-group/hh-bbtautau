@@ -594,10 +594,10 @@ public:
                     (*new_tuple)() = event;
 
                     for (size_t reco_tau_index = 0; reco_tau_index < event.lep_p4.size(); reco_tau_index++) {
-                        size_t matched_gen_tau = 10;
+                        int matched_gen_tau = -1;
                         for (size_t gen_tau_index = 0; gen_tau_index < HH_Gen_Event.tau.size(); gen_tau_index++) {
                             if(tau_matches.at(gen_tau_index).count(reco_tau_index)) {
-                                matched_gen_tau = gen_tau_index;
+                                matched_gen_tau = static_cast<int>(gen_tau_index);
                                 break;
                             }
                         }
@@ -605,10 +605,10 @@ public:
                     }
 
                     for (size_t reco_b_index = 0; reco_b_index < event.jets_p4.size(); reco_b_index++) {
-                        size_t matched_gen_b = 10;
+                        int matched_gen_b = -1;
                         for (size_t gen_b_index = 0; gen_b_index < HH_Gen_Event.b_jets.size(); gen_b_index++) {
                             if(b_matches.at(gen_b_index).count(reco_b_index)) {
-                                matched_gen_b = gen_b_index;
+                                matched_gen_b = static_cast<int>(gen_b_index);
                                 break;
                             }
                         }

@@ -8,6 +8,8 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/JetTools/include/BTagger.h"
 #include "h-tautau/Cuts/include/Btag_2017.h"
 
+#include <iostream>
+#include <algorithm>
 #include "TEfficiency.h"
 #include "TStyle.h"
 #include <TLegend.h>
@@ -17,6 +19,7 @@ struct Arguments {
     REQ_ARG(std::string, inputPath);
     REQ_ARG(analysis::Channel, channel);
     REQ_ARG(std::string, outputFile);
+    REQ_ARG(std::string, period);
     OPT_ARG(bool, debug, false);
     OPT_ARG(std::string, eventIdBranches, "run:lumi:evt");
 };
@@ -132,24 +135,15 @@ private:
 
     size_t calculateMatchesJets(const Event& event, JetOrdering jet_ordering)
     {
-        auto orded_jets = orderJets(event, jet_ordering, Period::Run2017);
-        std::vector<size_t> best_two;
-        int ctr = 0;
+        auto ordered_jets = orderJets(event, jet_ordering);
 
-        for (auto input_i : orded_jets) {
-            best_two.push_back(input_i.index);
-            ++ctr;
-            if (ctr==2)
-                break;
-        }
-        // find indexes that refer to the elements with match
-        std::vector<size_t> index_matched_jet;
+        const size_t n_max = std::min(static_cast<int>(ordered_jets.size()), 2);
         size_t count = 0;
-        for(auto index : best_two){
-            if(event.jets_genJetIndex.at(index) != 10) ++count; // 10 is the defult value of this branch on the ntuple
+        for(size_t n = 0; n < n_max; ++n) {
+            const size_t index = ordered_jets.at(n).index;
+            if(event.jets_genJetIndex.at(index) != -1) ++count;
         }
-        anaData.jet_matches(ToString(jet_ordering)).Fill(count);
-
+        anaData.jet_matches(jet_ordering).Fill(count);
         return count;
     }
 
@@ -157,33 +151,27 @@ private:
     {
         std::vector<size_t> ordered_indexes = orderTaus(event, tau_id_discriminator, is_descending_order);
         //Cases for eTau & muTau with zero taus remaning after applied cut
-        if(ordered_indexes.empty())
-            return 0;
-        std::vector<size_t> best_two = {ordered_indexes.at(0)};
 
-        if(args.channel() == Channel::TauTau)
-            best_two.push_back(ordered_indexes.at(1));
-
-        std::vector<size_t> index_matched_tau;
+        const size_t n_expected = args.channel() == Channel::TauTau ? 2 : 1;
+        const size_t n_max = std::min(ordered_indexes.size(), n_expected);
         size_t count = 0;
-        for(size_t index : best_two){
-            if(event.lep_genTauIndex.at(index) != 10)  ++count;
+        for(size_t n = 0; n < n_max; ++n) {
+            const size_t index = ordered_indexes.at(n);
+            if(event.lep_genTauIndex.at(index) != -1) ++count;
         }
-        anaData.lep_matches(ToString(tau_id_discriminator)).Fill(count);
-
+        anaData.lep_matches(tau_id_discriminator).Fill(count);
         return count;
     }
 
 private:
 
-    std::vector<analysis::jet_ordering::JetInfo<LorentzVector>> orderJets(const Event& event, JetOrdering jet_ordering, Period period)
+    std::vector<analysis::jet_ordering::JetInfo<LorentzVector>> orderJets(const Event& event, JetOrdering jet_ordering)
     {
         std::vector<analysis::jet_ordering::JetInfo<LorentzVector>> jet_info_vector;
-        BTagger bTagger(period,jet_ordering);
+        BTagger bTagger(Parse<analysis::Period>(args.period()) ,jet_ordering);
 
         for(size_t jet_index = 0; jet_index < event.jets_p4.size(); ++jet_index)
-            jet_info_vector.emplace_back(static_cast<LorentzVectorE>(event.jets_p4.at(jet_index)), jet_index, bTagger.BTag(event,jet_index));
-
+            jet_info_vector.emplace_back(LorentzVectorE(event.jets_p4.at(jet_index)), jet_index, bTagger.BTag(event,jet_index));
 
         return jet_ordering::OrderJets(jet_info_vector, true, cuts::btag_2017::pt, cuts::btag_2017::eta);
     }
@@ -194,13 +182,16 @@ private:
         for(size_t lep_index = 0; lep_index < event.lep_p4.size(); ++lep_index){
            if (static_cast<LegType>(event.lep_type.at(lep_index)) == analysis::LegType::tau ) {
                ntuple::TupleLepton lepton(event, lep_index);
-               if((args.channel() == Channel::ETau && lepton.Passed(TauIdDiscriminator::byDeepTau2017v2VSe,DiscriminatorWP::VVVLoose)) ||
+
+               const bool is_good_lepton = (args.channel() == Channel::ETau && lepton.Passed(TauIdDiscriminator::byDeepTau2017v2VSe,DiscriminatorWP::VVVLoose)) ||
                        (args.channel() == Channel::MuTau && lepton.Passed(TauIdDiscriminator::byDeepTau2017v2VSmu,DiscriminatorWP::VLoose)) ||
-                        (args.channel() == Channel::TauTau)) {
-                   const float raw =  lepton.GetRawValue(tau_id_discriminator);
-                   raw_values.push_back(raw);
-                }
-           }
+                        (args.channel() == Channel::TauTau);
+
+               const float raw = is_good_lepton ? lepton.GetRawValue(tau_id_discriminator) : 0;
+               raw_values.push_back(raw);
+            }
+           else
+                raw_values.push_back(0);
         }
 
         std::vector<size_t> index_sorted_had_taus;
@@ -208,7 +199,7 @@ private:
 
         for (const auto& index : sorted){
             if(static_cast<LegType>(event.lep_type.at(index)) == LegType::tau)
-                index_sorted_had_taus.push_back((index));
+                index_sorted_had_taus.push_back(index);
         }
         return index_sorted_had_taus;
     }
@@ -216,10 +207,10 @@ private:
     std::vector<size_t> sort_indexes(const std::vector<float> &v, bool is_descending_order = true) {
       // initialize original index locations
       std::vector<size_t> idx(v.size());
-      iota(idx.begin(), idx.end(), 0);
+      std::iota(idx.begin(), idx.end(), 0);
 
       // sort indexes based on comparing values in v
-      sort(idx.begin(), idx.end(),
+      std::sort(idx.begin(), idx.end(),
            [&v,is_descending_order](size_t i1, size_t i2) {
                return is_descending_order ? v[i1] > v[i2] : v[i1] < v[i2];
       });
