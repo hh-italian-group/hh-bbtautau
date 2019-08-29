@@ -56,9 +56,6 @@ public:
         auto file = root_ext::OpenRootFile(args.inputPath());
         auto tuple = ntuple::CreateEventTuple("all_events", file.get(), true, ntuple::TreeState::Full);
 
-        lep_wp_deep_tau = { {Channel::ETau,  0.0630386},
-                            {Channel::MuTau, 0.1058354} };
-
         for(const auto& event : *tuple) {
            if(static_cast<EventEnergyScale>(event.eventEnergyScale) != EventEnergyScale::Central) continue;
 
@@ -183,22 +180,21 @@ private:
            if (static_cast<LegType>(event.lep_type.at(lep_index)) == analysis::LegType::tau ) {
                ntuple::TupleLepton lepton(event, lep_index);
 
-               const bool is_good_lepton = (args.channel() == Channel::ETau && lepton.Passed(TauIdDiscriminator::byDeepTau2017v2VSe,DiscriminatorWP::VVVLoose)) ||
-                       (args.channel() == Channel::MuTau && lepton.Passed(TauIdDiscriminator::byDeepTau2017v2VSmu,DiscriminatorWP::VLoose)) ||
-                        (args.channel() == Channel::TauTau);
+               const bool is_good_lepton = lepton.Passed(TauIdDiscriminator::byDeepTau2017v2VSe,DiscriminatorWP::VVVLoose) &&
+                       lepton.Passed(TauIdDiscriminator::byDeepTau2017v2VSmu,DiscriminatorWP::VLoose);
 
-               const float raw = is_good_lepton ? lepton.GetRawValue(tau_id_discriminator) : 0;
+               const float raw = is_good_lepton ? lepton.GetRawValue(tau_id_discriminator) : -1;
                raw_values.push_back(raw);
             }
            else
-                raw_values.push_back(0);
+                raw_values.push_back(-1);
         }
 
         std::vector<size_t> index_sorted_had_taus;
         std::vector<size_t> sorted = sort_indexes(raw_values, is_descending_order);
 
         for (const auto& index : sorted){
-            if(static_cast<LegType>(event.lep_type.at(index)) == LegType::tau)
+            if(static_cast<LegType>(event.lep_type.at(index)) == LegType::tau && raw_values.at(index) >= 0)
                 index_sorted_had_taus.push_back(index);
         }
         return index_sorted_had_taus;
@@ -232,8 +228,6 @@ private:
     std::shared_ptr<TFile> output;
     SignalPurityStudyHist anaData;
     TCanvas canvas;
-    std::map<Channel,double> lep_wp_deep_tau ;
-
 };
 } // namespace analysis
 PROGRAM_MAIN(analysis::SignalPurityStudy, Arguments)

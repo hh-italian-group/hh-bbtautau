@@ -269,11 +269,10 @@ public:
 
                 std::set<const GenParticle*> daughters_set;
                 genEvent.FindFinalStateDaughters(*tau, daughters_set, particles::neutrinos());
-                std::vector<const GenParticle*> daughters_vector (daughters_set.begin(), daughters_set.end());
 
                 std::set<int> pdg_daughters;
-                for(size_t daughter_index = 0 ; daughter_index < daughters_vector.size(); ++daughter_index )
-                   pdg_daughters.insert(std::abs(daughters_vector.at(daughter_index)->pdg));
+                for(const auto& daughter : daughters_set)
+                    pdg_daughters.insert(std::abs(daughter->pdg));
 
                 if(pdg_daughters.count(particles::ParticleCode::e))
                     HH_Gen_Event.tau_decay[tau_index] = TauGenDecayMode::Electron;
