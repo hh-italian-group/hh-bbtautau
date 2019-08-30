@@ -40,7 +40,7 @@ protected:
 
       	TauIdDiscriminator tauIdDiscriminator = TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017;
       	if(ana_setup.mode == SignalMode::TauPOG_deepTauVsJet || ana_setup.mode == SignalMode::TauPOG_deepTauVsJet_full)
-      		tauIdDiscriminator = TauIdDiscriminator::byDeepTau2017v2VSjet;
+      		tauIdDiscriminator = TauIdDiscriminator::byDeepTau2017v2p1VSjet;
 
         if(ana_setup.qcd_method == QCDmethod::invert_muon){
           if(!tau->Passed(tauIdDiscriminator, ana_setup.tauID_wp)) return EventRegion::Unknown();

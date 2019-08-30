@@ -93,9 +93,9 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
     tuple().phi_2 = static_cast<float>(t2.GetMomentum().phi());
     tuple().m_2 = static_cast<float>(t2.GetMomentum().M());
     tuple().iso_2 = static_cast<float>(t2.GetIsolation());
-    tuple().deepTau_vs_e_2 = static_cast<float>(t2->GetRawValue(TauIdDiscriminator::byDeepTau2017v2VSe));
-    tuple().deepTau_vs_mu_2 = static_cast<float>(t2->GetRawValue(TauIdDiscriminator::byDeepTau2017v2VSmu));
-    tuple().deepTau_vs_jet_2 = static_cast<float>(t2->GetRawValue(TauIdDiscriminator::byDeepTau2017v2VSjet));
+    tuple().deepTau_vs_e_2 = static_cast<float>(t2->GetRawValue(TauIdDiscriminator::byDeepTau2017v2p1VSe));
+    tuple().deepTau_vs_mu_2 = static_cast<float>(t2->GetRawValue(TauIdDiscriminator::byDeepTau2017v2p1VSmu));
+    tuple().deepTau_vs_jet_2 = static_cast<float>(t2->GetRawValue(TauIdDiscriminator::byDeepTau2017v2p1VSjet));
     tuple().tauId_default = static_cast<float>(t2->GetRawValue(TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017));
     tuple().mt_2 = static_cast<float>(Calculate_MT(t2.GetMomentum(), event.GetMET().GetMomentum()));
     tuple().dR_l1l2 = static_cast<float>(DeltaR(t1.GetMomentum(),t2.GetMomentum()));
