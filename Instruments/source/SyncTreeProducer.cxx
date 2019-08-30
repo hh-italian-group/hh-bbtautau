@@ -173,7 +173,7 @@ private:
             for(size_t leg_id = 1; leg_id <= 2; ++leg_id) {
                 const LepCandidate& lepton = event_info_base->GetLeg(leg_id);
                 if(lepton->leg_type() == LegType::tau){
-                    if(!lepton->Passed(TauIdDiscriminator::byDeepTau2017v2VSjet, DiscriminatorWP::Medium)) continue;
+                    if(!lepton->Passed(TauIdDiscriminator::byDeepTau2017v2p1VSjet, DiscriminatorWP::Medium)) continue;
                 }
             }
 
