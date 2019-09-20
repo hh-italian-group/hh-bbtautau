@@ -70,7 +70,7 @@ public:
             calculateMatchesJets(event, JetOrdering::Pt);
             calculateMatchesJets(event, JetOrdering::CSV);
 
-            size_t matches_deep_tau = calculateMatchesTaus(event, TauIdDiscriminator::byDeepTau2017v2VSjet);
+            size_t matches_deep_tau = calculateMatchesTaus(event, TauIdDiscriminator::byDeepTau2017v2p1VSjet);
             calculateMatchesTaus(event, TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017);
             calculateMatchesTaus(event, TauIdDiscriminator::byCombinedIsolationDeltaBetaCorr3Hits,false);
             calculateMatchesTaus(event, TauIdDiscriminator::byIsolationMVArun2v1DBoldDMwLT2016);
@@ -84,13 +84,13 @@ public:
         }
         printStats(anaData.n("both_two_matches"), 2, "both matches");
         printStats(anaData.jet_matches(ToString(JetOrdering::DeepFlavour)), 3, "DeepFlavour two matches");
-        printStats(anaData.lep_matches(ToString(TauIdDiscriminator::byDeepTau2017v2VSjet)), 2, "deepTau two matches");
+        printStats(anaData.lep_matches(ToString(TauIdDiscriminator::byDeepTau2017v2p1VSjet)), 2, "deepTau two matches");
 
         std::vector<TH1D> jet_histos = {anaData.jet_matches(ToString(JetOrdering::Pt)),anaData.jet_matches(ToString(JetOrdering::CSV)),
                                          anaData.jet_matches(ToString(JetOrdering::DeepCSV)), anaData.jet_matches(ToString(JetOrdering::DeepFlavour))};
         drawHistoTogether(jet_histos, {ToString(JetOrdering::Pt), ToString(JetOrdering::CSV), ToString(JetOrdering::DeepCSV), ToString(JetOrdering::DeepFlavour)} );
 
-        std::vector<TH1D> lep_histos = {anaData.lep_matches(ToString(TauIdDiscriminator::byDeepTau2017v2VSjet)),
+        std::vector<TH1D> lep_histos = {anaData.lep_matches(ToString(TauIdDiscriminator::byDeepTau2017v2p1VSjet)),
                                         anaData.lep_matches(ToString(TauIdDiscriminator::byCombinedIsolationDeltaBetaCorr3Hits)),
                                         anaData.lep_matches(ToString(TauIdDiscriminator::byIsolationMVArun2v1DBoldDMwLT2016)),
                                         anaData.lep_matches(ToString(TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017))};
@@ -180,8 +180,8 @@ private:
            if (static_cast<LegType>(event.lep_type.at(lep_index)) == analysis::LegType::tau ) {
                ntuple::TupleLepton lepton(event, lep_index);
 
-               const bool is_good_lepton = lepton.Passed(TauIdDiscriminator::byDeepTau2017v2VSe,DiscriminatorWP::VVVLoose) &&
-                       lepton.Passed(TauIdDiscriminator::byDeepTau2017v2VSmu,DiscriminatorWP::VLoose);
+               const bool is_good_lepton = lepton.Passed(TauIdDiscriminator::byDeepTau2017v2p1VSe,DiscriminatorWP::VVVLoose) &&
+                       lepton.Passed(TauIdDiscriminator::byDeepTau2017v2p1VSmu,DiscriminatorWP::VLoose);
 
                const float raw = is_good_lepton ? lepton.GetRawValue(tau_id_discriminator) : -1;
                raw_values.push_back(raw);
@@ -231,4 +231,3 @@ private:
 };
 } // namespace analysis
 PROGRAM_MAIN(analysis::SignalPurityStudy, Arguments)
-
