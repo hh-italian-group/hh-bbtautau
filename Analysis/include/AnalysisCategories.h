@@ -9,6 +9,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/Tools.h"
 #include "AnalysisTools/Core/include/TextIO.h"
 #include "h-tautau/Core/include/AnalysisTypes.h"
+// #include "hh-bbtautau/Analysis/include/Categories.h"
 
 namespace analysis {
 
@@ -17,10 +18,13 @@ ENUM_NAMES(QCDmethod) = {
     { QCDmethod::invert_muon, "invert_muon" }, { QCDmethod::invert_tau, "invert_tau" }
 };
 
-enum class SampleType { Data, MC, DY, QCD, TT, NonResHH };
+enum class SampleType { Data = 1, MC = 2, DY = 3, QCD = 4, TT = 5, NonResHH = 6, ggHH_NonRes = 7, VBFHH_NonRes = 8,
+                        ggHH_Res = 9, VBFHH_Res = 10 };
 ENUM_NAMES(SampleType) = {
     { SampleType::Data, "Data" }, { SampleType::MC, "MC" }, { SampleType::DY, "DY" }, { SampleType::QCD, "QCD" },
-    { SampleType::TT, "TT" }, { SampleType::NonResHH, "NonResHH" }
+    { SampleType::TT, "TT" }, { SampleType::NonResHH, "NonResHH" }, {SampleType::ggHH_NonRes, "ggHH_NonRes"},
+    {SampleType::VBFHH_NonRes, "VBFHH_NonRes"}, {SampleType::ggHH_Res, "ggHH_Res"},
+    {SampleType::VBFHH_Res, "VBFHH_Res"}
 };
 
 enum class DYFitModel { None = 0, NbjetBins = 1, NbjetBins_htBins = 2 , NbjetBins_NjetBins = 3, NbjetBins_ptBins = 4, Htt = 5};
