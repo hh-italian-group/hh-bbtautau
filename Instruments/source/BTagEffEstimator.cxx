@@ -22,7 +22,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, output_file);
     REQ_ARG(analysis::SignalMode, mode);
-    OPT_ARG(std::string, apply_pu_id_cut,"no");
+    //OPT_ARG(std::string, apply_pu_id_cut,"no");
     OPT_ARG(unsigned, n_threads, 1);
     OPT_ARG(analysis::JetOrdering, csv_type,analysis::JetOrdering::DeepCSV);
     OPT_ARG(analysis::Period, period, analysis::Period::Run2017);
@@ -89,15 +89,15 @@ public:
         flavour_names.insert(flavour_all);
         static const std::string num = "Num", denom = "Denom";
 
-        static const std::set<std::string> disabled_branches;
+        /*static const std::set<std::string> disabled_branches;
         static const std::set<std::string> enabled_branches = {
             "jets_p4", "SVfit_p4", "extramuon_veto", "extraelec_veto", "q_1", "q_2", "tauId_keys_1", "tauId_values_1",
             "tauId_keys_2", "tauId_values_2", "jets_mva", "jets_csv", "jets_deepCsv_BvsAll", "jets_hadronFlavour",
             "jets_pu_id", "jets_deepFlavour_b", "jets_deepFlavour_bb", "jets_deepFlavour_lepb"
-        };
+        };*/
 
 
-        bool apply_pu_id_cut = args.apply_pu_id_cut() != "no";
+        //bool apply_pu_id_cut = args.apply_pu_id_cut() != "no";
         //DiscriminatorWP pu_wp = DiscriminatorWP::Medium;
         //if(apply_pu_id_cut && args.period()=="2016") pu_wp = analysis::Parse<DiscriminatorWP>(args.apply_pu_id_cut());
 
@@ -107,8 +107,8 @@ public:
                 std::shared_ptr<TFile> in_file(root_ext::OpenRootFile(name));
                 std::shared_ptr<EventTuple> tuple;
                 try {
-                    tuple = std::make_shared<EventTuple>(channel, in_file.get(), true, disabled_branches,
-                                                         enabled_branches);
+                    tuple = std::make_shared<EventTuple>(channel, in_file.get(), true);//, disabled_branches,
+                                                         //enabled_branches);
                 } catch(std::exception&) {
                     std::cerr << "WARNING: tree "<<channel<<" not found in file"<<name<< std::endl;
                     continue;
@@ -121,7 +121,7 @@ public:
 										args.period(),args.csv_type());
                     if(!eventInfo.is_initialized()) continue;
                     const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
-                    if (args.period() == Period::Run2016 && (es != EventEnergyScale::Central || event.jets_p4.size() < 2 || event.extraelec_veto
+                   /* if (args.period() == Period::Run2016 && (es != EventEnergyScale::Central || event.jets_p4.size() < 2 || event.extraelec_veto
                             || event.extramuon_veto
                             || std::abs(eventInfo->GetHiggsBB().GetFirstDaughter().GetMomentum().eta()) >= cuts::btag_2016::eta
                             || std::abs(eventInfo->GetHiggsBB().GetSecondDaughter().GetMomentum().eta()) >= cuts::btag_2016::eta)) continue;
@@ -130,6 +130,8 @@ public:
                             || event.extramuon_veto
                             || std::abs(eventInfo->GetHiggsBB().GetFirstDaughter().GetMomentum().eta()) >= cuts::btag_2017::eta
                             || std::abs(eventInfo->GetHiggsBB().GetSecondDaughter().GetMomentum().eta()) >= cuts::btag_2017::eta)) continue;
+                    */
+                    if(!eventInfo->HasBjetPair()) continue;
 
                     auto bb = eventInfo->GetHiggsBB().GetFirstDaughter().GetMomentum() + eventInfo->GetHiggsBB().GetSecondDaughter().GetMomentum();
 
@@ -149,13 +151,13 @@ public:
                         else if(args.period()==Period::Run2017 && std::abs(jet.eta()) >= cuts::btag_2017::eta) continue;
 
                         //PU correction
-                        if(apply_pu_id_cut){
-                            /*if(args.period()=="2016"){
+                        /*if(apply_pu_id_cut){
+                            if(args.period()=="2016"){
                                 double jet_mva = event.jets_mva.at(i);
                                 if(!PassJetPuId(jet.Pt(),jet_mva,pu_wp)) continue;
-                            }*/
+                            }
                                 if((event.jets_pu_id.at(i) & (1 << 2)) == 0) continue;
-                        }
+                        }*/
 
                         int jet_hadronFlavour = event.jets_hadronFlavour.at(i);
                         const std::string& jet_flavour = flavours.at(jet_hadronFlavour);
