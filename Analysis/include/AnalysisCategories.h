@@ -5,11 +5,9 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include <boost/optional/optional.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
-
 #include "AnalysisTools/Core/include/Tools.h"
 #include "AnalysisTools/Core/include/TextIO.h"
 #include "h-tautau/Core/include/AnalysisTypes.h"
-// #include "hh-bbtautau/Analysis/include/Categories.h"
 
 namespace analysis {
 

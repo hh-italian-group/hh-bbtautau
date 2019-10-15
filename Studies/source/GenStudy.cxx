@@ -10,11 +10,8 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Core/include/AnalysisTypes.h"
 #include "h-tautau/Analysis/src/EventInfo.cpp"
 #include "AnalysisTools/Print/include/PdfPrinter.h"
-#include <Math/VectorUtil.h>
-
 #include "hh-bbtautau/Analysis/include/AnalysisCategories.h"
-
-
+#include <Math/VectorUtil.h>
 #include "TEfficiency.h"
 #include "TStyle.h"
 #include <TLegend.h>
@@ -23,6 +20,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include <iostream>
 #include <algorithm>
 #include <cstdlib>
+
 
 
 struct Arguments {
@@ -93,8 +91,8 @@ using GenJet = std::vector<const GenParticle*>;
 class GenStudy {
 public:
     GenStudy(const Arguments& _args) :
-        args(_args), output(root_ext::CreateRootFile(args.outputFile())), anaData(output), canvas("","", 600, 600)//, new_tuple(ntuple::CreateEventTuple("all_events", root_ext::CreateRootFile("new_output_file.root").get(), false, ntuple::TreeState::Full))
-        {
+        args(_args), output(root_ext::CreateRootFile(args.outputFile())), anaData(output), canvas("","", 600, 600)
+    {
             GenEvent::InitializeParticleDataTable(args.particleNameTypeFile());
 
             gStyle->SetOptStat(0);
@@ -218,17 +216,12 @@ public:
         auto file = root_ext::OpenRootFile(args.inputPath());
         auto tuple = ntuple::CreateEventTuple(ToString(args.channel()), file.get(), true, ntuple::TreeState::Full);
 
-        //output ntuple with only matched events
-        // new_output_file = root_ext::CreateRootFile(("new_output_file_" + ToString(args.channel()) + "_" + ToString(args.year()) + "_" +
-        //                                             ToString(args.sample_type()) + ".root").c_str());
-
         auto  sample_name_dot_root = GetFileNameWithoutPath(args.inputPath());
         auto sample_name = RemoveFileExtension(sample_name_dot_root);
         new_output_file = root_ext::CreateRootFile((args.new_output_file() + sample_name + "_" + ToString(args.channel()) + "_" + ToString(args.year()) + "_" +
                                                     ToString(args.sample_type()) + ".root").c_str());
 
 
-        // new_output_file = root_ext::CreateRootFile("new_output_file.root");
         auto new_tuple = ntuple::CreateEventTuple(ToString("all_events"), new_output_file.get(), false, ntuple::TreeState::Full);
 
         const double deltaR_value = 0.2;
