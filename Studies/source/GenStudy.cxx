@@ -413,7 +413,7 @@ public:
 
                 for (size_t reco_tau_index = 0; reco_tau_index < event.lep_p4.size(); reco_tau_index++) {
                     if(!isCompatible(static_cast<LegType>(event.lep_type.at(reco_tau_index)), HH_Gen_Event.tau_decay[tau_index] )) continue;
-                    if(event.lep_p4.at(reco_tau_index).Pt() < 20 && std::abs(event.lep_p4.at(reco_tau_index).Eta()) > 2.3) continue;
+                    if(event.lep_p4.at(reco_tau_index).Pt() < 20 || std::abs(event.lep_p4.at(reco_tau_index).Eta()) > 2.3) continue;
                     if(hasDeltaRMatch(visibleMomentum, event.lep_p4.at(reco_tau_index), deltaR_value)){
                         tau_matches_total.insert(reco_tau_index);
                         tau_matches[tau_index].insert(reco_tau_index);
@@ -490,7 +490,7 @@ public:
             std::map<size_t, std::set<size_t>> b_matches;
             for (size_t jet_index = 0; jet_index < HH_Gen_Event.b_jets.size(); jet_index++) {
                 for (size_t reco_b_index = 0; reco_b_index < event.jets_p4.size(); reco_b_index++) {
-                    if(event.jets_p4.at(reco_b_index).Pt() < 20 && std::abs(event.jets_p4.at(reco_b_index).Eta()) > 2.4) continue;
+                    if(event.jets_p4.at(reco_b_index).Pt() < 20 || std::abs(event.jets_p4.at(reco_b_index).Eta()) > 2.4) continue;
                     if(hasDeltaRMatch(HH_Gen_Event.b_jets[jet_index], event.jets_p4.at(reco_b_index), deltaR_value)){
                         b_jet_matches_total.insert(reco_b_index);
                         b_matches[jet_index].insert(reco_b_index);
