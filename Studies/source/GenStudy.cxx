@@ -10,8 +10,8 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Core/include/AnalysisTypes.h"
 #include "h-tautau/Analysis/src/EventInfo.cpp"
 #include "AnalysisTools/Print/include/PdfPrinter.h"
+#include "hh-bbtautau/Analysis/include/AnalysisCategories.h"
 #include <Math/VectorUtil.h>
-
 #include "TEfficiency.h"
 #include "TStyle.h"
 #include <TLegend.h>
@@ -19,6 +19,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include <functional>
 #include <iostream>
 #include <algorithm>
+#include <cstdlib>
 
 
 struct Arguments {
@@ -26,9 +27,14 @@ struct Arguments {
     REQ_ARG(analysis::Channel, channel);
     REQ_ARG(std::string, outputFile);
     REQ_ARG(std::string, particleNameTypeFile);
+    OPT_ARG(std::string, sample_type, "sample_type");
+    OPT_ARG(int, spin, -1);
+    OPT_ARG(int, mass_point, -1);
+    OPT_ARG(int, node, -1);
+    OPT_ARG(int, year, 2017);
+    REQ_ARG(std::string, new_output_file);
     OPT_ARG(bool, debug, false);
     OPT_ARG(std::string, eventIdBranches, "run:lumi:evt");
-
 };
 namespace analysis {
 
@@ -83,13 +89,15 @@ using GenJet = std::vector<const GenParticle*>;
 class GenStudy {
 public:
     GenStudy(const Arguments& _args) :
-        args(_args), output(root_ext::CreateRootFile(args.outputFile())), anaData(output), canvas("","", 600, 600)//, new_tuple(ntuple::CreateEventTuple("all_events", root_ext::CreateRootFile("new_output_file.root").get(), false, ntuple::TreeState::Full))
-        {
+        args(_args), output(root_ext::CreateRootFile(args.outputFile())), anaData(output), canvas("","", 600, 600)
+    {
             GenEvent::InitializeParticleDataTable(args.particleNameTypeFile());
 
             gStyle->SetOptStat(0);
             canvas.Print((args.outputFile() + ".pdf[").c_str());
             canvas.Draw();
+
+            sample_type = Parse<SampleType>(args.sample_type());
         }
 
     void CreateEfficiency(const TH1& passed, const TH1& total, const std::string& channel,
@@ -207,8 +215,13 @@ public:
         auto tuple = ntuple::CreateEventTuple(ToString(args.channel()), file.get(), true, ntuple::TreeState::Full);
 
         //output ntuple with only matched events
-        new_output_file = root_ext::CreateRootFile(("new_output_file_" + ToString(args.channel()) +".root").c_str());
-        auto new_tuple = ntuple::CreateEventTuple("all_events", new_output_file.get(), false, ntuple::TreeState::Full);
+        auto  sample_name_dot_root = GetFileNameWithoutPath(args.inputPath());
+        auto sample_name = RemoveFileExtension(sample_name_dot_root);
+        new_output_file = root_ext::CreateRootFile((args.new_output_file() + sample_name + "_" + ToString(args.channel()) + "_" + ToString(args.year()) + "_" +
+                                                    ToString(args.sample_type()) + ".root").c_str());
+
+        // new_output_file = root_ext::CreateRootFile("new_output_file.root");
+        auto new_tuple = ntuple::CreateEventTuple(ToString("all_events"), new_output_file.get(), false, ntuple::TreeState::Full);
 
         const double deltaR_value = 0.2;
         const double deltaR_jet_value = 0.4;
@@ -400,6 +413,7 @@ public:
 
                 for (size_t reco_tau_index = 0; reco_tau_index < event.lep_p4.size(); reco_tau_index++) {
                     if(!isCompatible(static_cast<LegType>(event.lep_type.at(reco_tau_index)), HH_Gen_Event.tau_decay[tau_index] )) continue;
+                    if(event.lep_p4.at(reco_tau_index).Pt() < 20 && std::abs(event.lep_p4.at(reco_tau_index).Eta()) > 2.3) continue;
                     if(hasDeltaRMatch(visibleMomentum, event.lep_p4.at(reco_tau_index), deltaR_value)){
                         tau_matches_total.insert(reco_tau_index);
                         tau_matches[tau_index].insert(reco_tau_index);
@@ -476,6 +490,7 @@ public:
             std::map<size_t, std::set<size_t>> b_matches;
             for (size_t jet_index = 0; jet_index < HH_Gen_Event.b_jets.size(); jet_index++) {
                 for (size_t reco_b_index = 0; reco_b_index < event.jets_p4.size(); reco_b_index++) {
+                    if(event.jets_p4.at(reco_b_index).Pt() < 20 && std::abs(event.jets_p4.at(reco_b_index).Eta()) > 2.4) continue;
                     if(hasDeltaRMatch(HH_Gen_Event.b_jets[jet_index], event.jets_p4.at(reco_b_index), deltaR_value)){
                         b_jet_matches_total.insert(reco_b_index);
                         b_matches[jet_index].insert(reco_b_index);
@@ -614,6 +629,11 @@ public:
                         (*new_tuple)().jets_genJetIndex.push_back(matched_gen_b);
 
                     }
+                    (*new_tuple)().sample_type = static_cast<int>(sample_type);
+                    (*new_tuple)().spin = args.spin();
+                    (*new_tuple)().mass_point = args.mass_point();
+                    (*new_tuple)().node = args.node();
+                    (*new_tuple)().sample_year = args.year();
                     new_tuple->Fill();
                 }
             }
@@ -669,7 +689,6 @@ public:
             printStats(anaData.h_tautau_matches("jets"), n, "h-tautau jets");
         }
     }
-
 
 private:
     std::vector<GenJet> CreateGenJets(const std::vector<const GenParticle*>& particles, double deltaR)
