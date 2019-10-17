@@ -33,7 +33,6 @@ struct Arguments {
     REQ_ARG(std::string, cfg);
     REQ_ARG(std::string, inputPath);
     REQ_ARG(std::string, outputPath);
-    REQ_ARG(std::vector<std::string>, cachePaths);
     REQ_ARG(std::string, jobs);
     REQ_ARG(std::string, setup_name);
     OPT_ARG(bool, use_LLR_weights, false);
@@ -199,9 +198,8 @@ private:
                     std::cout << " " << input << std::endl;
                     inputFiles.push_back(root_ext::OpenRootFile(args.inputPath() + "/" + input));
                     std::vector<std::shared_ptr<TFile>> cacheFiles;
-                    for(unsigned c = 0; c < args.cachePaths().size(); ++c){
-                        std::cout << " cache files:  " << args.cachePaths().at(c) << std::endl;
-                        cacheFiles.push_back(root_ext::OpenRootFile(args.cachePaths().at(c) + "/" + input));
+                    for(unsigned c = 0; c < setup.cachePaths.size(); ++c){
+                        cacheFiles.push_back(root_ext::OpenRootFile(setup.cachePaths.at(c) + "/" + input));
                     }
                     inputCacheFiles.push_back(cacheFiles);
                 }
@@ -259,11 +257,14 @@ private:
                         std::vector<std::shared_ptr<cache_tuple::CacheTuple>> cacheTuples;
                         for(unsigned h = 0; h < inputCacheFiles.at(n).size(); ++h){
                             auto cacheFile = inputCacheFiles.at(n).at(h);
-                            std::cout << " read cacheFile: " << cacheFile << std::endl;
-                            auto cacheTuple = std::make_shared<cache_tuple::CacheTuple>(treeName,cacheFile.get(),false);
-                            if(!cacheTuple) continue;
-                            cacheTuples.push_back(cacheTuple);
-                            std::cout << "Pushed back CacheTuple" << std::endl;
+                            try {
+                                auto cacheTuple = std::make_shared<cache_tuple::CacheTuple>(treeName,cacheFile.get(),true);
+                                cacheTuples.push_back(cacheTuple);
+                            } catch(std::exception&) {
+                                std::cerr << "WARNING: tree " << treeName << " not found in file '"
+                                          << cacheFile << "'." << std::endl;
+                                cacheTuples.push_back(nullptr);
+                            }
                         }
 
                         const Long64_t n_entries = tuple->GetEntries();
@@ -293,13 +294,10 @@ private:
                             auto eventCacheProvider = EventCacheProvider(*event_ptr);
                             for(unsigned cc = 0; cc < cacheTuples.size(); ++cc){
                                 auto cacheTuple = cacheTuples.at(cc);
-                                const Long64_t n_entries_cache = cacheTuple->GetEntries();
-                                for(Long64_t current_entry_cache = 0; current_entry_cache < n_entries_cache; ++current_entry_cache) {
-                                    std::cout << "In cache event" << std::endl;
-                                    cacheTuple->GetEntry(current_entry_cache);
-                                    const cache_tuple::CacheEvent& cache_event = cacheTuple->data();
-                                    eventCacheProvider.AddEvent(cache_event);
-                                }
+                                if(!cacheTuple) continue;
+                                cacheTuple->GetEntry(current_entry);
+                                const cache_tuple::CacheEvent& cache_event = cacheTuple->data();
+                                eventCacheProvider.AddEvent(cache_event);
                             }
                             eventCacheProvider.FillEvent(*event_ptr);
                             processQueue.Push(event_ptr);
@@ -431,16 +429,6 @@ private:
 
         const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
 
-        auto event_metFilters = ntuple::MetFilters(event.metFilters);
-        if (!event_metFilters.Pass(Filter::PrimaryVertex)  || !event_metFilters.Pass(Filter::BeamHalo) ||
-            !event_metFilters.Pass(Filter::HBHE_noise)  || !event_metFilters.Pass(Filter::HBHEiso_noise) ||
-            !event_metFilters.Pass(Filter::ECAL_TP) || !event_metFilters.Pass(Filter::badMuon) ||
-            !event_metFilters.Pass(Filter::ecalBadCalib)) return false;
-
-        if(event.isData && !event_metFilters.Pass(Filter::ee_badSC_noise)) return false;
-
-        if(!setup.energy_scales.count(es) || event.extraelec_veto || event.extramuon_veto) return false;
-
         if(setup.apply_bb_cut && !eventInfo->HasBjetPair()) return false;
 
         if(setup.apply_mass_cut) {
@@ -474,13 +462,6 @@ private:
         //     if(leg_types.first == LegType::tau && !ApplyTauIdCut(event.tauId_flags_1)) return false;
         //     if(leg_types.second == LegType::tau && !ApplyTauIdCut(event.tauId_flags_2)) return false;
         // }
-
-        if(setup.apply_kinfit){
-            event.kinFit_chi2.push_back(static_cast<Float_t>(eventInfo->GetKinFitResults().chi2));
-            event.kinFit_convergence.push_back(eventInfo->GetKinFitResults().convergence);
-            event.kinFit_m.push_back(static_cast<Float_t>(eventInfo->GetKinFitResults().mass));
-            event.kinFit_jetPairId.push_back(static_cast<unsigned>(ntuple::LegPairToIndex(eventInfo->GetSelectedSignalJets().selectedBjetPair)));
-        }
 
         event.ht_other_jets = (eventInfo->HasBjetPair()) ? static_cast<Float_t>(eventInfo->GetHT(false,true)) : 0;
 
