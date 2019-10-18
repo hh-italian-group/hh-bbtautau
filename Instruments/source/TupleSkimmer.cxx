@@ -26,6 +26,8 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/McCorrections/include/GenEventWeight.h"
 #include "hh-bbtautau/McCorrections/include/HH_nonResonant_weight.h"
 #include "h-tautau/Analysis/include/SignalObjectSelector.h"
+#include "h-tautau/Core/include/CacheTuple.h"
+#include "h-tautau/Core/include/EventTuple.h"
 
 struct Arguments {
     REQ_ARG(std::string, cfg);
@@ -33,6 +35,7 @@ struct Arguments {
     REQ_ARG(std::string, outputPath);
     REQ_ARG(std::string, jobs);
     REQ_ARG(std::string, setup_name);
+    OPT_ARG(std::string, cachePathBase, ""); //up to slash
     OPT_ARG(bool, use_LLR_weights, false);
     OPT_ARG(unsigned, n_threads, 1);
 };
@@ -56,7 +59,7 @@ public:
     static constexpr size_t max_queue_size = 100000;
 
     TupleSkimmer(const Arguments& _args) :
-        args(_args), processQueue(max_queue_size), writeQueue(max_queue_size), signalObjectSelector(setup.mode)
+        args(_args), processQueue(max_queue_size), writeQueue(max_queue_size)
     {
         std::cout << "TupleSkimmer started.\nReading config... " << std::flush;
         ROOT::EnableThreadSafety();
@@ -75,6 +78,8 @@ public:
         if(!setups.count(args.setup_name()))
             throw exception("Tuple skimmer setup not found.");
         setup = setups.at(args.setup_name());
+
+        signalObjectSelector = std::make_shared<SignalObjectSelector>(setup.mode);
 
         std::cout << "done.\nLoading weights... " << std::flush;
         eventWeights_HH = std::make_shared<mc_corrections::EventWeights_HH>(setup.period, setup.jet_ordering, setup.btag_wp,
@@ -189,9 +194,15 @@ private:
                 }
                 std::cout << "\tProcessing";
                 std::vector<std::shared_ptr<TFile>> inputFiles;
+                std::vector<std::vector<std::shared_ptr<TFile>>> inputCacheFiles;
                 for(const auto& input : desc_iter->inputs) {
-                    std::cout << " " << input;
+                    std::cout << " " << input << std::endl;
                     inputFiles.push_back(root_ext::OpenRootFile(args.inputPath() + "/" + input));
+                    std::vector<std::shared_ptr<TFile>> cacheFiles;
+                    for(unsigned c = 0; c < setup.cachePaths.size(); ++c){
+                        cacheFiles.push_back(root_ext::OpenRootFile(args.cachePathBase() +setup.cachePaths.at(c) + "/" + input));
+                    }
+                    inputCacheFiles.push_back(cacheFiles);
                 }
                 std::cout << "\n\t\textracting summary" << std::endl;
                 double weight_xs, weight_xs_withTopPt;
@@ -244,7 +255,23 @@ private:
                         }
                         if(!tuple) continue;
 
-                        for(const Event& event : *tuple) {
+                        std::vector<std::shared_ptr<cache_tuple::CacheTuple>> cacheTuples;
+                        for(unsigned h = 0; h < inputCacheFiles.at(n).size(); ++h){
+                            auto cacheFile = inputCacheFiles.at(n).at(h);
+                            try {
+                                auto cacheTuple = std::make_shared<cache_tuple::CacheTuple>(treeName,cacheFile.get(),true);
+                                cacheTuples.push_back(cacheTuple);
+                            } catch(std::exception&) {
+                                std::cerr << "WARNING: tree " << treeName << " not found in file '"
+                                          << cacheFile << "'." << std::endl;
+                                cacheTuples.push_back(nullptr);
+                            }
+                        }
+
+                        const Long64_t n_entries = tuple->GetEntries();
+                        for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) {
+                            tuple->GetEntry(current_entry);
+                            const Event& event = tuple->data();
                             const FullEventId fullId{EventIdentifier(event.run, event.lumi, event.evt),
                                                      static_cast<EventEnergyScale>(event.eventEnergyScale)};
                             if(processed_events.count(fullId)) {
@@ -265,6 +292,15 @@ private:
                                 event_ptr->split_id = (*split_distr)(gen_map.at(channel));
                             }
                             event_ptr->split_id = split_distr ? (*split_distr)(gen_map.at(channel)) : 0;
+                            EventCacheProvider eventCacheProvider(*event_ptr);
+                            for(unsigned cc = 0; cc < cacheTuples.size(); ++cc){
+                                auto cacheTuple = cacheTuples.at(cc);
+                                if(!cacheTuple) continue;
+                                cacheTuple->GetEntry(current_entry);
+                                const cache_tuple::CacheEvent& cache_event = cacheTuple->data();
+                                eventCacheProvider.AddEvent(cache_event);
+                            }
+                            eventCacheProvider.FillEvent(*event_ptr);
                             processQueue.Push(event_ptr);
                         }
                     }
@@ -389,21 +425,10 @@ private:
         // using EventPart = ntuple::StorageMode::EventPart;
         using WeightType = mc_corrections::WeightType;
         using WeightingMode = mc_corrections::WeightingMode;
-
-        boost::optional<EventInfoBase> eventInfo = CreateEventInfo(event,signalObjectSelector,nullptr,setup.period,setup.jet_ordering);
+        boost::optional<EventInfoBase> eventInfo = CreateEventInfo(event,*signalObjectSelector,nullptr,setup.period,setup.jet_ordering);
         if(!eventInfo.is_initialized()) return false;
 
         const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
-
-        auto event_metFilters = ntuple::MetFilters(event.metFilters);
-        if (!event_metFilters.Pass(Filter::PrimaryVertex)  || !event_metFilters.Pass(Filter::BeamHalo) ||
-            !event_metFilters.Pass(Filter::HBHE_noise)  || !event_metFilters.Pass(Filter::HBHEiso_noise) ||
-            !event_metFilters.Pass(Filter::ECAL_TP) || !event_metFilters.Pass(Filter::badMuon) ||
-            !event_metFilters.Pass(Filter::ecalBadCalib)) return false;
-
-        if(event.isData && !event_metFilters.Pass(Filter::ee_badSC_noise)) return false;
-
-        if(!setup.energy_scales.count(es) || event.extraelec_veto || event.extramuon_veto) return false;
 
         if(setup.apply_bb_cut && !eventInfo->HasBjetPair()) return false;
 
@@ -439,25 +464,18 @@ private:
         //     if(leg_types.second == LegType::tau && !ApplyTauIdCut(event.tauId_flags_2)) return false;
         // }
 
-        if(setup.apply_kinfit){
-            event.kinFit_chi2.push_back(static_cast<Float_t>(eventInfo->GetKinFitResults().chi2));
-            event.kinFit_convergence.push_back(eventInfo->GetKinFitResults().convergence);
-            event.kinFit_m.push_back(static_cast<Float_t>(eventInfo->GetKinFitResults().mass));
-            event.kinFit_jetPairId.push_back(static_cast<unsigned>(ntuple::LegPairToIndex(eventInfo->GetSelectedSignalJets().selectedBjetPair)));
-        }
-
         event.ht_other_jets = (eventInfo->HasBjetPair()) ? static_cast<Float_t>(eventInfo->GetHT(false,true)) : 0;
 
         event.weight_pu = weighting_mode.count(WeightType::PileUp)
                         ? eventWeights_HH->GetWeight(*eventInfo, WeightType::PileUp) : 1;
-        if(weighting_mode.count(WeightType::LeptonTrigIdIso)) {
-            auto lepton_wp = eventWeights_HH->GetProviderT<mc_corrections::LeptonWeights>(WeightType::LeptonTrigIdIso);
-            event.weight_lepton_trig = lepton_wp->GetTriggerWeight(*eventInfo);
-            event.weight_lepton_id_iso = lepton_wp->GetIdIsoWeight(*eventInfo);
-        } else {
+        // if(weighting_mode.count(WeightType::LeptonTrigIdIso)) {
+        //     auto lepton_wp = eventWeights_HH->GetProviderT<mc_corrections::LeptonWeights>(WeightType::LeptonTrigIdIso);
+        //     event.weight_lepton_trig = lepton_wp->GetTriggerWeight(*eventInfo);
+        //     event.weight_lepton_id_iso = lepton_wp->GetIdIsoWeight(*eventInfo);
+        // } else {
             event.weight_lepton_trig = 1;
             event.weight_lepton_id_iso = 1;
-        }
+        // }
         event.weight_tau_id = weighting_mode.count(WeightType::TauId)
                 ? eventWeights_HH->GetWeight(*eventInfo, WeightType::TauId) : 1;
         if(weighting_mode.count(WeightType::BTag)) {
@@ -528,7 +546,7 @@ private:
     std::shared_ptr<mc_corrections::EventWeights_HH> eventWeights_HH;
 	std::shared_ptr<TFile> outputFile;
     mc_corrections::WeightingMode weighting_mode;
-    SignalObjectSelector signalObjectSelector;
+    std::shared_ptr<SignalObjectSelector> signalObjectSelector;
 };
 
 } // namespace tuple_skimmer
