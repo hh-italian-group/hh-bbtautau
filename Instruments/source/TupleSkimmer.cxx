@@ -33,6 +33,7 @@ struct Arguments {
     REQ_ARG(std::string, cfg);
     REQ_ARG(std::string, inputPath);
     REQ_ARG(std::string, outputPath);
+    REQ_ARG(std::string, cachePathBase);
     REQ_ARG(std::string, jobs);
     REQ_ARG(std::string, setup_name);
     OPT_ARG(bool, use_LLR_weights, false);
@@ -199,7 +200,7 @@ private:
                     inputFiles.push_back(root_ext::OpenRootFile(args.inputPath() + "/" + input));
                     std::vector<std::shared_ptr<TFile>> cacheFiles;
                     for(unsigned c = 0; c < setup.cachePaths.size(); ++c){
-                        cacheFiles.push_back(root_ext::OpenRootFile(setup.cachePaths.at(c) + "/" + input));
+                        cacheFiles.push_back(root_ext::OpenRootFile(args.cachePathBase() + "/" +setup.cachePaths.at(c) + "/" + input));
                     }
                     inputCacheFiles.push_back(cacheFiles);
                 }
@@ -291,7 +292,7 @@ private:
                                 event_ptr->split_id = (*split_distr)(gen_map.at(channel));
                             }
                             event_ptr->split_id = split_distr ? (*split_distr)(gen_map.at(channel)) : 0;
-                            auto eventCacheProvider = EventCacheProvider(*event_ptr);
+                            EventCacheProvider eventCacheProvider(*event_ptr);
                             for(unsigned cc = 0; cc < cacheTuples.size(); ++cc){
                                 auto cacheTuple = cacheTuples.at(cc);
                                 if(!cacheTuple) continue;
