@@ -3,7 +3,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 
 #include "hh-bbtautau/Analysis/include/BaseEventAnalyzer.h"
-
+#include "h-tautau/Core/include/AnalysisTypes.h"
 #include "AnalysisTools/Run/include/MultiThread.h"
 
 namespace analysis {
@@ -85,7 +85,7 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfoBase& even
 
     for(const auto& jet : jets) {
         for(const auto& btag_wp : btag_working_points){
-            if(bTagger->Pass(*jet, btag_wp.first)) ++bjet_counts[btag_wp.first];
+            if(bTagger->Pass(*jet, analysis::UncertaintySource::None, analysis::UncertaintyScale::Central, btag_wp.first)) ++bjet_counts[btag_wp.first];
         }
     }
 
