@@ -1,3 +1,8 @@
+#!/usr/bin/env python
+# Calculates min and max values.
+# This file is part of https://github.com/hh-italian-group/hh-bbtautau.
+
+
 import numpy as np
 import math
 import json
@@ -11,7 +16,7 @@ def truncate(x):
 
 def CalculateMinMax(file_name, output_file):
     data = InputsProducer.CreateRootDF(file_name, -1, False)
-    X, Y, var_pos,training_vars = InputsProducer.CreateXY(data)
+    X, Y, var_pos,training_vars,var_pos_z  = InputsProducer.CreateXY(data)
 
     val = var_pos['jet_{}_valid']
     n_valid = np.sum(X[:,:,val])
@@ -21,6 +26,5 @@ def CalculateMinMax(file_name, output_file):
         max = np.amax(X[:, :, pos])
         min_max[var] = { 'min': truncate(float(min)), 'max': truncate(float(max)) }
 
-    f = open(output_file, 'w')
-    f.write(json.dumps(min_max, indent=4))
-    f.close()
+    with open(output_file, 'w') as f:
+        f.write(json.dumps(min_max, indent=4))

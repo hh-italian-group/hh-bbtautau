@@ -1,3 +1,7 @@
+/*! Definition of functions for calulating most used quantities
+This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
+#pragma once
+
 using LorentzVectorM = ROOT::Math::LorentzVector<ROOT::Math::PtEtaPhiM4D<float> >;
 using LorentzVectorE = ROOT::Math::LorentzVector<ROOT::Math::PtEtaPhiE4D<float> >;
 using LorentzVector = ROOT::Math::LorentzVector<ROOT::Math::PxPyPzE4D<float> >;
@@ -17,6 +21,24 @@ LorentzVectorM getHTTp4 (const ROOT::VecOps::RVec<LorentzVectorM>& lep_p4, const
     return LorentzVectorM(htt);
 }
 
+float HTTScalarPt (const ROOT::VecOps::RVec<LorentzVectorM>& lep_p4, const ROOT::VecOps::RVec<int>& lep_genTauIndex)
+{
+    size_t n_tau = 0;
+    std::vector<float> taus_pt;
+    LorentzVector htt(0, 0, 0, 0);
+    for(size_t n = 0; n < lep_p4.size(); ++n) {
+        if(lep_genTauIndex.at(n) >= 0) {
+            taus_pt.push_back(lep_p4.at(n).Pt());
+            n_tau++;
+        }
+    }
+    if(n_tau != 2)
+        throw std::runtime_error("too few taus");
+
+    float h_tautau_pt_scalar = sqrt(pow(taus_pt.at(0), 2) + pow(taus_pt.at(0), 2));
+    return h_tautau_pt_scalar;
+}
+
 ROOT::VecOps::RVec<float> MakeDeepFlavour_bVSall (const ROOT::VecOps::RVec<float>& jets_deepFlavour_b,
                                                   const ROOT::VecOps::RVec<float>& jets_deepFlavour_bb,
                                                   const ROOT::VecOps::RVec<float>& jets_deepFlavour_lepb)
@@ -27,18 +49,23 @@ ROOT::VecOps::RVec<float> MakeDeepFlavour_bVSall (const ROOT::VecOps::RVec<float
     return b_vs_all;
 }
 
-float jets_deepFlavour (const ROOT::VecOps::RVec<float>& jets_deepFlavour_b,
-                        const ROOT::VecOps::RVec<float>& jets_deepFlavour_bb,
-                        const ROOT::VecOps::RVec<float>& jets_deepFlavour_lepb,
-                        const ROOT::VecOps::RVec<size_t>& df_index, const size_t& n)
+float jets_deepFlavour (const ROOT::VecOps::RVec<float> deepFlavour_bVSall,
+                        const ROOT::VecOps::RVec<size_t> df_index, const size_t& n)
 {
     if(n < df_index.size()){
         size_t selected_index = df_index.at(n);
+        return deepFlavour_bVSall.at(selected_index);
+    }
+    else
+        return 0;
+}
 
-        float jet_deepFlavour = jets_deepFlavour_b.at(selected_index) + jets_deepFlavour_bb.at(selected_index)
-        + jets_deepFlavour_lepb.at(selected_index);
-
-        return jet_deepFlavour;
+float jets_deepCSV (const ROOT::VecOps::RVec<float> deepCsv_BvsAll,
+                    const ROOT::VecOps::RVec<size_t> df_index, const size_t& n)
+{
+    if(n < df_index.size()){
+        size_t selected_index = df_index.at(n);
+        return deepCsv_BvsAll.at(selected_index);
     }
     else
         return 0;
@@ -100,16 +127,13 @@ int jet_genbJet (const ROOT::VecOps::RVec<int> jet_genJetIndex,
 {
     if(n < ordered_jet_indexes.size()){
         size_t index = ordered_jet_indexes.at(n);
-        if(jet_genJetIndex.at(index) >= 0)
-            return 1;
-        else
-            return 0;
+        return jet_genJetIndex.at(index) >= 0;
     }
     else
         return 0;
 }
 
-ROOT::VecOps::RVec<int> MakeGenbJet (const ROOT::VecOps::RVec<int> jet_genJetIndex,
+ROOT::VecOps::RVec<int> MakeGenbJet (const ROOT::VecOps::RVec<int>& jet_genJetIndex,
                                      const ROOT::VecOps::RVec<size_t>& ordered_jet_indexes)
 {
     ROOT::VecOps::RVec<int> jets_genbJet(ordered_jet_indexes.size());
@@ -120,27 +144,13 @@ ROOT::VecOps::RVec<int> MakeGenbJet (const ROOT::VecOps::RVec<int> jet_genJetInd
     return jets_genbJet;
 }
 
-int jet_genJetIndex (const ROOT::VecOps::RVec<int> jet_genJetIndex, const size_t& n,
-                     const ROOT::VecOps::RVec<LorentzVectorE>& jets_p4)
-{
-    if(n < jets_p4.size()){
-        if(jet_genJetIndex.at(n) >= 0)
-            return 1;
-
-        else
-            return 0;
-    }
-    else
-        return 0;
-}
-
 ROOT::VecOps::RVec<size_t> CreateOrderedIndex (const ROOT::VecOps::RVec<LorentzVectorE>& jets_p4,
                                                const ROOT::VecOps::RVec<float>& jets_deepFlavour,
                                                bool apply_acceptance, size_t max_jet = std::numeric_limits<size_t>::max())
 {
     ROOT::VecOps::RVec<size_t> ordered_index;
     for(size_t jet_index = 0; jet_index < jets_p4.size(); ++jet_index){
-            if(!apply_acceptance || (jets_p4.at(jet_index).pt() < 20 || abs(jets_p4.at(jet_index).eta()) > 2.4)) continue;
+            if(apply_acceptance && (jets_p4.at(jet_index).pt() < 20 || abs(jets_p4.at(jet_index).eta()) > 2.4)) continue;
             ordered_index.push_back(jet_index);
             if(ordered_index.size() == max_jet)
                 break;
@@ -155,7 +165,7 @@ ROOT::VecOps::RVec<size_t> CreateOrderedIndex (const ROOT::VecOps::RVec<LorentzV
 }
 
 float httDeltaPhi_jet (const LorentzVectorM& htt_p4,const ROOT::VecOps::RVec<size_t>& df_index,
-                       const ROOT::VecOps::RVec<LorentzVectorE>& jets_p4, const size_t& n)
+                       const ROOT::VecOps::RVec<LorentzVectorE>& jets_p4, const size_t n)
 {
     if(n < df_index.size())
         return ROOT::Math::VectorUtil::DeltaPhi(htt_p4, jets_p4.at(df_index.at(n)));
@@ -164,28 +174,10 @@ float httDeltaPhi_jet (const LorentzVectorM& htt_p4,const ROOT::VecOps::RVec<siz
 }
 
 float httDeltaEta_jet (const LorentzVectorM& htt_p4, const ROOT::VecOps::RVec<size_t>& df_index,
-                       const ROOT::VecOps::RVec<LorentzVectorE>& jets_p4, const size_t& n)
+                       const ROOT::VecOps::RVec<LorentzVectorE>& jets_p4, size_t n)
 {
     if(n < df_index.size())
         return (htt_p4.eta() - jets_p4.at(df_index.at(n)).eta());
     else
         return 0;
-}
-
-
-float httMetDeltaPhi (const LorentzVectorM& htt_p4,
-                      const LorentzVectorM& met_p4)
-{
-    float dphi = ROOT::Math::VectorUtil::DeltaPhi(htt_p4, met_p4);
-    return dphi;
-}
-
-float met_pt(LorentzVectorM& met_p4)
-{
-    return met_p4.pt();
-}
-
-float rel_pt_met_htt(const float& met_pt, const float& htt_pt )
-{
-    return met_pt/htt_pt;
 }

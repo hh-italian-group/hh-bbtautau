@@ -1,3 +1,4 @@
+
 # Definition of the model of the signal selection NN
 # This file is part of https://github.com/hh-italian-group/hh-bbtautau.
 
@@ -53,7 +54,8 @@ class ScaleLayer(Layer):
         self.vars_min = tf.constant(self.vars_min, dtype=tf.float32)
         self.vars_max = tf.constant(self.vars_max, dtype=tf.float32)
         self.vars_apply = tf.constant(self.vars_apply, dtype=tf.bool)
-        self.y = (self.b - self.a) / (self.vars_max - self.vars_min)
+
+        # self.y = (self.b - self.a) / (self.vars_max - self.vars_min)
 
         super(ScaleLayer, self).__init__()
 
@@ -61,37 +63,78 @@ class ScaleLayer(Layer):
         super(ScaleLayer, self).build(input_shape)
 
     def call(self, X):
-        Y = tf.clip_by_value( (self.y * ( X - self.vars_min))  + self.a , self.a, self.b)
+        Y = tf.clip_by_value((((self.b - self.a)*( X - self.vars_min ) / (self.vars_max - self.vars_min)) + self.a), self.a, self.b)
+        # Y = tf.clip_by_value( (self.y * ( X - self.vars_min))  + self.a , self.a, self.b)
         return tf.where(self.vars_apply, Y, X)
 
+
 class HHModel(Model):
-    def __init__(self, var_pos, mean_std_json, min_max_json):
+    def __init__(self, var_pos, mean_std_json, min_max_json, params):
         super(HHModel, self).__init__()
+
         self.normalize = StdLayer(mean_std_json, var_pos, 5)
         self.scale = ScaleLayer(min_max_json, var_pos, [-1,1])
-        self.lstm_1 = LSTM(16, return_sequences=True)
-        self.dropout_1 = Dropout(0.2)
-        self.concat_1 = Concatenate()
-        self.lstm_2 = LSTM(16, return_sequences=True)
-        self.dropout_2 = Dropout(0.2)
-        self.dense_1 = TimeDistributed(Dense(10, activation="sigmoid"))
-        self.dropout_3 = Dropout(0.2)
-        self.dense_2 = TimeDistributed(Dense(1, activation="sigmoid"))
+
+        # Pre Dense Block
+        self.dense_pre = []
+        self.dropout_dense_pre = []
+        for i in range(params['num_den_layers_pre']):
+            self.dense_pre.append(TimeDistributed(Dense(params['num_neurons_den_layers_pre'], activation=params['activation_dense_pre']), name='dense_pre_{}'.format(i)))
+            if params['dropout_rate_den_layers_pre'] > 0:
+                self.dropout_dense_pre.append(Dropout(params['dropout_rate_den_layers_pre'], name='dropout_dense_pre_{}'.format(i)))
+
+        # LSTM Dense Block
+        self.lstm = []
+        self.dropout_lstm = []
+        self.concatenate = []
+        for i in range(params['num_lstm_layers']):
+            self.lstm.append(LSTM(params['num_neurons_lstm_layer'], return_sequences=True, name='lstm_{}'.format(i)))
+            if params['dropout_rate_lstm'] > 0:
+                self.dropout_lstm.append(Dropout(params['dropout_rate_lstm'], name='dropout_lstm_pre_{}'.format(i)))
+            if i < params['num_lstm_layers'] - 1 :
+                self.concatenate.append(Concatenate(name='concatenate_{}'.format(i)))
+
+        # Post Dense Block
+        self.dense_post = [] #t
+        self.dropout_dense_post = []
+        for i in range(params['num_den_layers_post']):
+            self.dense_post.append(TimeDistributed(Dense(params['num_neurons_den_layers_post'], activation=params['activation_dense_post']), name='dense_pos_{}'.format(i)))
+            if params['dropout_rate_den_layers_post'] > 0:
+                self.dropout_dense_post.append(Dropout(params['dropout_rate_den_layers_post'], name='dropout_dense_pre_{}'.format(i)))
+
+        self.final_dense = TimeDistributed(Dense(1, activation="sigmoid"), name='output')
 
     def call(self, inputs):
-        trans_x = self.normalize(inputs)
-        trans_x = self.scale(trans_x)
+        x = self.normalize(inputs)
+        x = self.scale(x)
         mask = tf.convert_to_tensor(inputs[:, :, 0] > 0.5, dtype=tf.bool)
-        x = self.lstm_1(trans_x[:, :, 1:], mask=mask)
-        x = self.dropout_1(x)
-        x = self.concat_1([trans_x, x])
-        x = self.lstm_2(x, mask=mask)
-        x = self.dropout_2(x)
-        x = self.dense_1(x, mask=mask)
-        x = self.dropout_3(x)
-        x = self.dense_2(x, mask=mask)
+
+        x = x[:, :, 1:]
+        for i in range(len(self.dense_pre)):
+            x = self.dense_pre[i](x, mask=mask)
+            if len(self.dropout_dense_pre) > i:
+                x = self.dropout_dense_pre[i](x)
+        last_pre = x
+
+        for i in range(len(self.lstm)):
+            x = self.lstm[i](x, mask=mask)
+            if len(self.dropout_lstm) > i:
+                x = self.dropout_lstm[i](x)
+            if i < len(self.lstm) - 1 :
+                x = self.concatenate[i]([last_pre, x])
+
+        for i in range(len(self.dense_post)):
+            x = self.dense_post[i](x, mask=mask)
+            if len(self.dropout_dense_post) > i:
+                x = self.dropout_dense_post[i](x)
+        x = self.final_dense(x, mask=mask)
+
         input_shape = tf.shape(inputs)
-        return tf.reshape(x, shape=(input_shape[0], input_shape[1]))
+        x = tf.reshape(x, shape=(input_shape[0], input_shape[1]))
+        x = x * tf.cast(mask, dtype=tf.float32)
+        s = tf.reshape(tf.reduce_sum(x, axis = 1), shape=(input_shape[0], 1))
+        x = (2 * x ) / s
+        return x
 
 def sel_acc(y_true, y_pred, n_positions, n_exp, do_ratio):
     pred_sorted = tf.argsort(y_pred, axis=1, direction='DESCENDING')
