@@ -17,7 +17,7 @@ import argparse
 import pandas as pd
 import numpy as np
 import json
-import ParamsModel as pm
+import ParametrizedModel as pm
 import InputsProducer
 from CalculateWeigths import CreateSampleWeigts
 
