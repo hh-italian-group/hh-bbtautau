@@ -8,8 +8,8 @@
         "max": 2.4
     },
     "jet_{}_htt_deta": {
-        "min": -8.905,
-        "max": 9.096
+        "min": -9.1,
+        "max": 9.1
     },
     "jet_{}_htt_dphi": {
         "min": -3.142,
