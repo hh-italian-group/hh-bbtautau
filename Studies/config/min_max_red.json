@@ -1,0 +1,34 @@
+{
+    "jet_{}_pt": {
+        "min": 20.0,
+        "max": 5213.142
+    },
+    "jet_{}_eta": {
+        "min": -2.4,
+        "max": 2.4
+    },
+    "jet_{}_htt_deta": {
+        "min": -9.1,
+        "max": 9.1
+    },
+    "jet_{}_htt_dphi": {
+        "min": -3.142,
+        "max": 3.142
+    },
+    "sample_year": {
+        "min": 2016.0,
+        "max": 2018.0
+    },
+    "channelId": {
+        "min": 0.0,
+        "max": 2.0
+    },
+    "htt_pt": {
+        "min": 0.0,
+        "max": 4000.0
+    },
+    "htt_eta": {
+        "min": -8.5,
+        "max": 8.5
+    }
+}
