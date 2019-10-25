@@ -24,18 +24,16 @@ LorentzVectorM getHTTp4 (const ROOT::VecOps::RVec<LorentzVectorM>& lep_p4, const
 float HTTScalarPt (const ROOT::VecOps::RVec<LorentzVectorM>& lep_p4, const ROOT::VecOps::RVec<int>& lep_genTauIndex)
 {
     size_t n_tau = 0;
-    std::vector<float> taus_pt;
-    LorentzVector htt(0, 0, 0, 0);
+    float h_tautau_pt_scalar = 0.f;
     for(size_t n = 0; n < lep_p4.size(); ++n) {
         if(lep_genTauIndex.at(n) >= 0) {
-            taus_pt.push_back(lep_p4.at(n).Pt());
+            h_tautau_pt_scalar += lep_p4.at(n).Pt();
             n_tau++;
         }
     }
     if(n_tau != 2)
         throw std::runtime_error("too few taus");
 
-    float h_tautau_pt_scalar = sqrt(pow(taus_pt.at(0), 2) + pow(taus_pt.at(0), 2));
     return h_tautau_pt_scalar;
 }
 
@@ -49,8 +47,8 @@ ROOT::VecOps::RVec<float> MakeDeepFlavour_bVSall (const ROOT::VecOps::RVec<float
     return b_vs_all;
 }
 
-float jets_deepFlavour (const ROOT::VecOps::RVec<float> deepFlavour_bVSall,
-                        const ROOT::VecOps::RVec<size_t> df_index, const size_t& n)
+float jets_deepFlavour (const ROOT::VecOps::RVec<float>& deepFlavour_bVSall,
+                        const ROOT::VecOps::RVec<size_t>& df_index, const size_t n)
 {
     if(n < df_index.size()){
         size_t selected_index = df_index.at(n);
@@ -60,8 +58,8 @@ float jets_deepFlavour (const ROOT::VecOps::RVec<float> deepFlavour_bVSall,
         return 0;
 }
 
-float jets_deepCSV (const ROOT::VecOps::RVec<float> deepCsv_BvsAll,
-                    const ROOT::VecOps::RVec<size_t> df_index, const size_t& n)
+float jets_deepCSV (const ROOT::VecOps::RVec<float>& deepCsv_BvsAll,
+                    const ROOT::VecOps::RVec<size_t>& df_index, const size_t n)
 {
     if(n < df_index.size()){
         size_t selected_index = df_index.at(n);
@@ -73,7 +71,7 @@ float jets_deepCSV (const ROOT::VecOps::RVec<float> deepCsv_BvsAll,
 
 
 float jet_p4_pt (const ROOT::VecOps::RVec<size_t>& df_index,
-                 const ROOT::VecOps::RVec<LorentzVectorE>& jets_p4, const size_t& n)
+                 const ROOT::VecOps::RVec<LorentzVectorE>& jets_p4, const size_t n)
 {   if(n < df_index.size())
         return jets_p4.at(df_index.at(n)).pt();
     else
@@ -81,7 +79,7 @@ float jet_p4_pt (const ROOT::VecOps::RVec<size_t>& df_index,
 }
 
 float jet_p4_eta (const ROOT::VecOps::RVec<size_t>& df_index,
-                  const ROOT::VecOps::RVec<LorentzVectorE>& jets_p4, const size_t& n)
+                  const ROOT::VecOps::RVec<LorentzVectorE>& jets_p4, const size_t n)
 {   if(n < df_index.size())
         return jets_p4.at(df_index.at(n)).eta();
     else
@@ -89,7 +87,7 @@ float jet_p4_eta (const ROOT::VecOps::RVec<size_t>& df_index,
 }
 
 float jet_p4_E (const ROOT::VecOps::RVec<size_t>& df_index,
-                const ROOT::VecOps::RVec<LorentzVectorE>& jets_p4, const size_t& n)
+                const ROOT::VecOps::RVec<LorentzVectorE>& jets_p4, const size_t n)
 {   if(n < df_index.size())
         return jets_p4.at(df_index.at(n)).E();
     else
@@ -97,7 +95,7 @@ float jet_p4_E (const ROOT::VecOps::RVec<size_t>& df_index,
 }
 
 float jet_p4_M (const ROOT::VecOps::RVec<size_t>& df_index,
-                const ROOT::VecOps::RVec<LorentzVectorE>& jets_p4, const size_t& n)
+                const ROOT::VecOps::RVec<LorentzVectorE>& jets_p4, const size_t n)
 {   if(n < df_index.size())
         return jets_p4.at(df_index.at(n)).M();
     else
@@ -105,7 +103,7 @@ float jet_p4_M (const ROOT::VecOps::RVec<size_t>& df_index,
 }
 
 float rel_jet_M_pt (const ROOT::VecOps::RVec<size_t>& df_index,
-                    const ROOT::VecOps::RVec<LorentzVectorE>& jets_p4, const size_t& n)
+                    const ROOT::VecOps::RVec<LorentzVectorE>& jets_p4, const size_t n)
 {   if(n < df_index.size())
         return jets_p4.at(df_index.at(n)).M() / jets_p4.at(df_index.at(n)).Pt();
     else
@@ -113,7 +111,7 @@ float rel_jet_M_pt (const ROOT::VecOps::RVec<size_t>& df_index,
 }
 
 float rel_jet_E_pt (const ROOT::VecOps::RVec<size_t>& df_index,
-                    const ROOT::VecOps::RVec<LorentzVectorE>& jets_p4, const size_t& n)
+                    const ROOT::VecOps::RVec<LorentzVectorE>& jets_p4, const size_t n)
 {   if(n < df_index.size())
         return jets_p4.at(df_index.at(n)).E() / jets_p4.at(df_index.at(n)).Pt();
     else
@@ -121,8 +119,8 @@ float rel_jet_E_pt (const ROOT::VecOps::RVec<size_t>& df_index,
 }
 
 
-int jet_genbJet (const ROOT::VecOps::RVec<int> jet_genJetIndex,
-                 const ROOT::VecOps::RVec<size_t>& ordered_jet_indexes, const size_t& n,
+int jet_genbJet (const ROOT::VecOps::RVec<int>& jet_genJetIndex,
+                 const ROOT::VecOps::RVec<size_t>& ordered_jet_indexes, const size_t n,
                  const ROOT::VecOps::RVec<LorentzVectorE>& jets_p4)
 {
     if(n < ordered_jet_indexes.size()){

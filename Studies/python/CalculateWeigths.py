@@ -73,7 +73,12 @@ def CreateXSTable(X, Z, radion_xs, radion_br, vbf_radion_xs, graviton_xs, gravit
 
 
 def CreateWeights(X, Z):
-    xs_all, counts, weights, mass_node_unique, mass_node = CreateXSTable(X, Z, '/home/dido/CMSSW_10_2_11/src/hh-bbtautau/Studies/config/xs_br/radion_ggF_xs.csv','/home/dido/CMSSW_10_2_11/src/hh-bbtautau/Studies/config/xs_br/radion_br.csv', '/home/dido/CMSSW_10_2_11/src/hh-bbtautau/Studies/config/xs_br/radion_VBF_xs.csv', '/home/dido/CMSSW_10_2_11/src/hh-bbtautau/Studies/config/xs_br/graviton_ggF_xs.csv', '/home/dido/CMSSW_10_2_11/src/hh-bbtautau/Studies/config/xs_br/graviton_br.csv', '../config/xs_br/graviton_VBF_xs.csv')
+    xs_all, counts, weights, mass_node_unique, mass_node = CreateXSTable(X, Z, '../config/xs_br/radion_ggF_xs.csv',
+                                                                        '../config/xs_br/radion_br.csv',
+                                                                        '../config/xs_br/radion_VBF_xs.csv',
+                                                                        '../config/xs_br/graviton_ggF_xs.csv',
+                                                                        '../config/xs_br/graviton_br.csv',
+                                                                        '../config/xs_br/graviton_VBF_xs.csv')
 
     for sample_type in range(4):
         for spin in range(2):
@@ -113,7 +118,6 @@ def CreateWeights(X, Z):
             D = non_res / res
             weights[year, channel, res_process, :, :] *= D
 
-
     # eTau = muTau = tauTau
     for year in range(3):
         ch_cnt = np.zeros(3)
@@ -150,9 +154,8 @@ def CreateWeights(X, Z):
 
     return weights, mass_node_unique, mass_node
 
-# @numba.njit
-def ConvertToVector(X,Z):
-    weights, mass_node_unique, mass_node = CreateWeights(X, Z)
+@numba.njit
+def ConvertToVector(X,Z, weights, mass_node_unique, mass_node):
     weight_vec = np.zeros(X.shape[0])
     for n in range(X.shape[0]):
         year = int(X[n, 0, 8])
@@ -164,6 +167,10 @@ def ConvertToVector(X,Z):
 
         weight_vec[n] = weights[year - 2016, channel, sample_type - 6, spin,  mn_index]
     return weight_vec
+
+def CreateSampleWeigts(X,Z):
+    weights, mass_node_unique, mass_node = CreateWeights(X, Z)
+    return ConvertToVector(X,Z, weights, mass_node_unique, mass_node)
 
 @numba.njit
 def CrossCheckWeights(Z, X, w, g_r, res_non_res, check_channel, year, channel):

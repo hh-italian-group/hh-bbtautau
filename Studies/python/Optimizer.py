@@ -1,3 +1,6 @@
+# Definition of the model optimization using Bayesian optimization as a method
+# This file is part of https://github.com/hh-italian-group/hh-bbtautau.
+
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.callbacks import CSVLogger
@@ -13,15 +16,15 @@ import numpy as np
 import json
 import ParamsModel as pm
 import InputsProducer
-from CalculateWeigths import ConvertToVector
+from CalculateWeigths import CreateSampleWeigts
 
 import ROOT
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-results", "--results")
 parser.add_argument("-max", "--max_params")
-parser.add_argument("-n_iter", "--n_iter")
-parser.add_argument("-init_points", "--init_points")
+parser.add_argument("-n_iter", "--n_iter", type=int)
+parser.add_argument("-init_points", "--init_points", type=int)
 parser.add_argument("-f", "--file", nargs='+')
 args = parser.parse_args()
 
@@ -54,7 +57,7 @@ def TransformParams(params):
 def CreateGetLoss(file_name, cfg_mean_std, cfg_min_max, n_epoch):
     data = InputsProducer.CreateRootDF(file_name, 0, True)
     X, Y,Z,var_pos, var_pos_z = InputsProducer.CreateXY(data)
-    w = ConvertToVector(X, Z)
+    w = CreateSampleWeigts(X, Z)
     Y = Y.reshape(Y.shape[0:2])
     def GetLoss(**params):
         params = TransformParams(params)
@@ -72,8 +75,7 @@ def CreateGetLoss(file_name, cfg_mean_std, cfg_min_max, n_epoch):
         return np.amax(history.history['val_sel_acc_2'])
     return GetLoss
 
-get_loss = CreateGetLoss(file_name, '/home/dido/CMSSW_10_2_11/src/hh-bbtautau/Studies/config/mean_std_red.json',
-                         '/home/dido/CMSSW_10_2_11/src/hh-bbtautau/Studies/config/min_max_red.json', 10)
+get_loss = CreateGetLoss(file_name, '../config/mean_std_red.json','../config/min_max_red.json', 10)
 
 param_ranges = {   'num_den_layers_pre': (0, 5), 'num_neurons_den_layers_pre': (10,100), 'dropout_rate_den_layers_pre': (0, 0.5),
                    'num_den_layers_post': (0,5), 'num_neurons_den_layers_post': (10,100), 'dropout_rate_den_layers_post':(0, 0.5),

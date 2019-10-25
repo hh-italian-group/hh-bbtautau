@@ -10,7 +10,7 @@ from tensorflow.keras.layers import Layer, Dense, Dropout, LSTM, TimeDistributed
 from tensorflow.keras.models import Model
 
 class StdLayer(Layer):
-    def __init__(self, file_name, var_pos, n_sigmas):
+    def __init__(self, file_name, var_pos, n_sigmas, **kwargs):
         with open(file_name) as json_file:
             data_json = json.load(json_file)
         n_vars = len(var_pos)
@@ -27,7 +27,7 @@ class StdLayer(Layer):
         self.vars_apply = tf.constant(self.vars_apply, dtype=tf.bool)
         self.n_sigmas = n_sigmas
 
-        super(StdLayer, self).__init__()
+        super(StdLayer, self).__init__(**kwargs)
 
     def build(self, input_shape):
         super(StdLayer, self).build(input_shape)
@@ -37,7 +37,7 @@ class StdLayer(Layer):
         return tf.where(self.vars_apply, Y, X)
 
 class ScaleLayer(Layer):
-    def __init__(self, file_name, var_pos, interval_to_scale):
+    def __init__(self, file_name, var_pos, interval_to_scale, **kwargs):
         with open(file_name) as json_file:
             data_json = json.load(json_file)
         self.a = interval_to_scale[0]
@@ -54,17 +54,15 @@ class ScaleLayer(Layer):
         self.vars_min = tf.constant(self.vars_min, dtype=tf.float32)
         self.vars_max = tf.constant(self.vars_max, dtype=tf.float32)
         self.vars_apply = tf.constant(self.vars_apply, dtype=tf.bool)
+        self.y = (self.b - self.a) / (self.vars_max - self.vars_min)
 
-        # self.y = (self.b - self.a) / (self.vars_max - self.vars_min)
-
-        super(ScaleLayer, self).__init__()
+        super(ScaleLayer, self).__init__(**kwargs)
 
     def build(self, input_shape):
         super(ScaleLayer, self).build(input_shape)
 
     def call(self, X):
-        Y = tf.clip_by_value((((self.b - self.a)*( X - self.vars_min ) / (self.vars_max - self.vars_min)) + self.a), self.a, self.b)
-        # Y = tf.clip_by_value( (self.y * ( X - self.vars_min))  + self.a , self.a, self.b)
+        Y = tf.clip_by_value( (self.y * ( X - self.vars_min))  + self.a , self.a, self.b)
         return tf.where(self.vars_apply, Y, X)
 
 
@@ -72,6 +70,7 @@ class HHModel(Model):
     def __init__(self, var_pos, mean_std_json, min_max_json, params):
         super(HHModel, self).__init__()
 
+        # Fix this
         self.normalize = StdLayer(mean_std_json, var_pos, 5)
         self.scale = ScaleLayer(min_max_json, var_pos, [-1,1])
 

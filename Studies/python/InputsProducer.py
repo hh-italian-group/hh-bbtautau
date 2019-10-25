@@ -164,6 +164,4 @@ def CreateXY(data):
         for var_idx in range(X.shape[2]):
             X[:, jet_idx, var_idx] = X[:, jet_idx, var_idx] * X[:, jet_idx, valid_pos]
 
-    #fare var_pos_z
-
     return X, Y, Z, var_pos, var_pos_z
