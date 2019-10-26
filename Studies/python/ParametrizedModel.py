@@ -78,16 +78,20 @@ class HHModel(Model):
         self.dense_pre = []
         self.dropout_dense_pre = []
         for i in range(params['num_den_layers_pre']):
-            self.dense_pre.append(TimeDistributed(Dense(params['num_neurons_den_layers_pre'], activation=params['activation_dense_pre']), name='dense_pre_{}'.format(i)))
+            self.dense_pre.append(TimeDistributed(Dense(params['num_neurons_den_layers_pre'],
+                                                        activation=params['activation_dense_pre']), name='dense_pre_{}'.format(i)))
             if params['dropout_rate_den_layers_pre'] > 0:
-                self.dropout_dense_pre.append(Dropout(params['dropout_rate_den_layers_pre'], name='dropout_dense_pre_{}'.format(i)))
+                self.dropout_dense_pre.append(Dropout(params['dropout_rate_den_layers_pre'],
+                                                      name='dropout_dense_pre_{}'.format(i)))
 
         # LSTM Dense Block
         self.lstm = []
         self.dropout_lstm = []
         self.concatenate = []
         for i in range(params['num_lstm_layers']):
-            self.lstm.append(LSTM(params['num_neurons_lstm_layer'], return_sequences=True, name='lstm_{}'.format(i)))
+            self.lstm.append(LSTM(params['num_neurons_lstm_layer'], return_sequences=True,
+                                  activation=params['lstm_activation'],
+                                  recurrent_activation=params['lstm_recurrent_activation'] ,name='lstm_{}'.format(i)))
             if params['dropout_rate_lstm'] > 0:
                 self.dropout_lstm.append(Dropout(params['dropout_rate_lstm'], name='dropout_lstm_pre_{}'.format(i)))
             if i < params['num_lstm_layers'] - 1 :
@@ -97,7 +101,8 @@ class HHModel(Model):
         self.dense_post = [] #t
         self.dropout_dense_post = []
         for i in range(params['num_den_layers_post']):
-            self.dense_post.append(TimeDistributed(Dense(params['num_neurons_den_layers_post'], activation=params['activation_dense_post']), name='dense_pos_{}'.format(i)))
+            self.dense_post.append(TimeDistributed(Dense(params['num_neurons_den_layers_post'],
+                                                         activation=params['activation_dense_post']), name='dense_pos_{}'.format(i)))
             if params['dropout_rate_den_layers_post'] > 0:
                 self.dropout_dense_post.append(Dropout(params['dropout_rate_den_layers_post'], name='dropout_dense_pre_{}'.format(i)))
 

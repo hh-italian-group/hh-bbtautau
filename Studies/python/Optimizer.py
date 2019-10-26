@@ -54,6 +54,9 @@ def TransformParams(params):
     new_params['dropout_rate_lstm'] = params['dropout_rate_lstm']
     new_params['learning_rate'] = params['learning_rate']
     new_params['batch_size'] = int(round(params['batch_size']))
+    new_params['lstm_activation'] = activations[int(round(params['lstm_activation']))]
+    new_params['lstm_recurrent_activation'] = activations[int(round(params['lstm_recurrent_activation']))]
+
 
     return new_params
 
@@ -84,7 +87,8 @@ get_loss = CreateGetLoss(file_name, '../config/mean_std_red.json','../config/min
 param_ranges = {   'num_den_layers_pre': (0, 5), 'num_neurons_den_layers_pre': (10,100), 'dropout_rate_den_layers_pre': (0, 0.5),
                    'num_den_layers_post': (0,5), 'num_neurons_den_layers_post': (10,100), 'dropout_rate_den_layers_post':(0, 0.5),
                    'num_lstm_layers': (1,10), 'num_neurons_lstm_layer':(10, 200), 'activation_dense_pre': (0,2),
-                   'activation_dense_post': (0,2), 'dropout_rate_lstm': (0, 0.5), 'batch_size': (100,500), 'learning_rate': (0.1, 0.0001)
+                   'activation_dense_post': (0,2), 'dropout_rate_lstm': (0, 0.5), 'batch_size': (100,500),
+                   'learning_rate': (0.1, 0.0001), 'lstm_activation': (0,2), 'lstm_recurrent_activation': (0,2)
 
 }
 
