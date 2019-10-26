@@ -64,11 +64,12 @@ def CreateGetLoss(file_name, cfg_mean_std, cfg_min_max, n_epoch):
     Y = Y.reshape(Y.shape[0:2])
     def GetLoss(**params):
         params = TransformParams(params)
+        tf.random.set_seed(12345)
         model = pm.HHModel(var_pos, cfg_mean_std, cfg_min_max, params)
         model.call(X[0:1,:,:])
         opt = tf.keras.optimizers.Adam(learning_rate=params['learning_rate'])
         model.compile(loss='binary_crossentropy',
-                  optimizer='adam',
+                  optimizer=opt,
                   weighted_metrics=[pm.sel_acc_2, pm.sel_acc_3, pm.sel_acc_4])
         model.build(X.shape)
 
@@ -82,8 +83,8 @@ get_loss = CreateGetLoss(file_name, '../config/mean_std_red.json','../config/min
 
 param_ranges = {   'num_den_layers_pre': (0, 5), 'num_neurons_den_layers_pre': (10,100), 'dropout_rate_den_layers_pre': (0, 0.5),
                    'num_den_layers_post': (0,5), 'num_neurons_den_layers_post': (10,100), 'dropout_rate_den_layers_post':(0, 0.5),
-                   'num_lstm_layers': (1,5), 'num_neurons_lstm_layer':(10, 100), 'activation_dense_pre': (0,2),
-                   'activation_dense_post': (0,2), 'dropout_rate_lstm': (0, 0.5), 'batch_size': (100,1000), 'learning_rate': (0.1, 0.0001)
+                   'num_lstm_layers': (1,10), 'num_neurons_lstm_layer':(10, 200), 'activation_dense_pre': (0,2),
+                   'activation_dense_post': (0,2), 'dropout_rate_lstm': (0, 0.5), 'batch_size': (100,500), 'learning_rate': (0.1, 0.0001)
 
 }
 
