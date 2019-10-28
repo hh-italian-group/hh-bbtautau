@@ -5,6 +5,7 @@
 import tensorflow as tf
 import numpy as np
 import json
+import ROOT
 
 from tensorflow.keras.layers import Layer, Dense, Dropout, LSTM, TimeDistributed, Concatenate
 from tensorflow.keras.models import Model
@@ -139,6 +140,33 @@ class HHModel(Model):
         s = tf.reshape(tf.reduce_sum(x, axis = 1), shape=(input_shape[0], 1))
         x = (2 * x ) / s
         return x
+
+
+def TransformParams(params):
+    activations = { 0: 'sigmoid', 2: 'relu', 1: 'tanh' }
+    new_params = {}
+    new_params['num_den_layers_pre'] = int(round(params['num_den_layers_pre']))
+    new_params['num_neurons_den_layers_pre'] = int(round(params['num_neurons_den_layers_pre']))
+    new_params['dropout_rate_den_layers_pre'] = params['dropout_rate_den_layers_pre']
+    new_params['num_den_layers_post'] = int(round(params['num_den_layers_post']))
+    new_params['num_neurons_den_layers_post'] = int(round(params['num_neurons_den_layers_post']))
+    new_params['dropout_rate_den_layers_post'] = params['dropout_rate_den_layers_post']
+    new_params['num_lstm_layers'] = int(round(params['num_lstm_layers']))
+    new_params['num_neurons_lstm_layer'] = int(round(params['num_neurons_lstm_layer']))
+    new_params['activation_dense_pre'] = activations[int(round(params['activation_dense_pre']))]
+    new_params['activation_dense_post'] = activations[int(round(params['activation_dense_post']))]
+    new_params['dropout_rate_lstm'] = params['dropout_rate_lstm']
+    new_params['learning_rate'] = params['learning_rate']
+    new_params['batch_size'] = int(round(params['batch_size']))
+    new_params['lstm_activation'] = activations[int(round(params['lstm_activation']))]
+    new_params['lstm_recurrent_activation'] = activations[int(round(params['lstm_recurrent_activation']))]
+    return new_params
+
+def ListToVector(files):
+    v = ROOT.std.vector('string')()
+    for file in files:
+        v.push_back(file)
+    return v
 
 def sel_acc(y_true, y_pred, n_positions, n_exp, do_ratio):
     pred_sorted = tf.argsort(y_pred, axis=1, direction='DESCENDING')
