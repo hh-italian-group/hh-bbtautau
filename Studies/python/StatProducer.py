@@ -27,7 +27,7 @@ def truncate(x):
 
 def CalculateMeanStd(file_name):
     data = InputsProducer.CreateRootDF(file_name, -1, False)
-    X, Y,training_vars, var_pos, var_pos_z = InputsProducer.CreateXY(data)
+    X, Y,training_vars, var_pos, var_pos_z, var_name = InputsProducer.CreateXY(data)
 
     val = var_pos['jet_{}_valid']
     n_valid = np.sum(X[:,:,val])

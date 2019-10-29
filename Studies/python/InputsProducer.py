@@ -50,8 +50,6 @@ def DefineVariables(sample_name, parity) :
            .Define('htt_pt', 'htt_p4.pt()') \
            .Define('htt_eta', 'htt_p4.eta()') \
            .Define('met_pt', 'pfMET_p4.pt()') \
-           .Define('rel_met_pt_htt_pt', 'pfMET_p4.pt() / htt_scalar_pt') \
-           .Define('htt_met_dphi', 'ROOT::Math::VectorUtil::DeltaPhi(htt_p4, pfMET_p4)')
 
     for n_jet in range(max_jet):
         df = df.Define('jet_{}_valid'.format(n_jet), 'static_cast<float>({} < jets_deepFlavourOrderedIndex.size())'.format(n_jet)) \
@@ -71,7 +69,7 @@ def DefineVariables(sample_name, parity) :
 
 def CreateColums() :
     evt_columns = [ 'sample_type', 'spin', 'mass_point', 'node', 'sample_year', 'channelId', 'htt_pt', 'htt_eta',
-                    'htt_met_dphi', 'rel_met_pt_htt_pt', 'n_jets'
+                    'n_jets', 'htt_scalar_pt'
     ]
 
     jet_column = [ 'jet_{}_valid', 'jet_{}_pt', 'jet_{}_eta', 'jet_{}_E', 'jet_{}_M', 'rel_jet_{}_M_pt', 'rel_jet_{}_E_pt',
@@ -130,7 +128,7 @@ def CreateRootDF(sample_name, parity, do_shuffle):
     return data
 
 def CreateXY(data):
-    training_evt_vars     = [ 'sample_year', 'channelId', 'htt_pt', 'htt_eta', 'htt_met_dphi', 'rel_met_pt_htt_pt']
+    training_evt_vars     = [ 'htt_pt', 'htt_eta', 'htt_scalar_pt']
     idx_training_evt_vars =  GetIndex(training_evt_vars)
 
     training_jet_vars     = [ 'jet_{}_valid', 'jet_{}_pt', 'jet_{}_eta', 'rel_jet_{}_M_pt',
@@ -143,7 +141,7 @@ def CreateXY(data):
     genTruth_var          = [ 'jet_{}_genbJet' ]
     idx_genTruth_var      =  GetIndex(genTruth_var)
 
-    id_vars               = ['sample_type', 'spin', 'mass_point', 'node']
+    id_vars               = ['sample_type', 'spin', 'mass_point', 'node', 'sample_year', 'channelId']
     idx_id_vars           =  GetIndex(id_vars)
 
     X = data[:, :, training_vars_idx]
@@ -153,6 +151,11 @@ def CreateXY(data):
     var_pos = {}
     for n in range(len(training_vars)):
         var_pos[training_vars[n]] = n
+
+    var_name = {}
+    for n in range(len(training_vars)):
+        var_name[n] = training_vars[n]
+
 
     var_pos_z = {}
     for n in range(len(id_vars)):
@@ -164,4 +167,4 @@ def CreateXY(data):
         for var_idx in range(X.shape[2]):
             X[:, jet_idx, var_idx] = X[:, jet_idx, var_idx] * X[:, jet_idx, valid_pos]
 
-    return X, Y, Z, var_pos, var_pos_z
+    return X, Y, Z, var_pos, var_pos_z, var_name

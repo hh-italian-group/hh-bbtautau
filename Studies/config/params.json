@@ -1,7 +1,17 @@
 {
-    "num_den_layers_pre" : 0 , "num_neurons_den_layers_pre": 48, "dropout_rate_den_layers_pre":  0.0734,
-    "num_den_layers_post": 1, "num_neurons_den_layers_post": 59, "dropout_rate_den_layers_post": 0.1512,
-    "num_lstm_layers": 1, "num_neurons_lstm_layer":100, "activation_dense_pre": 1,
-    "activation_dense_post": 1, "dropout_rate_lstm": 0.04617, "batch_size":1000, "learning_rate":0.001,
-    "lstm_activation": 1, "lstm_recurrent_activation": 1
+    "num_den_layers_pre" : 0 ,
+    "num_neurons_den_layers_pre": 81,
+    "dropout_rate_den_layers_pre":  0.27,
+    "num_den_layers_post": 0,
+    "num_neurons_den_layers_post": 44,
+    "dropout_rate_den_layers_post": 0.056,
+    "num_lstm_layers": 5,
+    "num_neurons_lstm_layer":74,
+    "activation_dense_pre": 0,
+    "activation_dense_post": 1,
+    "dropout_rate_lstm": 0.15,
+    "batch_size":114,
+    "learning_rate":0.001,
+    "lstm_activation": 1,
+    "lstm_recurrent_activation": 0
 }

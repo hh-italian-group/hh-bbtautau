@@ -18,8 +18,8 @@ def calculeteNEvents(X, Z):
     counts = np.zeros((3,3,4,2,len(mass_node_unique)))
 
     for n in range(X.shape[0]):
-        year = int(X[n, 0, 8])#var_pos['sample_year']]
-        channel = int(X[n, 0, 9])#var_pos['channelId']]
+        year = int(Z[n, 0, -2])#var_pos['sample_year']]
+        channel = int(Z[n, 0, -1])#var_pos['channelId']]
         sample_type = int(Z[n,0,0])
         spin = int(Z[n,0, 1] > 0)
         mn = mass_node[n]
@@ -70,7 +70,6 @@ def CreateXSTable(X, Z, radion_xs, radion_br, vbf_radion_xs, graviton_xs, gravit
     xs_all[VBFHH_Res,1, indices] = xs_vbf_graviton * br_graviton
 
     return xs_all, counts, weights, mass_node_unique, mass_node
-
 
 def CreateWeights(X, Z):
     xs_all, counts, weights, mass_node_unique, mass_node = CreateXSTable(X, Z, '../config/xs_br/radion_ggF_xs.csv',
@@ -158,8 +157,8 @@ def CreateWeights(X, Z):
 def ConvertToVector(X,Z, weights, mass_node_unique, mass_node):
     weight_vec = np.zeros(X.shape[0])
     for n in range(X.shape[0]):
-        year = int(X[n, 0, 8])
-        channel = int(X[n, 0, 9])
+        year = int(Z[n, 0, -2])
+        channel = int(Z[n, 0, -1])
         sample_type = int(Z[n,0,0])
         spin = int(Z[n,0, 1] > 0)
         mn = mass_node[n]
@@ -172,33 +171,34 @@ def CreateSampleWeigts(X,Z):
     weights, mass_node_unique, mass_node = CreateWeights(X, Z)
     return ConvertToVector(X,Z, weights, mass_node_unique, mass_node)
 
-@numba.njit
+# @numba.njit
 def CrossCheckWeights(Z, X, w, g_r, res_non_res, check_channel, year, channel):
-    w = ConvertToVector(X, Z)
+    weights, mass_node_unique, mass_node = CreateWeights(X, Z)
+    w = ConvertToVector(X, Z, weights, mass_node_unique, mass_node)
     w_1 = []
     w_2 = []
     w_3 = []
     if res_non_res == True:
         for n in range(X.shape[0]):
-            if (Z[n, 0, 0] == 6 or Z[n, 0, 0] == 7) and X[n, 0, 8] == year :
+            if (Z[n, 0, 0] == 6 or Z[n, 0, 0] == 7) and Z[n, 0, -2] == year :
                 w_1.append(w[n])
-            elif (Z[n, 0, 0] == 8 or Z[n, 0, 0] == 9) and X[n, 0, 8] == year :
+            elif (Z[n, 0, 0] == 8 or Z[n, 0, 0] == 9) and Z[n, 0, -2] == year :
                 w_2.append(w[n])
 
     elif g_r == True:
         for n in range(X.shape[0]):
-            if Z[n, 0, 1] == 0 and X[n, 0, 8] == year:
+            if Z[n, 0, 1] == 0 and Z[n, 0, -2] == year:
                 w_1.append(w[n])
-            elif Z[n, 0, 1] == 2 and X[n, 0, 8] == year:
+            elif Z[n, 0, 1] == 2 and Z[n, 0, -2] == year:
                 w_2.append(w[n])
 
     elif check_channel == True:
         for n in range(X.shape[0]):
-            if X[n, 0, 9] == 0 and X[n, 0, 8] == year:
+            if Z[n, 0, -1] == 0 and Z[n, 0, -2] == year:
                 w_1.append(w[n])
-            elif X[n, 0, 9] == 1 and X[n, 0, 8] == year:
+            elif Z[n, 0, -1] == 1 and Z[n, 0, -2] == year:
                 w_2.append(w[n])
-            elif X[n, 0, 9] == 2 and X[n, 0, 8] == year:
+            elif Z[n, 0, -1] == 2 and Z[n, 0, -2] == year:
                 w_3.append(w[n])
 
     return np.sum(np.array(w_1)), np.sum(np.array(w_2)), np.sum(np.array(w_3))

@@ -62,7 +62,7 @@ def TransformParams(params):
 
 def CreateGetLoss(file_name, cfg_mean_std, cfg_min_max, n_epoch):
     data = InputsProducer.CreateRootDF(file_name, 0, True)
-    X, Y,Z,var_pos, var_pos_z = InputsProducer.CreateXY(data)
+    X, Y, Z, var_pos, var_pos_z, var_name = InputsProducer.CreateXY(data)
     w = CreateSampleWeigts(X, Z)
     Y = Y.reshape(Y.shape[0:2])
     def GetLoss(**params):

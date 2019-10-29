@@ -6,9 +6,5 @@
     "rel_jet_{}_E_pt": {
         "mean": 1.722,
         "std": 0.938
-    },
-    "rel_met_pt_htt_pt": {
-        "mean": 0.761,
-        "std": 0.758
     }
 }

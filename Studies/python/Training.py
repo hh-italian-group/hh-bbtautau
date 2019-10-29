@@ -15,9 +15,7 @@ import ROOT
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-params", "--params")
-parser.add_argument("-model_weights", "--model_weights")
-parser.add_argument("-training_info_file", "--training_info_file")
-parser.add_argument("-best_model", "--best_model")
+parser.add_argument("-output", "--output")
 parser.add_argument("-n_epoch", "--n_epoch", type=int)
 parser.add_argument("-parity", "--parity", type=int)
 parser.add_argument("-f", "--file", nargs='+')
@@ -31,8 +29,8 @@ with open(args.params) as f:
 
 def PerformTraining(file_name, n_epoch, params):
     print(params)
-    data = InputsProducer.CreateRootDF(file_name, 0, False)
-    X, Y,Z,var_pos, var_pos_z = InputsProducer.CreateXY(data)
+    data = InputsProducer.CreateRootDF(file_name, 0, True)
+    X, Y, Z, var_pos, var_pos_z, var_name = InputsProducer.CreateXY(data)
     w = CreateSampleWeigts(X, Z)
     Y = Y.reshape(Y.shape[0:2])
     tf.random.set_seed(12345)
@@ -50,12 +48,16 @@ def PerformTraining(file_name, n_epoch, params):
     model.summary()
 
     early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_sel_acc_2', mode='max', patience=10)
-    csv_logger = CSVLogger('{}.csv'.format(args.training_info_file), append=False, separator=',')
-    save_best_only =  tf.keras.callbacks.ModelCheckpoint(filepath='{}_best.h5'.format(args.best_model), monitor='val_sel_acc_2',
-                                                         mode='max', save_best_only=True)
+    csv_logger = CSVLogger('{}_par{}_training_history.csv'.format(args.output, args.parity), append=False, separator=',')
+    save_best_only =  tf.keras.callbacks.ModelCheckpoint(filepath='{}_par{}_best_weights.h5'.format(args.output, args.parity), monitor='val_sel_acc_2',
+                                                         mode='max', save_best_only=True, verbose=1)
 
-    model.fit(X, Y, sample_weight=w, validation_split=0.25, epochs=n_epoch, batch_size=params['batch_size'], callbacks=[early_stop, csv_logger, save_best_only])
+    model.fit(X, Y, sample_weight=w, validation_split=0.25, epochs=n_epoch, batch_size=params['batch_size'],
+              callbacks=[early_stop, csv_logger, save_best_only],verbose=2)
 
-    model.save_weights('{}_final.h5'.format(args.model_weights))
+    model.save_weights('{}_par{}_final_weights.h5'.format(args.output, args.parity))
+
+with open('{}_par{}_params.json'.format(args.output, args.parity), 'w') as f:
+    f.write(json.dumps(params, indent=4))
 
 PerformTraining(file_name, args.n_epoch, params)

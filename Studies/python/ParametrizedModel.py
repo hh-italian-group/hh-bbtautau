@@ -168,7 +168,7 @@ def ListToVector(files):
         v.push_back(file)
     return v
 
-def sel_acc(y_true, y_pred, n_positions, n_exp, do_ratio):
+def sel_acc(y_true, y_pred, n_positions, n_exp, do_ratio, return_num=False):
     pred_sorted = tf.argsort(y_pred, axis=1, direction='DESCENDING')
     n_evt = tf.shape(y_true)[0]
     evt_id = tf.range(n_evt)
@@ -180,7 +180,10 @@ def sel_acc(y_true, y_pred, n_positions, n_exp, do_ratio):
     valid = tf.cast(tf.equal(matches_sum, n_exp), tf.float32)
     if do_ratio:
         n_valid = tf.reduce_sum(valid)
-        return n_valid / tf.cast(n_evt, tf.float32)
+        ratio = n_valid / tf.cast(n_evt, tf.float32)
+        if return_num:
+            ratio = ratio.numpy()
+        return ratio
     return valid
 
 def sel_acc_2(y_true, y_pred):

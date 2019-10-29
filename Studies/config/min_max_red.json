@@ -15,14 +15,6 @@
         "min": -3.142,
         "max": 3.142
     },
-    "sample_year": {
-        "min": 2016.0,
-        "max": 2018.0
-    },
-    "channelId": {
-        "min": 0.0,
-        "max": 2.0
-    },
     "htt_pt": {
         "min": 0.0,
         "max": 4000.0
@@ -30,5 +22,9 @@
     "htt_eta": {
         "min": -8.5,
         "max": 8.5
+    },
+    "htt_scalar_pt": {
+        "min": 0.0,
+        "max": 3716.5
     }
 }

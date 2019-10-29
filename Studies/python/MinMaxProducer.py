@@ -28,15 +28,15 @@ def truncate(x):
 
 def CalculateMinMax(file_name):
     data = InputsProducer.CreateRootDF(file_name, -1, False)
-    X, Y,training_vars,var_pos,var_pos_z  = InputsProducer.CreateXY(data)
+    X, Y,training_vars,var_pos,var_pos_z, var_name  = InputsProducer.CreateXY(data)
 
     val = var_pos['jet_{}_valid']
     n_valid = np.sum(X[:,:,val])
     min_max = {}
-    for var,pos in var_pos.items():
-        min = np.amin(X[:, :, pos])
-        max = np.amax(X[:, :, pos])
-        min_max[var] = { 'min': truncate(float(min)), 'max': truncate(float(max)) }
+    # for var,pos in var_pos.items():
+    min = np.amin(X[:, :, 10])
+    max = np.amax(X[:, :, 10])
+    min_max[1] = { 'min': truncate(float(min)), 'max': truncate(float(max)) }
 
     with open(args.output_file, 'w') as f:
         f.write(json.dumps(min_max, indent=4))
