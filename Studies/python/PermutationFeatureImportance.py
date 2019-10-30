@@ -13,14 +13,14 @@ import numpy as np
 import InputsProducer
 import ParametrizedModel as pm
 from CalculateWeigths import CreateSampleWeigts, CrossCheckWeights
-# import Optimizer as op
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-w", "--weights")
+parser.add_argument("-p", "--parity", type=int)
 parser.add_argument("-f", "--file", nargs='+')
+
 args = parser.parse_args()
 
-# def CreateModel(weights):
 file_name = pm.ListToVector(args.file)
 with open('../config/params.json') as f:
     params = json.load(f)
@@ -31,12 +31,12 @@ X, Y, Z, var_pos, var_pos_z, var_name = InputsProducer.CreateXY(data)
 params = pm.TransformParams(params)
 
 model = pm.HHModel(var_pos, '../config/mean_std_red.json', '../config/min_max_red.json', params)
-opt = tf.keras.optimizers.Adam(learning_rate=params['learning_rate'])
+opt = tf.keras.optimizers.Adam(learning_rate=10 ** params['learning_rate_exp'])
 model.compile(loss='binary_crossentropy',
               optimizer=opt,
               weighted_metrics=[pm.sel_acc_2, pm.sel_acc_3, pm.sel_acc_4])
 model.build(X.shape)
-model.load_weights(args.w, by_name=True)
+model.load_weights(args.weights, by_name=True)
 
 @numba.njit
 def Shuffle3D (X, var_idx):

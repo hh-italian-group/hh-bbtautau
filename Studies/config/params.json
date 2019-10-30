@@ -11,7 +11,8 @@
     "activation_dense_post": 1,
     "dropout_rate_lstm": 0.15,
     "batch_size":114,
-    "learning_rate":0.001,
+    "learning_rate_exp":-3,
     "lstm_activation": 1,
-    "lstm_recurrent_activation": 0
+    "lstm_recurrent_activation": 0,
+    "optimizers": 2
 }

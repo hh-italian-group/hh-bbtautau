@@ -144,6 +144,7 @@ class HHModel(Model):
 
 def TransformParams(params):
     activations = { 0: 'sigmoid', 2: 'relu', 1: 'tanh' }
+    optimizers = { 0: 'RMSprop', 1: 'SGD', 2: 'Adam', 3: 'Nadam' }
     new_params = {}
     new_params['num_den_layers_pre'] = int(round(params['num_den_layers_pre']))
     new_params['num_neurons_den_layers_pre'] = int(round(params['num_neurons_den_layers_pre']))
@@ -156,9 +157,10 @@ def TransformParams(params):
     new_params['activation_dense_pre'] = activations[int(round(params['activation_dense_pre']))]
     new_params['activation_dense_post'] = activations[int(round(params['activation_dense_post']))]
     new_params['dropout_rate_lstm'] = params['dropout_rate_lstm']
-    new_params['learning_rate'] = params['learning_rate']
+    new_params['learning_rate_exp'] = int(round(params['learning_rate_exp']))
     new_params['batch_size'] = int(round(params['batch_size']))
     new_params['lstm_activation'] = activations[int(round(params['lstm_activation']))]
+    new_params['optimizers'] = optimizers[int(round(params['optimizers']))]
     new_params['lstm_recurrent_activation'] = activations[int(round(params['lstm_recurrent_activation']))]
     return new_params
 

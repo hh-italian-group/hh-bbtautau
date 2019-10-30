@@ -38,39 +38,25 @@ def ListToVector(files):
     return v
 file_name = ListToVector(args.file)
 
-def TransformParams(params):
-    activations = { 0: 'sigmoid', 2: 'relu', 1: 'tanh' }
-    new_params = {}
-    new_params['num_den_layers_pre'] = int(round(params['num_den_layers_pre']))
-    new_params['num_neurons_den_layers_pre'] = int(round(params['num_neurons_den_layers_pre']))
-    new_params['dropout_rate_den_layers_pre'] = params['dropout_rate_den_layers_pre']
-    new_params['num_den_layers_post'] = int(round(params['num_den_layers_post']))
-    new_params['num_neurons_den_layers_post'] = int(round(params['num_neurons_den_layers_post']))
-    new_params['dropout_rate_den_layers_post'] = params['dropout_rate_den_layers_post']
-    new_params['num_lstm_layers'] = int(round(params['num_lstm_layers']))
-    new_params['num_neurons_lstm_layer'] = int(round(params['num_neurons_lstm_layer']))
-    new_params['activation_dense_pre'] = activations[int(round(params['activation_dense_pre']))]
-    new_params['activation_dense_post'] = activations[int(round(params['activation_dense_post']))]
-    new_params['dropout_rate_lstm'] = params['dropout_rate_lstm']
-    new_params['learning_rate'] = params['learning_rate']
-    new_params['batch_size'] = int(round(params['batch_size']))
-    new_params['lstm_activation'] = activations[int(round(params['lstm_activation']))]
-    new_params['lstm_recurrent_activation'] = activations[int(round(params['lstm_recurrent_activation']))]
-
-
-    return new_params
-
 def CreateGetLoss(file_name, cfg_mean_std, cfg_min_max, n_epoch):
     data = InputsProducer.CreateRootDF(file_name, 0, True)
     X, Y, Z, var_pos, var_pos_z, var_name = InputsProducer.CreateXY(data)
     w = CreateSampleWeigts(X, Z)
     Y = Y.reshape(Y.shape[0:2])
     def GetLoss(**params):
-        params = TransformParams(params)
+        params = pm.TransformParams(params)
         tf.random.set_seed(12345)
         model = pm.HHModel(var_pos, cfg_mean_std, cfg_min_max, params)
         model.call(X[0:1,:,:])
-        opt = tf.keras.optimizers.Adam(learning_rate=params['learning_rate'])
+        if params['optimizers'] == 'Nadam':
+            opt = tf.keras.optimizers.Nadam(learning_rate=10 ** params['learning_rate_exp'])
+        elif params['optimizers'] == 'Adam':
+            opt = tf.keras.optimizers.Adam(learning_rate=10 ** params['learning_rate_exp'])
+        elif params['optimizers'] == 'SGD':
+            opt = tf.keras.optimizers.SGD(learning_rate=10 ** params['learning_rate_exp'])
+        elif params['optimizers'] == 'RMSprop':
+            opt = tf.keras.optimizers.RMSprop(learning_rate=10 ** params['learning_rate_exp'])
+
         model.compile(loss='binary_crossentropy',
                   optimizer=opt,
                   weighted_metrics=[pm.sel_acc_2, pm.sel_acc_3, pm.sel_acc_4])
@@ -82,13 +68,14 @@ def CreateGetLoss(file_name, cfg_mean_std, cfg_min_max, n_epoch):
         return np.amax(history.history['val_sel_acc_2'])
     return GetLoss
 
-get_loss = CreateGetLoss(file_name, '../config/mean_std_red.json','../config/min_max_red.json', 10)
+get_loss = CreateGetLoss(file_name, '../config/mean_std_red.json','../config/min_max_red.json', 20)
 
-param_ranges = {   'num_den_layers_pre': (0, 5), 'num_neurons_den_layers_pre': (10,100), 'dropout_rate_den_layers_pre': (0, 0.5),
-                   'num_den_layers_post': (0,5), 'num_neurons_den_layers_post': (10,100), 'dropout_rate_den_layers_post':(0, 0.5),
-                   'num_lstm_layers': (1,10), 'num_neurons_lstm_layer':(10, 200), 'activation_dense_pre': (0,2),
-                   'activation_dense_post': (0,2), 'dropout_rate_lstm': (0, 0.5), 'batch_size': (100,500),
-                   'learning_rate': (0.1, 0.0001), 'lstm_activation': (0,2), 'lstm_recurrent_activation': (0,2)
+param_ranges = {'num_den_layers_pre': (0, 3), 'num_neurons_den_layers_pre': (10,50), 'dropout_rate_den_layers_pre': (0, 0.5),
+                'num_den_layers_post': (0,3), 'num_neurons_den_layers_post': (10,50), 'dropout_rate_den_layers_post':(0, 0.5),
+                'num_lstm_layers': (3,7), 'num_neurons_lstm_layer':(50, 200), 'activation_dense_pre': (0,2),
+                'activation_dense_post': (0,2), 'dropout_rate_lstm': (0, 0.5), 'batch_size': (100,200),
+                'learning_rate_exp': (-5, -1), 'lstm_activation': (0,2), 'lstm_recurrent_activation': (0,2),
+                'optimizers': (0, 3)
 
 }
 
@@ -97,6 +84,17 @@ optimizer = BayesianOptimization(
     pbounds=param_ranges,
     random_state=1, verbose=1
 )
+
+last_params={"num_den_layers_pre" : 0 , "num_neurons_den_layers_pre": 81, "dropout_rate_den_layers_pre":  0.27,
+            "num_den_layers_post": 0, "num_neurons_den_layers_post": 44, "dropout_rate_den_layers_post": 0.056,
+            "num_lstm_layers": 5, "num_neurons_lstm_layer":74, "activation_dense_pre": 0, "activation_dense_post": 1,
+            "dropout_rate_lstm": 0.15, "batch_size":114, "learning_rate_exp":-3, "lstm_activation": 1,
+            "lstm_recurrent_activation": 0, "optimizers": 2}
+
+optimizer.probe(params=last_params, lazy=True)
+
+# optimizer.probe(params=[ 0 , 81, 0.27, 0, 44, 0.056, 5, 74, 0, 1, 0.15, 114, -3, 1, 0, 2 ], lazy=True)
+
 
 logger = JSONLogger(path=args.results)
 optimizer.subscribe(Events.OPTMIZATION_STEP, logger)
