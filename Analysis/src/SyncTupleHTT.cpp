@@ -82,12 +82,12 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
 
     sync().pt_tt = static_cast<float>((event.GetLeg(1).GetMomentum() + event.GetLeg(2).GetMomentum() + event.GetMET().GetMomentum()).Pt());
     sync().m_vis = static_cast<float>((event.GetLeg(1).GetMomentum() + event.GetLeg(2).GetMomentum()).M());
-    sync().m_sv = COND_VAL(apply_svFit, event.GetSVFitResults().momentum.M());
-    sync().m_sv_tau_ES_up = COND_VAL(event_tau_up && apply_svFit, event_tau_up->GetSVFitResults().momentum.M());
-    sync().m_sv_tau_ES_down = COND_VAL(event_tau_down && apply_svFit, event_tau_down->GetSVFitResults().momentum.M());
-    sync().m_sv_jet_ES_up = COND_VAL(event_jet_up && apply_svFit, event_jet_up->GetSVFitResults().momentum.M());
-    sync().m_sv_jet_ES_down = COND_VAL(event_jet_down && apply_svFit, event_jet_down->GetSVFitResults().momentum.M());
-    sync().mt_sv = COND_VAL(apply_svFit, event.GetSVFitResults().transverseMass);
+    // sync().m_sv = COND_VAL(apply_svFit, event.GetSVFitResults().momentum.M());
+    // sync().m_sv_tau_ES_up = COND_VAL(event_tau_up && apply_svFit, event_tau_up->GetSVFitResults().momentum.M());
+    // sync().m_sv_tau_ES_down = COND_VAL(event_tau_down && apply_svFit, event_tau_down->GetSVFitResults().momentum.M());
+    // sync().m_sv_jet_ES_up = COND_VAL(event_jet_up && apply_svFit, event_jet_up->GetSVFitResults().momentum.M());
+    // sync().m_sv_jet_ES_down = COND_VAL(event_jet_down && apply_svFit, event_jet_down->GetSVFitResults().momentum.M());
+    // sync().mt_sv = COND_VAL(apply_svFit, event.GetSVFitResults().transverseMass);
 
     sync().met = static_cast<float>(event.GetMET().GetMomentum().Pt());
     sync().met_tau_ES_up = COND_VAL(event_tau_up, event_tau_up->GetMET().GetMomentum().Pt());
@@ -165,6 +165,7 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().jeta_vbf_2 = COND_VAL(event.HasVBFjetPair(), event.GetVBFJet(2).GetMomentum().Eta());
     sync().jphi_vbf_2 = COND_VAL(event.HasVBFjetPair(), event.GetVBFJet(2).GetMomentum().Phi());
 
+
     sync().extramuon_veto = event->extramuon_veto;
     sync().extraelec_veto = event->extraelec_veto;
     sync().nbjets = static_cast<int>(event.GetSelectedSignalJets().n_bjets);
@@ -188,21 +189,22 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
                                         event.GetBJet(2)->resolution() * event.GetBJet(2).GetMomentum().E());
     sync().ht_other_jets = event.GetHT(false,true);
 
-    sync().kinfit_convergence = COND_VAL_INT(event.HasBjetPair() , event.GetKinFitResults().convergence);
-    sync().m_kinfit = COND_VAL(event.HasBjetPair() && event.GetKinFitResults().HasValidMass(),
-                               event.GetKinFitResults().mass);
-    sync().m_kinfit_tau_ES_up = COND_VAL(event_tau_up && event_tau_up->HasBjetPair() &&
-                                         event_tau_up->GetKinFitResults().HasValidMass(),
-                                         event_tau_up->GetKinFitResults().mass);
-    sync().m_kinfit_tau_ES_down = COND_VAL(event_tau_down && event_tau_down->HasBjetPair() &&
-                                           event_tau_down->GetKinFitResults().HasValidMass(),
-                                           event_tau_down->GetKinFitResults().mass);
-    sync().m_kinfit_jet_ES_up = COND_VAL(event_jet_up && event_jet_up->HasBjetPair() &&
-                                         event_jet_up->GetKinFitResults().HasValidMass(),
-                                         event_jet_up->GetKinFitResults().mass);
-    sync().m_kinfit_jet_ES_down = COND_VAL(event_jet_down && event_jet_down->HasBjetPair() &&
-                                           event_jet_down->GetKinFitResults().HasValidMass(),
-                                           event_jet_down->GetKinFitResults().mass);
+
+    // sync().kinfit_convergence = COND_VAL_INT(event.HasBjetPair() , event.GetKinFitResults().convergence);
+    // sync().m_kinfit = COND_VAL(event.HasBjetPair() && event.GetKinFitResults().HasValidMass(),
+    //                            event.GetKinFitResults().mass);
+    // sync().m_kinfit_tau_ES_up = COND_VAL(event_tau_up && event_tau_up->HasBjetPair() &&
+    //                                      event_tau_up->GetKinFitResults().HasValidMass(),
+    //                                      event_tau_up->GetKinFitResults().mass);
+    // sync().m_kinfit_tau_ES_down = COND_VAL(event_tau_down && event_tau_down->HasBjetPair() &&
+    //                                        event_tau_down->GetKinFitResults().HasValidMass(),
+    //                                        event_tau_down->GetKinFitResults().mass);
+    // sync().m_kinfit_jet_ES_up = COND_VAL(event_jet_up && event_jet_up->HasBjetPair() &&
+    //                                      event_jet_up->GetKinFitResults().HasValidMass(),
+    //                                      event_jet_up->GetKinFitResults().mass);
+    // sync().m_kinfit_jet_ES_down = COND_VAL(event_jet_down && event_jet_down->HasBjetPair() &&
+    //                                        event_jet_down->GetKinFitResults().HasValidMass(),
+    //                                        event_jet_down->GetKinFitResults().mass);
 
 
     sync().mva_score_nonRes_kl1 = COND_VAL(mva_reader, mva_reader->Evaluate(analysis::mva_study::MvaReader::MvaKey{"mva_smANkin_BSMklscan", 125, 1}, &event));
@@ -293,23 +295,23 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
         sync().dR_l1l2Pt_htautau_sv = COND_VAL(apply_svFit, ROOT::Math::VectorUtil::DeltaR(t1, t2)*event.GetHiggsTTMomentum(true).Pt());
         sync().MT_l1 = analysis::Calculate_MT(t1,met);
         sync().MT_htautau = analysis::Calculate_MT(Htt+met, met);
-        sync().MT_htautau_sv = COND_VAL(apply_svFit, analysis::Calculate_MT(event.GetHiggsTTMomentum(true), met));
+        //sync().MT_htautau_sv = COND_VAL(apply_svFit, analysis::Calculate_MT(event.GetHiggsTTMomentum(true), met));
         sync().MT_tot = analysis::Calculate_TotalMT(t1, t2,met);
         sync().MT2 = event.GetMT2();
         sync().mass_top1 = analysis::four_bodies::Calculate_topPairMasses(t1, t2, b1, b2, met).first;
         sync().mass_X = analysis::four_bodies::Calculate_MX(t1, t2, b1, b2, met);
         sync().mass_H = InvariantMass(Hbb, Htt+met);
-        sync().mass_H_sv = COND_VAL(apply_svFit, InvariantMass(Hbb, event.GetHiggsTTMomentum(true)));
+        //sync().mass_H_sv = COND_VAL(apply_svFit, InvariantMass(Hbb, event.GetHiggsTTMomentum(true)));
         sync().mass_H_vis = InvariantMass(Hbb, t1+t2);
-        sync().mass_H_kinfit_chi2 = event.GetKinFitResults().chi2;
-        sync().phi_sv = COND_VAL(apply_svFit, analysis::four_bodies::Calculate_phi(t1, t2, b1, b2, event.GetHiggsTTMomentum(true), Hbb));
-        sync().phi_1_sv = COND_VAL(apply_svFit, analysis::four_bodies::Calculate_phi1(t1, t2, event.GetHiggsTTMomentum(true), Hbb));
-        sync().phi_2_sv = COND_VAL(apply_svFit, analysis::four_bodies::Calculate_phi1(b1, b2, event.GetHiggsTTMomentum(true), Hbb));
-        sync().costheta_METhtautau_sv = COND_VAL(apply_svFit, analysis::four_bodies::Calculate_cosTheta_2bodies(met, event.GetHiggsTTMomentum(true)));
+        //sync().mass_H_kinfit_chi2 = event.GetKinFitResults().chi2;
+        //sync().phi_sv = COND_VAL(apply_svFit, analysis::four_bodies::Calculate_phi(t1, t2, b1, b2, event.GetHiggsTTMomentum(true), Hbb));
+        //sync().phi_1_sv = COND_VAL(apply_svFit, analysis::four_bodies::Calculate_phi1(t1, t2, event.GetHiggsTTMomentum(true), Hbb));
+        //sync().phi_2_sv = COND_VAL(apply_svFit, analysis::four_bodies::Calculate_phi1(b1, b2, event.GetHiggsTTMomentum(true), Hbb));
+        //sync().costheta_METhtautau_sv = COND_VAL(apply_svFit, analysis::four_bodies::Calculate_cosTheta_2bodies(met, event.GetHiggsTTMomentum(true)));
         sync().costheta_METhbb = analysis::four_bodies::Calculate_cosTheta_2bodies(met, Hbb);
         sync().costheta_b1hbb = analysis::four_bodies::Calculate_cosTheta_2bodies(b1, Hbb);
-        sync().costheta_htautau_svhhMET = COND_VAL(apply_svFit, analysis::four_bodies::Calculate_cosTheta_2bodies(event.GetHiggsTTMomentum(true),
-                                          event.GetResonanceMomentum(false,true)));
+        //sync().costheta_htautau_svhhMET = COND_VAL(apply_svFit, analysis::four_bodies::Calculate_cosTheta_2bodies(event.GetHiggsTTMomentum(true),
+        //                                  event.GetResonanceMomentum(false,true)));
     }
 
     select_jets(event_tau_up);

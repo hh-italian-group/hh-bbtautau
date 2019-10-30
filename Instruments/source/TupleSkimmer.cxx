@@ -428,8 +428,6 @@ private:
         boost::optional<EventInfoBase> eventInfo = CreateEventInfo(event,*signalObjectSelector,nullptr,setup.period,setup.jet_ordering);
         if(!eventInfo.is_initialized()) return false;
 
-        const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
-
         if(setup.apply_bb_cut && !eventInfo->HasBjetPair()) return false;
 
         if(setup.apply_mass_cut) {

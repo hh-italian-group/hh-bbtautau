@@ -96,7 +96,8 @@ public:
                 current_id = event_id;
             }
 
-            const auto es = static_cast<EventEnergyScale>(event.eventEnergyScale);
+            //const auto es = static_cast<EventEnergyScale>(event.eventEnergyScale);
+            const auto es = EventEnergyScale::Central;
             events[es] = event;
         }
 
