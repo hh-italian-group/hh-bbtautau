@@ -6,20 +6,51 @@ using LorentzVectorM = ROOT::Math::LorentzVector<ROOT::Math::PtEtaPhiM4D<float> 
 using LorentzVectorE = ROOT::Math::LorentzVector<ROOT::Math::PtEtaPhiE4D<float> >;
 using LorentzVector = ROOT::Math::LorentzVector<ROOT::Math::PxPyPzE4D<float> >;
 
-LorentzVectorM getHTTp4 (const ROOT::VecOps::RVec<LorentzVectorM>& lep_p4, const ROOT::VecOps::RVec<int>& lep_genTauIndex)
+LorentzVectorM getHTTp4 (const ROOT::VecOps::RVec<LorentzVectorM>& lep_p4, const ROOT::VecOps::RVec<int>& signal_tau_idx)
 {
-    size_t n_tau = 0;
-    LorentzVector htt(0, 0, 0, 0);
+    return lep_p4.at(signal_tau_idx.at(0)) + lep_p4.at(signal_tau_idx.at(1));
+}
+
+float getHTTScalarPt (const ROOT::VecOps::RVec<LorentzVectorM>& lep_p4, const ROOT::VecOps::RVec<int>& signal_tau_idx)
+{
+    return lep_p4.at(signal_tau_idx.at(0)).Pt() + lep_p4.at(signal_tau_idx.at(1)).Pt();
+}
+
+ROOT::VecOps::RVec<int> getSignalTauIndices_Gen(const ROOT::VecOps::RVec<LorentzVectorM>& lep_p4,
+                                                const ROOT::VecOps::RVec<int>& lep_genTauIndex)
+{
+    ROOT::VecOps::RVec<int> indexes;
+    int n_tau = 0;
     for(size_t n = 0; n < lep_p4.size(); ++n) {
         if(lep_genTauIndex.at(n) >= 0) {
-            htt += lep_p4.at(n);
+            indexes.push_back(n);
             n_tau++;
         }
     }
     if(n_tau != 2)
         throw std::runtime_error("too few taus");
-    return LorentzVectorM(htt);
+    return indexes;
 }
+
+ROOT::VecOps::RVec<int> getSignalTauIndicesDeep_Tau(const ROOT::VecOps::RVec<LorentzVectorM>& lep_p4,
+                                                    const ROOT::VecOps::RVec<float>& byDeepTau2017v2p1VSjet)
+{
+    ROOT::VecOps::RVec<size_t> ordered_index;
+    ROOT::VecOps::RVec<size_t> selected_taus_indices;
+    for(size_t lep_index = 0; lep_index < lep_p4.size(); ++lep_index)
+        ordered_index.push_back(lep_index);
+
+    std::sort(ordered_index.begin(), ordered_index.end(), [&](size_t a, size_t b){
+        return byDeepTau2017v2p1VSjet.at(a) > byDeepTau2017v2p1VSjet.at(b);
+    });
+
+    for(size_t n = 0; n < 2; ++n)
+        selected_taus_indices.push_back(ordered_index.at(n));
+
+    return selected_taus_indices;
+
+}
+
 
 float HTTScalarPt (const ROOT::VecOps::RVec<LorentzVectorM>& lep_p4, const ROOT::VecOps::RVec<int>& lep_genTauIndex)
 {
@@ -143,16 +174,21 @@ ROOT::VecOps::RVec<int> MakeGenbJet (const ROOT::VecOps::RVec<int>& jet_genJetIn
 }
 
 ROOT::VecOps::RVec<size_t> CreateOrderedIndex (const ROOT::VecOps::RVec<LorentzVectorE>& jets_p4,
-                                               const ROOT::VecOps::RVec<float>& jets_deepFlavour,
-                                               bool apply_acceptance, size_t max_jet = std::numeric_limits<size_t>::max())
+                                               const ROOT::VecOps::RVec<float>& jets_deepFlavour, bool apply_acceptance,
+                                               const ROOT::VecOps::RVec<int>& tau_indeces,
+                                               const ROOT::VecOps::RVec<LorentzVectorM>& lep_p4,
+                                               size_t max_jet = std::numeric_limits<size_t>::max())
 {
     ROOT::VecOps::RVec<size_t> ordered_index;
-    for(size_t jet_index = 0; jet_index < jets_p4.size(); ++jet_index){
-            if(apply_acceptance && (jets_p4.at(jet_index).pt() < 20 || abs(jets_p4.at(jet_index).eta()) > 2.4)) continue;
+    for(size_t jet_index = 0; jet_index < jets_p4.size() && ordered_index.size() < max_jet; ++jet_index) {
+        if(apply_acceptance && (jets_p4.at(jet_index).pt() < 20 || abs(jets_p4.at(jet_index).eta()) > 2.4)) continue;
+        bool has_overlap_with_taus = false;
+        for(size_t lep_index = 0; lep_index < tau_indeces.size() && !has_overlap_with_taus; ++lep_index) {
+            if(ROOT::Math::VectorUtil::DeltaR(lep_p4.at(tau_indeces.at(lep_index)), jets_p4.at(jet_index)) < 0.5)
+                has_overlap_with_taus = true;
+        }
+        if(!has_overlap_with_taus)
             ordered_index.push_back(jet_index);
-            if(ordered_index.size() == max_jet)
-                break;
-
     }
 
     std::sort(ordered_index.begin(), ordered_index.end(), [&](size_t a, size_t b){

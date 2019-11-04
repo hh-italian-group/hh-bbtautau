@@ -6,6 +6,7 @@ import numpy as np
 import ROOT
 import sys
 ROOT.gInterpreter.Declare('#include "../include/AnaPyInterface.h"')
+initialized = False
 max_jet = 10
 
 class SampleType:
@@ -32,38 +33,53 @@ def FindFiles(path, pattern) :
         v.push_back(file)
     return v
 
-def DefineVariables(sample_name, parity) :
+def DefineVariables(sample_name, parity, use_deepTau_ordering) :
+    global initialized
+    if not initialized:
+        ROOT.gInterpreter.Declare('#include "../include/AnaPyInterface.h"')
+    initialized = True
+
     df = ROOT.ROOT.RDataFrame('all_events', sample_name)
 
     if parity >= 0 and parity <= 1:
         df = df.Filter('evt % 2 == {}'.format(parity))
 
-    df =  df.Define('deepFlavour_bVSall', 'MakeDeepFlavour_bVSall(jets_deepFlavour_b, jets_deepFlavour_bb, jets_deepFlavour_lepb)') \
-            .Define('jets_deepFlavourOrderedIndex', 'CreateOrderedIndex(jets_p4, deepFlavour_bVSall, true, {})'.format(max_jet))  \
-            .Define('jets_genbJet', 'MakeGenbJet(jets_genJetIndex, jets_deepFlavourOrderedIndex)') \
-            .Filter('std::accumulate(jets_genbJet.begin(), jets_genbJet.end(), 0) == 2')
+    df =  df.Define('deepFlavour_bVSall', 'MakeDeepFlavour_bVSall(jets_deepFlavour_b, jets_deepFlavour_bb, jets_deepFlavour_lepb)')
+    # .Define('jets_genbJet', 'MakeGenbJet(jets_genJetIndex, jets_deepFlavourOrderedIndex)')\
+    # .Define('n_jets', 'jets_deepFlavourOrderedIndex.size()')
+    # .Filter('std::accumulate(jets_genbJet.begin(), jets_genbJet.end(), 0) == 2')
 
+    if use_deepTau_ordering :
+        df = df.Define('tau_indeces_deepTau', 'getSignalTauIndicesDeep_Tau(lep_p4, byDeepTau2017v2p1VSjetraw)') \
+                .Define('jets_deepFlavourOrderedIndex', 'CreateOrderedIndex(jets_p4, deepFlavour_bVSall, true, tau_indeces_deepTau, lep_p4, {})'.format(max_jet)) \
+                .Define('n_jets', 'jets_deepFlavourOrderedIndex.size()') \
+                .Define('htt_p4', 'getHTTp4(lep_p4, tau_indeces_deepTau)') \
+                .Define('htt_scalar_pt', 'getHTTScalarPt(lep_p4, tau_indeces_deepTau)') \
+                .Define('htt_pt', 'htt_p4.pt()') \
+                .Define('htt_eta', 'htt_p4.eta()')
 
-    df = df.Define('n_jets', 'jets_deepFlavourOrderedIndex.size()') \
-           .Define('htt_p4', 'getHTTp4(lep_p4, lep_genTauIndex)') \
-           .Define('htt_scalar_pt', 'HTTScalarPt(lep_p4, lep_genTauIndex)') \
-           .Define('htt_pt', 'htt_p4.pt()') \
-           .Define('htt_eta', 'htt_p4.eta()') \
-           .Define('met_pt', 'pfMET_p4.pt()') \
+    elif use_deepTau_ordering == False:
+        df = df.Define('tau_indeces_gen', 'getSignalTauIndices_Gen(lep_p4, lep_genTauIndex)') \
+                .Define('jets_deepFlavourOrderedIndex', 'CreateOrderedIndex(jets_p4, deepFlavour_bVSall, true, tau_indeces_gen, lep_p4, {})'.format(max_jet)) \
+                .Define('n_jets', 'jets_deepFlavourOrderedIndex.size()') \
+                .Define('htt_p4', 'getHTTp4(lep_p4, tau_indeces_gen)') \
+                .Define('htt_scalar_pt', 'getHTTScalarPt(lep_p4, tau_indeces_gen)') \
+                .Define('htt_pt', 'htt_p4.pt()') \
+                .Define('htt_eta', 'htt_p4.eta()')
 
     for n_jet in range(max_jet):
         df = df.Define('jet_{}_valid'.format(n_jet), 'static_cast<float>({} < jets_deepFlavourOrderedIndex.size())'.format(n_jet)) \
-               .Define('jet_{}_pt'.format(n_jet), 'jet_p4_pt(jets_deepFlavourOrderedIndex, jets_p4, {})'.format(n_jet)) \
-               .Define('jet_{}_eta'.format(n_jet), 'jet_p4_eta(jets_deepFlavourOrderedIndex, jets_p4, {})'.format(n_jet)) \
-               .Define('jet_{}_E'.format(n_jet), 'jet_p4_E(jets_deepFlavourOrderedIndex, jets_p4, {})'.format(n_jet)) \
-               .Define('jet_{}_M'.format(n_jet), 'jet_p4_M(jets_deepFlavourOrderedIndex, jets_p4, {})'.format(n_jet)) \
-               .Define('rel_jet_{}_M_pt'.format(n_jet), 'rel_jet_M_pt(jets_deepFlavourOrderedIndex, jets_p4, {})'.format(n_jet)) \
-               .Define('rel_jet_{}_E_pt'.format(n_jet), 'rel_jet_E_pt(jets_deepFlavourOrderedIndex, jets_p4, {})'.format(n_jet)) \
-               .Define('jet_{}_genbJet'.format(n_jet), 'jet_genbJet(jets_genJetIndex, jets_deepFlavourOrderedIndex, {}, jets_p4)'.format(n_jet)) \
-               .Define('jet_{}_deepFlavour'.format(n_jet), 'jets_deepFlavour(deepFlavour_bVSall, jets_deepFlavourOrderedIndex, {})'.format(n_jet)) \
-               .Define('jet_{}_deepCSV'.format(n_jet), 'jets_deepCSV(jets_deepCsv_BvsAll, jets_deepFlavourOrderedIndex, {})'.format(n_jet)) \
-               .Define('jet_{}_htt_dphi'.format(n_jet), 'httDeltaPhi_jet(htt_p4, jets_deepFlavourOrderedIndex, jets_p4, {})'.format(n_jet)) \
-               .Define('jet_{}_htt_deta'.format(n_jet), 'httDeltaEta_jet(htt_p4, jets_deepFlavourOrderedIndex, jets_p4, {})'.format(n_jet))
+                .Define('jet_{}_pt'.format(n_jet), 'jet_p4_pt(jets_deepFlavourOrderedIndex, jets_p4, {})'.format(n_jet)) \
+                .Define('jet_{}_eta'.format(n_jet), 'jet_p4_eta(jets_deepFlavourOrderedIndex, jets_p4, {})'.format(n_jet)) \
+                .Define('jet_{}_E'.format(n_jet), 'jet_p4_E(jets_deepFlavourOrderedIndex, jets_p4, {})'.format(n_jet)) \
+                .Define('jet_{}_M'.format(n_jet), 'jet_p4_M(jets_deepFlavourOrderedIndex, jets_p4, {})'.format(n_jet)) \
+                .Define('rel_jet_{}_M_pt'.format(n_jet), 'rel_jet_M_pt(jets_deepFlavourOrderedIndex, jets_p4, {})'.format(n_jet)) \
+                .Define('rel_jet_{}_E_pt'.format(n_jet), 'rel_jet_E_pt(jets_deepFlavourOrderedIndex, jets_p4, {})'.format(n_jet)) \
+                .Define('jet_{}_genbJet'.format(n_jet), 'jet_genbJet(jets_genJetIndex, jets_deepFlavourOrderedIndex, {}, jets_p4)'.format(n_jet)) \
+                .Define('jet_{}_deepFlavour'.format(n_jet), 'jets_deepFlavour(deepFlavour_bVSall, jets_deepFlavourOrderedIndex, {})'.format(n_jet)) \
+                .Define('jet_{}_deepCSV'.format(n_jet), 'jets_deepCSV(jets_deepCsv_BvsAll, jets_deepFlavourOrderedIndex, {})'.format(n_jet)) \
+                .Define('jet_{}_htt_dphi'.format(n_jet), 'httDeltaPhi_jet(htt_p4, jets_deepFlavourOrderedIndex, jets_p4, {})'.format(n_jet)) \
+                .Define('jet_{}_htt_deta'.format(n_jet), 'httDeltaEta_jet(htt_p4, jets_deepFlavourOrderedIndex, jets_p4, {})'.format(n_jet))
 
     return df
 
@@ -117,8 +133,8 @@ def CreateInputs(raw_data):
             data[:, jet_idx, jet_vars_idx[n]] = raw_data[all_vars[jet_vars_idx[n]].format(jet_idx)][:]
     return data
 
-def CreateRootDF(sample_name, parity, do_shuffle):
-    df = DefineVariables(sample_name, parity)
+def CreateRootDF(sample_name, parity, do_shuffle, use_deepTau_ordering):
+    df = DefineVariables(sample_name, parity, use_deepTau_ordering)
     evt_columns, jet_column, all_vars, jet_columns = CreateColums()
     data_raw = df.AsNumpy(columns=evt_columns+jet_columns)
     data = CreateInputs(data_raw)
