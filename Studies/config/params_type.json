@@ -1,0 +1,79 @@
+{
+    "num_den_layers_pre":{
+        "range" : [0, 5],
+        "type": "int",
+        "depends_on": "none"
+    },
+    "num_units_den_layers_pre":{
+        "range" : [15, 60],
+        "type": "int",
+        "depends_on": "num_den_layers_pre"
+    },
+    "dropout_rate_den_layers_pre":{
+        "range" : [0, 0.5],
+        "type": "float",
+        "depends_on": "num_den_layers_pre"
+    },
+    "num_den_layers_post":{
+        "range" : [0, 5],
+        "type": "int",
+        "depends_on": "none"
+    },
+    "num_units_den_layers_post":{
+        "range" : [15, 60],
+        "type": "int",
+        "depends_on": "num_den_layers_post"
+    },
+    "dropout_rate_den_layers_post":{
+        "range" : [0, 0.5],
+        "type": "float",
+        "depends_on": "num_den_layers_post"
+    },
+    "num_rnn_layers":{
+        "range" : [3, 10],
+        "type": "int",
+        "depends_on": "none"
+    },
+    "num_units_rnn_layer":{
+        "range" : [50, 200],
+        "type": "int",
+        "depends_on": "none"
+    },
+    "activation_dense_pre":{
+        "range" : ["sigmoid", "relu", "tanh"],
+        "type": "list",
+        "depends_on": "none"
+    },
+    "rnn_type":{
+        "range" : ["LSTM", "GRU", "SimpleRNN"],
+        "type": "list",
+        "depends_on": "none"
+    },
+    "activation_dense_post":{
+        "range" : ["sigmoid", "relu", "tanh"],
+        "type": "list",
+        "depends_on": "none"
+    },
+    "dropout_rate_rnn":{
+        "range" : [0, 0.5],
+        "type": "float",
+        "depends_on": "none"
+    },
+    "batch_size":{
+        "range" : [100, 1000],
+        "type": "int",
+        "depends_on": "none"
+    },
+    "learning_rate_exp":{
+        "range" : [-6, -1],
+        "type": "int",
+        "depends_on": "none"
+    },
+    "optimizers":{
+        "range" : ["RMSprop", "SGD", "Adam", "Nadam" ],
+        "type": "list",
+        "depends_on": "none"
+    }
+
+
+}

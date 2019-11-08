@@ -12,7 +12,10 @@ import numpy as np
 
 import InputsProducer
 import ParametrizedModel as pm
+import BayesianOptimizationCustom as bo
 from CalculateWeigths import CreateSampleWeigts, CrossCheckWeights
+
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-w", "--weights")
@@ -27,8 +30,6 @@ with open('../config/params.json') as f:
 
 data = InputsProducer.CreateRootDF(file_name, args.parity, False)
 X, Y, Z, var_pos, var_pos_z, var_name = InputsProducer.CreateXY(data)
-
-params = pm.TransformParams(params)
 
 model = pm.HHModel(var_pos, '../config/mean_std_red.json', '../config/min_max_red.json', params)
 opt = tf.keras.optimizers.Adam(learning_rate=10 ** params['learning_rate_exp'])

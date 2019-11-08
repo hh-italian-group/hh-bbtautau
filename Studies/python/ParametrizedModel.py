@@ -7,7 +7,7 @@ import numpy as np
 import json
 import ROOT
 
-from tensorflow.keras.layers import Layer, Dense, Dropout, LSTM, TimeDistributed, Concatenate
+from tensorflow.keras.layers import Layer, Dense, Dropout, LSTM, GRU, SimpleRNN, TimeDistributed, Concatenate, BatchNormalization
 from tensorflow.keras.models import Model
 
 class StdLayer(Layer):
@@ -71,41 +71,48 @@ class HHModel(Model):
     def __init__(self, var_pos, mean_std_json, min_max_json, params):
         super(HHModel, self).__init__()
 
-        # Fix this
         self.normalize = StdLayer(mean_std_json, var_pos, 5, name='std_layer')
         self.scale = ScaleLayer(min_max_json, var_pos, [-1,1], name='scale_layer')
 
         # Pre Dense Block
         self.dense_pre = []
         self.dropout_dense_pre = []
+        self.batch_norm_dense_pre = []
         for i in range(params['num_den_layers_pre']):
-            self.dense_pre.append(TimeDistributed(Dense(params['num_neurons_den_layers_pre'],
-                                                        activation=params['activation_dense_pre']), name='dense_pre_{}'.format(i)))
+            self.dense_pre.append(TimeDistributed(Dense(params['num_units_den_layers_pre'],
+                                                        activation=params['activation_dense_pre']),
+                                                        name='dense_pre_{}'.format(i)))
+            self.batch_norm_dense_pre.append(tf.keras.layers.BatchNormalization(name='batch_normalization_pre_{}'.format(i)))
             if params['dropout_rate_den_layers_pre'] > 0:
                 self.dropout_dense_pre.append(Dropout(params['dropout_rate_den_layers_pre'],
                                                       name='dropout_dense_pre_{}'.format(i)))
 
-        # LSTM Dense Block
-        self.lstm = []
-        self.dropout_lstm = []
+        # RNN Dense Block
+        self.rnn = []
+        self.dropout_rnn = []
         self.concatenate = []
-        for i in range(params['num_lstm_layers']):
-            self.lstm.append(LSTM(params['num_neurons_lstm_layer'], return_sequences=True,
-                                  activation=params['lstm_activation'],
-                                  recurrent_activation=params['lstm_recurrent_activation'] ,name='lstm_{}'.format(i)))
-            if params['dropout_rate_lstm'] > 0:
-                self.dropout_lstm.append(Dropout(params['dropout_rate_lstm'], name='dropout_lstm_pre_{}'.format(i)))
-            if i < params['num_lstm_layers'] - 1 :
+        self.batch_norm_rnn = []
+        for i in range(params['num_rnn_layers']):
+            self.rnn.append(getattr(tf.keras.layers, params['rnn_type'])(params['num_units_rnn_layer'],
+                             return_sequences=True ,name='rnn_{}'.format(i)))
+            self.batch_norm_rnn.append(tf.keras.layers.BatchNormalization(name='batch_normalization_rnn_{}'.format(i)))
+            if params['dropout_rate_rnn'] > 0:
+                self.dropout_rnn.append(Dropout(params['dropout_rate_rnn'], name='dropout_rnn_pre_{}'.format(i)))
+            if i < params['num_rnn_layers'] - 1 :
                 self.concatenate.append(Concatenate(name='concatenate_{}'.format(i)))
 
         # Post Dense Block
-        self.dense_post = [] #t
+        self.dense_post = []
         self.dropout_dense_post = []
+        self.batch_norm_dense_post = []
         for i in range(params['num_den_layers_post']):
-            self.dense_post.append(TimeDistributed(Dense(params['num_neurons_den_layers_post'],
-                                                         activation=params['activation_dense_post']), name='dense_pos_{}'.format(i)))
+            self.dense_post.append(TimeDistributed(Dense(params['num_units_den_layers_post'],
+                                                         activation=params['activation_dense_post']),
+                                                          name='dense_pos_{}'.format(i)))
+            self.batch_norm_dense_post.append(tf.keras.layers.BatchNormalization(name='batch_normalization_post_{}'.format(i)))
             if params['dropout_rate_den_layers_post'] > 0:
-                self.dropout_dense_post.append(Dropout(params['dropout_rate_den_layers_post'], name='dropout_dense_pre_{}'.format(i)))
+                self.dropout_dense_post.append(Dropout(params['dropout_rate_den_layers_post'],
+                                                       name='dropout_dense_pre_{}'.format(i)))
 
         self.final_dense = TimeDistributed(Dense(1, activation="sigmoid"), name='output')
 
@@ -117,19 +124,26 @@ class HHModel(Model):
         x = x[:, :, 1:]
         for i in range(len(self.dense_pre)):
             x = self.dense_pre[i](x, mask=mask)
+            if len(self.batch_norm_dense_pre) > i:
+                x = self.batch_norm_dense_pre[i](x)
             if len(self.dropout_dense_pre) > i:
                 x = self.dropout_dense_pre[i](x)
+
         last_pre = x
 
-        for i in range(len(self.lstm)):
-            x = self.lstm[i](x, mask=mask)
-            if len(self.dropout_lstm) > i:
-                x = self.dropout_lstm[i](x)
-            if i < len(self.lstm) - 1 :
+        for i in range(len(self.rnn)):
+            x = self.rnn[i](x, mask=mask)
+            if len(self.batch_norm_rnn) > i:
+                x = self.batch_norm_rnn[i](x)
+            if len(self.dropout_rnn) > i:
+                x = self.dropout_rnn[i](x)
+            if i < len(self.rnn) - 1 :
                 x = self.concatenate[i]([last_pre, x])
 
         for i in range(len(self.dense_post)):
             x = self.dense_post[i](x, mask=mask)
+            if len(self.batch_norm_dense_post) > i:
+                x = self.batch_norm_dense_post[i](x)
             if len(self.dropout_dense_post) > i:
                 x = self.dropout_dense_post[i](x)
         x = self.final_dense(x, mask=mask)
@@ -140,29 +154,6 @@ class HHModel(Model):
         s = tf.reshape(tf.reduce_sum(x, axis = 1), shape=(input_shape[0], 1))
         x = (2 * x ) / s
         return x
-
-
-def TransformParams(params):
-    activations = { 0: 'sigmoid', 2: 'relu', 1: 'tanh' }
-    optimizers = { 0: 'RMSprop', 1: 'SGD', 2: 'Adam', 3: 'Nadam' }
-    new_params = {}
-    new_params['num_den_layers_pre'] = int(round(params['num_den_layers_pre']))
-    new_params['num_neurons_den_layers_pre'] = int(round(params['num_neurons_den_layers_pre']))
-    new_params['dropout_rate_den_layers_pre'] = params['dropout_rate_den_layers_pre']
-    new_params['num_den_layers_post'] = int(round(params['num_den_layers_post']))
-    new_params['num_neurons_den_layers_post'] = int(round(params['num_neurons_den_layers_post']))
-    new_params['dropout_rate_den_layers_post'] = params['dropout_rate_den_layers_post']
-    new_params['num_lstm_layers'] = int(round(params['num_lstm_layers']))
-    new_params['num_neurons_lstm_layer'] = int(round(params['num_neurons_lstm_layer']))
-    new_params['activation_dense_pre'] = activations[int(round(params['activation_dense_pre']))]
-    new_params['activation_dense_post'] = activations[int(round(params['activation_dense_post']))]
-    new_params['dropout_rate_lstm'] = params['dropout_rate_lstm']
-    new_params['learning_rate_exp'] = int(round(params['learning_rate_exp']))
-    new_params['batch_size'] = int(round(params['batch_size']))
-    new_params['lstm_activation'] = activations[int(round(params['lstm_activation']))]
-    new_params['optimizers'] = optimizers[int(round(params['optimizers']))]
-    new_params['lstm_recurrent_activation'] = activations[int(round(params['lstm_recurrent_activation']))]
-    return new_params
 
 def ListToVector(files):
     v = ROOT.std.vector('string')()

@@ -5,6 +5,7 @@
 import numpy as np
 import ROOT
 import sys
+import json
 ROOT.gInterpreter.Declare('#include "../include/AnaPyInterface.h"')
 initialized = False
 max_jet = 10
@@ -45,9 +46,8 @@ def DefineVariables(sample_name, parity, use_deepTau_ordering) :
         df = df.Filter('evt % 2 == {}'.format(parity))
 
     df =  df.Define('deepFlavour_bVSall', 'MakeDeepFlavour_bVSall(jets_deepFlavour_b, jets_deepFlavour_bb, jets_deepFlavour_lepb)')
-    # .Define('jets_genbJet', 'MakeGenbJet(jets_genJetIndex, jets_deepFlavourOrderedIndex)')\
     # .Define('n_jets', 'jets_deepFlavourOrderedIndex.size()')
-    # .Filter('std::accumulate(jets_genbJet.begin(), jets_genbJet.end(), 0) == 2')
+
 
     if use_deepTau_ordering :
         df = df.Define('tau_indeces_deepTau', 'getSignalTauIndicesDeep_Tau(lep_p4, byDeepTau2017v2p1VSjetraw)') \
@@ -65,7 +65,10 @@ def DefineVariables(sample_name, parity, use_deepTau_ordering) :
                 .Define('htt_p4', 'getHTTp4(lep_p4, tau_indeces_gen)') \
                 .Define('htt_scalar_pt', 'getHTTScalarPt(lep_p4, tau_indeces_gen)') \
                 .Define('htt_pt', 'htt_p4.pt()') \
-                .Define('htt_eta', 'htt_p4.eta()')
+                .Define('htt_eta', 'htt_p4.eta()') \
+                .Define('jets_genbJet', 'MakeGenbJet(jets_genJetIndex, jets_deepFlavourOrderedIndex)')\
+                .Filter('std::accumulate(jets_genbJet.begin(), jets_genbJet.end(), 0) == 2')
+
 
     for n_jet in range(max_jet):
         df = df.Define('jet_{}_valid'.format(n_jet), 'static_cast<float>({} < jets_deepFlavourOrderedIndex.size())'.format(n_jet)) \
@@ -144,11 +147,13 @@ def CreateRootDF(sample_name, parity, do_shuffle, use_deepTau_ordering):
     return data
 
 def CreateXY(data):
-    training_evt_vars     = [ 'htt_pt', 'htt_eta', 'htt_scalar_pt']
+    with open('../config/training_variables.json') as json_file:
+        var = json.load(json_file)
+
+    training_evt_vars     = var['evt_vars']
     idx_training_evt_vars =  GetIndex(training_evt_vars)
 
-    training_jet_vars     = [ 'jet_{}_valid', 'jet_{}_pt', 'jet_{}_eta', 'rel_jet_{}_M_pt',
-                              'rel_jet_{}_E_pt','jet_{}_htt_deta', 'jet_{}_deepFlavour', 'jet_{}_htt_dphi' ]
+    training_jet_vars     =  var['jet_vars']
     idx_training_jet_vars =  GetIndex(training_jet_vars)
 
     training_vars         =   training_jet_vars + training_evt_vars

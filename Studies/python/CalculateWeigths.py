@@ -132,17 +132,15 @@ def CreateWeights(X, Z):
                 weights[year, channel, :, :, :] *= A
 
     # all years
+    #https://twiki.cern.ch/twiki/bin/viewauth/CMS/TWikiLUM
+    luminosity = [35.92, 41.53, 59.74]
     year_cnt = np.zeros(3)
     for year in range(3):
          year_cnt[year] = np.sum(weights[year, :, :, :, :] * counts[year, :, :, :, :])
 
-    ref_year = np.amax(year_cnt)
-    if ref_year == 0:
-        raise RuntimeError('bad year')
-
     for year in range(3):
         if year_cnt[year] != 0 :
-            A = ref_year / year_cnt[year]
+            A = luminosity[year] / year_cnt[year]
             weights[year, :, :, :, :] *= A
 
     #sum all = n_evt

@@ -1,0 +1,7 @@
+[
+    {"num_den_layers_pre" : 0 , "num_units_den_layers_pre": 15, "dropout_rate_den_layers_pre":  0,
+        "num_den_layers_post": 0, "num_units_den_layers_post": 15, "dropout_rate_den_layers_post": 0,
+        "num_rnn_layers": 5, "num_units_rnn_layer":74, "activation_dense_pre": "relu", "activation_dense_post": "sigmoid",
+        "dropout_rate_rnn": 0.15, "batch_size":114, "learning_rate_exp":-3, "optimizers": "Adam", "rnn_type": "LSTM"
+    }
+]
