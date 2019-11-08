@@ -15,7 +15,8 @@ class BayesianOptimizationCustom:
                  probed_points_opt_output, num_iter, num_init_points, **kwargs):
         with open(param_ranges_json) as json_file:
             self.params_typed_range = json.load(json_file)
-
+        self.num_iter = num_iter
+        self.num_init_points = num_init_points
         self.params_ranges = {}
         self.probed_points = []
         self.probed_points_target_output =  probed_points_target_output
@@ -116,8 +117,8 @@ class BayesianOptimizationCustom:
         return has_been_tested
 
     def maximize(self,
-                 init_points=num_init_points,
-                 n_iter=num_iter,
+                 init_points,
+                 n_iter,
                  acq='ucb',
                  kappa=2.576,
                  xi=0.0,
@@ -137,11 +138,16 @@ class BayesianOptimizationCustom:
             n += self.MaximizeStep(p_opt, is_target_point=False)
 
       # for each param var up and down and try with edges parameter
-        for key, values in params_typed_range.items():
-            for n in self.params_range[key]:
-                new_p_opt = copy.deepcopy(p_opt)
-                p_opt[key] = n
-                self.MaximizeStep(p_opt, is_target_point=True)
+        for key, values in self.params_typed_range.items():
+            new_p_opt = copy.deepcopy(p_opt)
+            if values['type'] ==  'list' :
+                for v in values:
+                    p_opt[key] = v
+                    self.MaximizeStep(p_opt, is_target_point=True)
+            elif values['type'] in ['int', 'float']:
+                for n in self.params_ranges[key]:
+                    p_opt[key] = n
+                    self.MaximizeStep(p_opt, is_target_point=False)
 
         p_opt_max = p_opt.max
         p_target_max = self.TransformParams(p_opt_max)

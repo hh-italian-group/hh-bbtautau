@@ -66,6 +66,8 @@ def DefineVariables(sample_name, parity, use_deepTau_ordering) :
                 .Define('htt_scalar_pt', 'getHTTScalarPt(lep_p4, tau_indeces_gen)') \
                 .Define('htt_pt', 'htt_p4.pt()') \
                 .Define('htt_eta', 'htt_p4.eta()') \
+                .Define('rel_met_pt_htt_pt', 'pfMET_p4.pt() / htt_scalar_pt') \
+                .Define('htt_met_dphi', 'ROOT::Math::VectorUtil::DeltaPhi(htt_p4, pfMET_p4)') \
                 .Define('jets_genbJet', 'MakeGenbJet(jets_genJetIndex, jets_deepFlavourOrderedIndex)')\
                 .Filter('std::accumulate(jets_genbJet.begin(), jets_genbJet.end(), 0) == 2')
 
@@ -88,7 +90,7 @@ def DefineVariables(sample_name, parity, use_deepTau_ordering) :
 
 def CreateColums() :
     evt_columns = [ 'sample_type', 'spin', 'mass_point', 'node', 'sample_year', 'channelId', 'htt_pt', 'htt_eta',
-                    'n_jets', 'htt_scalar_pt'
+                    'n_jets', 'htt_scalar_pt', 'htt_met_dphi', 'rel_met_pt_htt_pt'
     ]
 
     jet_column = [ 'jet_{}_valid', 'jet_{}_pt', 'jet_{}_eta', 'jet_{}_E', 'jet_{}_M', 'rel_jet_{}_M_pt', 'rel_jet_{}_E_pt',
