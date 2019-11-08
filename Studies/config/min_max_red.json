@@ -26,5 +26,14 @@
     "htt_scalar_pt": {
         "min": 0.0,
         "max": 3716.5
+    },
+    "sample_year": {
+    "min": 2016.0,
+    "max": 2018.0
+    },
+    
+    "channelId": {
+        "min": 0.0,
+        "max": 2.0
     }
 }
