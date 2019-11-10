@@ -27,13 +27,16 @@ import ROOT
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-results", "--results")
+parser.add_argument("-training_variables", "--training_variables")
 parser.add_argument("-init_points_to_probe", "--init_points_to_probe")
 parser.add_argument("-params", "--params")
 parser.add_argument("-n_iter", "--n_iter", type=int)
 parser.add_argument("-n_epochs", "--n_epochs", type=int)
 parser.add_argument("-f", "--file", nargs='+')
-parser.add_argument('-val_split', '--val_split', nargs='?', default=0.5, type=float)
+parser.add_argument('-val_split', '--val_split', nargs='?', default=0.25, type=float)
 parser.add_argument('-seed', '--seed', nargs='?', default=12345, type=int)
+parser.add_argument("-random_state", "--random_state",nargs='?', type=int, default=1)
+
 args = parser.parse_args()
 
 args = parser.parse_args()
@@ -47,8 +50,8 @@ file_name = ListToVector(args.file)
 
 def CreateGetLoss(file_name, cfg_mean_std, cfg_min_max, n_epoch):
     np.random.seed(args.seed)
-    data = InputsProducer.CreateRootDF(file_name, 0, True, False)
-    X, Y, Z, var_pos, var_pos_z, var_name = InputsProducer.CreateXY(data)
+    data = InputsProducer.CreateRootDF(file_name, 0, True, True)
+    X, Y, Z, var_pos, var_pos_z, var_name = InputsProducer.CreateXY(data, args.training_variables)
     w = CreateSampleWeigts(X, Z)
     Y = Y.reshape(Y.shape[0:2])
     def GetLoss(**params):
@@ -71,6 +74,6 @@ def CreateGetLoss(file_name, cfg_mean_std, cfg_min_max, n_epoch):
 get_loss = CreateGetLoss(file_name, '../config/mean_std_red.json','../config/min_max_red.json', args.n_epochs)
 
 optimizer = bo.BayesianOptimizationCustom(args.params, args.init_points_to_probe, get_loss,
-                                      '{}_target.json'.format(args.results), '{}_opt.json'.format(args.results), args.n_iter, 1)
-
-optimizer.maximize(1, args.n_iter)
+                                      '{}_target.json'.format(args.results), '{}_opt.json'.format(args.results),
+                                      args.n_iter, args.random_state)
+optimizer.maximize(args.n_iter)

@@ -14,6 +14,7 @@ import ROOT
 parser = argparse.ArgumentParser()
 parser.add_argument("-f", "--file", nargs='+')
 parser.add_argument("-output", "--output_file")
+parser.add_argument("-training_variables", "--training_variables")
 args = parser.parse_args()
 
 def ListToVector(files):
@@ -27,8 +28,8 @@ def truncate(x):
     return int(x * 1000) / 1000.
 
 def CalculateMinMax(file_name):
-    data = InputsProducer.CreateRootDF(file_name, -1, False)
-    X, Y,training_vars,var_pos,var_pos_z, var_name  = InputsProducer.CreateXY(data)
+    data = InputsProducer.CreateRootDF(file_name, -1, False, True)
+    X, Y,training_vars,var_pos,var_pos_z, var_name  = InputsProducer.CreateXY(data, args.training_variables)
 
     val = var_pos['jet_{}_valid']
     n_valid = np.sum(X[:,:,val])

@@ -169,7 +169,7 @@ def CreateSampleWeigts(X,Z):
     weights, mass_node_unique, mass_node = CreateWeights(X, Z)
     return ConvertToVector(X,Z, weights, mass_node_unique, mass_node)
 
-# @numba.njit
+@numba.njit
 def CrossCheckWeights(Z, X, w, g_r, res_non_res, check_channel, year, channel):
     weights, mass_node_unique, mass_node = CreateWeights(X, Z)
     w = ConvertToVector(X, Z, weights, mass_node_unique, mass_node)

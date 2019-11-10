@@ -33,20 +33,29 @@ ROOT::VecOps::RVec<int> getSignalTauIndices_Gen(const ROOT::VecOps::RVec<Lorentz
 }
 
 ROOT::VecOps::RVec<int> getSignalTauIndicesDeep_Tau(const ROOT::VecOps::RVec<LorentzVectorM>& lep_p4,
-                                                    const ROOT::VecOps::RVec<float>& byDeepTau2017v2p1VSjet)
+                                                    const ROOT::VecOps::RVec<float>& byDeepTau2017v2p1VSjet,
+                                                    const ROOT::VecOps::RVec<float>& byDeepTau2017v2p1VSeraw,
+                                                    const ROOT::VecOps::RVec<float>& byDeepTau2017v2p1VSmuraw)
 {
     ROOT::VecOps::RVec<size_t> ordered_index;
     ROOT::VecOps::RVec<size_t> selected_taus_indices;
-    for(size_t lep_index = 0; lep_index < lep_p4.size(); ++lep_index)
+    // values taken from: https://github.com/cms-sw/cmssw/blob/master/RecoTauTag/RecoTau/python/tools/runTauIdMVA.py#L658-L685
+    double  losser_wp_vs_e = 0.0630386;
+    double  losser_wp_vs_mu = 0.1058354;
+    for(size_t lep_index = 0; lep_index < lep_p4.size(); ++lep_index){
+        if(byDeepTau2017v2p1VSeraw.at(lep_index) < losser_wp_vs_e || byDeepTau2017v2p1VSmuraw.at(lep_index) < losser_wp_vs_mu) continue;
         ordered_index.push_back(lep_index);
+    }
+
 
     std::sort(ordered_index.begin(), ordered_index.end(), [&](size_t a, size_t b){
         return byDeepTau2017v2p1VSjet.at(a) > byDeepTau2017v2p1VSjet.at(b);
     });
 
-    for(size_t n = 0; n < 2; ++n)
-        selected_taus_indices.push_back(ordered_index.at(n));
-
+    if(ordered_index.size() > 1){
+        for(size_t n = 0; n < 2; ++n)
+            selected_taus_indices.push_back(ordered_index.at(n));
+    }
     return selected_taus_indices;
 
 }

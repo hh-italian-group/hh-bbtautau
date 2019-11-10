@@ -12,11 +12,11 @@ import numpy as np
 
 class BayesianOptimizationCustom:
     def __init__(self, param_ranges_json, params_init_probe_json, fn, probed_points_target_output,
-                 probed_points_opt_output, num_iter, num_init_points, **kwargs):
+                 probed_points_opt_output, num_iter, random_state):
         with open(param_ranges_json) as json_file:
             self.params_typed_range = json.load(json_file)
         self.num_iter = num_iter
-        self.num_init_points = num_init_points
+        self.random_state = random_state
         self.params_ranges = {}
         self.probed_points = []
         self.probed_points_target_output =  probed_points_target_output
@@ -35,7 +35,7 @@ class BayesianOptimizationCustom:
         self.optimizer = BayesianOptimization(
             f=None,
             pbounds=self.params_ranges,
-            random_state=1,
+            random_state=self.random_state,
             verbose=1
         )
 
@@ -51,8 +51,11 @@ class BayesianOptimizationCustom:
             else:
                 raise Exception('type {} not allowed'.format(self.params_typed_range[key]['type']))
 
-            if self.params_typed_range[key]['depends_on'] != 'none':
-                if params[self.params_typed_range[key]['depends_on'] ] == 0:
+        for key, value in params.items():
+            #Has some dependency wiht other variables
+            if 'depends_on' in self.params_typed_range[key]:
+                # the variable on which it depends has a value of zero
+                if new_params[self.params_typed_range[key]['depends_on'] ] == 0:
                     new_params[key] = self.params_typed_range[key]['range'][0]
         return new_params
 
@@ -98,11 +101,9 @@ class BayesianOptimizationCustom:
             "params": { key: float(value) for key,value in p_opt.items() }
         }
 
-        with open(self.probed_points_opt_output, 'a') as f:
-            f.write(json.dumps(entry_opt) + '\n')
-
-        with open(self.probed_points_target_output, 'a') as f:
-            f.write(json.dumps(entry_target) + '\n')
+        if has_been_tested == 1:
+            with open(self.probed_points_target_output, 'a') as f:
+                f.write(json.dumps(entry_target) + '\n')
 
         self.probed_points.append(entry_target)
 
@@ -113,11 +114,13 @@ class BayesianOptimizationCustom:
                     equal = False
         if equal == False:
             self.optimizer.register(params=p_opt,target=result)
+            with open(self.probed_points_opt_output, 'a') as f:
+                f.write(json.dumps(entry_opt) + '\n')
+
 
         return has_been_tested
 
     def maximize(self,
-                 init_points,
                  n_iter,
                  acq='ucb',
                  kappa=2.576,
@@ -137,11 +140,14 @@ class BayesianOptimizationCustom:
             p_opt = self.optimizer.suggest(utility)
             n += self.MaximizeStep(p_opt, is_target_point=False)
 
+        p_opt_max = self.optimizer.max
+        p_target_max = self.TransformParams(p_opt_max['params'])
+
       # for each param var up and down and try with edges parameter
         for key, values in self.params_typed_range.items():
-            new_p_opt = copy.deepcopy(p_opt)
+            new_p_opt = copy.deepcopy(p_target_max)
             if values['type'] ==  'list' :
-                for v in values:
+                for v in values['range']:
                     p_opt[key] = v
                     self.MaximizeStep(p_opt, is_target_point=True)
             elif values['type'] in ['int', 'float']:
