@@ -16,7 +16,6 @@ class BayesianOptimizationCustom:
                  probed_points_opt_output_prev=''):
         with open(param_ranges_json) as json_file:
             self.params_typed_range = json.load(json_file)
-        self.load_points = load_points
         self.num_iter = num_iter
         self.random_state = random_state
         self.params_ranges = {}
@@ -24,8 +23,6 @@ class BayesianOptimizationCustom:
         self.probed_points_opt = []
         self.probed_points_target_output =  probed_points_target_output
         self.probed_points_opt_output = probed_points_opt_output
-        self.probed_points_target_output_prev =  probed_points_target_output_prev
-        self.probed_points_opt_output_prev = probed_points_opt_output_prev
 
         for key,values in self.params_typed_range.items():
             if values['type'] in ["int", "float"]:
@@ -111,7 +108,7 @@ class BayesianOptimizationCustom:
                 with open(self.probed_points_opt_output, 'a') as f:
                     f.write(json.dumps(p) + '\n')
 
-                # self.optimizer.register(params=p['params'],target=p['target'])
+                self.optimizer.register(params=p['params'],target=p['target'])
 
     def MaximizeStep(self, p, is_target_point=False):
         if is_target_point:
@@ -152,14 +149,9 @@ class BayesianOptimizationCustom:
         with open(self.probed_points_opt_output, 'a') as f:
             f.write(json.dumps(entry_opt) + '\n')
 
-
         return has_been_tested
 
     def maximize(self, n_iter, acq='ucb', kappa=2.576, xi=0.0, **gp_params):
-
-        #Include point from previus optimization
-        if self.load_points == True:
-            self.LoadPoints(self.probed_points_target_output_prev, self.probed_points_opt_output_prev)
 
         #Probe with all known good points
         for p in self.init_points_to_probe:

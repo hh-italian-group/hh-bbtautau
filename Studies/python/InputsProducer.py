@@ -47,7 +47,7 @@ def DefineVariables(sample_name, parity, use_deepTau_ordering) :
     df =  df.Define('deepFlavour_bVSall', 'MakeDeepFlavour_bVSall(jets_deepFlavour_b, jets_deepFlavour_bb, jets_deepFlavour_lepb)')
 
     if use_deepTau_ordering :
-        df = df.Define('tau_indices_sel', 'getSignalTauIndicesDeep_Tau(lep_p4, byDeepTau2017v2p1VSjetraw, byDeepTau2017v2p1VSeraw, byDeepTau2017v2p1VSmuraw, lep_type)') \
+        df = df.Define('tau_indices_sel', 'getSignalTauIndicesDeep_Tau(lep_p4, byDeepTau2017v2p1VSjetraw, byDeepTau2017v2p1VSeraw, byDeepTau2017v2p1VSmuraw, lep_type, channelId)') \
                .Filter('tau_indices_sel.size() == 2') \
 
     else:

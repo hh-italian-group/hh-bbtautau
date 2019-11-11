@@ -78,4 +78,9 @@ get_loss = CreateGetLoss(file_name, '../config/mean_std_red.json','../config/min
 optimizer = bo.BayesianOptimizationCustom(args.params, args.init_points_to_probe, get_loss,
                                       '{}_target.json'.format(args.results), '{}_opt.json'.format(args.results),
                                       args.n_iter, args.random_state, args.load_points,'target_{}'.format(args.prev_point), 'opt_{}'.format(args.prev_point))
+#Include point from previus optimization
+if args.load_points == True:
+    bo.LoadPoints('target_{}'.format(args.prev_point), 'opt_{}'.format(args.prev_point))
+
+
 optimizer.maximize(args.n_iter)
