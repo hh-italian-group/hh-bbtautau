@@ -35,7 +35,8 @@ ROOT::VecOps::RVec<int> getSignalTauIndices_Gen(const ROOT::VecOps::RVec<Lorentz
 ROOT::VecOps::RVec<int> getSignalTauIndicesDeep_Tau(const ROOT::VecOps::RVec<LorentzVectorM>& lep_p4,
                                                     const ROOT::VecOps::RVec<float>& byDeepTau2017v2p1VSjet,
                                                     const ROOT::VecOps::RVec<float>& byDeepTau2017v2p1VSeraw,
-                                                    const ROOT::VecOps::RVec<float>& byDeepTau2017v2p1VSmuraw)
+                                                    const ROOT::VecOps::RVec<float>& byDeepTau2017v2p1VSmuraw,
+                                                    const ROOT::VecOps::RVec<int>& lep_type)
 {
     ROOT::VecOps::RVec<size_t> ordered_index;
     ROOT::VecOps::RVec<size_t> selected_taus_indices;
@@ -43,23 +44,22 @@ ROOT::VecOps::RVec<int> getSignalTauIndicesDeep_Tau(const ROOT::VecOps::RVec<Lor
     double  losser_wp_vs_e = 0.0630386;
     double  losser_wp_vs_mu = 0.1058354;
     for(size_t lep_index = 0; lep_index < lep_p4.size(); ++lep_index){
-        if(byDeepTau2017v2p1VSeraw.at(lep_index) < losser_wp_vs_e || byDeepTau2017v2p1VSmuraw.at(lep_index) < losser_wp_vs_mu) continue;
+        if(lep_type.at(lep_index) == 2 && (byDeepTau2017v2p1VSeraw.at(lep_index) < losser_wp_vs_e ||
+           byDeepTau2017v2p1VSmuraw.at(lep_index) < losser_wp_vs_mu )) continue;
         ordered_index.push_back(lep_index);
     }
 
-
     std::sort(ordered_index.begin(), ordered_index.end(), [&](size_t a, size_t b){
-        return byDeepTau2017v2p1VSjet.at(a) > byDeepTau2017v2p1VSjet.at(b);
+        if(lep_type.at(a) ==  2 && lep_type.at(b) ==  2)
+            return byDeepTau2017v2p1VSjet.at(a) > byDeepTau2017v2p1VSjet.at(b);
+        return (lep_type.at(a) < lep_type.at(b) && ROOT::Math::VectorUtil::DeltaR(lep_p4.at(a), lep_p4.at(b)) > 0.1);
     });
 
-    if(ordered_index.size() > 1){
-        for(size_t n = 0; n < 2; ++n)
-            selected_taus_indices.push_back(ordered_index.at(n));
-    }
+    for(size_t n = 0; n < std::min<size_t>(ordered_index.size(), 2); ++n)
+        selected_taus_indices.push_back(ordered_index.at(n));
     return selected_taus_indices;
 
 }
-
 
 float HTTScalarPt (const ROOT::VecOps::RVec<LorentzVectorM>& lep_p4, const ROOT::VecOps::RVec<int>& lep_genTauIndex)
 {

@@ -32,10 +32,12 @@ parser.add_argument("-init_points_to_probe", "--init_points_to_probe")
 parser.add_argument("-params", "--params")
 parser.add_argument("-n_iter", "--n_iter", type=int)
 parser.add_argument("-n_epochs", "--n_epochs", type=int)
+parser.add_argument("-load_points", "--load_points")
 parser.add_argument("-f", "--file", nargs='+')
 parser.add_argument('-val_split', '--val_split', nargs='?', default=0.25, type=float)
 parser.add_argument('-seed', '--seed', nargs='?', default=12345, type=int)
 parser.add_argument("-random_state", "--random_state",nargs='?', type=int, default=1)
+parser.add_argument("-prev_point", "--prev_point", nargs='?')
 
 args = parser.parse_args()
 
@@ -75,5 +77,5 @@ get_loss = CreateGetLoss(file_name, '../config/mean_std_red.json','../config/min
 
 optimizer = bo.BayesianOptimizationCustom(args.params, args.init_points_to_probe, get_loss,
                                       '{}_target.json'.format(args.results), '{}_opt.json'.format(args.results),
-                                      args.n_iter, args.random_state)
+                                      args.n_iter, args.random_state, args.load_points,'target_{}'.format(args.prev_point), 'opt_{}'.format(args.prev_point))
 optimizer.maximize(args.n_iter)

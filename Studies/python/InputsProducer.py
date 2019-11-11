@@ -47,19 +47,16 @@ def DefineVariables(sample_name, parity, use_deepTau_ordering) :
     df =  df.Define('deepFlavour_bVSall', 'MakeDeepFlavour_bVSall(jets_deepFlavour_b, jets_deepFlavour_bb, jets_deepFlavour_lepb)')
 
     if use_deepTau_ordering :
-        df = df.Define('tau_indices_sel', 'getSignalTauIndicesDeep_Tau(lep_p4, byDeepTau2017v2p1VSjetraw, byDeepTau2017v2p1VSeraw, byDeepTau2017v2p1VSmuraw)') \
+        df = df.Define('tau_indices_sel', 'getSignalTauIndicesDeep_Tau(lep_p4, byDeepTau2017v2p1VSjetraw, byDeepTau2017v2p1VSeraw, byDeepTau2017v2p1VSmuraw, lep_type)') \
                .Filter('tau_indices_sel.size() == 2') \
-               .Define('jets_deepFlavourOrderedIndex', 'CreateOrderedIndex(jets_p4, deepFlavour_bVSall, true, tau_indices_sel, lep_p4, {})'.format(max_jet)) \
-               .Define('htt_scalar_pt', 'getHTTScalarPt(lep_p4, tau_indices_sel)') \
-               .Define('htt_p4', 'getHTTp4(lep_p4, tau_indices_sel)')
 
     else:
-        df = df.Define('tau_indeces_gen', 'getSignalTauIndices_Gen(lep_p4, lep_genTauIndex)') \
-               .Define('jets_deepFlavourOrderedIndex', 'CreateOrderedIndex(jets_p4, deepFlavour_bVSall, true, tau_indeces_gen, lep_p4, {})'.format(max_jet)) \
-               .Define('htt_scalar_pt', 'getHTTScalarPt(lep_p4, tau_indeces_gen)') \
-               .Define('htt_p4', 'getHTTp4(lep_p4, tau_indeces_gen)') 
+        df = df.Define('tau_indeces_sel', 'getSignalTauIndices_Gen(lep_p4, lep_genTauIndex)') \
 
-    df = df.Define('n_jets', 'jets_deepFlavourOrderedIndex.size()') \
+    df = df.Define('jets_deepFlavourOrderedIndex', 'CreateOrderedIndex(jets_p4, deepFlavour_bVSall, true, tau_indices_sel, lep_p4, {})'.format(max_jet)) \
+           .Define('n_jets', 'jets_deepFlavourOrderedIndex.size()') \
+           .Define('htt_scalar_pt', 'getHTTScalarPt(lep_p4, tau_indices_sel)') \
+           .Define('htt_p4', 'getHTTp4(lep_p4, tau_indices_sel)') \
            .Define('htt_pt', 'htt_p4.pt()') \
            .Define('htt_eta', 'htt_p4.eta()') \
            .Define('rel_met_pt_htt_pt', 'pfMET_p4.pt() / htt_scalar_pt') \

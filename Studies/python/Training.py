@@ -2,14 +2,15 @@
 # This file is part of https://github.com/hh-italian-group/hh-bbtautau.
 
 import tensorflow as tf
-# gpus = tf.config.experimental.list_physical_devices('GPU')
-# tf.config.experimental.set_memory_growth(gpus[0], True)
+gpus = tf.config.experimental.list_physical_devices('GPU')
+tf.config.experimental.set_memory_growth(gpus[0], True)
 
 from tensorflow import keras
 from tensorflow.keras.callbacks import CSVLogger
 
 import argparse
 import json
+import numpy as np
 
 import InputsProducer
 import ParametrizedModel as pm
@@ -21,7 +22,7 @@ parser.add_argument("-params", "--params")
 parser.add_argument("-output", "--output")
 parser.add_argument("-training_variables", "--training_variables")
 parser.add_argument("-n_epoch", "--n_epoch", type=int)
-parser.add_argument("-patience", "--patience", type=int)validation_split
+parser.add_argument("-patience", "--patience", type=int)
 parser.add_argument("-validation_split", "--validation_split", type=float)
 parser.add_argument("-parity", "--parity", type=int)
 parser.add_argument("-f", "--file", nargs='+')
