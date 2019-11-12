@@ -37,7 +37,7 @@ def DefineVariables(sample_name, parity, use_deepTau_ordering) :
     global initialized
     if not initialized:
         ROOT.gInterpreter.Declare('#include "../include/AnaPyInterface.h"')
-    initialized = True
+        initialized = True
 
     df = ROOT.ROOT.RDataFrame('all_events', sample_name)
 

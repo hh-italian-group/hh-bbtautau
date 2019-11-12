@@ -44,17 +44,12 @@ ROOT::VecOps::RVec<int> getSignalTauIndicesDeep_Tau(const ROOT::VecOps::RVec<Lor
     // values taken from: https://github.com/cms-sw/cmssw/blob/master/RecoTauTag/RecoTau/python/tools/runTauIdMVA.py#L658-L685
     double  losser_wp_vs_e = 0.0630386;
     double  losser_wp_vs_mu = 0.1058354;
-    float light_lepton_idx;
+    static constexpr size_t light_lepton_idx = 0;
     for(size_t lep_index = 0; lep_index < lep_p4.size(); ++lep_index){
         if(lep_type.at(lep_index) == 2 && (byDeepTau2017v2p1VSeraw.at(lep_index) < losser_wp_vs_e ||
            byDeepTau2017v2p1VSmuraw.at(lep_index) < losser_wp_vs_mu )) continue;
-        if(channelId == 0 || channelId == 1){
-            if(lep_type.at(lep_index) == 0 || lep_type.at(lep_index) == 1)
-                light_lepton_idx = lep_index;
-
-            if (lep_index != light_lepton_idx)
-                if (ROOT::Math::VectorUtil::DeltaR(lep_p4.at(lep_index), lep_p4.at(light_lepton_idx)) < 0.1) continue;
-        }
+        if(lep_type.at(lep_index) == 2 && channelId != 2 && ROOT::Math::VectorUtil::DeltaR(lep_p4.at(lep_index),
+                                                                                            lep_p4.at(light_lepton_idx)) < 0.1) continue;
         ordered_index.push_back(lep_index);
     }
 

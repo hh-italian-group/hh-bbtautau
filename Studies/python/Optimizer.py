@@ -2,9 +2,9 @@
 # This file is part of https://github.com/hh-italian-group/hh-bbtautau.
 
 import tensorflow as tf
-gpus = tf.config.experimental.list_physical_devices('GPU')
-tf.config.experimental.set_memory_growth(gpus[0], True)
-
+# gpus = tf.config.experimental.list_physical_devices('GPU')
+# tf.config.experimental.set_memory_growth(gpus[0], True)
+#
 from tensorflow import keras
 from tensorflow.keras.callbacks import CSVLogger
 
@@ -76,11 +76,11 @@ def CreateGetLoss(file_name, cfg_mean_std, cfg_min_max, n_epoch):
 get_loss = CreateGetLoss(file_name, '../config/mean_std_red.json','../config/min_max_red.json', args.n_epochs)
 
 optimizer = bo.BayesianOptimizationCustom(args.params, args.init_points_to_probe, get_loss,
-                                      '{}_target.json'.format(args.results), '{}_opt.json'.format(args.results),
-                                      args.n_iter, args.random_state, args.load_points,'target_{}'.format(args.prev_point), 'opt_{}'.format(args.prev_point))
+                                          '{}_target.json'.format(args.results), '{}_opt.json'.format(args.results),
+                                          args.n_iter, args.random_state)
 #Include point from previus optimization
 if args.load_points == True:
     bo.LoadPoints('target_{}'.format(args.prev_point), 'opt_{}'.format(args.prev_point))
 
 
-optimizer.maximize(args.n_iter)
+params, result = optimizer.maximize(args.n_iter)
