@@ -185,7 +185,7 @@ public:
                                 channel_all).Fill(jet.Pt(), std::abs(jet.Eta()));
 
                         for(const auto& btag_wp : btag_working_points) {
-                            if(bTagger.Pass(event,i,btag_wp.second)){
+                            if(bTagger.Pass(event,i,eventInfo->GetEventCandidate().GetUncSource(),eventInfo->GetEventCandidate().GetScale(),btag_wp.second)){
                                 //For folder/subfolder structure in Sign and Isolation
                                 anaDataMap[tau_sign+tau_iso+eff]->h2(num, flavour_all, btag_wp.first, channel).
                                     Fill(jet.Pt(), std::abs(jet.Eta()));
