@@ -12,6 +12,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Cuts/include/Btag_2017.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2017.h"
 #include "h-tautau/Cuts/include/Btag_2016.h"
+#include "h-tautau/Cuts/include/Btag_2018.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
 #include "AnalysisTools/Core/include/Tools.h"
 #include "AnalysisTools/Core/include/TextIO.h"
@@ -137,10 +138,10 @@ public:
 
                     if (!cuts::hh_bbtautau_2017::hh_tag::IsInsideMassWindow(eventInfo->GetSVFitResults().momentum.mass(),bb.mass())) continue;
 
-                    std::string tau_sign = (eventInfo->GetLeg(1)->charge()+eventInfo->GetLeg(1)->charge()) == 0 ? "OS" : "SS";
+                    std::string tau_sign = (eventInfo->GetLeg(1)->charge()+eventInfo->GetLeg(2)->charge()) == 0 ? "OS" : "SS";
 
-                    const bool passTauId = (leg_types.first != LegType::tau || eventInfo->GetLeg(1)->Passed(analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,DiscriminatorWP::Medium))
-                            && (leg_types.second != LegType::tau || eventInfo->GetLeg(2)->Passed(analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,DiscriminatorWP::Medium));
+                    const bool passTauId = (leg_types.first != LegType::tau || eventInfo->GetLeg(1)->Passed(analysis::TauIdDiscriminator::byDeepTau2017v2p1VSjet,DiscriminatorWP::Medium))
+                            && (leg_types.second != LegType::tau || eventInfo->GetLeg(2)->Passed(analysis::TauIdDiscriminator::byDeepTau2017v2p1VSjet,DiscriminatorWP::Medium));
 
 
                     std::string tau_iso = passTauId ? "Iso" : "NonIso";
@@ -149,6 +150,7 @@ public:
                         const auto& jet = event.jets_p4.at(i);
                         if(args.period()==Period::Run2016 && std::abs(jet.eta()) >= cuts::btag_2016::eta) continue;
                         else if(args.period()==Period::Run2017 && std::abs(jet.eta()) >= cuts::btag_2017::eta) continue;
+                        else if(args.period()==Period::Run2018 && std::abs(jet.eta()) >= cuts::btag_2018::eta) continue;
 
                         //PU correction
                         /*if(apply_pu_id_cut){
@@ -156,7 +158,7 @@ public:
                                 double jet_mva = event.jets_mva.at(i);
                                 if(!PassJetPuId(jet.Pt(),jet_mva,pu_wp)) continue;
                             }
-                                if((event.jets_pu_id.at(i) & (1 << 2)) == 0) continue;
+                                if((event.jets_pu_id.at(i) & (1 << 2)) == 0) continue;s
                         }*/
 
                         int jet_hadronFlavour = event.jets_hadronFlavour.at(i);
