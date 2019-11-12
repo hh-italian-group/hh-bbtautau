@@ -125,7 +125,9 @@ class BayesianOptimizationCustom:
         #If the point haven't been tested, save it
 
         if result is None:
+            print('starting evaluating for the params:\n{}'.format(json.dumps(p_target, indent=4)))
             result = self.fn(**p_target)
+            print('result: ',result)
             has_been_tested = 1
         else:
             has_been_tested = 0

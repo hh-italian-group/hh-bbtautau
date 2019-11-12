@@ -64,7 +64,7 @@ def CreateGetLoss(file_name, cfg_mean_std, cfg_min_max, n_epoch):
 
         model.compile(loss='binary_crossentropy',
                   optimizer=opt,
-                  weighted_metrics=[pm.sel_acc_2, pm.sel_acc_3, pm.sel_acc_4])
+                  weighted_metrics=[pm.sel_acc_2])
         model.build(X.shape)
 
         history = model.fit(X, Y,sample_weight=w, validation_split=args.val_split, epochs=args.n_epochs,
