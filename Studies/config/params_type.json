@@ -52,7 +52,7 @@
         "type": "float"
     },
     "batch_size":{
-        "range" : [100, 1000],
+        "range" : [50, 1000],
         "type": "int"
     },
     "learning_rate_exp":{

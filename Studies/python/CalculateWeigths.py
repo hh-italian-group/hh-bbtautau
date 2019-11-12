@@ -52,7 +52,7 @@ def CreateXSTable(X, Z, radion_xs, radion_br, vbf_radion_xs, graviton_xs, gravit
     xs_all = np.ones((4,2,len(mass_node_unique)))
     indices = mass_node_unique >= 250
     res_masses = np.copy(mass_node_unique[indices])
-    if res_masses[0] == 250 :
+    if len(res_masses) > 0 and res_masses[0] == 250 :
         res_masses[0] = 251
 
     xs_radion = f_xs_radion(res_masses)
