@@ -21,14 +21,26 @@ import ParametrizedModel as pm
 import InputsProducer
 from CalculateWeigths import CreateSampleWeigts
 
+import BayesianOptimizationCustom as bo
+
 import ROOT
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-results", "--results")
-parser.add_argument("-max", "--max_params")
+parser.add_argument("-training_variables", "--training_variables")
+parser.add_argument("-init_points_to_probe", "--init_points_to_probe")
+parser.add_argument("-params", "--params")
 parser.add_argument("-n_iter", "--n_iter", type=int)
-parser.add_argument("-init_points", "--init_points", type=int)
+parser.add_argument("-n_epochs", "--n_epochs", type=int)
+parser.add_argument("-load_points", "--load_points")
 parser.add_argument("-f", "--file", nargs='+')
+parser.add_argument('-val_split', '--val_split', nargs='?', default=0.25, type=float)
+parser.add_argument('-seed', '--seed', nargs='?', default=12345, type=int)
+parser.add_argument("-random_state", "--random_state",nargs='?', type=int, default=1)
+parser.add_argument("-prev_point", "--prev_point", nargs='?')
+
+args = parser.parse_args()
+
 args = parser.parse_args()
 
 def ListToVector(files):
@@ -38,69 +50,37 @@ def ListToVector(files):
     return v
 file_name = ListToVector(args.file)
 
-def TransformParams(params):
-    activations = { 0: 'sigmoid', 2: 'relu', 1: 'tanh' }
-    new_params = {}
-    new_params['num_den_layers_pre'] = int(round(params['num_den_layers_pre']))
-    new_params['num_neurons_den_layers_pre'] = int(round(params['num_neurons_den_layers_pre']))
-    new_params['dropout_rate_den_layers_pre'] = params['dropout_rate_den_layers_pre']
-    new_params['num_den_layers_post'] = int(round(params['num_den_layers_post']))
-    new_params['num_neurons_den_layers_post'] = int(round(params['num_neurons_den_layers_post']))
-    new_params['dropout_rate_den_layers_post'] = params['dropout_rate_den_layers_post']
-    new_params['num_lstm_layers'] = int(round(params['num_lstm_layers']))
-    new_params['num_neurons_lstm_layer'] = int(round(params['num_neurons_lstm_layer']))
-    new_params['activation_dense_pre'] = activations[int(round(params['activation_dense_pre']))]
-    new_params['activation_dense_post'] = activations[int(round(params['activation_dense_post']))]
-    new_params['dropout_rate_lstm'] = params['dropout_rate_lstm']
-    new_params['learning_rate'] = params['learning_rate']
-    new_params['batch_size'] = int(round(params['batch_size']))
-
-    return new_params
-
 def CreateGetLoss(file_name, cfg_mean_std, cfg_min_max, n_epoch):
-    data = InputsProducer.CreateRootDF(file_name, 0, True)
-    X, Y,Z,var_pos, var_pos_z = InputsProducer.CreateXY(data)
+    np.random.seed(args.seed)
+    data = InputsProducer.CreateRootDF(file_name, 0, True, True)
+    X, Y, Z, var_pos, var_pos_z, var_name = InputsProducer.CreateXY(data, args.training_variables)
     w = CreateSampleWeigts(X, Z)
     Y = Y.reshape(Y.shape[0:2])
     def GetLoss(**params):
-        params = TransformParams(params)
+        tf.random.set_seed(args.seed)
         model = pm.HHModel(var_pos, cfg_mean_std, cfg_min_max, params)
         model.call(X[0:1,:,:])
-        opt = tf.keras.optimizers.Adam(learning_rate=params['learning_rate'])
+        opt = getattr(tf.keras.optimizers, params['optimizers'])(learning_rate=10 ** params['learning_rate_exp'])
+
         model.compile(loss='binary_crossentropy',
-                  optimizer='adam',
+                  optimizer=opt,
                   weighted_metrics=[pm.sel_acc_2, pm.sel_acc_3, pm.sel_acc_4])
         model.build(X.shape)
 
-        history = model.fit(X, Y,sample_weight=w,validation_split=0.5, epochs=n_epoch, batch_size=params['batch_size'], verbose=0)
-        #model.save_weights()
+        history = model.fit(X, Y,sample_weight=w, validation_split=args.val_split, epochs=args.n_epochs,
+                            batch_size=params['batch_size'], verbose=0)
         tf.keras.backend.clear_session()
         return np.amax(history.history['val_sel_acc_2'])
     return GetLoss
 
-get_loss = CreateGetLoss(file_name, '../config/mean_std_red.json','../config/min_max_red.json', 10)
+get_loss = CreateGetLoss(file_name, '../config/mean_std_red.json','../config/min_max_red.json', args.n_epochs)
 
-param_ranges = {   'num_den_layers_pre': (0, 5), 'num_neurons_den_layers_pre': (10,100), 'dropout_rate_den_layers_pre': (0, 0.5),
-                   'num_den_layers_post': (0,5), 'num_neurons_den_layers_post': (10,100), 'dropout_rate_den_layers_post':(0, 0.5),
-                   'num_lstm_layers': (1,5), 'num_neurons_lstm_layer':(10, 100), 'activation_dense_pre': (0,2),
-                   'activation_dense_post': (0,2), 'dropout_rate_lstm': (0, 0.5), 'batch_size': (100,1000), 'learning_rate': (0.1, 0.0001)
+optimizer = bo.BayesianOptimizationCustom(args.params, args.init_points_to_probe, get_loss,
+                                          '{}_target.json'.format(args.results), '{}_opt.json'.format(args.results),
+                                          args.n_iter, args.random_state)
+#Include point from previus optimization
+if args.load_points == True:
+    bo.LoadPoints('target_{}'.format(args.prev_point), 'opt_{}'.format(args.prev_point))
 
-}
 
-optimizer = BayesianOptimization(
-    f=get_loss,
-    pbounds=param_ranges,
-    random_state=1, verbose=1
-)
-
-logger = JSONLogger(path=args.results)
-optimizer.subscribe(Events.OPTMIZATION_STEP, logger)
-
-optimizer.maximize(
-    init_points=int(args.init_points),
-    n_iter=int(args.n_iter)
-)
-max = optimizer.max
-
-with open(args.max_params, 'w') as f:
-    f.write(json.dumps(max, indent=4))
+params, result = optimizer.maximize(args.n_iter)
