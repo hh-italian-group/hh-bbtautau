@@ -134,9 +134,9 @@ public:
                     */
                     if(!eventInfo->HasBjetPair()) continue;
 
-                    auto bb = eventInfo->GetHiggsBB().GetFirstDaughter().GetMomentum() + eventInfo->GetHiggsBB().GetSecondDaughter().GetMomentum();
+                    /*auto bb = eventInfo->GetHiggsBB().GetFirstDaughter().GetMomentum() + eventInfo->GetHiggsBB().GetSecondDaughter().GetMomentum();
 
-                    if (!cuts::hh_bbtautau_2017::hh_tag::IsInsideMassWindow(eventInfo->GetSVFitResults().momentum.mass(),bb.mass())) continue;
+                    if (!cuts::hh_bbtautau_2017::hh_tag::IsInsideMassWindow(eventInfo->GetSVFitResults().momentum.mass(),bb.mass())) continue;*/
 
                     std::string tau_sign = (eventInfo->GetLeg(1)->charge()+eventInfo->GetLeg(2)->charge()) == 0 ? "OS" : "SS";
 
