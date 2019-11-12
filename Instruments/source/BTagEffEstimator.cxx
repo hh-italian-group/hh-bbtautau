@@ -75,7 +75,7 @@ public:
     void Run()
     {
         static const std::set<std::string> channels = { ToString(Channel::ETau), ToString(Channel::MuTau),
-            ToString(Channel::TauTau), ToString(Channel::MuMu) };
+            ToString(Channel::TauTau)};//, ToString(Channel::MuMu) };
         std::string channel_all = "all";
         std::set<std::string> channel_names = channels;
         channel_names.insert(channel_all);
