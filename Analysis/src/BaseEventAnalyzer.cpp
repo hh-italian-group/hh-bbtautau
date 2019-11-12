@@ -3,7 +3,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 
 #include "hh-bbtautau/Analysis/include/BaseEventAnalyzer.h"
-
+#include "h-tautau/Core/include/AnalysisTypes.h"
 #include "AnalysisTools/Run/include/MultiThread.h"
 
 namespace analysis {
@@ -85,7 +85,7 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfoBase& even
 
     for(const auto& jet : jets) {
         for(const auto& btag_wp : btag_working_points){
-            if(bTagger->Pass(*jet, btag_wp.first)) ++bjet_counts[btag_wp.first];
+            if(bTagger->Pass(*jet, analysis::UncertaintySource::None, analysis::UncertaintyScale::Central, btag_wp.first)) ++bjet_counts[btag_wp.first];
         }
     }
 
@@ -196,7 +196,7 @@ void BaseEventAnalyzer::ProcessSamples(const std::vector<std::string>& sample_na
             auto summary_tuple = ntuple::CreateSummaryTuple("summary", file.get(), true,
                                                             ntuple::TreeState::Skimmed);
             const auto prod_summary = ntuple::MergeSummaryTuple(*summary_tuple);
-            if(sample.sampleType == SampleType::NonResHH) {
+            if(sample.sampleType == SampleType::ggHH_NonRes) {
                 std::cout << "\t\tpreparing NonResModel... ";
                 std::cout.flush();
                 nonResModel = std::make_shared<NonResModel>(ana_setup.period, sample, file);
@@ -314,7 +314,7 @@ void BaseEventAnalyzer::ProcessSpecialEvent(const SampleDescriptor& sample,
                 dataIds[anaDataId.Set(EventEnergyScale::TopPtDown)] = std::make_tuple(weight * event->weight_top_pt,
                                                                                       event.GetMvaScore());
         }
-    } else if(sample.sampleType == SampleType::NonResHH) {
+    } else if(sample.sampleType == SampleType::ggHH_NonRes) {
         nonResModel->ProcessEvent(anaDataId, event, weight, shape_weight, dataIds);
     } else
         throw exception("Unsupported special event type '%1%'.") % sample.sampleType;

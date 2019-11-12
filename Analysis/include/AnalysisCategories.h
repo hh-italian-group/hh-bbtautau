@@ -17,12 +17,15 @@ ENUM_NAMES(QCDmethod) = {
     { QCDmethod::invert_muon, "invert_muon" }, { QCDmethod::invert_tau, "invert_tau" }
 };
 
-enum class SampleType { Data, MC, DY, QCD, TT, NonResHH };
+enum class SampleType { Data = 1, MC = 2, DY = 3, QCD = 4, TT = 5, ggHH_NonRes = 6, VBFHH_NonRes = 7,
+                        ggHH_Res = 8, VBFHH_Res = 9 };
 ENUM_NAMES(SampleType) = {
     { SampleType::Data, "Data" }, { SampleType::MC, "MC" }, { SampleType::DY, "DY" }, { SampleType::QCD, "QCD" },
-    { SampleType::TT, "TT" }, { SampleType::NonResHH, "NonResHH" }
-};
+    { SampleType::TT, "TT" }, {SampleType::ggHH_NonRes, "ggHH_NonRes"},
+    {SampleType::VBFHH_NonRes, "VBFHH_NonRes"}, {SampleType::ggHH_Res, "ggHH_Res"},
+    {SampleType::VBFHH_Res, "VBFHH_Res"}
 
+};
 enum class DYFitModel { None = 0, NbjetBins = 1, NbjetBins_htBins = 2 , NbjetBins_NjetBins = 3, NbjetBins_ptBins = 4, Htt = 5};
 ENUM_NAMES(DYFitModel) = {
     { DYFitModel::None, "None" } , { DYFitModel::NbjetBins, "NbjetBins" } ,

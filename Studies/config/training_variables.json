@@ -1,0 +1,6 @@
+{
+     "evt_vars": ["sample_year", "channelId", "htt_pt", "htt_eta", "htt_met_dphi", "rel_met_pt_htt_pt", "htt_scalar_pt"], 
+     "jet_vars": ["jet_{}_valid", "jet_{}_pt", "jet_{}_eta", "rel_jet_{}_M_pt", "rel_jet_{}_E_pt","jet_{}_htt_deta",
+                  "jet_{}_deepFlavour", "jet_{}_htt_dphi"]
+}
+
