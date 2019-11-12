@@ -175,4 +175,4 @@ class BayesianOptimizationCustom:
                 new_target_point[key] = v
                 self.MaximizeStep(new_target_point, is_target_point=True)
 
-        return self.TransformParams(self.optimizer.max['params']), p_target_max
+        return self.TransformParams(self.optimizer.max['params']), self.optimizer.max['target']

@@ -2,9 +2,9 @@
 # This file is part of https://github.com/hh-italian-group/hh-bbtautau.
 
 import tensorflow as tf
-# gpus = tf.config.experimental.list_physical_devices('GPU')
-# tf.config.experimental.set_memory_growth(gpus[0], True)
-#
+gpus = tf.config.experimental.list_physical_devices('GPU')
+tf.config.experimental.set_memory_growth(gpus[0], True)
+
 from tensorflow import keras
 from tensorflow.keras.callbacks import CSVLogger
 
