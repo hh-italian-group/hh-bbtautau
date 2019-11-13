@@ -12,6 +12,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Cuts/include/Btag_2017.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2017.h"
 #include "h-tautau/Cuts/include/Btag_2016.h"
+#include "h-tautau/Cuts/include/Btag_2018.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
 #include "AnalysisTools/Core/include/Tools.h"
 #include "AnalysisTools/Core/include/TextIO.h"
@@ -22,7 +23,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, output_file);
     REQ_ARG(analysis::SignalMode, mode);
-    OPT_ARG(std::string, apply_pu_id_cut,"no");
+    //OPT_ARG(std::string, apply_pu_id_cut,"no");
     OPT_ARG(unsigned, n_threads, 1);
     OPT_ARG(analysis::JetOrdering, csv_type,analysis::JetOrdering::DeepCSV);
     OPT_ARG(analysis::Period, period, analysis::Period::Run2017);
@@ -74,7 +75,7 @@ public:
     void Run()
     {
         static const std::set<std::string> channels = { ToString(Channel::ETau), ToString(Channel::MuTau),
-            ToString(Channel::TauTau), ToString(Channel::MuMu) };
+            ToString(Channel::TauTau)};//, ToString(Channel::MuMu) };
         std::string channel_all = "all";
         std::set<std::string> channel_names = channels;
         channel_names.insert(channel_all);
@@ -89,15 +90,15 @@ public:
         flavour_names.insert(flavour_all);
         static const std::string num = "Num", denom = "Denom";
 
-        static const std::set<std::string> disabled_branches;
+        /*static const std::set<std::string> disabled_branches;
         static const std::set<std::string> enabled_branches = {
             "jets_p4", "SVfit_p4", "extramuon_veto", "extraelec_veto", "q_1", "q_2", "tauId_keys_1", "tauId_values_1",
             "tauId_keys_2", "tauId_values_2", "jets_mva", "jets_csv", "jets_deepCsv_BvsAll", "jets_hadronFlavour",
             "jets_pu_id", "jets_deepFlavour_b", "jets_deepFlavour_bb", "jets_deepFlavour_lepb"
-        };
+        };*/
 
 
-        bool apply_pu_id_cut = args.apply_pu_id_cut() != "no";
+        //bool apply_pu_id_cut = args.apply_pu_id_cut() != "no";
         //DiscriminatorWP pu_wp = DiscriminatorWP::Medium;
         //if(apply_pu_id_cut && args.period()=="2016") pu_wp = analysis::Parse<DiscriminatorWP>(args.apply_pu_id_cut());
 
@@ -107,8 +108,8 @@ public:
                 std::shared_ptr<TFile> in_file(root_ext::OpenRootFile(name));
                 std::shared_ptr<EventTuple> tuple;
                 try {
-                    tuple = std::make_shared<EventTuple>(channel, in_file.get(), true, disabled_branches,
-                                                         enabled_branches);
+                    tuple = std::make_shared<EventTuple>(channel, in_file.get(), true);//, disabled_branches,
+                                                         //enabled_branches);
                 } catch(std::exception&) {
                     std::cerr << "WARNING: tree "<<channel<<" not found in file"<<name<< std::endl;
                     continue;
@@ -121,7 +122,7 @@ public:
 										args.period(),args.csv_type());
                     if(!eventInfo.is_initialized()) continue;
                     const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
-                    if (args.period() == Period::Run2016 && (es != EventEnergyScale::Central || event.jets_p4.size() < 2 || event.extraelec_veto
+                   /* if (args.period() == Period::Run2016 && (es != EventEnergyScale::Central || event.jets_p4.size() < 2 || event.extraelec_veto
                             || event.extramuon_veto
                             || std::abs(eventInfo->GetHiggsBB().GetFirstDaughter().GetMomentum().eta()) >= cuts::btag_2016::eta
                             || std::abs(eventInfo->GetHiggsBB().GetSecondDaughter().GetMomentum().eta()) >= cuts::btag_2016::eta)) continue;
@@ -130,15 +131,17 @@ public:
                             || event.extramuon_veto
                             || std::abs(eventInfo->GetHiggsBB().GetFirstDaughter().GetMomentum().eta()) >= cuts::btag_2017::eta
                             || std::abs(eventInfo->GetHiggsBB().GetSecondDaughter().GetMomentum().eta()) >= cuts::btag_2017::eta)) continue;
+                    */
+                    if(!eventInfo->HasBjetPair()) continue;
 
-                    auto bb = eventInfo->GetHiggsBB().GetFirstDaughter().GetMomentum() + eventInfo->GetHiggsBB().GetSecondDaughter().GetMomentum();
+                    /*auto bb = eventInfo->GetHiggsBB().GetFirstDaughter().GetMomentum() + eventInfo->GetHiggsBB().GetSecondDaughter().GetMomentum();
 
-                    if (!cuts::hh_bbtautau_2017::hh_tag::IsInsideMassWindow(eventInfo->GetSVFitResults().momentum.mass(),bb.mass())) continue;
+                    if (!cuts::hh_bbtautau_2017::hh_tag::IsInsideMassWindow(eventInfo->GetSVFitResults().momentum.mass(),bb.mass())) continue;*/
 
-                    std::string tau_sign = (eventInfo->GetLeg(1)->charge()+eventInfo->GetLeg(1)->charge()) == 0 ? "OS" : "SS";
+                    std::string tau_sign = (eventInfo->GetLeg(1)->charge()+eventInfo->GetLeg(2)->charge()) == 0 ? "OS" : "SS";
 
-                    const bool passTauId = (leg_types.first != LegType::tau || eventInfo->GetLeg(1)->Passed(analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,DiscriminatorWP::Medium))
-                            && (leg_types.second != LegType::tau || eventInfo->GetLeg(2)->Passed(analysis::TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017,DiscriminatorWP::Medium));
+                    const bool passTauId = (leg_types.first != LegType::tau || eventInfo->GetLeg(1)->Passed(analysis::TauIdDiscriminator::byDeepTau2017v2p1VSjet,DiscriminatorWP::Medium))
+                            && (leg_types.second != LegType::tau || eventInfo->GetLeg(2)->Passed(analysis::TauIdDiscriminator::byDeepTau2017v2p1VSjet,DiscriminatorWP::Medium));
 
 
                     std::string tau_iso = passTauId ? "Iso" : "NonIso";
@@ -147,15 +150,16 @@ public:
                         const auto& jet = event.jets_p4.at(i);
                         if(args.period()==Period::Run2016 && std::abs(jet.eta()) >= cuts::btag_2016::eta) continue;
                         else if(args.period()==Period::Run2017 && std::abs(jet.eta()) >= cuts::btag_2017::eta) continue;
+                        else if(args.period()==Period::Run2018 && std::abs(jet.eta()) >= cuts::btag_2018::eta) continue;
 
                         //PU correction
-                        if(apply_pu_id_cut){
-                            /*if(args.period()=="2016"){
+                        /*if(apply_pu_id_cut){
+                            if(args.period()=="2016"){
                                 double jet_mva = event.jets_mva.at(i);
                                 if(!PassJetPuId(jet.Pt(),jet_mva,pu_wp)) continue;
-                            }*/
-                                if((event.jets_pu_id.at(i) & (1 << 2)) == 0) continue;
-                        }
+                            }
+                                if((event.jets_pu_id.at(i) & (1 << 2)) == 0) continue;s
+                        }*/
 
                         int jet_hadronFlavour = event.jets_hadronFlavour.at(i);
                         const std::string& jet_flavour = flavours.at(jet_hadronFlavour);
@@ -181,7 +185,7 @@ public:
                                 channel_all).Fill(jet.Pt(), std::abs(jet.Eta()));
 
                         for(const auto& btag_wp : btag_working_points) {
-                            if(bTagger.Pass(event,i,btag_wp.second)){
+                            if(bTagger.Pass(event,i,eventInfo->GetEventCandidate().GetUncSource(),eventInfo->GetEventCandidate().GetScale(),btag_wp.second)){
                                 //For folder/subfolder structure in Sign and Isolation
                                 anaDataMap[tau_sign+tau_iso+eff]->h2(num, flavour_all, btag_wp.first, channel).
                                     Fill(jet.Pt(), std::abs(jet.Eta()));
