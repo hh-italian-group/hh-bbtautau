@@ -66,9 +66,8 @@ def CreateGetLoss(file_name, cfg_mean_std, cfg_min_max, n_epoch):
                   optimizer=opt,
                   weighted_metrics=[pm.sel_acc_2])
         model.build(X.shape)
-
-        history = model.fit(X, Y,sample_weight=w, validation_split=args.val_split, epochs=args.n_epochs,
-                            batch_size=params['batch_size'], verbose=0)
+        history = model.fit(X, Y, validation_split=args.val_split, epochs=args.n_epochs,
+                            batch_size=100, verbose=0)
         tf.keras.backend.clear_session()
         return np.amax(history.history['val_sel_acc_2'])
     return GetLoss
