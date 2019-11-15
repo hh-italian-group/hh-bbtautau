@@ -24,10 +24,13 @@ class BayesianOptimizationCustom:
         self.probed_points_opt_output = probed_points_opt_output
 
         for key,values in self.params_typed_range.items():
-            if values['type'] in ["int", "float"]:
-                self.params_ranges[key] = tuple(values['range'])
-            elif  values['type'] ==  "list" :
-                self.params_ranges[key] = (0, len(values['range']) -1 )
+            if type(self.params_typed_range[key]['range']) == list:
+                if values['type'] in ["int", "float"]:
+                    self.params_ranges[key] = tuple(values['range'])
+                elif  values['type'] ==  "list" :
+                    self.params_ranges[key] = (0, len(values['range']) -1 )
+            else:
+                print(key)
 
         with open(params_init_probe_json) as json_file:
             self.init_points_to_probe = json.load(json_file)
@@ -42,29 +45,49 @@ class BayesianOptimizationCustom:
 
     def TransformParams(self, params):
         new_params = {}
+        const_params = {}
         for key, value in params.items():
-            if self.params_typed_range[key]['type'] == 'int':
-                new_params[key] = int(round(value))
-            elif self.params_typed_range[key]['type'] == 'float':
-                new_params[key] = float(value)
-            elif self.params_typed_range[key]['type']== 'list':
-                new_params[key] = self.params_typed_range[key]['range'][int(round(value))]
+            if type(self.params_typed_range[key]['range']) == list:
+                if self.params_typed_range[key]['type'] == 'int':
+                    new_params[key] = int(round(value))
+                elif self.params_typed_range[key]['type'] == 'float':
+                    new_params[key] = float(value)
+                elif self.params_typed_range[key]['type']== 'list':
+                    new_params[key] = self.params_typed_range[key]['range'][int(round(value))]
+                else:
+                    raise Exception('type {} not allowed'.format(self.params_typed_range[key]['type']))
             else:
-                raise Exception('type {} not allowed'.format(self.params_typed_range[key]['type']))
+                if self.params_typed_range[key]['type'] == 'int':
+                    const_params[key] = int(round(value))
+                elif self.params_typed_range[key]['type'] == 'float':
+                    const_params[key] = float(value)
+                elif self.params_typed_range[key]['type']== 'list':
+                    const_params[key] = self.params_typed_range[key]['range'][int(round(value))]
+                else:
+                    raise Exception('type {} not allowed'.format(self.params_typed_range[key]['type']))
 
         for key, value in params.items():
-            #Has some dependency wiht other variables
-            if 'depends_on' in self.params_typed_range[key]:
-                # the variable on which it depends has a value of zero
-                if new_params[self.params_typed_range[key]['depends_on'] ] == 0:
-                    new_params[key] = self.params_typed_range[key]['range'][0]
+            if type(self.params_typed_range[key]['range']) == list:
+                #Has some dependency wiht other variables
+                if 'depends_on' in self.params_typed_range[key]:
+                    # the variable on which it depends has a value of zero
+                    if new_params[self.params_typed_range[key]['depends_on'] ] == 0:
+                        new_params[key] = self.params_typed_range[key]['range'][0]
+            else:
+                if 'depends_on' in self.params_typed_range[key]:
+                    if new_params[self.params_typed_range[key]['depends_on'] ] == 0:
+                        const_params[key] = self.params_typed_range[key]['range'][0]
+
+        new_params.update(const_params)
+
         return new_params
 
     def InverseTransformParams(self, params):
         new_params = params.copy()
         for key, values in params.items():
-            if self.params_typed_range[key]['type'] == 'list':
-                new_params[key] = self.params_typed_range[key]['range'].index(values)
+            if type(self.params_typed_range[key]['range']) == list:
+                if self.params_typed_range[key]['type'] == 'list':
+                    new_params[key] = self.params_typed_range[key]['range'].index(values)
         return new_params
 
     def ComparePoints(self, p1, p2):
@@ -93,21 +116,23 @@ class BayesianOptimizationCustom:
         for p in target_points:
             result = self.FindResult(p['params'], True)
             # if has not been tested before
-            if result is None:
-                self.probed_points.append(p)
-                with open(self.probed_points_target_output, 'a') as f:
-                    f.write(json.dumps(p) + '\n')
+            if result is not None:
+                raise Exception('target point not allowed: \n{}'.format(json.dumps(p['params'], indent=4)))
+            self.probed_points.append(p)
+            with open(self.probed_points_target_output, 'a') as f:
+                f.write(json.dumps(p) + '\n')
 
         for p in opt_points:
             result = self.FindResult(p['params'], False)
             # if has not been tested before
-            if result is None:
-                self.probed_points_opt.append(p)
+            if result is not None:
+                raise Exception('opt point not allowed: \n{}'.format(json.dumps(p['params'], indent=4)))
+            self.probed_points_opt.append(p)
 
-                with open(self.probed_points_opt_output, 'a') as f:
-                    f.write(json.dumps(p) + '\n')
+            with open(self.probed_points_opt_output, 'a') as f:
+                f.write(json.dumps(p) + '\n')
 
-                self.optimizer.register(params=p['params'],target=p['target'])
+            self.optimizer.register(params=p['params'],target=p['target'])
 
     def MaximizeStep(self, p, is_target_point=False):
         if is_target_point:
@@ -152,7 +177,7 @@ class BayesianOptimizationCustom:
 
         return has_been_tested
 
-    def maximize(self, n_iter, acq='ucb', kappa=2.576, xi=0.0):
+    def maximize(self, n_iter, kappa, acq='ucb', xi=0.0):
 
         #Probe with all known good points
         for p in self.init_points_to_probe:
@@ -174,7 +199,11 @@ class BayesianOptimizationCustom:
         for key, values in self.params_typed_range.items():
             new_target_point = copy.deepcopy(p_target_max)
             for v in values['range']:
-                new_target_point[key] = v
+                # the variable on which it depends has a value of zero
+                if 'depends_on' in self.params_typed_range[key] and new_target_point[self.params_typed_range[key]['depends_on'] ] == 0:
+                    new_target_point[key] = self.params_typed_range[key]['range'][0]
+                else:
+                    new_target_point[key] = v
                 self.MaximizeStep(new_target_point, is_target_point=True)
 
         return self.TransformParams(self.optimizer.max['params']), self.optimizer.max['target']

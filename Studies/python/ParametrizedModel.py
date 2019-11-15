@@ -1,4 +1,3 @@
-
 # Definition of the model of the signal selection NN
 # This file is part of https://github.com/hh-italian-group/hh-bbtautau.
 

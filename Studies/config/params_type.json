@@ -60,7 +60,9 @@
     "optimizers":{
         "range" : ["RMSprop", "SGD", "Adam", "Nadam" ],
         "type": "list"
+    },
+     "batch_size":{
+        "range" : 100,
+        "type": "int"
     }
-
-
 }
