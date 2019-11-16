@@ -31,14 +31,11 @@ class BayesianOptimizationCustom:
                 elif  values['type'] ==  "list" :
                     self.params_ranges[key] = (0, len(values['range']) -1 )
             else:
-                if values['type'] in ["int", "float"]:
-                    self.const_params[key] = values['range']
-                elif  values['type'] ==  "list" :
-                    self.const_params[key] = values['range']
-            # self.params_ranges.update(self.const_params)
+                self.const_params[key] = values['range']
 
-        with open(params_init_probe_json) as json_file:
-            self.init_points_to_probe = json.load(json_file)
+        if params_init_probe_json is not None:
+            with open(params_init_probe_json) as json_file:
+                self.init_points_to_probe = json.load(json_file)
 
         self.fn = fn
         self.optimizer = BayesianOptimization(
@@ -62,27 +59,24 @@ class BayesianOptimizationCustom:
 
 
         for key, value in params.items():
-            if type(self.params_typed_range[key]['range']) == list:
-                #Has some dependency wiht other variables
-                if 'depends_on' in self.params_typed_range[key]:
-                    # the variable on which it depends has a value of zero
-                    if new_params[self.params_typed_range[key]['depends_on'] ] == 0:
-                        new_params[key] = self.params_typed_range[key]['range'][0]
+            #Has some dependency wiht other variables
+            if 'depends_on' in self.params_typed_range[key]:
+                # the variable on which it depends has a value of zero
+                if new_params[self.params_typed_range[key]['depends_on'] ] == 0:
+                    new_params[key] = self.params_typed_range[key]['range'][0]
 
         new_params.update(self.const_params)
 
         return new_params
 
     def InverseTransformParams(self, params):
-        #Copy of params, including constant parameters
-        new_params = params.copy()
-        for key, values in params.items():
-             if key not in self.const_params:
-                 if self.params_typed_range[key]['type'] == 'list':
-                     new_params[key] = self.params_typed_range[key]['range'].index(values)
-             else:
-                 #Remove constant parameters from the opt space
-                 del new_params[key]
+        new_params = {}
+        for key, value in params.items():
+            if key not in self.const_params:
+                if self.params_typed_range[key]['type'] == 'list':
+                    new_params[key] = self.params_typed_range[key]['range'].index(value)
+                else:
+                    new_params[key] = value
         return new_params
 
     def ComparePoints(self, p1, p2):
@@ -193,12 +187,7 @@ class BayesianOptimizationCustom:
         # for each param var up and down and try with edges parameter
         for key, values in self.params_typed_range.items():
             new_target_point = copy.deepcopy(p_target_max)
-            # the variable on which it depends has a value of zero
-            if 'depends_on' not in self.params_typed_range[key] or new_target_point[self.params_typed_range[key]['depends_on'] ] != 0:
-                continue
             for v in values['range']:
-                new_target_point[key] = self.params_typed_range[key]['range'][0]
-            else:
                 new_target_point[key] = v
             self.MaximizeStep(new_target_point, is_target_point=True)
 

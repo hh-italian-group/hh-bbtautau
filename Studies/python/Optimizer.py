@@ -28,7 +28,7 @@ import ROOT
 parser = argparse.ArgumentParser()
 parser.add_argument("-results", "--results")
 parser.add_argument("-training_variables", "--training_variables")
-parser.add_argument("-init_points_to_probe", "--init_points_to_probe")
+parser.add_argument("-init_points_to_probe", "--init_points_to_probe", default=None )
 parser.add_argument("-params", "--params")
 parser.add_argument("-n_iter", "--n_iter", type=int)
 parser.add_argument("-kappa", "--kappa", type=int)
