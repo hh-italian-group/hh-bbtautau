@@ -69,11 +69,12 @@ def CreateGetLoss(file_name, cfg_mean_std, cfg_min_max, n_epoch):
         model.build(X.shape)
         timestamp = tf.print(tf.timestamp(name='timestamp'))
         total_evt = X.shape[0]
-        evt_training = total_evt * (1 - args.val_split)
-        evt_val = total_evt * args.val_split
+        evt_training = int(total_evt * (1 - args.val_split))
+        evt_val = total_evt - evt_training
         print('Events to train: ',evt_training, 'Events to validate during training: ', evt_val)
         history = model.fit(X, Y, validation_split=args.val_split, epochs=args.n_epochs,
-                            batch_size=100, verbose=0)
+                            batch_size=params['batch_size'], verbose=0)
+        timestamp = tf.print(tf.timestamp(name='timestamp'))
         tf.keras.backend.clear_session()
 
         return np.amax(history.history['val_sel_acc_2'])
