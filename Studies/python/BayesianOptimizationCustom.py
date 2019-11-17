@@ -188,13 +188,11 @@ class BayesianOptimizationCustom:
 
         # for each param var up and down and try with edges parameter
         for key, values in self.params_typed_range.items():
-            new_target_point = copy.deepcopy(p_target_max)
             #Has some dependency wiht other variables
-            if 'depends_on' in self.params_typed_range[key] and params[self.params_typed_range[key]['depends_on']] == 0:
-                params[key] = self.params_typed_range[key]['range'][0]
-            else:
-                for v in values['range']:
-                    new_target_point[key] = v
-                    self.MaximizeStep(new_target_point, is_target_point=True)
+            if 'depends_on' in self.params_typed_range[key] and p_target_max[self.params_typed_range[key]['depends_on']] == 0: continue
+            new_target_point = copy.deepcopy(p_target_max)
+            for v in values['range']:
+                new_target_point[key] = v
+                self.MaximizeStep(new_target_point, is_target_point=True)
 
         return self.TransformParams(self.optimizer.max['params']), self.optimizer.max['target']
