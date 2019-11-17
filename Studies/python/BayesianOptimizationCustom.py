@@ -34,7 +34,7 @@ class BayesianOptimizationCustom:
             else:
                 self.const_params[key] = values['range']
 
-        if params_init_probe_json != 'None':
+        if params_init_probe_json:
             with open(params_init_probe_json) as json_file:
                 self.init_points_to_probe = json.load(json_file)
 
@@ -170,7 +170,7 @@ class BayesianOptimizationCustom:
 
     def maximize(self, n_iter, kappa, acq='ucb', xi=0.0):
 
-        if self.params_init_probe_json != 'None':
+        if self.params_init_probe_json:
             #Probe with all known good points
             for p in self.init_points_to_probe:
                 self.MaximizeStep(p, is_target_point=True)
