@@ -28,7 +28,6 @@ import ROOT
 parser = argparse.ArgumentParser()
 parser.add_argument("-results", "--results")
 parser.add_argument("-training_variables", "--training_variables")
-parser.add_argument("-init_points_to_probe", "--init_points_to_probe", default=None )
 parser.add_argument("-params", "--params")
 parser.add_argument("-n_iter", "--n_iter", type=int)
 parser.add_argument("-kappa", "--kappa", type=int)
@@ -39,7 +38,7 @@ parser.add_argument('-val_split', '--val_split', nargs='?', default=0.25, type=f
 parser.add_argument('-seed', '--seed', nargs='?', default=12345, type=int)
 parser.add_argument("-random_state", "--random_state",nargs='?', type=int, default=1)
 parser.add_argument("-prev_point", "--prev_point", nargs='?')
-
+parser.add_argument("-init_points_to_probe", "--init_points_to_probe", nargs='?')
 args = parser.parse_args()
 
 args = parser.parse_args()

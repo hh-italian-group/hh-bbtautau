@@ -21,6 +21,7 @@ class BayesianOptimizationCustom:
         self.const_params = {}
         self.probed_points = []
         self.probed_points_opt = []
+        self.params_init_probe_json = params_init_probe_json
         self.probed_points_target_output =  probed_points_target_output
         self.probed_points_opt_output = probed_points_opt_output
 
@@ -33,7 +34,7 @@ class BayesianOptimizationCustom:
             else:
                 self.const_params[key] = values['range']
 
-        if params_init_probe_json is not None:
+        if params_init_probe_json:
             with open(params_init_probe_json) as json_file:
                 self.init_points_to_probe = json.load(json_file)
 
@@ -169,9 +170,10 @@ class BayesianOptimizationCustom:
 
     def maximize(self, n_iter, kappa, acq='ucb', xi=0.0):
 
-        #Probe with all known good points
-        for p in self.init_points_to_probe:
-            self.MaximizeStep(p, is_target_point=True)
+        if self.params_init_probe_json:
+            #Probe with all known good points
+            for p in self.init_points_to_probe:
+                self.MaximizeStep(p, is_target_point=True)
 
         # Suggest-Evaluate-Register paradigm
         utility = UtilityFunction(kind=acq, kappa=kappa, xi=xi)
