@@ -28,9 +28,10 @@ import ROOT
 parser = argparse.ArgumentParser()
 parser.add_argument("-results", "--results")
 parser.add_argument("-training_variables", "--training_variables")
-parser.add_argument("-init_points_to_probe", "--init_points_to_probe")
+parser.add_argument("-init_points_to_probe", "--init_points_to_probe", default=None )
 parser.add_argument("-params", "--params")
 parser.add_argument("-n_iter", "--n_iter", type=int)
+parser.add_argument("-kappa", "--kappa", type=int)
 parser.add_argument("-n_epochs", "--n_epochs", type=int)
 parser.add_argument("-load_points", "--load_points")
 parser.add_argument("-f", "--file", nargs='+')
@@ -66,10 +67,16 @@ def CreateGetLoss(file_name, cfg_mean_std, cfg_min_max, n_epoch):
                   optimizer=opt,
                   weighted_metrics=[pm.sel_acc_2])
         model.build(X.shape)
-
-        history = model.fit(X, Y,sample_weight=w, validation_split=args.val_split, epochs=args.n_epochs,
+        timestamp = tf.print(tf.timestamp(name='timestamp'))
+        total_evt = X.shape[0]
+        evt_training = int(total_evt * (1 - args.val_split))
+        evt_val = total_evt - evt_training
+        print('Events to train: ',evt_training, 'Events to validate during training: ', evt_val)
+        history = model.fit(X, Y, validation_split=args.val_split, epochs=args.n_epochs,
                             batch_size=params['batch_size'], verbose=0)
+        timestamp = tf.print(tf.timestamp(name='timestamp'))
         tf.keras.backend.clear_session()
+
         return np.amax(history.history['val_sel_acc_2'])
     return GetLoss
 
@@ -83,4 +90,4 @@ if args.load_points == True:
     bo.LoadPoints('target_{}'.format(args.prev_point), 'opt_{}'.format(args.prev_point))
 
 
-params, result = optimizer.maximize(args.n_iter)
+params, result = optimizer.maximize(args.n_iter, args.kappa)
