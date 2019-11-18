@@ -43,8 +43,6 @@ parser.add_argument("-prev_point", "--prev_point", nargs='?')
 
 args = parser.parse_args()
 
-args = parser.parse_args()
-
 def ListToVector(files):
     v = ROOT.std.vector('string')()
     for file in files:
