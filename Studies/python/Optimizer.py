@@ -20,6 +20,7 @@ import json
 import ParametrizedModel as pm
 import InputsProducer
 from CalculateWeigths import CreateSampleWeigts
+from datetime import datetime
 
 import BayesianOptimizationCustom as bo
 
@@ -66,14 +67,18 @@ def CreateGetLoss(file_name, cfg_mean_std, cfg_min_max, n_epoch):
                   optimizer=opt,
                   weighted_metrics=[pm.sel_acc_2])
         model.build(X.shape)
-        timestamp = tf.print(tf.timestamp(name='timestamp'))
+        now = datetime.now()
+        timestamp = datetime.timestamp(now)
+        print("timestamp =", datetime.fromtimestamp(timestamp))
         total_evt = X.shape[0]
         evt_training = int(total_evt * (1 - args.val_split))
         evt_val = total_evt - evt_training
         print('Events to train: ',evt_training, 'Events to validate during training: ', evt_val)
         history = model.fit(X, Y, validation_split=args.val_split, epochs=args.n_epochs,
                             batch_size=params['batch_size'], verbose=0)
-        timestamp = tf.print(tf.timestamp(name='timestamp'))
+        now = datetime.now()
+        timestamp = datetime.timestamp(now)
+        print("timestamp =", datetime.fromtimestamp(timestamp))
         tf.keras.backend.clear_session()
 
         return np.amax(history.history['val_sel_acc_2'])
@@ -83,10 +88,10 @@ get_loss = CreateGetLoss(file_name, '../config/mean_std_red.json','../config/min
 
 optimizer = bo.BayesianOptimizationCustom(args.params, args.init_points_to_probe, get_loss,
                                           '{}_target.json'.format(args.results), '{}_opt.json'.format(args.results),
-                                          args.n_iter, args.random_state)
+                                          args.n_iter, args.prev_point, args.random_state)
 #Include point from previus optimization
-if args.load_points == True:
-    bo.LoadPoints('target_{}'.format(args.prev_point), 'opt_{}'.format(args.prev_point))
+# if args.load_points == True:
+#     bo.LoadPoints('target_{}'.format(args.prev_point), 'opt_{}'.format(args.prev_point))
 
 
 params, result = optimizer.maximize(args.n_iter, args.kappa)

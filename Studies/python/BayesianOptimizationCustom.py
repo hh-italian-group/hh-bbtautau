@@ -12,7 +12,7 @@ import numpy as np
 
 class BayesianOptimizationCustom:
     def __init__(self, param_ranges_json, params_init_probe_json, fn, probed_points_target_output,
-                 probed_points_opt_output, num_iter, random_state):
+                 probed_points_opt_output, num_iter, prev_point,  random_state):
         with open(param_ranges_json) as json_file:
             self.params_typed_range = json.load(json_file)
         self.num_iter = num_iter
@@ -21,6 +21,7 @@ class BayesianOptimizationCustom:
         self.const_params = {}
         self.probed_points = []
         self.probed_points_opt = []
+        self.prev_point = prev_point
         self.params_init_probe_json = params_init_probe_json
         self.probed_points_target_output =  probed_points_target_output
         self.probed_points_opt_output = probed_points_opt_output
@@ -170,6 +171,9 @@ class BayesianOptimizationCustom:
 
     def maximize(self, n_iter, kappa, acq='ucb', xi=0.0):
 
+        # if args.load_points == True:
+        self.LoadPoints('target_{}'.format(self.prev_point), 'opt_{}'.format(self.prev_point))
+
         if self.params_init_probe_json:
             #Probe with all known good points
             for p in self.init_points_to_probe:
@@ -198,3 +202,6 @@ class BayesianOptimizationCustom:
                 self.MaximizeStep(new_target_point, is_target_point=True)
 
         return self.TransformParams(self.optimizer.max['params']), self.optimizer.max['target']
+
+    def ParamsRange(self):
+        return self.params_ranges
