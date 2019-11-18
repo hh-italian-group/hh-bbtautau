@@ -171,8 +171,8 @@ class BayesianOptimizationCustom:
 
     def maximize(self, n_iter, kappa, acq='ucb', xi=0.0):
 
-        # if args.load_points == True:
-        self.LoadPoints('target_{}'.format(self.prev_point), 'opt_{}'.format(self.prev_point))
+        if args.load_points == True:
+            self.LoadPoints('target_{}'.format(self.prev_point), 'opt_{}'.format(self.prev_point))
 
         if self.params_init_probe_json:
             #Probe with all known good points
