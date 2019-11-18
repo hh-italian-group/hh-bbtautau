@@ -203,5 +203,5 @@ class BayesianOptimizationCustom:
 
         return self.TransformParams(self.optimizer.max['params']), self.optimizer.max['target']
 
-    def ParamsRange(self):
+    def ParamsRange():
         return self.params_ranges
