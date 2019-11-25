@@ -81,12 +81,12 @@ public:
         std::cout << boost::format("Processing input file '%1%' into output file '%2%' using %3% mode.\n")
                    % args.input_file() % args.output_file() % args.mode();
 
-        // std::map<std::string,std::pair<std::shared_ptr<ntuple::EventTuple>,Long64_t>> map_event;
+        std::map<std::string,std::pair<std::shared_ptr<ntuple::EventTuple>,Long64_t>> map_event;
 
         auto originalFile = root_ext::OpenRootFile(args.input_file());
         auto outputFile = root_ext::CreateRootFile(args.output_file());
         auto originalTuple = ntuple::CreateEventTuple(args.tree_name(),originalFile.get(),true,ntuple::TreeState::Full);
-        // const Long64_t n_entries = originalTuple->GetEntries();
+        const Long64_t n_entries = originalTuple->GetEntries();
 
         SyncTuple sync(args.tree_name(), outputFile.get(), false);
         auto summaryTuple = ntuple::CreateSummaryTuple("summary", originalFile.get(), true, ntuple::TreeState::Full);
@@ -94,12 +94,19 @@ public:
         SummaryInfo summaryInfo(summaryTuple->data(), Parse<Channel>(args.tree_name()), args.trigger_cfg());
         EventIdentifier current_id = EventIdentifier::Undef_event();
         std::map<EventEnergyScale, ntuple::Event> events;
-        for(const auto& event : *originalTuple) {
+        std::cout << "n_entries" << n_entries << '\n';
 
-            // const EventIdentifier EventId(event.run, event.lumi, event.evt);
-            // const EventIdentifier EventIdTest(1,30,29730);
-            // if(!(EventId == EventIdTest)) continue;
-        // std::cout << "n_entries"  << '\n';
+        for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) {
+            originalTuple->GetEntry(current_entry);
+            if(static_cast<Channel>((*originalTuple)().channelId) == Channel::MuMu){ //temporary fix due tue a bug in mumu channel in production
+                    (*originalTuple)().first_daughter_indexes = {0};
+                    (*originalTuple)().second_daughter_indexes = {1};
+            }
+            const ntuple::Event& event = (*originalTuple).data();
+            const EventIdentifier EventId(event.run, event.lumi, event.evt);
+            const EventIdentifier EventIdTest(1,1,19);
+            if(!(EventId == EventIdTest)) continue;
+           // std::cout << "n_entries"  << '\n';
 
             EventIdentifier event_id(event);
             if(event_id != current_id) {
@@ -158,8 +165,11 @@ private:
     void FillSyncTuple(SyncTuple& sync, const std::map<EventEnergyScale, ntuple::Event>& events,const SummaryInfo& summaryInfo) const
     {
         static const std::map<Channel, std::vector<std::string>> triggerPaths = {
-            { Channel::ETau, { "HLT_Ele32_WPTight_Gsf_v", "HLT_Ele35_WPTight_Gsf_v", "HLT_Ele24_eta2p1_WPTight_Gsf_LooseChargedIsoPFTau30_eta2p1_CrossL1_v" } },
-            { Channel::MuTau, { "HLT_IsoMu24_v", "HLT_IsoMu27_v", "HLT_IsoMu20_eta2p1_LooseChargedIsoPFTau27_eta2p1_CrossL1_v" } },
+            { Channel::ETau, { "HLT_Ele32_WPTight_Gsf_v", "HLT_Ele35_WPTight_Gsf_v",
+                               "HLT_Ele24_eta2p1_WPTight_Gsf_LooseChargedIsoPFTau30_eta2p1_CrossL1_v",
+                               "HLT_Ele24_eta2p1_WPTight_Gsf_LooseChargedIsoPFTauHPS30_eta2p1_CrossL1_v" } },
+            { Channel::MuTau, { "HLT_IsoMu24_v", "HLT_IsoMu27_v", "HLT_IsoMu20_eta2p1_LooseChargedIsoPFTau27_eta2p1_CrossL1_v",
+                                "HLT_IsoMu20_eta2p1_LooseChargedIsoPFTauHPS27_eta2p1_CrossL1_v"} },
             { Channel::TauTau, { "HLT_DoubleTightChargedIsoPFTau35_Trk1_TightID_eta2p1_Reg_v",
                 "HLT_DoubleMediumChargedIsoPFTau40_Trk1_TightID_eta2p1_Reg_v",
                 "HLT_DoubleTightChargedIsoPFTau40_Trk1_eta2p1_Reg_v",
