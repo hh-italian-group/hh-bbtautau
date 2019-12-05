@@ -59,7 +59,7 @@ public:
                 const Long64_t n_entries = summaryTuple.GetEntries();
 
                 size_t nevents = 0;
-                double weight = 1;
+                double weight = 0;
                 for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) { //loop on entries
                     summaryTuple.GetEntry(current_entry);
 
@@ -67,12 +67,12 @@ public:
                     UInt_t n_partons = summaryTuple.data().lhe_n_partons;
                     UInt_t n_b_partons =  summaryTuple.data().lhe_n_b_partons;
                     UInt_t ht =  summaryTuple.data().lhe_ht10_bin;
-                    weight = dy_weight.GetWeight(n_partons,n_b_partons,ht);
+                    weight += dy_weight.GetWeight(n_partons,n_b_partons,ht);
 
 
                 } //end loop on entries
-                double weight_prime = nevents * weight;
-                totalWeight += weight_prime;
+                //double weight_prime = nevents * weight;
+                totalWeight += weight;
             } // end loop on files
 
         } //end loop n file_descriptors
