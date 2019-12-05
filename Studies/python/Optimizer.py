@@ -87,6 +87,6 @@ get_loss = CreateGetLoss(file_name, '../config/mean_std_red.json','../config/min
 
 optimizer = bo.BayesianOptimizationCustom(args.params, args.init_points_to_probe, get_loss,
                                           '{}_target.json'.format(args.results), '{}_opt.json'.format(args.results),
-                                          args.n_iter, args.random_state)
+                                          args.n_iter, args.prev_point, args.random_state)
 
 params, result = optimizer.maximize(args.n_iter, args.kappa)

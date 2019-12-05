@@ -171,8 +171,8 @@ class BayesianOptimizationCustom:
 
     def maximize(self, n_iter, kappa, acq='ucb', xi=0.0):
 
-        if args.load_points == True:
-            self.LoadPoints('target_{}'.format(self.prev_point), 'opt_{}'.format(self.prev_point))
+        # if args.load_points == True:
+        #     self.LoadPoints('target_{}'.format(self.prev_point), 'opt_{}'.format(self.prev_point))
 
         if self.params_init_probe_json:
             #Probe with all known good points
@@ -195,6 +195,7 @@ class BayesianOptimizationCustom:
         # for each param var up and down and try with edges parameter
         for key, values in self.params_typed_range.items():
             #Has some dependency wiht other variables
+            if key in self.const_params: continue
             if 'depends_on' in self.params_typed_range[key] and p_target_max[self.params_typed_range[key]['depends_on']] == 0: continue
             new_target_point = copy.deepcopy(p_target_max)
             for v in values['range']:
@@ -203,5 +204,5 @@ class BayesianOptimizationCustom:
 
         return self.TransformParams(self.optimizer.max['params']), self.optimizer.max['target']
 
-    def ParamsRange():
+    def ParamsRange(self):
         return self.params_ranges

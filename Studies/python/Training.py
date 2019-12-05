@@ -39,6 +39,7 @@ def PerformTraining(file_name, n_epoch, params):
     np.random.seed(args.seed)
     data = InputsProducer.CreateRootDF(file_name, 0, True, True)
     X, Y, Z, var_pos, var_pos_z, var_name = InputsProducer.CreateXY(data, args.training_variables)
+    print(var_pos)
     w = CreateSampleWeigts(X, Z)
     Y = Y.reshape(Y.shape[0:2])
     tf.random.set_seed(args.seed)
@@ -48,7 +49,7 @@ def PerformTraining(file_name, n_epoch, params):
     opt = getattr(tf.keras.optimizers, params['optimizers'])(learning_rate=10 ** params['learning_rate_exp'])
     model.compile(loss='binary_crossentropy',
                   optimizer=opt,
-                  weighted_metrics=[pm.sel_acc_2, pm.sel_acc_3, pm.sel_acc_4])
+                  weighted_metrics=[pm.sel_acc_2])
     model.build(X.shape)
 
     model.summary()
@@ -58,7 +59,7 @@ def PerformTraining(file_name, n_epoch, params):
     save_best_only =  tf.keras.callbacks.ModelCheckpoint(filepath='{}_par{}_best_weights.h5'.format(args.output, args.parity),
                                                          monitor='val_sel_acc_2',  mode='max', save_best_only=True, verbose=1)
 
-    model.fit(X, Y, sample_weight=w, validation_split=args.validation_split, epochs=args.n_epoch, batch_size=params['batch_size'],
+    model.fit(X, Y, sample_weight=w, validation_split=args.validation_split, epochs=args.n_epoch, batch_size=100,
               callbacks=[csv_logger, save_best_only, early_stop],verbose=2)
 
     model.save_weights('{}_par{}_final_weights.h5'.format(args.output, args.parity))
