@@ -7,6 +7,7 @@ tf.config.experimental.set_memory_growth(gpus[0], True)
 
 from tensorflow import keras
 from tensorflow.keras.callbacks import CSVLogger
+from keras.callbacks import Callback
 
 import argparse
 import json
@@ -35,6 +36,17 @@ file_name = pm.ListToVector(args.file)
 with open(args.params) as f:
     params = json.load(f)
 
+class WeightsSaver(Callback):
+  def __init__(self, N):
+    self.N = N
+    self.epoch = 0
+
+  def on_epoch_end(self, epoch, logs={}):
+    if self.epoch % self.N == 0:
+      name = 'weights%08d.h5' % self.epoch
+      self.model.save_weights(name)
+    self.epoch += 1
+
 def PerformTraining(file_name, n_epoch, params):
     np.random.seed(args.seed)
     data = InputsProducer.CreateRootDF(file_name, 0, True, True)
@@ -56,11 +68,18 @@ def PerformTraining(file_name, n_epoch, params):
 
     early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_sel_acc_2', mode='max', patience=args.patience)
     csv_logger = CSVLogger('{}_par{}_training_history.csv'.format(args.output, args.parity), append=False, separator=',')
+    save_weights =  tf.keras.callbacks.ModelCheckpoint(filepath='weights{epochs:08d}.h5'.format(args.output, args.parity),
+                                                         monitor='val_sel_acc_2',  mode='max', save_weights_only=True,
+                                                         save_best_only=False, verbose=1, period=1)
     save_best_only =  tf.keras.callbacks.ModelCheckpoint(filepath='{}_par{}_best_weights.h5'.format(args.output, args.parity),
-                                                         monitor='val_sel_acc_2',  mode='max', save_best_only=True, verbose=1)
+                                                         monitor='val_sel_acc_2',  mode='max', save_weights_only=True,
+                                                         save_best_only=True, verbose=1)
 
     model.fit(X, Y, sample_weight=w, validation_split=args.validation_split, epochs=args.n_epoch, batch_size=100,
-              callbacks=[csv_logger, save_best_only, early_stop],verbose=2)
+              callbacks=[csv_logger, save_best_only, early_stop, save_weights],verbose=2)
+
+    pred = model.predict(X, batch_size=100)
+    x = pm.sel_acc(Y, pred, 2, 2,True, True)
 
     model.save_weights('{}_par{}_final_weights.h5'.format(args.output, args.parity))
 
