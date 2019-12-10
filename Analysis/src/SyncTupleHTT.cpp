@@ -28,6 +28,7 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     analysis::JetCollection jets_pt20;
     analysis::JetCollection jets_pt30;
    size_t index_leg_1 = 0;
+   size_t index_leg_2 = 0;
    auto select_jets = [&](analysis::EventInfoBase* event_info) {
        jets_pt20.clear();
        jets_pt30.clear();
@@ -36,6 +37,7 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
        jets_pt20 = event_info->SelectJets(20, 4.7,false,false,analysis::JetOrdering::Pt);
        jets_pt30 = event_info->SelectJets(30, std::numeric_limits<double>::max(),false,false, analysis::JetOrdering::Pt);
        index_leg_1 = event_info->GetLegIndex(1);
+       index_leg_2 = event_info->GetLegIndex(2);
     };
 
     sync().run = event->run;
@@ -84,6 +86,8 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().pfmt_2 = static_cast<float>(analysis::Calculate_MT(event.GetLeg(2).GetMomentum(), event.GetMET().GetMomentum()));
     if(event.GetLeg(2)->leg_type() == LegType::tau)
         sync().iso_2 =  event.GetLeg(2)->GetRawValue(TauIdDiscriminator::byDeepTau2017v2p1VSjet);
+    else
+        sync().iso_2 =  event->lep_iso.at(index_leg_2);
 
     sync().gen_match_2 = static_cast<float>(event.GetLeg(2)->gen_match());
 
