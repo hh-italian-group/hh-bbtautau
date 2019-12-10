@@ -103,9 +103,9 @@ public:
                     (*originalTuple)().second_daughter_indexes = {1};
             }
             const ntuple::Event& event = (*originalTuple).data();
-            const EventIdentifier EventId(event.run, event.lumi, event.evt);
-            const EventIdentifier EventIdTest(1,1,19);
-            if(!(EventId == EventIdTest)) continue;
+            // const EventIdentifier EventId(event.run, event.lumi, event.evt);
+            // const EventIdentifier EventIdTest(1,5,4380);
+            // if(!(EventId == EventIdTest)) continue;
            // std::cout << "n_entries"  << '\n';
 
             EventIdentifier event_id(event);
@@ -188,7 +188,7 @@ private:
 
             //JetOrdering jet_ordering = run_period == Period::Run2017 ? JetOrdering::DeepCSV : JetOrdering::CSV;
             JetOrdering jet_ordering = JetOrdering::DeepFlavour;
-            boost::optional<EventInfoBase> event_info_base = CreateEventInfo(event,signalObjectSelector,&summaryInfo,run_period,jet_ordering);
+            boost::optional<EventInfoBase> event_info_base = CreateEventInfo(event,signalObjectSelector,&summaryInfo,run_period,jet_ordering, true);
             if(!event_info_base.is_initialized()) continue;
             if(!event_info_base->GetTriggerResults().AnyAcceptAndMatchEx(triggerPaths.at(channel), event_info_base->GetFirstLeg().GetMomentum().pt(),
                                                                                                 event_info_base->GetSecondLeg().GetMomentum().pt())) continue;
