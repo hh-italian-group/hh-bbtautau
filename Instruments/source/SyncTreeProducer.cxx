@@ -164,6 +164,7 @@ private:
 
     void FillSyncTuple(SyncTuple& sync, const std::map<EventEnergyScale, ntuple::Event>& events,const SummaryInfo& summaryInfo) const
     {
+        // 2018
         static const std::map<Channel, std::vector<std::string>> triggerPaths = {
             { Channel::ETau, { "HLT_Ele32_WPTight_Gsf_v", "HLT_Ele35_WPTight_Gsf_v",
                                "HLT_Ele24_eta2p1_WPTight_Gsf_LooseChargedIsoPFTau30_eta2p1_CrossL1_v",

@@ -28,7 +28,6 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     analysis::JetCollection jets_pt20;
     analysis::JetCollection jets_pt30;
    size_t index_leg_1 = 0;
-   size_t index_leg_2 = 0;
    auto select_jets = [&](analysis::EventInfoBase* event_info) {
        jets_pt20.clear();
        jets_pt30.clear();
@@ -37,8 +36,6 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
        jets_pt20 = event_info->SelectJets(20, 4.7,false,false,analysis::JetOrdering::Pt);
        jets_pt30 = event_info->SelectJets(30, std::numeric_limits<double>::max(),false,false, analysis::JetOrdering::Pt);
        index_leg_1 = event_info->GetLegIndex(1);
-       index_leg_2 = event_info->GetLegIndex(2);
-
     };
 
     sync().run = event->run;
@@ -49,13 +46,10 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().npu = event->npu;
 
     sync().pt_1 = static_cast<float>(event.GetLeg(1).GetMomentum().Pt());
-    // std::cout << "pt_1="<<sync().pt_1 << '\n';
     sync().pt_tau_ES_up_1 = COND_VAL(event_tau_up, event_tau_up->GetLeg(1).GetMomentum().Pt());
     sync().pt_tau_ES_down_1 = COND_VAL(event_tau_down, event_tau_down->GetLeg(1).GetMomentum().Pt());
     sync().phi_1 = static_cast<float>(event.GetLeg(1).GetMomentum().Phi());
-    // std::cout << "phi_1="<<sync().phi_1 << '\n';
     sync().eta_1 = static_cast<float>(event.GetLeg(1).GetMomentum().Eta());
-    // std::cout << "eta_1="<<sync().eta_1 << '\n';
     sync().m_1 = static_cast<float>(event.GetLeg(1).GetMomentum().mass());
     sync().q_1 = event.GetLeg(1)->charge();
     sync().d0_1 = event.GetLeg(1)->dxy();
@@ -65,7 +59,6 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
         sync().iso_1 =  event.GetLeg(1)->GetRawValue(TauIdDiscriminator::byDeepTau2017v2p1VSjet);
     else
         sync().iso_1 =  event->lep_iso.at(index_leg_1);
-    // std::cout << "iso_1="<<sync().iso_1 << '\n';
     sync().gen_match_1 = static_cast<float>(event.GetLeg(1)->gen_match());
 
     sync().againstElectronLooseMVA6_1 = event.GetLeg(1)->leg_type() == LegType::tau ? event.GetLeg(1)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::Loose) : default_value;
@@ -80,13 +73,10 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().byIsolationMVArun2017v2DBoldDMwLTraw2017_1 = event.GetLeg(1)->leg_type() == LegType::tau ? event.GetLeg(1)->GetRawValue(TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017) : default_value;
 
     sync().pt_2 = static_cast<float>(event.GetLeg(2).GetMomentum().Pt());
-    // std::cout << "pt_2="<<sync().pt_2 << '\n';
     sync().pt_tau_ES_up_2 = COND_VAL(event_tau_up, event_tau_up->GetLeg(2).GetMomentum().Pt());
     sync().pt_tau_ES_down_2 = COND_VAL(event_tau_down, event_tau_down->GetLeg(2).GetMomentum().Pt());
     sync().phi_2 = static_cast<float>(event.GetLeg(2).GetMomentum().Phi());
-    // std::cout << "phi_2="<<sync().phi_2 << '\n';
     sync().eta_2 = static_cast<float>(event.GetLeg(2).GetMomentum().Eta());
-     // std::cout << "eta_2="<<sync().eta_2 << '\n';
     sync().m_2 = static_cast<float>(event.GetLeg(2).GetMomentum().mass());
     sync().q_2 = event.GetLeg(2)->charge();
     sync().d0_2 = event.GetLeg(2)->dxy();
@@ -95,7 +85,6 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     if(event.GetLeg(2)->leg_type() == LegType::tau)
         sync().iso_2 =  event.GetLeg(2)->GetRawValue(TauIdDiscriminator::byDeepTau2017v2p1VSjet);
 
-    // std::cout << "iso_2="<<sync().iso_2 << '\n';
     sync().gen_match_2 = static_cast<float>(event.GetLeg(2)->gen_match());
 
     sync().againstElectronLooseMVA6_2 = event.GetLeg(2)->leg_type() == LegType::tau ? event.GetLeg(2)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::Loose) : default_value;
@@ -144,20 +133,6 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().metcov10 = static_cast<float>(event->pfMET_cov[1][0]);
     sync().metcov11 = static_cast<float>(event->pfMET_cov[1][1]);
 
-    // analysis::JetCollection jets_pt20;
-    // analysis::JetCollection jets_pt30;
-    //
-    // auto select_jets = [&](analysis::EventInfoBase* event_info) {
-    //     jets_pt20.clear();
-    //     jets_pt30.clear();
-    //     if(!event_info) return;
-    //
-    //     jets_pt20 = event_info->SelectJets(20, 4.7,false,false,analysis::JetOrdering::Pt);
-    //     jets_pt30 = event_info->SelectJets(30, std::numeric_limits<double>::max(),false,false, analysis::JetOrdering::Pt);
-    //
-    //
-    // };
-
     select_jets(&event);
     sync().mjj = COND_VAL(jets_pt20.size() >= 2, (jets_pt20.at(0).GetMomentum()
                + jets_pt20.at(1).GetMomentum()).M());
@@ -167,7 +142,6 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
                  - jets_pt20.at(1).GetMomentum().Phi()));
 
     sync().njets = static_cast<int>(jets_pt20.size());
-    // std::cout << "njets" << sync().njets << '\n';
     sync().njetspt20 = static_cast<int>(jets_pt20.size());
 
     sync().jpt_1 = COND_VAL(jets_pt20.size() >= 1, jets_pt20.at(0).GetMomentum().Pt());
@@ -192,7 +166,6 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().extramuon_veto = event->extramuon_veto;
     sync().extraelec_veto = event->extraelec_veto;
     sync().nbjets = static_cast<int>(event.GetSelectedSignalJets().n_bjets);
-    // std::cout << "nbjets=" << sync().nbjets << '\n';
     sync().bjet_pt_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1).GetMomentum().Pt());
     sync().bjet_eta_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1).GetMomentum().Eta());
     sync().bjet_phi_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1).GetMomentum().Phi());
