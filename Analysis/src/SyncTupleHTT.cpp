@@ -8,9 +8,9 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 
 namespace htt_sync {
 
-void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, analysis::Period run_period,
-                   bool apply_svFit,
-                   double weight,
+void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, analysis::Period /*run_period*/,
+                   bool /*apply_svFit*/,
+                   double /*weight*/,
                    //double dy_weight,
                    analysis::mva_study::MvaReader* mva_reader,
                    analysis::EventInfoBase* event_tau_up,
@@ -20,7 +20,7 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
 {
 
     static constexpr float default_value = std::numeric_limits<float>::lowest();
-    static constexpr int default_int_value = std::numeric_limits<int>::lowest();
+    // static constexpr int default_int_value = std::numeric_limits<int>::lowest();
     using TauIdDiscriminator = analysis::TauIdDiscriminator;
     using DiscriminatorWP = analysis::DiscriminatorWP;
     using LegType = analysis::LegType;

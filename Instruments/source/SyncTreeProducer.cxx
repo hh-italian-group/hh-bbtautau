@@ -49,7 +49,7 @@ public:
     using SyncTuple = htt_sync::SyncTuple;
 
     static constexpr float default_value = std::numeric_limits<float>::lowest();
-    static constexpr int default_int_value = std::numeric_limits<int>::lowest();
+    // static constexpr int default_int_value = std::numeric_limits<int>::lowest();
 
     SyncTreeProducer(const Arguments& _args) : args(_args), syncMode(Parse<SyncMode>(args.mode())),
                                                             run_period(Parse<analysis::Period>(args.period())),
