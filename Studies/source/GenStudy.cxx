@@ -374,7 +374,7 @@ public:
             // Sum 4-momentum of the gen b jets used for the match
             for(size_t jet_index = 0; jet_index < 2; ++jet_index){
                 for(size_t particle_index = 0; particle_index < gen_jets.at(jet_index).size(); ++particle_index)
-                    HH_Gen_Event.b_jets[jet_index] += gen_jets.at(jet_index).at(particle_index)->momentum;      
+                    HH_Gen_Event.b_jets[jet_index] += gen_jets.at(jet_index).at(particle_index)->momentum;
                 HH_Gen_Event.h_bb_vis += HH_Gen_Event.b_jets[jet_index];
             }
 
@@ -737,6 +737,7 @@ private:
     std::shared_ptr<TFile> new_output_file;
     GenStudyHist anaData;
     TCanvas canvas;
+    SampleType sample_type;
 };
 
 } // namespace analysis

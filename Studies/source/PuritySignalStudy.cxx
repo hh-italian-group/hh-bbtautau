@@ -133,8 +133,7 @@ private:
     size_t calculateMatchesJets(const Event& event, JetOrdering jet_ordering)
     {
         auto ordered_jets = orderJets(event, jet_ordering);
-
-        const size_t n_max = std::min(static_cast<int>(ordered_jets.size()), 2);
+        const size_t n_max = std::min<size_t>(ordered_jets.size(), 2);
         size_t count = 0;
         for(size_t n = 0; n < n_max; ++n) {
             const size_t index = ordered_jets.at(n).index;
@@ -165,10 +164,13 @@ private:
     std::vector<analysis::jet_ordering::JetInfo<LorentzVector>> orderJets(const Event& event, JetOrdering jet_ordering)
     {
         std::vector<analysis::jet_ordering::JetInfo<LorentzVector>> jet_info_vector;
-        BTagger bTagger(Parse<analysis::Period>(args.period()) ,jet_ordering);
+        BTagger bTagger(Parse<analysis::Period>(args.period()), jet_ordering);
 
+        UncertaintySource unc_source = analysis::UncertaintySource::None;
+        UncertaintyScale unc_scale = analysis::UncertaintyScale::Central;
         for(size_t jet_index = 0; jet_index < event.jets_p4.size(); ++jet_index)
-            jet_info_vector.emplace_back(LorentzVectorE(event.jets_p4.at(jet_index)), jet_index, bTagger.BTag(event,jet_index));
+            jet_info_vector.emplace_back(LorentzVectorE(event.jets_p4.at(jet_index)), jet_index, bTagger.BTag(event,
+                jet_index, unc_source, unc_scale, false));
 
         return jet_ordering::OrderJets(jet_info_vector, true, cuts::btag_2017::pt, cuts::btag_2017::eta);
     }

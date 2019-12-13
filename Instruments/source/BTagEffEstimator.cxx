@@ -121,7 +121,7 @@ public:
                     boost::optional<EventInfoBase> eventInfo = CreateEventInfo(event,signalObjectSelector,nullptr,
 										args.period(),args.csv_type());
                     if(!eventInfo.is_initialized()) continue;
-                    const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
+                    // const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
                    /* if (args.period() == Period::Run2016 && (es != EventEnergyScale::Central || event.jets_p4.size() < 2 || event.extraelec_veto
                             || event.extramuon_veto
                             || std::abs(eventInfo->GetHiggsBB().GetFirstDaughter().GetMomentum().eta()) >= cuts::btag_2016::eta

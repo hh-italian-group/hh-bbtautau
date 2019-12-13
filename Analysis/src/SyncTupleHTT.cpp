@@ -8,9 +8,9 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 
 namespace htt_sync {
 
-void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, analysis::Period run_period,
-                   bool apply_svFit,
-                   double weight,
+void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, analysis::Period /*run_period*/,
+                   bool /*apply_svFit*/,
+                   double /*weight*/,
                    //double dy_weight,
                    analysis::mva_study::MvaReader* mva_reader,
                    analysis::EventInfoBase* event_tau_up,
@@ -20,10 +20,25 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
 {
 
     static constexpr float default_value = std::numeric_limits<float>::lowest();
-    static constexpr int default_int_value = std::numeric_limits<int>::lowest();
+    // static constexpr int default_int_value = std::numeric_limits<int>::lowest();
     using TauIdDiscriminator = analysis::TauIdDiscriminator;
     using DiscriminatorWP = analysis::DiscriminatorWP;
     using LegType = analysis::LegType;
+
+    analysis::JetCollection jets_pt20;
+    analysis::JetCollection jets_pt30;
+   size_t index_leg_1 = 0;
+   size_t index_leg_2 = 0;
+   auto select_jets = [&](analysis::EventInfoBase* event_info) {
+       jets_pt20.clear();
+       jets_pt30.clear();
+       if(!event_info) return;
+
+       jets_pt20 = event_info->SelectJets(20, 4.7,false,false,analysis::JetOrdering::Pt);
+       jets_pt30 = event_info->SelectJets(30, std::numeric_limits<double>::max(),false,false, analysis::JetOrdering::Pt);
+       index_leg_1 = event_info->GetLegIndex(1);
+       index_leg_2 = event_info->GetLegIndex(2);
+    };
 
     sync().run = event->run;
     sync().lumi = event->lumi;
@@ -42,7 +57,10 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().d0_1 = event.GetLeg(1)->dxy();
     sync().dZ_1 = event.GetLeg(1)->dz();
     sync().pfmt_1 = static_cast<float>(analysis::Calculate_MT(event.GetLeg(1).GetMomentum(), event.GetMET().GetMomentum()));
-    sync().iso_1 =  event.GetLeg(1)->iso();
+    if(event.GetLeg(1)->leg_type() == LegType::tau)
+        sync().iso_1 =  event.GetLeg(1)->GetRawValue(TauIdDiscriminator::byDeepTau2017v2p1VSjet);
+    else
+        sync().iso_1 =  event->lep_iso.at(index_leg_1);
     sync().gen_match_1 = static_cast<float>(event.GetLeg(1)->gen_match());
 
     sync().againstElectronLooseMVA6_1 = event.GetLeg(1)->leg_type() == LegType::tau ? event.GetLeg(1)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::Loose) : default_value;
@@ -66,7 +84,11 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().d0_2 = event.GetLeg(2)->dxy();
     sync().dZ_2 = event.GetLeg(2)->dz();
     sync().pfmt_2 = static_cast<float>(analysis::Calculate_MT(event.GetLeg(2).GetMomentum(), event.GetMET().GetMomentum()));
-    sync().iso_2 =  event.GetLeg(2)->iso();
+    if(event.GetLeg(2)->leg_type() == LegType::tau)
+        sync().iso_2 =  event.GetLeg(2)->GetRawValue(TauIdDiscriminator::byDeepTau2017v2p1VSjet);
+    else
+        sync().iso_2 =  event->lep_iso.at(index_leg_2);
+
     sync().gen_match_2 = static_cast<float>(event.GetLeg(2)->gen_match());
 
     sync().againstElectronLooseMVA6_2 = event.GetLeg(2)->leg_type() == LegType::tau ? event.GetLeg(2)->Passed(TauIdDiscriminator::againstElectronMVA6, DiscriminatorWP::Loose) : default_value;
@@ -115,27 +137,6 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().metcov10 = static_cast<float>(event->pfMET_cov[1][0]);
     sync().metcov11 = static_cast<float>(event->pfMET_cov[1][1]);
 
-    analysis::JetCollection jets_pt20;
-    analysis::JetCollection jets_pt30;
-
-    auto select_jets = [&](analysis::EventInfoBase* event_info) {
-        jets_pt20.clear();
-        jets_pt30.clear();
-        if(!event_info) return;
-
-        if (run_period == analysis::Period::Run2016) {
-            jets_pt20 = event_info->SelectJets(20, 4.7,false,false,analysis::JetOrdering::Pt);
-            jets_pt30 = event_info->SelectJets(30, 4.7,false,false,analysis::JetOrdering::Pt);
-        }
-
-        if (run_period == analysis::Period::Run2017) {
-            jets_pt20 = event_info->SelectJets(20, 4.7,false,false,analysis::JetOrdering::Pt);
-            jets_pt30 = event_info->SelectJets(30, std::numeric_limits<double>::max(),false,false,
-                                               analysis::JetOrdering::Pt);
-        }
-
-    };
-
     select_jets(&event);
     sync().mjj = COND_VAL(jets_pt20.size() >= 2, (jets_pt20.at(0).GetMomentum()
                + jets_pt20.at(1).GetMomentum()).M());
@@ -144,7 +145,7 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().jdphi = COND_VAL(jets_pt20.size() >= 2, TVector2::Phi_mpi_pi(jets_pt20.at(0).GetMomentum().Phi()
                  - jets_pt20.at(1).GetMomentum().Phi()));
 
-    sync().njets = static_cast<int>(jets_pt30.size());
+    sync().njets = static_cast<int>(jets_pt20.size());
     sync().njetspt20 = static_cast<int>(jets_pt20.size());
 
     sync().jpt_1 = COND_VAL(jets_pt20.size() >= 1, jets_pt20.at(0).GetMomentum().Pt());
@@ -215,26 +216,26 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().deltaR_ll = static_cast<float>(ROOT::Math::VectorUtil::DeltaR(event.GetLeg(1).GetMomentum(), event.GetLeg(2).GetMomentum()));
 
     sync().nFatJets = static_cast<unsigned>(event.GetFatJets().size());
-    const auto fatJet = event.SelectFatJet(30, 0.4);
-    sync().hasFatJet = event.HasBjetPair() ? fatJet != nullptr : -1;
-    sync().fatJet_pt = COND_VAL(fatJet, fatJet->GetMomentum().Pt());
-    sync().fatJet_eta = COND_VAL(fatJet, fatJet->GetMomentum().Eta());
-    sync().fatJet_phi = COND_VAL(fatJet, fatJet->GetMomentum().Phi());
-    sync().fatJet_energy = COND_VAL(fatJet, fatJet->GetMomentum().E());
-    sync().fatJet_m_softDrop = COND_VAL(fatJet, (*fatJet)->m(ntuple::TupleFatJet::MassType::SoftDrop));
-    sync().fatJet_n_subjettiness_tau1 = COND_VAL(fatJet, (*fatJet)->jettiness(1));
-    sync().fatJet_n_subjettiness_tau2 = COND_VAL(fatJet, (*fatJet)->jettiness(2));
-    sync().fatJet_n_subjettiness_tau3 = COND_VAL(fatJet, (*fatJet)->jettiness(3));
-    sync().fatJet_n_subjets = COND_VAL_INT(fatJet, (*fatJet)->subJets().size());
+    // const auto fatJet = event.SelectFatJet(30, 0.4);
+    // sync().hasFatJet = event.HasBjetPair() ? fatJet != nullptr : -1;
+    // sync().fatJet_pt = COND_VAL(fatJet, fatJet->GetMomentum().Pt());
+    // sync().fatJet_eta = COND_VAL(fatJet, fatJet->GetMomentum().Eta());
+    // sync().fatJet_phi = COND_VAL(fatJet, fatJet->GetMomentum().Phi());
+    // sync().fatJet_energy = COND_VAL(fatJet, fatJet->GetMomentum().E());
+    // sync().fatJet_m_softDrop = COND_VAL(fatJet, (*fatJet)->m(ntuple::TupleFatJet::MassType::SoftDrop));
+    // sync().fatJet_n_subjettiness_tau1 = COND_VAL(fatJet, (*fatJet)->jettiness(1));
+    // sync().fatJet_n_subjettiness_tau2 = COND_VAL(fatJet, (*fatJet)->jettiness(2));
+    // sync().fatJet_n_subjettiness_tau3 = COND_VAL(fatJet, (*fatJet)->jettiness(3));
+    // sync().fatJet_n_subjets = COND_VAL_INT(fatJet, (*fatJet)->subJets().size());
 
-    sync().topWeight = static_cast<Float_t>(event->weight_top_pt);
-    sync().shapeWeight = static_cast<Float_t>(event->weight_pu * event->weight_bsm_to_sm * event->weight_dy
-                       * event->weight_ttbar * event->weight_wjets * event->weight_xs);
-    sync().btagWeight = static_cast<Float_t>(event->weight_btag);
-    sync().puweight = static_cast<Float_t>(event->weight_pu);
-    sync().leptonidisoWeight = static_cast<Float_t>(event->weight_lepton_id_iso);
-    sync().leptontrigWeight = static_cast<Float_t>(event->weight_lepton_trig);
-    sync().final_weight = static_cast<Float_t>(weight);
+    // sync().topWeight = static_cast<Float_t>(event->weight_top_pt);
+    // sync().shapeWeight = static_cast<Float_t>(event->weight_pu * event->weight_bsm_to_sm * event->weight_dy
+    //                    * event->weight_ttbar * event->weight_wjets * event->weight_xs);
+    // sync().btagWeight = static_cast<Float_t>(event->weight_btag);
+    // sync().puweight = static_cast<Float_t>(event->weight_pu);
+    // sync().leptonidisoWeight = static_cast<Float_t>(event->weight_lepton_id_iso);
+    // sync().leptontrigWeight = static_cast<Float_t>(event->weight_lepton_trig);
+    // sync().final_weight = static_cast<Float_t>(weight);
     //sync().dy_weight = static_cast<Float_t>(dy_weight);
 
     sync().lhe_n_b_partons = static_cast<int>(event->lhe_n_b_partons);
@@ -274,17 +275,17 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
         sync().pt_hbb = Hbb.Pt();
         sync().pt_l1l2 = (t1+t2).Pt();
         sync().pt_htautau = (Htt+met).Pt();
-        sync().pt_htautau_sv = COND_VAL(apply_svFit, event.GetHiggsTTMomentum(true).Pt());
+        // sync().pt_htautau_sv = COND_VAL(apply_svFit, event.GetHiggsTTMomentum(true).Pt());
         sync().p_zeta = analysis::Calculate_Pzeta(t1, t2,  met);
         sync().p_zetavisible = analysis::Calculate_visiblePzeta(t1, t2);
         sync().dphi_l1l2 = ROOT::Math::VectorUtil::DeltaPhi(t1, t2);
         sync().abs_dphi_b1b2 = std::abs(ROOT::Math::VectorUtil::DeltaPhi(b1, b2));
         sync().dphi_b1b2 = ROOT::Math::VectorUtil::DeltaPhi(b1, b2);
         sync().dphi_l1MET = ROOT::Math::VectorUtil::DeltaPhi(t1, met);
-        sync().abs_dphi_METhtautau_sv = COND_VAL(apply_svFit, std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.GetHiggsTTMomentum(true), met)));
-        sync().dphi_METhtautau_sv = COND_VAL(apply_svFit, ROOT::Math::VectorUtil::DeltaPhi(event.GetHiggsTTMomentum(true), met));
+        // sync().abs_dphi_METhtautau_sv = COND_VAL(apply_svFit, std::abs(ROOT::Math::VectorUtil::DeltaPhi(event.GetHiggsTTMomentum(true), met)));
+        // sync().dphi_METhtautau_sv = COND_VAL(apply_svFit, ROOT::Math::VectorUtil::DeltaPhi(event.GetHiggsTTMomentum(true), met));
         sync().dphi_hbbMET = ROOT::Math::VectorUtil::DeltaPhi(Hbb, met);
-        sync().abs_dphi_hbbhatutau_sv = COND_VAL(apply_svFit, std::abs(ROOT::Math::VectorUtil::DeltaPhi(Hbb, event.GetHiggsTTMomentum(true))));
+        // sync().abs_dphi_hbbhatutau_sv = COND_VAL(apply_svFit, std::abs(ROOT::Math::VectorUtil::DeltaPhi(Hbb, event.GetHiggsTTMomentum(true))));
         sync().abs_deta_b1b2 = std::abs(b1.eta() - b2.eta());
         sync().abs_deta_l2MET = std::abs(t2.eta()-met.eta());
         sync().abs_deta_hbbMET = std::abs(Hbb.eta()-met.eta());
@@ -292,7 +293,7 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
         sync().dR_hbbMET = ROOT::Math::VectorUtil::DeltaR(Hbb, met);
         sync().dR_hbbhtautau = ROOT::Math::VectorUtil::DeltaR(Hbb, Htt+met);
         sync().dR_l1l2Pt_htautau = ROOT::Math::VectorUtil::DeltaR(t1, t2)*(Htt+met).Pt();
-        sync().dR_l1l2Pt_htautau_sv = COND_VAL(apply_svFit, ROOT::Math::VectorUtil::DeltaR(t1, t2)*event.GetHiggsTTMomentum(true).Pt());
+        // sync().dR_l1l2Pt_htautau_sv = COND_VAL(apply_svFit, ROOT::Math::VectorUtil::DeltaR(t1, t2)*event.GetHiggsTTMomentum(true).Pt());
         sync().MT_l1 = analysis::Calculate_MT(t1,met);
         sync().MT_htautau = analysis::Calculate_MT(Htt+met, met);
         //sync().MT_htautau_sv = COND_VAL(apply_svFit, analysis::Calculate_MT(event.GetHiggsTTMomentum(true), met));
