@@ -133,8 +133,7 @@ private:
     size_t calculateMatchesJets(const Event& event, JetOrdering jet_ordering)
     {
         auto ordered_jets = orderJets(event, jet_ordering);
-
-        const size_t n_max = std::min(static_cast<int>(ordered_jets.size()), 2);
+        const size_t n_max = std::min<size_t>(ordered_jets.size(), 2);
         size_t count = 0;
         for(size_t n = 0; n < n_max; ++n) {
             const size_t index = ordered_jets.at(n).index;
