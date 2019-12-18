@@ -35,8 +35,17 @@ EventWeights_HH::EventWeights_HH(Period period, JetOrdering jet_ordering, Discri
             providers[WeightType::Wjets] = std::make_shared<NJets_HT_weight>("Wjets", wjet_weights);
 
     }
+    else if (period == Period::Run2018){
+        std::string dy_weights = Full_Cfg_Name("2018/dyjets_weights_2018.cfg");
+        if(mode.empty() || mode.count(WeightType::DY))
+            providers[WeightType::DY] = std::make_shared<NJets_HT_weight>("DY", dy_weights);
+        std::string wjet_weights = Full_Cfg_Name("2018/wjets_weights_2018.cfg");
+        if(mode.empty() || mode.count(WeightType::Wjets))
+            providers[WeightType::Wjets] = std::make_shared<NJets_HT_weight>("Wjets", wjet_weights);
+
+    }
     else
-        throw exception("Period %1% is not supported.") % period;
+        throw exception("Period %1% is not supported (EventWeights_HH).") % period;
 
     if(mode.empty() || mode.count(WeightType::BSM_to_SM))
         providers[WeightType::BSM_to_SM] = std::make_shared<NonResHH_EFT::WeightProvider>(
