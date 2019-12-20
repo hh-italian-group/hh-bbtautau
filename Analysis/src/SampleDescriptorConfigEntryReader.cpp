@@ -30,6 +30,7 @@ void AnalyzerConfigEntryReader::EndEntry()
     CheckReadParamCounts("draw_sequence", 1, Condition::less_equal);
     CheckReadParamCounts("mva_setup", 1, Condition::less_equal);
     CheckReadParamCounts("hist_cfg", 1, Condition::less_equal);
+    CheckReadParamCounts("trigger_path", 1, Condition::less_equal);
     CheckReadParamCounts("syncDataIds", 1, Condition::less_equal);
     CheckReadParamCounts("plot_cfg", 1, Condition::less_equal);
     CheckReadParamCounts("plot_page_opt", 1, Condition::less_equal);
@@ -71,6 +72,7 @@ void AnalyzerConfigEntryReader::ReadParameter(const std::string& /*param_name*/,
     ParseEntry("limit_category", current.limit_categories);
     ParseEntry("mva_setup", current.mva_setup);
     ParseEntry("hist_cfg", current.hist_cfg);
+    ParseEntry("trigger_path", current.trigger_path);
     ParseEntryList("syncDataIds", current.syncDataIds);
     ParseEntry("plot_cfg", current.plot_cfg);
     ParseEntry("plot_page_opt", current.plot_page_opt);

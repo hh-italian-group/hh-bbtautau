@@ -61,12 +61,15 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfoBase& even
                                                                           {DiscriminatorWP::Medium, 0},
                                                                           {DiscriminatorWP::Tight, 0}};
     EventCategorySet categories;
-
-    const bool is_boosted = event.SelectFatJet(cuts::hh_bbtautau_2016::fatJetID::mass,
-                                               cuts::hh_bbtautau_2016::fatJetID::deltaR_subjet) != nullptr;
+    // std::cout << "amarena" << '\n';
+    const bool is_boosted =  false;
+    // const bool is_boosted = event.SelectFatJet(cuts::hh_bbtautau_2016::fatJetID::mass,
+    //                                            cuts::hh_bbtautau_2016::fatJetID::deltaR_subjet) != nullptr;
+   // std::cout << "pluto" << '\n';
     bool is_VBF = false;
     std::set<size_t> jets_to_exclude;
     if(event.HasVBFjetPair()){
+        // std::cout << "Nutella" << '\n';
         const auto vbf_jet_1 = event.GetVBFJet(1).GetMomentum();
         const auto vbf_jet_2 = event.GetVBFJet(2).GetMomentum();
 
@@ -78,20 +81,27 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfoBase& even
         jets_to_exclude.insert(event.GetVBFJet(1)->jet_index());
         jets_to_exclude.insert(event.GetVBFJet(2)->jet_index());
     }
-
+    // std::cout << "pippo" << '\n';
     const auto& jets = event.SelectJets(bTagger->PtCut(), bTagger->EtaCut(), true, false, ana_setup.jet_ordering,
                                         jets_to_exclude);
     std::map<DiscriminatorWP, size_t> bjet_counts = btag_working_points;
-
+    size_t n = 0;
     for(const auto& jet : jets) {
+        ++n;
         for(const auto& btag_wp : btag_working_points){
+            // std::cout << "Nocciola" << '\n';
             if(bTagger->Pass(*jet, analysis::UncertaintySource::None, analysis::UncertaintyScale::Central, btag_wp.first)) ++bjet_counts[btag_wp.first];
         }
     }
+    // std::cout << "n_jets="<< n << '\n';
+    // for(auto x : btag_working_points)
+        // std::cout << "bjet_counts: " << x.second << '\n';
 
     for(const auto& category : ana_setup.categories) {
-        if(category.Contains(jets.size(), bjet_counts, is_VBF ,is_boosted))
+        if(category.Contains(jets.size(), bjet_counts, is_VBF ,is_boosted)){
             categories.insert(category);
+            // std::cout << "Amarena" << '\n';
+        }
     }
     return categories;
 }
@@ -202,7 +212,9 @@ void BaseEventAnalyzer::ProcessSamples(const std::vector<std::string>& sample_na
                 nonResModel = std::make_shared<NonResModel>(ana_setup.period, sample, file);
                 std::cout << "done." << std::endl;
             }
+            // std::cout << "Nutella" << '\n';
             ProcessDataSource(sample, sample_wp, tuple, prod_summary);
+            // std::cout << "Nocciola" << '\n';
 
             processed_files.insert(sample_wp.file_path);
         }
@@ -213,18 +225,24 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                           std::shared_ptr<ntuple::EventTuple> tuple,
                                           const ntuple::ProdSummary& prod_summary)
 {
-    const SummaryInfo summary(prod_summary,channelId);
+    const SummaryInfo summary(prod_summary,channelId, ana_setup.trigger_path);
     for(auto tupleEvent : *tuple) {
 
-        boost::optional<analysis::EventInfoBase> event = CreateEventInfo(tupleEvent,signalObjectSelector,&summary,ana_setup.period,ana_setup.jet_ordering);
+        boost::optional<analysis::EventInfoBase> event = CreateEventInfo(tupleEvent,signalObjectSelector,&summary,
+                                                                         ana_setup.period,ana_setup.jet_ordering);
+        // std::cout << "a" << '\n';
         if(!event.is_initialized()) continue;
         if(!ana_setup.energy_scales.count(event->GetEnergyScale())) continue;
         if(!event->GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) continue;
+        // std::cout << "b" << '\n';
         bbtautau::AnaTupleWriter::DataIdMap dataIds;
         const auto eventCategories = DetermineEventCategories(*event);
+        // std::cout << "1" << '\n';
         for(auto eventCategory : eventCategories) {
+            // std::cout << "2" << '\n';
             //if (!ana_setup.categories.count(eventCategory)) continue;
             const EventRegion eventRegion = DetermineEventRegion(*event, eventCategory);
+            // std::cout << "3" << '\n';
             for(const auto& region : ana_setup.regions){
                 if(!eventRegion.Implies(region)) continue;
                 std::map<SelectionCut, double> mva_scores;
@@ -242,6 +260,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                     / (summary->n_splits - mva_params.training_range->size());
                         }
                     }
+                    // std::cout << "4" << '\n';
                     event->SetMvaScore(mva_score);
                     const EventAnalyzerDataId anaDataId(eventCategory, subCategory, region,
                                                         event->GetEnergyScale(), sample_wp.full_name);
@@ -266,8 +285,11 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
 
                         // const double weight = (((*event)->weight_total * sample.cross_section * ana_setup.int_lumi)
                         //        / (summary->totalShapeWeight )) * mva_weight_scale ;
-                        auto lepton_wp = eventWeights_HH->GetProviderT<mc_corrections::LeptonWeights>(mc_corrections::WeightType::LeptonTrigIdIso);
-                        double total_lepton_weight = lepton_wp->Get(*event);
+
+                        //Please use me (I'm lepton_wp) :(
+                        // auto lepton_wp = eventWeights_HH->GetProviderT<mc_corrections::LeptonWeights>(mc_corrections::WeightType::LeptonTrigIdIso);
+                        // double total_lepton_weight = lepton_wp->Get(*event);
+                        double total_lepton_weight = 1;
 
                         const double weight = (*event)->weight_total * sample.cross_section * ana_setup.int_lumi * total_lepton_weight
                                             / summary->totalShapeWeight * mva_weight_scale;
