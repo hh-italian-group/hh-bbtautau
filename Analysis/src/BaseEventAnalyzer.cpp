@@ -18,7 +18,7 @@ SyncDescriptor::SyncDescriptor(const std::string& desc_str, std::shared_ptr<TFil
 }
 
 BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel channel) :
-    EventAnalyzerCore(_args, channel), args(_args), anaTupleWriter(args.output(), channel, ana_setup.run_kinFit, ana_setup.run_SVfit),
+    EventAnalyzerCore(_args, channel), args(_args), anaTupleWriter(args.output(), channel, ana_setup.use_kinFit, ana_setup.use_svFit),
     trigger_patterns(ana_setup.trigger.at(channel)),signalObjectSelector(ana_setup.mode)
 {
     InitializeMvaReader();
@@ -137,13 +137,13 @@ EventSubCategory BaseEventAnalyzer::DetermineEventSubCategory(EventInfoBase& eve
     if(event.HasBjetPair()){
         mbb = event.GetHiggsBB().GetMomentum().mass();
         if(category.HasBoostConstraint() && category.IsBoosted()){
-            if(ana_setup.run_SVfit){
+            if(ana_setup.use_svFit){
                 bool isInsideBoostedCut = IsInsideBoostedMassWindow(event.GetHiggsTTMomentum(true).mass(),mbb);
                 sub_category.SetCutResult(SelectionCut::mh,isInsideBoostedCut);
             }
         }
         else{
-            if(!ana_setup.run_SVfit && ana_setup.massWindowParams.count(SelectionCut::mh))
+            if(!ana_setup.use_svFit && ana_setup.massWindowParams.count(SelectionCut::mh))
                 throw exception("Category mh inconsistent with the false requirement of SVfit.");
             if(ana_setup.massWindowParams.count(SelectionCut::mh))
                 sub_category.SetCutResult(SelectionCut::mh,ana_setup.massWindowParams.at(SelectionCut::mh)
@@ -158,7 +158,7 @@ EventSubCategory BaseEventAnalyzer::DetermineEventSubCategory(EventInfoBase& eve
                         .IsInside((event.GetHiggsTTMomentum(false) + event.GetMET().GetMomentum()).mass(),mbb));
 
         }
-        if(ana_setup.run_kinFit)
+        if(ana_setup.use_kinFit)
             sub_category.SetCutResult(SelectionCut::KinematicFitConverged, event.GetKinFitResults().HasValidMass());
     }
     if(mva_setup.is_initialized()) {
@@ -308,7 +308,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
             const auto& regex_pattern = sync_descriptors.at(n).regex_pattern;
             for(auto& dataId : dataIds){
                 if(boost::regex_match(dataId.first.GetName(), *regex_pattern)){
-                    htt_sync::FillSyncTuple(*event, *sync_descriptors.at(n).sync_tree, ana_setup.period,ana_setup.run_SVfit,std::get<0>(dataId.second));
+                    htt_sync::FillSyncTuple(*event, *sync_descriptors.at(n).sync_tree, ana_setup.period,ana_setup.use_svFit,std::get<0>(dataId.second));
                     break;
                 }
             }
