@@ -63,7 +63,7 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfoBase& even
     EventCategorySet categories;
     // const bool is_boosted =  false;
     const bool is_boosted = event.SelectFatJet(cuts::hh_bbtautau_2016::fatJetID::mass,
-                                               cuts::hh_bbtautau_2016::fatJetID::deltaR_subjet, ana_setup.period) != nullptr; 
+                                               cuts::hh_bbtautau_2016::fatJetID::deltaR_subjet) != nullptr;
     bool is_VBF = false;
     std::set<size_t> jets_to_exclude;
     if(event.HasVBFjetPair()){
