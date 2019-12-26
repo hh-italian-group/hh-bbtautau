@@ -18,7 +18,7 @@ SyncDescriptor::SyncDescriptor(const std::string& desc_str, std::shared_ptr<TFil
 }
 
 BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel channel) :
-    EventAnalyzerCore(_args, channel), args(_args), anaTupleWriter(args.output(), channel, ana_setup.run_kinFit, ana_setup.run_SVfit),
+    EventAnalyzerCore(_args, channel), args(_args), anaTupleWriter(args.output(), channel, ana_setup.use_kinFit, ana_setup.use_svFit),
     trigger_patterns(ana_setup.trigger.at(channel)),signalObjectSelector(ana_setup.mode)
 {
     InitializeMvaReader();
@@ -61,7 +61,7 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfoBase& even
                                                                           {DiscriminatorWP::Medium, 0},
                                                                           {DiscriminatorWP::Tight, 0}};
     EventCategorySet categories;
-
+    // const bool is_boosted =  false;
     const bool is_boosted = event.SelectFatJet(cuts::hh_bbtautau_2016::fatJetID::mass,
                                                cuts::hh_bbtautau_2016::fatJetID::deltaR_subjet) != nullptr;
     bool is_VBF = false;
@@ -78,20 +78,21 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfoBase& even
         jets_to_exclude.insert(event.GetVBFJet(1)->jet_index());
         jets_to_exclude.insert(event.GetVBFJet(2)->jet_index());
     }
-
     const auto& jets = event.SelectJets(bTagger->PtCut(), bTagger->EtaCut(), true, false, ana_setup.jet_ordering,
                                         jets_to_exclude);
     std::map<DiscriminatorWP, size_t> bjet_counts = btag_working_points;
-
+    size_t n = 0;
     for(const auto& jet : jets) {
+        ++n;
         for(const auto& btag_wp : btag_working_points){
             if(bTagger->Pass(*jet, analysis::UncertaintySource::None, analysis::UncertaintyScale::Central, btag_wp.first)) ++bjet_counts[btag_wp.first];
         }
     }
 
     for(const auto& category : ana_setup.categories) {
-        if(category.Contains(jets.size(), bjet_counts, is_VBF ,is_boosted))
+        if(category.Contains(jets.size(), bjet_counts, is_VBF ,is_boosted)){
             categories.insert(category);
+        }
     }
     return categories;
 }
@@ -127,13 +128,13 @@ EventSubCategory BaseEventAnalyzer::DetermineEventSubCategory(EventInfoBase& eve
     if(event.HasBjetPair()){
         mbb = event.GetHiggsBB().GetMomentum().mass();
         if(category.HasBoostConstraint() && category.IsBoosted()){
-            if(ana_setup.run_SVfit){
+            if(ana_setup.use_svFit){
                 bool isInsideBoostedCut = IsInsideBoostedMassWindow(event.GetHiggsTTMomentum(true).mass(),mbb);
                 sub_category.SetCutResult(SelectionCut::mh,isInsideBoostedCut);
             }
         }
         else{
-            if(!ana_setup.run_SVfit && ana_setup.massWindowParams.count(SelectionCut::mh))
+            if(!ana_setup.use_svFit && ana_setup.massWindowParams.count(SelectionCut::mh))
                 throw exception("Category mh inconsistent with the false requirement of SVfit.");
             if(ana_setup.massWindowParams.count(SelectionCut::mh))
                 sub_category.SetCutResult(SelectionCut::mh,ana_setup.massWindowParams.at(SelectionCut::mh)
@@ -148,7 +149,7 @@ EventSubCategory BaseEventAnalyzer::DetermineEventSubCategory(EventInfoBase& eve
                         .IsInside((event.GetHiggsTTMomentum(false) + event.GetMET().GetMomentum()).mass(),mbb));
 
         }
-        if(ana_setup.run_kinFit)
+        if(ana_setup.use_kinFit)
             sub_category.SetCutResult(SelectionCut::KinematicFitConverged, event.GetKinFitResults().HasValidMass());
     }
     if(mva_setup.is_initialized()) {
@@ -213,10 +214,11 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                           std::shared_ptr<ntuple::EventTuple> tuple,
                                           const ntuple::ProdSummary& prod_summary)
 {
-    const SummaryInfo summary(prod_summary,channelId);
+    const SummaryInfo summary(prod_summary,channelId, ana_setup.trigger_path);
     for(auto tupleEvent : *tuple) {
 
-        boost::optional<analysis::EventInfoBase> event = CreateEventInfo(tupleEvent,signalObjectSelector,&summary,ana_setup.period,ana_setup.jet_ordering);
+        boost::optional<analysis::EventInfoBase> event = CreateEventInfo(tupleEvent,signalObjectSelector,&summary,
+                                                                         ana_setup.period,ana_setup.jet_ordering);
         if(!event.is_initialized()) continue;
         if(!ana_setup.energy_scales.count(event->GetEnergyScale())) continue;
         if(!event->GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) continue;
@@ -266,8 +268,11 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
 
                         // const double weight = (((*event)->weight_total * sample.cross_section * ana_setup.int_lumi)
                         //        / (summary->totalShapeWeight )) * mva_weight_scale ;
-                        auto lepton_wp = eventWeights_HH->GetProviderT<mc_corrections::LeptonWeights>(mc_corrections::WeightType::LeptonTrigIdIso);
-                        double total_lepton_weight = lepton_wp->Get(*event);
+
+                        //Please use me (I'm lepton_wp) :(
+                        // auto lepton_wp = eventWeights_HH->GetProviderT<mc_corrections::LeptonWeights>(mc_corrections::WeightType::LeptonTrigIdIso);
+                        // double total_lepton_weight = lepton_wp->Get(*event);
+                        double total_lepton_weight = 1;
 
                         const double weight = (*event)->weight_total * sample.cross_section * ana_setup.int_lumi * total_lepton_weight
                                             / summary->totalShapeWeight * mva_weight_scale;
@@ -286,7 +291,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
             const auto& regex_pattern = sync_descriptors.at(n).regex_pattern;
             for(auto& dataId : dataIds){
                 if(boost::regex_match(dataId.first.GetName(), *regex_pattern)){
-                    htt_sync::FillSyncTuple(*event, *sync_descriptors.at(n).sync_tree, ana_setup.period,ana_setup.run_SVfit,std::get<0>(dataId.second));
+                    htt_sync::FillSyncTuple(*event, *sync_descriptors.at(n).sync_tree, ana_setup.period,ana_setup.use_svFit,std::get<0>(dataId.second));
                     break;
                 }
             }

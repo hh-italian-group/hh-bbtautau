@@ -16,8 +16,8 @@ void AnalyzerConfigEntryReader::EndEntry()
     CheckReadParamCounts("apply_mass_cut", 1, Condition::less_equal);
     CheckReadParamCounts("apply_os_cut", 1, Condition::less_equal);
     CheckReadParamCounts("apply_iso_cut", 1, Condition::less_equal);
-    CheckReadParamCounts("run_kinFit", 1, Condition::less_equal);
-    CheckReadParamCounts("run_SVfit", 1, Condition::less_equal);
+    CheckReadParamCounts("use_kinFit", 1, Condition::less_equal);
+    CheckReadParamCounts("use_svFit", 1, Condition::less_equal);
     CheckReadParamCounts("applyTauID", 1, Condition::less_equal);
     CheckReadParamCounts("energy_scales", 1, Condition::less_equal);
     CheckReadParamCounts("categories", 1, Condition::less_equal);
@@ -30,6 +30,7 @@ void AnalyzerConfigEntryReader::EndEntry()
     CheckReadParamCounts("draw_sequence", 1, Condition::less_equal);
     CheckReadParamCounts("mva_setup", 1, Condition::less_equal);
     CheckReadParamCounts("hist_cfg", 1, Condition::less_equal);
+    CheckReadParamCounts("trigger_path", 1, Condition::less_equal);
     CheckReadParamCounts("syncDataIds", 1, Condition::less_equal);
     CheckReadParamCounts("plot_cfg", 1, Condition::less_equal);
     CheckReadParamCounts("plot_page_opt", 1, Condition::less_equal);
@@ -56,8 +57,8 @@ void AnalyzerConfigEntryReader::ReadParameter(const std::string& /*param_name*/,
     ParseEntry("apply_mass_cut", current.apply_mass_cut);
     ParseEntry("apply_os_cut", current.apply_os_cut);
     ParseEntry("apply_iso_cut", current.apply_iso_cut);
-    ParseEntry("run_kinFit", current.run_kinFit);
-    ParseEntry("run_SVfit", current.run_SVfit);
+    ParseEntry("use_kinFit", current.use_kinFit);
+    ParseEntry("use_svFit", current.use_svFit);
     ParseEntry("applyTauID", current.applyTauID);
     ParseEnumList("energy_scales", current.energy_scales);
     ParseEnumList("categories", current.categories);
@@ -71,6 +72,7 @@ void AnalyzerConfigEntryReader::ReadParameter(const std::string& /*param_name*/,
     ParseEntry("limit_category", current.limit_categories);
     ParseEntry("mva_setup", current.mva_setup);
     ParseEntry("hist_cfg", current.hist_cfg);
+    ParseEntry("trigger_path", current.trigger_path);
     ParseEntryList("syncDataIds", current.syncDataIds);
     ParseEntry("plot_cfg", current.plot_cfg);
     ParseEntry("plot_page_opt", current.plot_page_opt);

@@ -23,7 +23,7 @@ struct AnalyzerSetup {
     DiscriminatorWP tauID_wp;
     std::vector<std::string> final_variables;
     bool apply_mass_cut{false}, apply_os_cut{true}, apply_iso_cut{true};
-    bool run_kinFit{false}, run_SVfit{false}, applyTauID{true};
+    bool use_kinFit{false}, use_svFit{false}, applyTauID{true};
     EventEnergyScaleSet energy_scales;
     EventCategorySet categories;
     EventSubCategorySet sub_categories;
@@ -31,7 +31,7 @@ struct AnalyzerSetup {
     std::vector<std::string> data, signals, backgrounds, cmb_samples;
     std::vector<std::string> draw_sequence;
     std::map<EventCategory, std::string> limit_categories;
-    std::string mva_setup, hist_cfg;
+    std::string mva_setup, hist_cfg, trigger_path;
     std::vector<std::string> syncDataIds;
     std::string plot_cfg, plot_page_opt, unc_cfg;
     JetOrdering jet_ordering;
