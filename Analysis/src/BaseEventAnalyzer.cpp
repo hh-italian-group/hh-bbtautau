@@ -219,6 +219,8 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
 
         boost::optional<analysis::EventInfoBase> event = CreateEventInfo(tupleEvent,signalObjectSelector,&summary,
                                                                          ana_setup.period,ana_setup.jet_ordering);
+
+
         if(!event.is_initialized()) continue;
         if(!ana_setup.energy_scales.count(event->GetEnergyScale())) continue;
         if(!event->GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) continue;
@@ -250,7 +252,6 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                     if(sample.sampleType == SampleType::Data) {
                         dataIds[anaDataId] = std::make_tuple(1., mva_score);
                     } else {
-                        std::cout << "Nutella" << '\n';
                         // double tau_iso_1 = tauIdWeight->getTauIso(DiscriminatorWP::Medium,
                         //                               static_cast<GenMatch>((*event)->gen_match_1)).GetValue();
                         // double tau_iso_2 = tauIdWeight->getTauIso(DiscriminatorWP::Medium,
@@ -272,7 +273,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                         //Please use me (I'm lepton_wp) :(
                         auto lepton_wp = eventWeights_HH->GetProviderT<mc_corrections::LeptonWeights>(mc_corrections::WeightType::LeptonTrigIdIso);
                         double total_lepton_weight = lepton_wp->Get(*event);
-                        std::cout << "total_lepton_weight=" << total_lepton_weight << '\n';
+                        // std::cout << "total_lepton_weight=" << total_lepton_weight << '\n';
                         // double total_lepton_weight = 1;
 
                         const double weight = (*event)->weight_total * sample.cross_section * ana_setup.int_lumi * total_lepton_weight

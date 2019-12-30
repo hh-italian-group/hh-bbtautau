@@ -12,7 +12,6 @@ get_filename_component(h_tautau_DIR "${PROJECT_SOURCE_DIR}/../h-tautau" ABSOLUTE
 file(GLOB_RECURSE H_TAUTAU_SRC "${h_tautau_DIR}/*.cpp")
 add_library(h-tautau STATIC ${H_TAUTAU_SRC})
 
-
 file(GLOB_RECURSE HTT_UTILITIES_SRC "${CMSSW_BASE_SRC}/HTT-utilities/*.cc")
 add_library(HTT-utilities STATIC ${HTT_UTILITIES_SRC})
 set_source_files_properties(${HTT_UTILITIES_SRC} PROPERTIES COMPILE_FLAGS "-w")
@@ -20,6 +19,10 @@ set_source_files_properties(${HTT_UTILITIES_SRC} PROPERTIES COMPILE_FLAGS "-w")
 file(GLOB_RECURSE TauAnalysisTool_SRC "${CMSSW_BASE_SRC}/TauAnalysisTools/*.cc")
 add_library(TauAnalysisTools STATIC ${TauAnalysisTool_SRC})
 set_source_files_properties(${TauAnalysisTool_SRC} PROPERTIES COMPILE_FLAGS "-w")
+
+file(GLOB_RECURSE TauPOG_SRC "${CMSSW_BASE_SRC}/TauPOG/*.cc")
+add_library(TauPOG STATIC ${TauPOG_SRC})
+set_source_files_properties(${TauPOG_SRC} PROPERTIES COMPILE_FLAGS "-w")
 
 file(GLOB_RECURSE HH_KINFIT2_SRC "${CMSSW_BASE_SRC}/HHKinFit2/*.cpp")
 add_library(HHKinFit2 STATIC ${HH_KINFIT2_SRC})
@@ -52,7 +55,7 @@ add_library("hh-bbtautau" STATIC ${SOURCE_LIST})
 #set_target_properties("hh-bbtautau" PROPERTIES EXCLUDE_FROM_ALL 1)
 
 foreach(exe_name ${EXE_LIST})
-    target_link_libraries("${exe_name}" hh-bbtautau h-tautau AnalysisTools HTT-utilities SVfit HHKinFit2 TauAnalysisTools)
+    target_link_libraries("${exe_name}" hh-bbtautau h-tautau AnalysisTools HTT-utilities SVfit HHKinFit2 TauAnalysisTools TauPOG)
 #    add_dependencies("${exe_name}" GeneratePch)
 #    target_compile_options("${exe_name}" BEFORE PRIVATE "-include;${PrecompHeader}")
 endforeach()
