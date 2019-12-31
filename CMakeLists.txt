@@ -18,11 +18,11 @@ set_source_files_properties(${HTT_UTILITIES_SRC} PROPERTIES COMPILE_FLAGS "-w")
 
 file(GLOB_RECURSE TauAnalysisTool_SRC "${CMSSW_BASE_SRC}/TauAnalysisTools/*.cc")
 add_library(TauAnalysisTools STATIC ${TauAnalysisTool_SRC})
-set_source_files_properties(${TauAnalysisTool_SRC} PROPERTIES COMPILE_FLAGS "-w")
+#set_source_files_properties(${TauAnalysisTool_SRC} PROPERTIES COMPILE_FLAGS "-w")
 
 file(GLOB_RECURSE TauPOG_SRC "${CMSSW_BASE_SRC}/TauPOG/*.cc")
 add_library(TauPOG STATIC ${TauPOG_SRC})
-set_source_files_properties(${TauPOG_SRC} PROPERTIES COMPILE_FLAGS "-w")
+#set_source_files_properties(${TauPOG_SRC} PROPERTIES COMPILE_FLAGS "-w")
 
 file(GLOB_RECURSE HH_KINFIT2_SRC "${CMSSW_BASE_SRC}/HHKinFit2/*.cpp")
 add_library(HHKinFit2 STATIC ${HH_KINFIT2_SRC})

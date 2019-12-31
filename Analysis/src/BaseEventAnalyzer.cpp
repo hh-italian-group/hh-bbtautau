@@ -267,12 +267,16 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
 
                         // const double weight = (((*event)->weight_total * sample.cross_section * ana_setup.int_lumi)
                         //        / (summary->totalShapeWeight )) * mva_weight_scale ;
-
-                        auto lepton_wp = eventWeights_HH->GetProviderT<mc_corrections::LeptonWeights>(mc_corrections::WeightType::LeptonTrigIdIso);
-                        double total_lepton_weight = lepton_wp->Get(*event);
                         // double total_lepton_weight = 1;
+                        auto lepton_weight = eventWeights_HH->GetProviderT<mc_corrections::LeptonWeights>(mc_corrections::WeightType::LeptonTrigIdIso);
+                        double total_lepton_weight = lepton_weight->Get(*event);
 
-                        const double weight = (*event)->weight_total * sample.cross_section * ana_setup.int_lumi * total_lepton_weight
+                        auto btag_weight = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(mc_corrections::WeightType::BTag);
+                        double total_btag_weight = btag_weight->Get(*event);
+
+
+                        const double weight = (*event)->weight_total * sample.cross_section * ana_setup.int_lumi *
+                                              total_lepton_weight * total_btag_weight
                                             / summary->totalShapeWeight * mva_weight_scale;
                         if(sample.sampleType == SampleType::MC) {
                             dataIds[anaDataId] = std::make_tuple(weight, mva_score);
