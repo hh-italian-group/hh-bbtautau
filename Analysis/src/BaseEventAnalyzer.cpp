@@ -250,7 +250,6 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                     if(sample.sampleType == SampleType::Data) {
                         dataIds[anaDataId] = std::make_tuple(1., mva_score);
                     } else {
-
                         // double tau_iso_1 = tauIdWeight->getTauIso(DiscriminatorWP::Medium,
                         //                               static_cast<GenMatch>((*event)->gen_match_1)).GetValue();
                         // double tau_iso_2 = tauIdWeight->getTauIso(DiscriminatorWP::Medium,
@@ -268,13 +267,16 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
 
                         // const double weight = (((*event)->weight_total * sample.cross_section * ana_setup.int_lumi)
                         //        / (summary->totalShapeWeight )) * mva_weight_scale ;
+                        // double total_lepton_weight = 1;
+                        auto lepton_weight = eventWeights_HH->GetProviderT<mc_corrections::LeptonWeights>(mc_corrections::WeightType::LeptonTrigIdIso);
+                        double total_lepton_weight = lepton_weight->Get(*event);
 
-                        //Please use me (I'm lepton_wp) :(
-                        // auto lepton_wp = eventWeights_HH->GetProviderT<mc_corrections::LeptonWeights>(mc_corrections::WeightType::LeptonTrigIdIso);
-                        // double total_lepton_weight = lepton_wp->Get(*event);
-                        double total_lepton_weight = 1;
+                        auto btag_weight = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(mc_corrections::WeightType::BTag);
+                        double total_btag_weight = btag_weight->Get(*event);
 
-                        const double weight = (*event)->weight_total * sample.cross_section * ana_setup.int_lumi * total_lepton_weight
+
+                        const double weight = (*event)->weight_total * sample.cross_section * ana_setup.int_lumi *
+                                              total_lepton_weight * total_btag_weight
                                             / summary->totalShapeWeight * mva_weight_scale;
                         if(sample.sampleType == SampleType::MC) {
                             dataIds[anaDataId] = std::make_tuple(weight, mva_score);
