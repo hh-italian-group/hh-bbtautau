@@ -62,7 +62,8 @@ public:
                     for (const auto& subcategory : sub_categories_to_process){
 
                         const EventAnalyzerDataId anaDataId(category, subcategory, analysis::EventRegion::OS_Isolated(),
-                                                            analysis::EventEnergyScale::Central, item.full_name);
+                                                            UncertaintySource::None, UncertaintyScale::Central,
+                                                            item.full_name);
                         if(item.datacard_name.empty()) continue;
 
                         if(ana_setup.IsSignal(sample.name) && item.full_name != args.signal_name())

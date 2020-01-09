@@ -37,7 +37,7 @@ public:
     using EventTuple = ntuple::EventTuple;
 
     VariablesDistribution(const Arguments& _args): args(_args),
-        outfile(root_ext::CreateRootFile(args.output_file())), reporter(std::make_shared<TimeReporter>()), 
+        outfile(root_ext::CreateRootFile(args.output_file())), reporter(std::make_shared<TimeReporter>()),
 	signalObjectSelector(args.mode())
     {
         MvaSetupCollection setups;
@@ -121,7 +121,8 @@ public:
             for(const Event& event : *tuple) {
                 boost::optional<EventInfoBase> eventbase = CreateEventInfo(event,signalObjectSelector,nullptr, Period::Run2017, JetOrdering::DeepCSV);
                 if(!eventbase.is_initialized()) continue;
-                if (static_cast<EventEnergyScale>(event.eventEnergyScale) != EventEnergyScale::Central || (eventbase->GetLeg(1)->charge()+eventbase->GetLeg(2)->charge()) != 0 || event.jets_p4.size() < 2
+                if (/*static_cast<EventEnergyScale>(event.eventEnergyScale) != EventEnergyScale::Central ||*/
+                    (eventbase->GetLeg(1)->charge()+eventbase->GetLeg(2)->charge()) != 0 || event.jets_p4.size() < 2
                     || event.extraelec_veto == true || event.extramuon_veto == true || event.jets_p4[0].eta() > cuts::btag_2016::eta
                     || event.jets_p4[1].eta() > cuts::btag_2016::eta)
                     continue;

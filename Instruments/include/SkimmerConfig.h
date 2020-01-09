@@ -15,7 +15,7 @@ namespace tuple_skimmer {
 
 struct Setup {
     std::string name;
-    std::set<EventEnergyScale> energy_scales;
+    std::set<UncertaintySource> unc_sources;
     std::set<Channel> channels;
     Period period;
     SignalMode mode;

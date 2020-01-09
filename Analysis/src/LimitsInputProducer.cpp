@@ -5,26 +5,23 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 namespace analysis {
 
-std::string LimitsInputProducer::FullDataCardName(const std::string& datacard_name, EventEnergyScale es)
+std::string LimitsInputProducer::FullDataCardName(const std::string& datacard_name, UncertaintySource unc_source,
+                                                  UncertaintyScale unc_scale)
 {
-    if(es == EventEnergyScale::Central)
+    if(unc_source == UncertaintySource::None)
         return datacard_name;
 
     std::ostringstream full_name;
     full_name << datacard_name << "_CMS_";
-    if(es == EventEnergyScale::TauUp || es == EventEnergyScale::TauDown)
+    if(unc_source == UncertaintySource::TauES)
         full_name << "scale_t";
-    else if(es == EventEnergyScale::JetUp || es == EventEnergyScale::JetDown)
+    else if(unc_source == UncertaintySource::Total)
         full_name << "scale_j";
-    else if(es == EventEnergyScale::TopPtUp || es == EventEnergyScale::TopPtDown)
+    else if(unc_source == UncertaintySource::TopPt)
         full_name << "topPt";
     else
-        throw exception("Unsupported event energy scale %1%.") % es;
-    full_name << "_13TeV";
-    if(es == EventEnergyScale::TauUp || es == EventEnergyScale::JetUp || es == EventEnergyScale::TopPtUp)
-        full_name << "Up";
-    else
-        full_name << "Down";
+        throw exception("Unsupported uncertainty source %1%.") % unc_source;
+    full_name << "_13TeV" << unc_scale;
     return full_name.str();
 }
 
@@ -46,7 +43,8 @@ std::string LimitsInputProducer::EventRegionSuffix(EventRegion region)
 
 void LimitsInputProducer::Produce(const std::string& outputFileNamePrefix, const std::string& setup_name,
                                   const std::map<EventCategory, std::string>& eventCategories,
-                                  EventSubCategory eventSubCategory, const EventEnergyScaleSet& eventEnergyScales,
+                                  EventSubCategory eventSubCategory,
+                                  const std::set<UncertaintySource>& uncertaintySources,
                                   const EventRegionSet& eventRegions, const std::map<SelectionCut,
                                   std::string>& sel_aliases)
 {
@@ -62,9 +60,12 @@ void LimitsInputProducer::Produce(const std::string& outputFileNamePrefix, const
     auto outputFile = root_ext::CreateRootFile(file_name + ".root");
     std::set<EventAnalyzerDataId> empty_histograms;
 
-    for(const EventAnalyzerDataId& metaId : EventAnalyzerDataId::MetaLoop(eventCategories, eventEnergyScales,
+    for(const EventAnalyzerDataId& metaId : EventAnalyzerDataId::MetaLoop(eventCategories, uncertaintySources,
+                                                                          GetAllUncertaintyScales(),
                                                                           sampleWorkingPoints, eventRegions))
     {
+        if(!GetActiveUncertaintyScales(metaId.Get<UncertaintySource>()).count(metaId.Get<UncertaintyScale>()))
+            continue;
         const std::string directoryName = dirNamePrefix + ToString(metaId.Get<EventCategory>()) +
                                           EventRegionSuffix(metaId.Get<EventRegion>());
         TDirectory* directory = root_ext::GetDirectory(*outputFile, directoryName, true);
@@ -89,7 +90,8 @@ void LimitsInputProducer::Produce(const std::string& outputFileNamePrefix, const
         //     hist->SetBinContent(central_bin, tiny_value);
         //     hist->SetBinError(central_bin, tiny_value_error);
         // }
-        const auto datacard_name = FullDataCardName(sampleWP.datacard_name, metaId.Get<EventEnergyScale>());
+        const auto datacard_name = FullDataCardName(sampleWP.datacard_name, metaId.Get<UncertaintySource>(),
+                                                    metaId.Get<UncertaintyScale>());
         root_ext::WriteObject(*hist, directory, datacard_name);
     }
 
@@ -107,14 +109,14 @@ void LimitsInputProducer::Produce(const std::string& outputFileNamePrefix, const
 
 bool LimitsInputProducer::CanHaveEmptyHistogram(const EventAnalyzerDataId& id, bool& print_warning) const
 {
-    const auto& es = id.Get<EventEnergyScale>();
+    const auto& unc_source = id.Get<UncertaintySource>();
     const SampleWP& sampleWP = sampleWorkingPoints.at(id.Get<std::string>());
     print_warning = id.Get<EventRegion>() == EventRegion::SignalRegion();
-    if(es == EventEnergyScale::Central)
+    if(unc_source == UncertaintySource::None)
         return false;
     if(sampleWP.sampleType == SampleType::Data || sampleWP.sampleType == SampleType::QCD)
         return true;
-    if(es == EventEnergyScale::TopPtUp || es == EventEnergyScale::TopPtDown)
+    if(unc_source == UncertaintySource::TopPt)
         return sampleWP.sampleType != SampleType::TT;
     return false;
 }

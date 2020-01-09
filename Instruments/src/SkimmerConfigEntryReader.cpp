@@ -8,7 +8,7 @@ namespace tuple_skimmer {
 
 void SetupEntryReader::EndEntry()
 {
-    CheckReadParamCounts("energy_scales", 1, Condition::less_equal);
+    CheckReadParamCounts("unc_sources", 1, Condition::less_equal);
     CheckReadParamCounts("channels", 1, Condition::less_equal);
     CheckReadParamCounts("period", 1, Condition::less_equal);
     CheckReadParamCounts("mode", 1, Condition::less_equal);
@@ -36,7 +36,7 @@ void SetupEntryReader::EndEntry()
 void SetupEntryReader::ReadParameter(const std::string& /*param_name*/, const std::string& /*param_value*/,
                                      std::istringstream& /*ss*/)
 {
-    ParseEnumList("energy_scales", current.energy_scales);
+    ParseEnumList("unc_sources", current.unc_sources);
     ParseEnumList("channels", current.channels);
     ParseEntry("period", current.period);
     ParseEntry("mode", current.mode);

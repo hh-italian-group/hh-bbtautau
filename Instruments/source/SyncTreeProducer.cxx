@@ -93,7 +93,7 @@ public:
         summaryTuple->GetEntry(0);
         SummaryInfo summaryInfo(summaryTuple->data(), Parse<Channel>(args.tree_name()), args.trigger_cfg());
         EventIdentifier current_id = EventIdentifier::Undef_event();
-        std::map<EventEnergyScale, ntuple::Event> events;
+        std::map<UncertaintySource, ntuple::Event> events;
         std::cout << "n_entries" << n_entries << '\n';
 
         for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) {
@@ -118,8 +118,7 @@ public:
             }
 
             //const auto es = static_cast<EventEnergyScale>(event.eventEnergyScale);
-            const auto es = EventEnergyScale::Central;
-            events[es] = event;
+            events[UncertaintySource::None] = event;
         }
 
         if(!events.empty()){
@@ -162,7 +161,7 @@ private:
         return signalMode_map.at(syncMode);
     }
 
-    void FillSyncTuple(SyncTuple& sync, const std::map<EventEnergyScale, ntuple::Event>& events,const SummaryInfo& summaryInfo) const
+    void FillSyncTuple(SyncTuple& sync, const std::map<UncertaintySource, ntuple::Event>& events,const SummaryInfo& summaryInfo) const
     {
         // 2018
         static const std::map<Channel, std::vector<std::string>> triggerPaths = {
@@ -178,14 +177,14 @@ private:
             { Channel::MuMu, { "HLT_IsoMu24_v", "HLT_IsoMu27_v" } },
         };
         const Channel channel = Parse<Channel>(args.tree_name());
-        std::map<EventEnergyScale, std::shared_ptr<EventInfoBase>> event_infos;
+        std::map<UncertaintySource, std::shared_ptr<EventInfoBase>> event_infos;
         for(const auto& entry : events) {
-            const auto es = entry.first;
+            // const auto es = entry.first;
             const auto& event = entry.second;
 
-            if(!args.fill_tau_es_vars() && (es == EventEnergyScale::TauUp || es == EventEnergyScale::TauDown)) continue;
-            if((!args.fill_jet_es_vars() || !args.jet_uncertainty().empty())
-                    && (es == EventEnergyScale::JetUp || es == EventEnergyScale::JetDown)) continue;
+            // if(!args.fill_tau_es_vars() && (es == EventEnergyScale::TauUp || es == EventEnergyScale::TauDown)) continue;
+            // if((!args.fill_jet_es_vars() || !args.jet_uncertainty().empty())
+            //         && (es == EventEnergyScale::JetUp || es == EventEnergyScale::JetDown)) continue;
 
             //JetOrdering jet_ordering = run_period == Period::Run2017 ? JetOrdering::DeepCSV : JetOrdering::CSV;
             JetOrdering jet_ordering = JetOrdering::DeepFlavour;
@@ -223,14 +222,14 @@ private:
             event_infos[entry.first] = event_info;
         }
 
-        if(!event_infos.count(EventEnergyScale::Central)) return;
+        // if(!event_infos.count(EventEnergyScale::Central)) return;
 
         // if(!args.jet_uncertainty().empty()) {
         //     event_infos[EventEnergyScale::JetUp] = event_infos[EventEnergyScale::Central]->ApplyShift(Parse<UncertaintySource>(args.jet_uncertainty()), UncertaintyScale::Up);
         //     event_infos[EventEnergyScale::JetDown] = event_infos[EventEnergyScale::Central]->ApplyShift(Parse<UncertaintySource>(args.jet_uncertainty()), UncertaintyScale::Down);
         // }
 
-        htt_sync::FillSyncTuple(*event_infos[EventEnergyScale::Central], sync, run_period, false, 1,
+        htt_sync::FillSyncTuple(*event_infos[UncertaintySource::None], sync, run_period, false, 1,
                                 mva_reader.get(),
                                 // event_infos[EventEnergyScale::TauUp].get(),
                                 // event_infos[EventEnergyScale::TauDown].get(),

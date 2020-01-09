@@ -87,7 +87,7 @@ public:
                     std::cout << "\t\tsetup_name: " << limit_setup.first <<  std::endl;
                     for(const auto& subCategory : subCategories)
                         limitsInputProducer.Produce(args.output(), limit_setup.first, limit_setup.second, subCategory,
-                                                    ana_setup.energy_scales, ana_setup.regions, mva_sel_aliases);
+                                                    ana_setup.unc_sources, ana_setup.regions, mva_sel_aliases);
                 }
             }
             if(args.draw()) {
@@ -128,11 +128,12 @@ private:
             EventRegion::OS_AntiIsolated(), EventRegion::SS_Isolated(), EventRegion::SS_AntiIsolated(),
             EventRegion::SS_LooseIsolated()
         };
-        static const EventEnergyScaleSet qcdEnergyScales = { EventEnergyScale::Central };
+        static const std::set<UncertaintySource> qcdUncSources = { UncertaintySource::None };
+        static const std::set<UncertaintyScale> qcdUncScales = { UncertaintyScale::Central };
         const EventSubCategorySet subCategories = { subCategory };
 
         for(const EventAnalyzerDataId& metaDataId : EventAnalyzerDataId::MetaLoop(ana_setup.categories,
-                subCategories, sidebandRegions, qcdEnergyScales)) {
+                subCategories, sidebandRegions, qcdUncSources, qcdUncScales)) {
             const auto qcdAnaDataId = metaDataId.Set(qcd_sample.name);
             auto& qcdAnaData = anaDataCollection.Get(qcdAnaDataId);
             for(const auto& sample_name : sample_descriptors) {
@@ -154,7 +155,7 @@ private:
         }
 
         for(const EventAnalyzerDataId& metaDataId : EventAnalyzerDataId::MetaLoop(ana_setup.categories,
-                subCategories, qcdEnergyScales)) {
+                subCategories, qcdUncSources, qcdUncScales)) {
             const auto anaDataId = metaDataId.Set(qcd_sample.name);
             auto& osIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::OS_Isolated()));
             auto& ssIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::SS_Isolated()));

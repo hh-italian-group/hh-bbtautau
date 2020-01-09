@@ -57,7 +57,7 @@ public:
         auto tuple = ntuple::CreateEventTuple("all_events", file.get(), true, ntuple::TreeState::Full);
 
         for(const auto& event : *tuple) {
-           if(static_cast<EventEnergyScale>(event.eventEnergyScale) != EventEnergyScale::Central) continue;
+           // if(static_cast<EventEnergyScale>(event.eventEnergyScale) != EventEnergyScale::Central) continue;
 
            if(args.debug()) {
                const EventIdentifier EventId(event.run, event.lumi, event.evt);

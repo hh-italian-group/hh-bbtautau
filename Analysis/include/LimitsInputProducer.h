@@ -18,7 +18,8 @@ public:
     using Hist = TH1D;
     using HistPtr = std::shared_ptr<root_ext::SmartHistogram<Hist>>;
 
-    static std::string FullDataCardName(const std::string& datacard_name, EventEnergyScale es);
+    static std::string FullDataCardName(const std::string& datacard_name, UncertaintySource unc_source,
+                                        UncertaintyScale unc_scale);
     static std::string EventRegionSuffix(EventRegion region);
 
     template<typename ...Args>
@@ -31,7 +32,7 @@ public:
 
     void Produce(const std::string& outputFileNamePrefix, const std::string& setup_name,
                  const std::map<EventCategory, std::string>& eventCategories, EventSubCategory eventSubCategory,
-                 const EventEnergyScaleSet& eventEnergyScales, const EventRegionSet& eventRegions,
+                 const std::set<UncertaintySource>& uncertaintySources, const EventRegionSet& eventRegions,
                  const std::map<SelectionCut, std::string>& sel_aliases);
 
 private:

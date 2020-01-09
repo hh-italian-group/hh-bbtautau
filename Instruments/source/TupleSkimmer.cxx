@@ -226,10 +226,7 @@ private:
                 for(Channel channel : setup.channels) {
                     const std::string treeName = ToString(channel);
 
-                    using FullEventId = std::tuple<EventIdentifier, EventEnergyScale>;
-                    using FullEventIdSet = std::set<FullEventId>;
-
-                    FullEventIdSet processed_events;
+                    std::set<EventIdentifier> processed_events;
                     for(size_t n = 0; n < desc_iter->inputs.size(); ++n) {
                         auto file = inputFiles.at(n);
                         std::cout << "\t\t" << desc_iter->inputs.at(n) << ":" << treeName << std::endl;
@@ -268,11 +265,9 @@ private:
                         for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) {
                             tuple->GetEntry(current_entry);
                             const Event& event = tuple->data();
-                            const FullEventId fullId{EventIdentifier(event.run, event.lumi, event.evt),
-                                                     static_cast<EventEnergyScale>(event.eventEnergyScale)};
+                            const EventIdentifier fullId(event.run, event.lumi, event.evt);
                             if(processed_events.count(fullId)) {
-                                std::cout << "WARNING: duplicated event " << std::get<EventIdentifier>(fullId) << " "
-                                          << std::get<EventEnergyScale>(fullId) << std::endl;
+                                std::cout << "WARNING: duplicated event " << fullId << std::endl;
                                 continue;
                             }
                             processed_events.insert(fullId);

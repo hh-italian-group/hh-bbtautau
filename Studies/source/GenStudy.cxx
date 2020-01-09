@@ -227,7 +227,7 @@ public:
         const double deltaR_jet_value = 0.4;
         for(const auto& event : *tuple) {
 
-           if(static_cast<EventEnergyScale>(event.eventEnergyScale) != EventEnergyScale::Central) continue;
+           // if(static_cast<EventEnergyScale>(event.eventEnergyScale) != EventEnergyScale::Central) continue;
 
            GenEvent genEvent(event);
 

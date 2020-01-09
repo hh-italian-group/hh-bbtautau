@@ -24,7 +24,7 @@ struct AnalyzerSetup {
     std::vector<std::string> final_variables;
     bool apply_mass_cut{false}, apply_os_cut{true}, apply_iso_cut{true};
     bool use_kinFit{false}, use_svFit{false}, applyTauID{true};
-    EventEnergyScaleSet energy_scales;
+    std::set<UncertaintySource> unc_sources;
     EventCategorySet categories;
     EventSubCategorySet sub_categories;
     EventRegionSet regions;

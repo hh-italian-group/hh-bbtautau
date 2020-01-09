@@ -27,7 +27,7 @@ struct EventAnalyzerDataId {
 public:
     template<typename T> using Optional = boost::optional<T>;
     using Tuple = std::tuple<Optional<EventCategory>, Optional<EventSubCategory>, Optional<EventRegion>,
-                             Optional<EventEnergyScale>, Optional<Dataset>>;
+                             Optional<UncertaintySource>, Optional<UncertaintyScale>, Optional<Dataset>>;
     static constexpr size_t TupleSize = std::tuple_size<Tuple>::value;
 
     EventAnalyzerDataId() {}

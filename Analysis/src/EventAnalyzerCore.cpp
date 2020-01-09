@@ -128,7 +128,7 @@ void EventAnalyzerCore::AddSampleToCombined(AnaDataCollection& anaDataCollection
                                             CombinedSampleDescriptor& sample, SampleDescriptor& sub_sample)
 {
     for(const EventAnalyzerDataId& metaDataId : EventAnalyzerDataId::MetaLoop(ana_setup.categories,
-            ana_setup.regions, ana_setup.energy_scales)) {
+            ana_setup.regions, ana_setup.unc_sources, GetAllUncertaintyScales())) {
         const auto anaDataId = metaDataId.Set(sample.name).Set(subCategory);
         auto& anaData = anaDataCollection.Get(anaDataId);
         for(const auto& sub_sample_wp : sub_sample.working_points) {

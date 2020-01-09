@@ -203,7 +203,8 @@ public:
 
         for(const EventCategory& cat : eventCategories ){
             for (const EventSubCategory& subCategory : subCategories){
-                EventAnalyzerDataId catId{cat,subCategory,EventRegion::SignalRegion(),EventEnergyScale::Central};
+                EventAnalyzerDataId catId{cat, subCategory, EventRegion::SignalRegion(), UncertaintySource::None,
+                                          UncertaintyScale::Central};
                 std::string category = ToString(catId.Get<EventCategory>());
                 std::string subcategory= ToString(catId.Get<EventSubCategory>());
                 categories[category+subcategory] = std::make_shared<CategoryModel>(input_file,catId,contribution_names,
