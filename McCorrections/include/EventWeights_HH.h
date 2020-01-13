@@ -11,7 +11,7 @@ namespace mc_corrections {
 class EventWeights_HH : public EventWeights {
 public:
     EventWeights_HH(Period period, JetOrdering jet_ordering, DiscriminatorWP btag_wp, bool use_LLR_weights,
-                    bool applyTauId, WeightingMode mode = {});
+                    WeightingMode mode = {});
 
     ntuple::ProdSummary GetSummaryWithWeights(const std::shared_ptr<TFile>& file,
                                               const WeightingMode& weighting_mode) const;
