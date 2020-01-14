@@ -82,8 +82,8 @@ public:
         signalObjectSelector = std::make_shared<SignalObjectSelector>(setup.mode);
 
         std::cout << "done.\nLoading weights... " << std::flush;
-        eventWeights_HH = std::make_shared<mc_corrections::EventWeights_HH>(setup.period, setup.jet_ordering, setup.btag_wp,
-                                                                            args.use_LLR_weights(),setup.applyTauId);
+        eventWeights_HH = std::make_shared<mc_corrections::EventWeights_HH>(setup.period, setup.jet_ordering,
+                                                                            setup.btag_wp, args.use_LLR_weights());
         std::cout << "done." << std::endl;
 
         if(args.jobs() == "all") {
