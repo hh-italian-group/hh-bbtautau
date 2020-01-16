@@ -276,6 +276,10 @@ private:
                             processed_events.insert(fullId);
 
                             auto event_ptr = std::make_shared<Event>(event);
+			    if(static_cast<Channel>(event_ptr->channelId) == Channel::MuMu){ //temporary fix due tue a bug in mumu channel in production
+			       event_ptr->first_daughter_indexes = {0};
+			       event_ptr->second_daughter_indexes = {1};
+			    }
                             event_ptr->weight_xs = weight_xs;
                             event_ptr->weight_xs_withTopPt = weight_xs_withTopPt;
                             event_ptr->file_desc_id = desc_id;
