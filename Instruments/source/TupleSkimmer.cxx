@@ -79,6 +79,8 @@ public:
             throw exception("Tuple skimmer setup not found.");
         setup = setups.at(args.setup_name());
 
+        EventCandidate::InitializeJecUncertainties(setup.period,".");
+
         signalObjectSelector = std::make_shared<SignalObjectSelector>(setup.mode);
 
         std::cout << "done.\nLoading weights... " << std::flush;
@@ -406,7 +408,9 @@ private:
     bool EventPassSelection(boost::optional<EventInfoBase>& eventInfo) const
     {
         if(!eventInfo.is_initialized()) return false;
-
+        if(!signalObjectSelector->PassLeptonVetoSelection(eventInfo->GetEventCandidate().GetEvent())) return false;
+        if(!signalObjectSelector->PassMETfilters(eventInfo->GetEventCandidate().GetEvent(), setup.period,
+                                                 eventInfo->GetEventCandidate().GetEvent().isData)) return false;
         if(setup.apply_bb_cut && !eventInfo->HasBjetPair()) return false;
 
         if(setup.apply_mass_cut) {
