@@ -13,7 +13,7 @@ void SetupEntryReader::EndEntry()
     CheckReadParamCounts("period", 1, Condition::less_equal);
     CheckReadParamCounts("mode", 1, Condition::less_equal);
     CheckReadParamCounts("btag_wp", 1, Condition::less_equal);
-    CheckReadParamCounts("use_cache", 0, Condition::greater_equal);
+    CheckReadParamCounts("use_cache", 1, Condition::less_equal);
     CheckReadParamCounts("common_weights", 1, Condition::less_equal);
     CheckReadParamCounts("n_splits", 1, Condition::less_equal);
     CheckReadParamCounts("split_seed", 1, Condition::less_equal);

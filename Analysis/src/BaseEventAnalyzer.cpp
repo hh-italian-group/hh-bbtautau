@@ -130,9 +130,7 @@ EventSubCategory BaseEventAnalyzer::DetermineEventSubCategory(EventInfoBase& eve
         mbb = event.GetHiggsBB().GetMomentum().mass();
         if(category.HasBoostConstraint() && category.IsBoosted()){
             if(ana_setup.use_svFit){
-                // std::cout << "**** 2 ***" << "\n";
                 bool isInsideBoostedCut = IsInsideBoostedMassWindow(event.GetHiggsTTMomentum(true).mass(),mbb);
-                // std::cout << "**** 3 ***" << "\n";
                 sub_category.SetCutResult(SelectionCut::mh,isInsideBoostedCut);
             }
         }

@@ -21,7 +21,6 @@ struct Setup {
     SignalMode mode;
     DiscriminatorWP btag_wp;
     bool use_cache;
-    // std::vector<std::string> cachePaths;
     mc_corrections::WeightingMode common_weights;
     JetOrdering jet_ordering;
     unsigned n_splits{0};

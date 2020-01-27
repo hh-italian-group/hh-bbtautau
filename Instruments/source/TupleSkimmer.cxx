@@ -209,13 +209,14 @@ private:
                     if(setup.use_cache){
                         for(UncertaintySource unc_source : unc_sources) {
                             for (Channel channel : setup.channels){
-                                auto full_path = args.cachePathBase() + ToString(unc_source) + "/" + ToString(channel) + "/";
+                                auto full_path =  tools::FullPath({args.cachePathBase(), ToString(unc_source),
+                                                                   ToString(channel)});
 
                                 std::vector<std::string> cache_files = tools::FindFiles(full_path,
                                                                                         RemoveFileExtension(input) +
-                                                                                        "(_cache[0-9]+|)");
-                                for (int i = 0; i < cache_files.size(); ++i)
-                                    cacheFiles.push_back(root_ext::OpenRootFile(full_path + cache_files.at(i) + ".root"));
+                                                                                        "(_cache[0-9]+|)\\.root$");
+                                for (size_t i = 0; i < cache_files.size(); ++i)
+                                    cacheFiles.push_back(root_ext::OpenRootFile(full_path + cache_files.at(i)));
 
                             }
                         }
