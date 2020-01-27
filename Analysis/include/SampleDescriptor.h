@@ -22,6 +22,7 @@ struct AnalyzerSetup {
     QCDmethod qcd_method;
     DiscriminatorWP tauID_wp;
     std::vector<std::string> final_variables;
+    std::vector<std::double> pt_sel_bins;
     bool apply_mass_cut{false}, apply_os_cut{true}, apply_iso_cut{true};
     bool use_kinFit{false}, use_svFit{false}, applyTauID{true};
     std::set<UncertaintySource> unc_sources;
