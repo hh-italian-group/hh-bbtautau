@@ -7,6 +7,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include "AnalysisTools/Core/include/RootExt.h"
 #include "AnalysisTools/Run/include/program_main.h"
+#include "AnalysisTools/Core/include/Tools.h"
 #include "h-tautau/Analysis/include/EventInfo.h"
 #include "AnalysisTools/Run/include/EntryQueue.h"
 #include "AnalysisTools/Core/include/ProgressReporter.h"
@@ -204,8 +205,20 @@ private:
                     std::cout << " " << input;
                     inputFiles.push_back(root_ext::OpenRootFile(args.inputPath() + "/" + input));
                     std::vector<std::shared_ptr<TFile>> cacheFiles;
-                    for(unsigned c = 0; c < setup.cachePaths.size(); ++c){
-                        cacheFiles.push_back(root_ext::OpenRootFile(args.cachePathBase() +setup.cachePaths.at(c) + "/" + input));
+
+                    if(setup.use_cache){
+                        for(UncertaintySource unc_source : unc_sources) {
+                            for (Channel channel : setup.channels){
+                                auto full_path = args.cachePathBase() + ToString(unc_source) + "/" + ToString(channel) + "/";
+
+                                std::vector<std::string> cache_files = tools::FindFiles(full_path,
+                                                                                        RemoveFileExtension(input) +
+                                                                                        "(_cache[0-9]+|)");
+                                for (int i = 0; i < cache_files.size(); ++i)
+                                    cacheFiles.push_back(root_ext::OpenRootFile(full_path + cache_files.at(i) + ".root"));
+
+                            }
+                        }
                     }
                     inputCacheFiles.push_back(cacheFiles);
                 }
