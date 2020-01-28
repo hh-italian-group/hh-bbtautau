@@ -20,7 +20,7 @@ struct Setup {
     Period period;
     SignalMode mode;
     DiscriminatorWP btag_wp;
-    std::vector<std::string> cachePaths;
+    bool use_cache;
     mc_corrections::WeightingMode common_weights;
     JetOrdering jet_ordering;
     unsigned n_splits{0};

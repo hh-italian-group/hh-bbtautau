@@ -7,6 +7,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include "AnalysisTools/Core/include/RootExt.h"
 #include "AnalysisTools/Run/include/program_main.h"
+#include "AnalysisTools/Core/include/Tools.h"
 #include "h-tautau/Analysis/include/EventInfo.h"
 #include "AnalysisTools/Run/include/EntryQueue.h"
 #include "AnalysisTools/Core/include/ProgressReporter.h"
@@ -78,6 +79,8 @@ public:
         if(!setups.count(args.setup_name()))
             throw exception("Tuple skimmer setup not found.");
         setup = setups.at(args.setup_name());
+
+        EventCandidate::InitializeJecUncertainties(setup.period,".");
 
         signalObjectSelector = std::make_shared<SignalObjectSelector>(setup.mode);
 
@@ -202,8 +205,24 @@ private:
                     std::cout << " " << input;
                     inputFiles.push_back(root_ext::OpenRootFile(args.inputPath() + "/" + input));
                     std::vector<std::shared_ptr<TFile>> cacheFiles;
-                    for(unsigned c = 0; c < setup.cachePaths.size(); ++c){
-                        cacheFiles.push_back(root_ext::OpenRootFile(args.cachePathBase() +setup.cachePaths.at(c) + "/" + input));
+
+                    if(setup.use_cache){
+                        for(UncertaintySource unc_source : unc_sources) {
+                            for (Channel channel : setup.channels){
+                                auto full_path =  tools::FullPath({args.cachePathBase(), ToString(unc_source),
+                                                                   ToString(channel)});
+
+                                std::vector<std::string> cache_files = tools::FindFiles(full_path,
+                                                                                        "^" + RemoveFileExtension(input) +
+                                                                                        "(_cache[0-9]+|)\\.root$");
+                                if(cache_files.size() == 0)
+                                std::cerr << "Cache files are not used, no matched found for sample: " << input << "'."
+                                          << std::endl;
+                                for (size_t i = 0; i < cache_files.size(); ++i)
+                                    cacheFiles.push_back(root_ext::OpenRootFile(tools::FullPath({full_path,
+                                                                                                 cache_files.at(i)})));
+                            }
+                        }
                     }
                     inputCacheFiles.push_back(cacheFiles);
                 }
@@ -276,6 +295,10 @@ private:
                             processed_events.insert(fullId);
 
                             auto event_ptr = std::make_shared<Event>(event);
+			    if(static_cast<Channel>(event_ptr->channelId) == Channel::MuMu){ //temporary fix due tue a bug in mumu channel in production
+			       event_ptr->first_daughter_indexes = {0};
+			       event_ptr->second_daughter_indexes = {1};
+			    }
                             event_ptr->weight_xs = weight_xs;
                             event_ptr->weight_xs_withTopPt = weight_xs_withTopPt;
                             event_ptr->file_desc_id = desc_id;
@@ -406,7 +429,9 @@ private:
     bool EventPassSelection(boost::optional<EventInfoBase>& eventInfo) const
     {
         if(!eventInfo.is_initialized()) return false;
-
+        if(!signalObjectSelector->PassLeptonVetoSelection(eventInfo->GetEventCandidate().GetEvent())) return false;
+        if(!signalObjectSelector->PassMETfilters(eventInfo->GetEventCandidate().GetEvent(), setup.period,
+                                                 eventInfo->GetEventCandidate().GetEvent().isData)) return false;
         if(setup.apply_bb_cut && !eventInfo->HasBjetPair()) return false;
 
         if(setup.apply_mass_cut) {

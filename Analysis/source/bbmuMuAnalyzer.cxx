@@ -100,7 +100,7 @@ protected:
         sub_category.SetCutResult(SelectionCut::highPtLO, event.GetHiggsTTMomentum(false).Pt() > 100 &&
                                                         event.GetHiggsTTMomentum(false).Pt() <= 200);
         sub_category.SetCutResult(SelectionCut::vhighPtLO, event.GetHiggsTTMomentum(false).Pt() > 200);
-        sub_category.SetCutResult(SelectionCut::mtt, mass_muMu > 60);
+        sub_category.SetCutResult(SelectionCut::mtt, mass_muMu > 50);
 
         return sub_category;
     }
