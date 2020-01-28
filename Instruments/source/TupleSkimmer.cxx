@@ -200,11 +200,11 @@ private:
                 }
                 std::cout << "\tProcessing";
                 std::vector<std::shared_ptr<TFile>> inputFiles;
-                std::vector<std::vector<std::shared_ptr<TFile>>> inputCacheFiles;
+                std::vector<std::map<Channel, std::vector<std::shared_ptr<TFile>>>> inputCacheFiles;
                 for(const auto& input : desc_iter->inputs) {
                     std::cout << " " << input;
                     inputFiles.push_back(root_ext::OpenRootFile(args.inputPath() + "/" + input));
-                    std::vector<std::shared_ptr<TFile>> cacheFiles;
+                    std::map<Channel, std::vector<std::shared_ptr<TFile>>> cacheFiles;
 
                     if(setup.use_cache){
                         for(UncertaintySource unc_source : unc_sources) {
@@ -219,7 +219,7 @@ private:
                                 std::cerr << "Cache files are not used, no matched found for sample: " << input << "'."
                                           << std::endl;
                                 for (size_t i = 0; i < cache_files.size(); ++i)
-                                    cacheFiles.push_back(root_ext::OpenRootFile(tools::FullPath({full_path,
+                                    cacheFiles[channel].push_back(root_ext::OpenRootFile(tools::FullPath({full_path,
                                                                                                  cache_files.at(i)})));
                             }
                         }
@@ -272,14 +272,14 @@ private:
                         }
                         if(!tuple) continue;
                         std::vector<std::shared_ptr<cache_tuple::CacheTuple>> cacheTuples;
-                        for(unsigned h = 0; h < inputCacheFiles.at(n).size(); ++h){
-                            auto cacheFile = inputCacheFiles.at(n).at(h);
+                        for(unsigned h = 0; h < inputCacheFiles.at(n)[channel].size(); ++h){
+                            auto cacheFile = inputCacheFiles.at(n)[channel].at(h);
                             try {
                                 auto cacheTuple = std::make_shared<cache_tuple::CacheTuple>(treeName,cacheFile.get(),true);
                                 cacheTuples.push_back(cacheTuple);
                             } catch(std::exception&) {
-                                std::cerr << "WARNING: tree " << treeName << " not found in file '"
-                                          << cacheFile << "'." << std::endl;
+                                std::cerr << "WARNING: tree " << treeName << " not found in cache file '"
+                                          << cacheFile->GetName() << "'." << std::endl;
                                 cacheTuples.push_back(nullptr);
                             }
                         }
