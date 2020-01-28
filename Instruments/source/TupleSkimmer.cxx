@@ -213,11 +213,14 @@ private:
                                                                    ToString(channel)});
 
                                 std::vector<std::string> cache_files = tools::FindFiles(full_path,
-                                                                                        RemoveFileExtension(input) +
+                                                                                        "^" + RemoveFileExtension(input) +
                                                                                         "(_cache[0-9]+|)\\.root$");
+                                if(cache_files.size() == 0)
+                                std::cerr << "Cache files are not used, no matched found for sample: " << input << "'."
+                                          << std::endl;
                                 for (size_t i = 0; i < cache_files.size(); ++i)
-                                    cacheFiles.push_back(root_ext::OpenRootFile(full_path + cache_files.at(i)));
-
+                                    cacheFiles.push_back(root_ext::OpenRootFile(tools::FullPath({full_path,
+                                                                                                 cache_files.at(i)})));
                             }
                         }
                     }
