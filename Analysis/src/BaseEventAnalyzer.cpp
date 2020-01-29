@@ -21,7 +21,7 @@ BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel cha
     EventAnalyzerCore(_args, channel), args(_args), anaTupleWriter(args.output(), channel, ana_setup.use_kinFit, ana_setup.use_svFit),
     trigger_patterns(ana_setup.trigger.at(channel)),signalObjectSelector(ana_setup.mode)
 {
-    EventCandidate::InitializeJecUncertainties(ana_setup.period, args.working_path());
+    EventCandidate::InitializeJecUncertainties(ana_setup.period, false, args.working_path());
     InitializeMvaReader();
     if(ana_setup.syncDataIds.size()){
         outputFile_sync = root_ext::CreateRootFile(args.output_sync());
