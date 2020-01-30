@@ -91,9 +91,11 @@ protected:
         sub_category.SetCutResult(SelectionCut::medPtNLO, event.GetHiggsTTMomentum(false).Pt() > 40 &&
                                                         event.GetHiggsTTMomentum(false).Pt() <= 100);
         sub_category.SetCutResult(SelectionCut::highPtNLO, event.GetHiggsTTMomentum(false).Pt() > 100);
-        sub_category.SetCutResult(SelectionCut::vlowPtLO, event.GetHiggsTTMomentum(false).Pt() <= ana_setup.pt_sel_bins.at(0));
-        sub_category.SetCutResult(SelectionCut::lowPtLO, event.GetHiggsTTMomentum(false).Pt() > ana_setup.pt_sel_bins.at(0) &&
-                                                        event.GetHiggsTTMomentum(false).Pt() <= ana_setup.pt_sel_bins.at(1));
+        sub_category.SetCutResult(SelectionCut::vlowPtLO, ana_setup.pt_sel_bins.size() > 0 &&
+                                                           event.GetHiggsTTMomentum(false).Pt() <= ana_setup.pt_sel_bins.at(0));
+        sub_category.SetCutResult(SelectionCut::lowPtLO, ana_setup.pt_sel_bins.size() > 0 &&
+                                                        (event.GetHiggsTTMomentum(false).Pt() > ana_setup.pt_sel_bins.at(0) &&
+                                                        event.GetHiggsTTMomentum(false).Pt() <= ana_setup.pt_sel_bins.at(1)));
         sub_category.SetCutResult(SelectionCut::medPt1LO, event.GetHiggsTTMomentum(false).Pt() > ana_setup.pt_sel_bins.at(1) &&
                                                         event.GetHiggsTTMomentum(false).Pt() <= ana_setup.pt_sel_bins.at(2));
         sub_category.SetCutResult(SelectionCut::medPt2LO, event.GetHiggsTTMomentum(false).Pt() > ana_setup.pt_sel_bins.at(2) &&

@@ -233,8 +233,11 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                 const auto eventCategories = DetermineEventCategories(*event);
                 for(auto eventCategory : eventCategories) {
                     //if (!ana_setup.categories.count(eventCategory)) continue;
-		    bool is_data = (sample.sampleType == SampleType::Data);
-		    if(!signalObjectSelector.PassLeptonVetoSelection(tupleEvent) || !signalObjectSelector.PassMETfilters(tupleEvent,ana_setup.period,is_data)) continue;
+
+                    //temporay fix for muMu
+                    bool is_data = (sample.sampleType == SampleType::Data);
+                    if(!signalObjectSelector.PassLeptonVetoSelection(tupleEvent) || !signalObjectSelector.PassMETfilters(tupleEvent,ana_setup.period,is_data)) continue;
+
                     const EventRegion eventRegion = DetermineEventRegion(*event, eventCategory);
                     for(const auto& region : ana_setup.regions){
                         if(!eventRegion.Implies(region)) continue;
