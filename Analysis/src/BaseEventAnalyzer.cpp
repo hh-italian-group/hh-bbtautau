@@ -21,7 +21,7 @@ BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel cha
     EventAnalyzerCore(_args, channel), args(_args), anaTupleWriter(args.output(), channel, ana_setup.use_kinFit, ana_setup.use_svFit),
     trigger_patterns(ana_setup.trigger.at(channel)),signalObjectSelector(ana_setup.mode)
 {
-    EventCandidate::InitializeJecUncertainties(ana_setup.period, args.working_path());
+    EventCandidate::InitializeJecUncertainties(ana_setup.period, false, args.working_path());
     InitializeMvaReader();
     if(ana_setup.syncDataIds.size()){
         outputFile_sync = root_ext::CreateRootFile(args.output_sync());
@@ -137,9 +137,12 @@ EventSubCategory BaseEventAnalyzer::DetermineEventSubCategory(EventInfoBase& eve
         else{
             if(!ana_setup.use_svFit && ana_setup.massWindowParams.count(SelectionCut::mh))
                 throw exception("Category mh inconsistent with the false requirement of SVfit.");
-            if(ana_setup.massWindowParams.count(SelectionCut::mh))
-                sub_category.SetCutResult(SelectionCut::mh,ana_setup.massWindowParams.at(SelectionCut::mh)
-                        .IsInside(event.GetHiggsTTMomentum(true).mass(),mbb));
+            if(ana_setup.massWindowParams.count(SelectionCut::mh)){
+                const bool cut_result = event.GetSVFitResults().has_valid_momentum
+                        && ana_setup.massWindowParams.at(SelectionCut::mh)
+                                    .IsInside(event.GetHiggsTTMomentum(true).mass(), mbb);
+                sub_category.SetCutResult(SelectionCut::mh, cut_result);
+            }
 
             if(ana_setup.massWindowParams.count(SelectionCut::mhVis))
                 sub_category.SetCutResult(SelectionCut::mhVis,ana_setup.massWindowParams.at(SelectionCut::mhVis)

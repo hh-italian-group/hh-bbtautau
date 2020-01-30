@@ -7,6 +7,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include "AnalysisTools/Core/include/RootExt.h"
 #include "AnalysisTools/Run/include/program_main.h"
+#include "AnalysisTools/Core/include/Tools.h"
 #include "h-tautau/Analysis/include/EventInfo.h"
 #include "AnalysisTools/Run/include/EntryQueue.h"
 #include "AnalysisTools/Core/include/ProgressReporter.h"
@@ -78,6 +79,8 @@ public:
         if(!setups.count(args.setup_name()))
             throw exception("Tuple skimmer setup not found.");
         setup = setups.at(args.setup_name());
+
+        EventCandidate::InitializeJecUncertainties(setup.period,false,".");
 
         signalObjectSelector = std::make_shared<SignalObjectSelector>(setup.mode);
 
@@ -197,13 +200,29 @@ private:
                 }
                 std::cout << "\tProcessing";
                 std::vector<std::shared_ptr<TFile>> inputFiles;
-                std::vector<std::vector<std::shared_ptr<TFile>>> inputCacheFiles;
+                std::vector<std::map<Channel, std::vector<std::shared_ptr<TFile>>>> inputCacheFiles;
                 for(const auto& input : desc_iter->inputs) {
                     std::cout << " " << input;
                     inputFiles.push_back(root_ext::OpenRootFile(args.inputPath() + "/" + input));
-                    std::vector<std::shared_ptr<TFile>> cacheFiles;
-                    for(unsigned c = 0; c < setup.cachePaths.size(); ++c){
-                        cacheFiles.push_back(root_ext::OpenRootFile(args.cachePathBase() +setup.cachePaths.at(c) + "/" + input));
+                    std::map<Channel, std::vector<std::shared_ptr<TFile>>> cacheFiles;
+
+                    if(setup.use_cache){
+                        for(UncertaintySource unc_source : unc_sources) {
+                            for (Channel channel : setup.channels){
+                                auto full_path =  tools::FullPath({args.cachePathBase(), ToString(unc_source),
+                                                                   ToString(channel)});
+
+                                std::vector<std::string> cache_files = tools::FindFiles(full_path,
+                                                                                        "^" + RemoveFileExtension(input) +
+                                                                                        "(_cache[0-9]+|)\\.root$");
+                                if(cache_files.size() == 0)
+                                std::cerr << "Cache files are not used, no matched found for sample: " << input << "'."
+                                          << std::endl;
+                                for (size_t i = 0; i < cache_files.size(); ++i)
+                                    cacheFiles[channel].push_back(root_ext::OpenRootFile(tools::FullPath({full_path,
+                                                                                                 cache_files.at(i)})));
+                            }
+                        }
                     }
                     inputCacheFiles.push_back(cacheFiles);
                 }
@@ -253,14 +272,14 @@ private:
                         }
                         if(!tuple) continue;
                         std::vector<std::shared_ptr<cache_tuple::CacheTuple>> cacheTuples;
-                        for(unsigned h = 0; h < inputCacheFiles.at(n).size(); ++h){
-                            auto cacheFile = inputCacheFiles.at(n).at(h);
+                        for(unsigned h = 0; h < inputCacheFiles.at(n)[channel].size(); ++h){
+                            auto cacheFile = inputCacheFiles.at(n)[channel].at(h);
                             try {
                                 auto cacheTuple = std::make_shared<cache_tuple::CacheTuple>(treeName,cacheFile.get(),true);
                                 cacheTuples.push_back(cacheTuple);
                             } catch(std::exception&) {
-                                std::cerr << "WARNING: tree " << treeName << " not found in file '"
-                                          << cacheFile << "'." << std::endl;
+                                std::cerr << "WARNING: tree " << treeName << " not found in cache file '"
+                                          << cacheFile->GetName() << "'." << std::endl;
                                 cacheTuples.push_back(nullptr);
                             }
                         }
@@ -410,7 +429,9 @@ private:
     bool EventPassSelection(boost::optional<EventInfoBase>& eventInfo) const
     {
         if(!eventInfo.is_initialized()) return false;
-
+        if(!signalObjectSelector->PassLeptonVetoSelection(eventInfo->GetEventCandidate().GetEvent())) return false;
+        if(!signalObjectSelector->PassMETfilters(eventInfo->GetEventCandidate().GetEvent(), setup.period,
+                                                 eventInfo->GetEventCandidate().GetEvent().isData)) return false;
         if(setup.apply_bb_cut && !eventInfo->HasBjetPair()) return false;
 
         if(setup.apply_mass_cut) {

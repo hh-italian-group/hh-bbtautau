@@ -15,7 +15,7 @@ std::string LimitsInputProducer::FullDataCardName(const std::string& datacard_na
     full_name << datacard_name << "_CMS_";
     if(unc_source == UncertaintySource::TauES)
         full_name << "scale_t";
-    else if(unc_source == UncertaintySource::Total)
+    else if(unc_source == UncertaintySource::JetReduced_Total)
         full_name << "scale_j";
     else if(unc_source == UncertaintySource::TopPt)
         full_name << "topPt";
