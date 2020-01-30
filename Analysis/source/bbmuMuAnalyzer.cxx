@@ -57,6 +57,7 @@ protected:
         if(region_muon1.GetLowerIso() >= DiscriminatorWP::Medium) return region_muon2;
         if(region_muon2.GetLowerIso() >= DiscriminatorWP::Medium) return region_muon1;
         return EventRegion::Unknown();
+ 
 
         //return region;
     }
@@ -90,16 +91,22 @@ protected:
         sub_category.SetCutResult(SelectionCut::medPtNLO, event.GetHiggsTTMomentum(false).Pt() > 40 &&
                                                         event.GetHiggsTTMomentum(false).Pt() <= 100);
         sub_category.SetCutResult(SelectionCut::highPtNLO, event.GetHiggsTTMomentum(false).Pt() > 100);
-        sub_category.SetCutResult(SelectionCut::vlowPtLO, event.GetHiggsTTMomentum(false).Pt() <= 10);
-        sub_category.SetCutResult(SelectionCut::lowPtLO, event.GetHiggsTTMomentum(false).Pt() > 10 &&
-                                                        event.GetHiggsTTMomentum(false).Pt() <= 30);
-        sub_category.SetCutResult(SelectionCut::medPt1LO, event.GetHiggsTTMomentum(false).Pt() > 30 &&
-                                                        event.GetHiggsTTMomentum(false).Pt() <= 50);
-        sub_category.SetCutResult(SelectionCut::medPt2LO, event.GetHiggsTTMomentum(false).Pt() > 50 &&
-                                                        event.GetHiggsTTMomentum(false).Pt() <= 100);
-        sub_category.SetCutResult(SelectionCut::highPtLO, event.GetHiggsTTMomentum(false).Pt() > 100 &&
-                                                        event.GetHiggsTTMomentum(false).Pt() <= 200);
-        sub_category.SetCutResult(SelectionCut::vhighPtLO, event.GetHiggsTTMomentum(false).Pt() > 200);
+        sub_category.SetCutResult(SelectionCut::vlowPtLO, ana_setup.pt_sel_bins.size() > 0 &&
+                                                           event.GetHiggsTTMomentum(false).Pt() <= ana_setup.pt_sel_bins.at(0));
+        sub_category.SetCutResult(SelectionCut::lowPtLO, ana_setup.pt_sel_bins.size() > 1 &&
+                                                        (event.GetHiggsTTMomentum(false).Pt() > ana_setup.pt_sel_bins.at(0) &&
+                                                        event.GetHiggsTTMomentum(false).Pt() <= ana_setup.pt_sel_bins.at(1)));
+        sub_category.SetCutResult(SelectionCut::medPt1LO, ana_setup.pt_sel_bins.size() > 2 &&
+                                                        (event.GetHiggsTTMomentum(false).Pt() > ana_setup.pt_sel_bins.at(1) &&
+                                                        event.GetHiggsTTMomentum(false).Pt() <= ana_setup.pt_sel_bins.at(2)));
+        sub_category.SetCutResult(SelectionCut::medPt2LO, ana_setup.pt_sel_bins.size() > 3 &&
+                                                        (event.GetHiggsTTMomentum(false).Pt() > ana_setup.pt_sel_bins.at(2) &&
+                                                        event.GetHiggsTTMomentum(false).Pt() <= ana_setup.pt_sel_bins.at(3)));
+        sub_category.SetCutResult(SelectionCut::highPtLO, ana_setup.pt_sel_bins.size() > 4 &&
+                                                        (event.GetHiggsTTMomentum(false).Pt() > ana_setup.pt_sel_bins.at(3) &&
+                                                        event.GetHiggsTTMomentum(false).Pt() <= ana_setup.pt_sel_bins.at(4)));
+        sub_category.SetCutResult(SelectionCut::vhighPtLO, ana_setup.pt_sel_bins.size() > 4 &&
+                                                        event.GetHiggsTTMomentum(false).Pt() > ana_setup.pt_sel_bins.at(4));
         sub_category.SetCutResult(SelectionCut::mtt, mass_muMu > 50);
 
         return sub_category;
