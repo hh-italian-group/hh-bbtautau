@@ -80,7 +80,7 @@ public:
             throw exception("Tuple skimmer setup not found.");
         setup = setups.at(args.setup_name());
 
-        EventCandidate::InitializeJecUncertainties(setup.period,".");
+        EventCandidate::InitializeJecUncertainties(setup.period,false,".");
 
         signalObjectSelector = std::make_shared<SignalObjectSelector>(setup.mode);
 

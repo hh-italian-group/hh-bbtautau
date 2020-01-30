@@ -21,7 +21,7 @@ BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel cha
     EventAnalyzerCore(_args, channel), args(_args), anaTupleWriter(args.output(), channel, ana_setup.use_kinFit, ana_setup.use_svFit),
     trigger_patterns(ana_setup.trigger.at(channel)),signalObjectSelector(ana_setup.mode)
 {
-    EventCandidate::InitializeJecUncertainties(ana_setup.period, args.working_path());
+    EventCandidate::InitializeJecUncertainties(ana_setup.period, false, args.working_path());
     InitializeMvaReader();
     if(ana_setup.syncDataIds.size()){
         outputFile_sync = root_ext::CreateRootFile(args.output_sync());
@@ -233,6 +233,11 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                 const auto eventCategories = DetermineEventCategories(*event);
                 for(auto eventCategory : eventCategories) {
                     //if (!ana_setup.categories.count(eventCategory)) continue;
+
+                    //temporay fix for muMu
+                    bool is_data = (sample.sampleType == SampleType::Data);
+                    if(!signalObjectSelector.PassLeptonVetoSelection(tupleEvent) || !signalObjectSelector.PassMETfilters(tupleEvent,ana_setup.period,is_data)) continue;
+
                     const EventRegion eventRegion = DetermineEventRegion(*event, eventCategory);
                     for(const auto& region : ana_setup.regions){
                         if(!eventRegion.Implies(region)) continue;

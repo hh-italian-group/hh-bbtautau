@@ -13,6 +13,7 @@ void AnalyzerConfigEntryReader::EndEntry()
     CheckReadParamCounts("qcd_method", 1, Condition::less_equal);
     CheckReadParamCounts("tauID_wp", 1, Condition::less_equal);
     CheckReadParamCounts("final_variables", 1, Condition::less_equal);
+    CheckReadParamCounts("pt_sel_bins", 1, Condition::less_equal);
     CheckReadParamCounts("apply_mass_cut", 1, Condition::less_equal);
     CheckReadParamCounts("apply_os_cut", 1, Condition::less_equal);
     CheckReadParamCounts("apply_iso_cut", 1, Condition::less_equal);
@@ -54,6 +55,7 @@ void AnalyzerConfigEntryReader::ReadParameter(const std::string& /*param_name*/,
     ParseEntry("qcd_method", current.qcd_method);
     ParseEntry("tauID_wp", current.tauID_wp);
     ParseEntryList("final_variables", current.final_variables);
+    ParseEntryList("pt_sel_bins", current.pt_sel_bins);
     ParseEntry("apply_mass_cut", current.apply_mass_cut);
     ParseEntry("apply_os_cut", current.apply_os_cut);
     ParseEntry("apply_iso_cut", current.apply_iso_cut);
