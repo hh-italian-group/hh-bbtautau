@@ -192,6 +192,9 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
                                                    t1.GetMomentum(), t2.GetMomentum(), b1.GetMomentum(),
                                                    b2.GetMomentum(), event.GetMET().GetMomentum()).second);
         tuple().HT_total = static_cast<float>(b1.GetMomentum().pt() + b2.GetMomentum().Pt() + event->ht_other_jets);
+        tuple().dR_lj = static_cast<float>(four_bodies::Calculate_dR(t1.GetMomentum(), t2.GetMomentum(), b1.GetMomentum(), b2.GetMomentum()));
+
+        // tuple().dR_lepton_jet = four_bodies::Distance_lepton_jet(t1.GetMomentum(), t2.GetMomentum(), b1.GetMomentum(), b2.GetMomentum());
     } else {
         tuple().m_bb = def_val;
         tuple().pt_H_bb = def_val;
@@ -209,7 +212,10 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
         tuple().mass_top1 = def_val;
         tuple().mass_top2 = def_val;
     }
-
+    tuple().run = event->run;
+    tuple().lumi = event->lumi;
+    tuple().evt = event->evt;
+    // tuple().dR_lepton_jet = Distance_lepton_jet(event);
     tuple.Fill();
 }
 

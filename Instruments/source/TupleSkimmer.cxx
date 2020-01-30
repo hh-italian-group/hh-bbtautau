@@ -460,6 +460,9 @@ private:
 
         if (setup.apply_charge_cut && (eventInfo->GetLeg(1)->charge() + eventInfo->GetLeg(2)->charge()) != 0)
             return false;
+        // if(applyTauIso{
+            //check tipo secondo leg e' leg_type == tau applicare questo wp del config (deepTauWp) Create un'altra var solo per mino con il wp == medium. Anche var del tipo de discriminatore
+        // }
         return true;
     }
 

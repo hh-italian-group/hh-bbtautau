@@ -129,7 +129,7 @@ EventSubCategory BaseEventAnalyzer::DetermineEventSubCategory(EventInfoBase& eve
     if(event.HasBjetPair()){
         mbb = event.GetHiggsBB().GetMomentum().mass();
         if(category.HasBoostConstraint() && category.IsBoosted()){
-            if(ana_setup.use_svFit){
+            if(ana_setup.use_svFit && event.GetSVFitResults().has_valid_momentum){
                 bool isInsideBoostedCut = IsInsideBoostedMassWindow(event.GetHiggsTTMomentum(true).mass(),mbb);
                 sub_category.SetCutResult(SelectionCut::mh,isInsideBoostedCut);
             }
