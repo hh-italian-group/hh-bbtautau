@@ -138,7 +138,7 @@ EventSubCategory BaseEventAnalyzer::DetermineEventSubCategory(EventInfoBase& eve
             if(!ana_setup.use_svFit && ana_setup.massWindowParams.count(SelectionCut::mh))
                 throw exception("Category mh inconsistent with the false requirement of SVfit.");
             if(ana_setup.massWindowParams.count(SelectionCut::mh)){
-                const bool cut_result = event.GetSVFitResults().has_valid_momentum
+                const bool cut_result = ana_setup.use_svFit && event.GetSVFitResults().has_valid_momentum
                         && ana_setup.massWindowParams.at(SelectionCut::mh)
                                     .IsInside(event.GetHiggsTTMomentum(true).mass(), mbb);
                 sub_category.SetCutResult(SelectionCut::mh, cut_result);
@@ -153,7 +153,7 @@ EventSubCategory BaseEventAnalyzer::DetermineEventSubCategory(EventInfoBase& eve
                         .IsInside((event.GetHiggsTTMomentum(false) + event.GetMET().GetMomentum()).mass(),mbb));
 
         }
-        if(ana_setup.use_kinFit)
+        if(ana_setup.use_kinFit && event.GetKinFitResults().HasValidMass())
             sub_category.SetCutResult(SelectionCut::KinematicFitConverged, event.GetKinFitResults().HasValidMass());
     }
     if(mva_setup.is_initialized()) {
@@ -271,10 +271,13 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                         mc_corrections::WeightType::BTag);
                                 double total_btag_weight = btag_weight->Get(*event);
 
-
                                 const double weight = (*event)->weight_total * sample.cross_section
-                                    * ana_setup.int_lumi * total_lepton_weight * total_btag_weight
+                                    * ana_setup.int_lumi * total_btag_weight
                                     / summary->totalShapeWeight * mva_weight_scale;
+
+                                // const double weight = (*event)->weight_total * sample.cross_section
+                                //     * ana_setup.int_lumi * total_lepton_weight * total_btag_weight
+                                //     / summary->totalShapeWeight * mva_weight_scale;
                                 if(sample.sampleType == SampleType::MC) {
                                     dataIds[anaDataId] = std::make_tuple(weight, mva_score);
                                 } else

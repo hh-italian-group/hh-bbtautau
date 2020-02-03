@@ -213,6 +213,7 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
         tuple().dR_b1b2_boosted = def_val;
         tuple().mass_top1 = def_val;
         tuple().mass_top2 = def_val;
+        tuple().dR_lj = def_val;
     }
     tuple().run = event->run;
     tuple().lumi = event->lumi;
