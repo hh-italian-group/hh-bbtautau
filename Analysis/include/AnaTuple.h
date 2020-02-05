@@ -28,7 +28,7 @@ namespace analysis {
     VAR(float, mva_score) /* mva score */ \
     VAR_LIST(float, m_ttbb, m_ttbb_kinfit, chi2_kinFit, m_sv, MT2, mt_tot, mt_1, mt_2, deta_hbbhtautau, dphi_hbbhtautau, m_tt_vis, \
              pt_H_tt, eta_H_tt, phi_H_tt, pt_H_tt_MET, iso_1,iso_2, deepTau_vs_e_2, deepTau_vs_mu_2, \
-	          deepTau_vs_jet_2, tauId_default, \
+	         deepTau_vs_jet_2, tauId_default, \
              dR_l1l2, abs_dphi_l1MET, dphi_htautauMET, dR_l1l2MET, dR_l1l2Pt_htautau, mass_l1l2MET, \
              pt_l1l2MET, MT_htautau, \
              npv, MET, phiMET, pt_MET, m_bb, pt_H_bb, csv_b1, deepcsv_b1, csv_b2, \
