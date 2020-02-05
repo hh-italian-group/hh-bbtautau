@@ -27,10 +27,12 @@ struct Setup {
     unsigned split_seed{0};
 
     //light setup
-    bool apply_mass_cut{false}, apply_charge_cut{false}, apply_bb_cut{true};
+    bool apply_mass_cut{false}, apply_charge_cut{false}, apply_bb_cut{true}, apply_tau_iso{false};
     bool keep_genJets{false}, keep_genParticles{false}, keep_MET_cov{true};
     bool apply_kinfit{true};
     bool applyTauId{true};
+    DiscriminatorWP tau_iso_wp;
+    TauIdDiscriminator tau_iso_disc;
     std::set<std::string> tau_id_cuts;
     std::set<size_t> tau_id_cut_indices;
 

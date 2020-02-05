@@ -236,7 +236,8 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
 
                     //temporay fix for muMu
                     bool is_data = (sample.sampleType == SampleType::Data);
-                    if(!signalObjectSelector.PassLeptonVetoSelection(tupleEvent) || !signalObjectSelector.PassMETfilters(tupleEvent,ana_setup.period,is_data)) continue;
+                    if(!signalObjectSelector.PassMETfilters(tupleEvent,ana_setup.period,is_data)) continue;
+                    if(!signalObjectSelector.PassLeptonVetoSelection(tupleEvent)) continue;
 
                     const EventRegion eventRegion = DetermineEventRegion(*event, eventCategory);
                     for(const auto& region : ana_setup.regions){
@@ -272,12 +273,8 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                 double total_btag_weight = btag_weight->Get(*event);
 
                                 const double weight = (*event)->weight_total * sample.cross_section
-                                    * ana_setup.int_lumi * total_btag_weight
+                                    * ana_setup.int_lumi * total_lepton_weight * total_btag_weight
                                     / summary->totalShapeWeight * mva_weight_scale;
-
-                                // const double weight = (*event)->weight_total * sample.cross_section
-                                //     * ana_setup.int_lumi * total_lepton_weight * total_btag_weight
-                                //     / summary->totalShapeWeight * mva_weight_scale;
                                 if(sample.sampleType == SampleType::MC) {
                                     dataIds[anaDataId] = std::make_tuple(weight, mva_score);
                                 } else

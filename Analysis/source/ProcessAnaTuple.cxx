@@ -162,14 +162,14 @@ private:
             auto& ssLooseIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::SS_LooseIsolated()));
             auto& osAntiIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::OS_AntiIsolated()));
             auto& ssAntiIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::SS_AntiIsolated()));
-            // auto& shapeData = anaDataCollection.Get(anaDataId.Set());
+            auto& shapeData = anaDataCollection.Get(anaDataId.Set(ana_setup.qcd_shape));
 
             for(const auto& sub_entry : ssIsoData.template GetEntriesEx<TH1D>()) {
                 auto& entry_osIso = osIsoData.template GetEntryEx<TH1D>(sub_entry.first);
                 auto& entry_ss_looseIso = ssLooseIsoData.template GetEntryEx<TH1D>(sub_entry.first);
                 auto& entry_osAntiIso = osAntiIsoData.template GetEntryEx<TH1D>(sub_entry.first);
                 auto& entry_ssAntiIso = ssAntiIsoData.template GetEntryEx<TH1D>(sub_entry.first);
-                // auto& entry_shape = shapeData.template GetEntryEx<TH1D>(sub_entry.first);
+                auto& entry_shape = shapeData.template GetEntryEx<TH1D>(sub_entry.first);
 
                 for(const auto& hist : sub_entry.second->GetHistograms()) {
                     log << anaDataId << ": " << sub_entry.first << " " << hist.first << "\n";
@@ -188,25 +188,17 @@ private:
 
                     const auto ssIso_integral = analysis::Integral(*hist.second, true);
                     if(ana_setup.qcd_ss_os_sf <=0 ) k_factor = ssIso_integral / ssAntiIso_integral;
-                    // const auto osAntiIso_integral = Integral(entry_osAntiIso(hist.first), true);
                     if (osAntiIso_integral.GetValue() <= 0){
                         log << "Warning: SS Iso integral less or equal 0 for " << hist.first << std::endl;
                         continue;
                     }
                     const auto total_yield = osAntiIso_integral * k_factor;
 
-                    // if(ana_setup.qcd_ss_os_sf <=0 ) k_factor = osAntiIso_integral / ssAntiIso_integral;
-                    // const auto ssIso_integral = analysis::Integral(*hist.second, true);
-                    // if (ssIso_integral.GetValue() <= 0){
-                    //     log << "Warning: SS Iso integral less or equal 0 for " << hist.first << std::endl;
-                    //     continue;
-                    // }
-                    // const auto total_yield = ssIso_integral * k_factor;
                     log << anaDataId << ": osAntiIso integral = " << osAntiIso_integral
                         << ", ssAntiIso integral = " << ssAntiIso_integral << ", os/ss sf = " << k_factor
                         << ", ssIso integral = " << ssIso_integral << ", total yield = " << total_yield << std::endl;
 
-                    TH1D shape_hist(entry_osAntiIso(hist.first)); //entry_shape
+                    TH1D shape_hist(entry_shape(hist.first));
                     std::string debug_info, negative_bins_info;
                     if(!FixNegativeContributions(shape_hist, debug_info, negative_bins_info)) {
                         log << debug_info << "\n" << negative_bins_info << "\n";
