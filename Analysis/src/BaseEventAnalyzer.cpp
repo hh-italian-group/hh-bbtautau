@@ -129,8 +129,9 @@ EventSubCategory BaseEventAnalyzer::DetermineEventSubCategory(EventInfoBase& eve
     if(event.HasBjetPair()){
         mbb = event.GetHiggsBB().GetMomentum().mass();
         if(category.HasBoostConstraint() && category.IsBoosted()){
-            if(ana_setup.use_svFit && event.GetSVFitResults().has_valid_momentum){
-                bool isInsideBoostedCut = IsInsideBoostedMassWindow(event.GetHiggsTTMomentum(true).mass(),mbb);
+            if(ana_setup.use_svFit){
+                bool isInsideBoostedCut = event.GetSVFitResults().has_valid_momentum
+                                          && IsInsideBoostedMassWindow(event.GetHiggsTTMomentum(true).mass(),mbb);
                 sub_category.SetCutResult(SelectionCut::mh,isInsideBoostedCut);
             }
         }
@@ -153,7 +154,7 @@ EventSubCategory BaseEventAnalyzer::DetermineEventSubCategory(EventInfoBase& eve
                         .IsInside((event.GetHiggsTTMomentum(false) + event.GetMET().GetMomentum()).mass(),mbb));
 
         }
-        if(ana_setup.use_kinFit && event.GetKinFitResults().HasValidMass())
+        if(ana_setup.use_kinFit)
             sub_category.SetCutResult(SelectionCut::KinematicFitConverged, event.GetKinFitResults().HasValidMass());
     }
     if(mva_setup.is_initialized()) {

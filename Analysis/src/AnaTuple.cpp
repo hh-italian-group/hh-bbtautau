@@ -57,6 +57,10 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
     tuple().weight = def_val;
     tuple().mva_score = def_val;
     tuple().has_2jets = event.HasBjetPair();
+    tuple().run = event->run;
+    tuple().lumi = event->lumi;
+    tuple().evt = event->evt;
+
     tuple().m_sv = runSVfit && event.GetSVFitResults().has_valid_momentum ? static_cast<float>(event.GetHiggsTTMomentum(true).M()) : def_val;
 
     if(event.HasBjetPair()) {
@@ -194,7 +198,7 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
                                                    t1.GetMomentum(), t2.GetMomentum(), b1.GetMomentum(),
                                                    b2.GetMomentum(), event.GetMET().GetMomentum()).second);
         tuple().HT_total = static_cast<float>(b1.GetMomentum().pt() + b2.GetMomentum().Pt() + event->ht_other_jets);
-        tuple().dR_lj = static_cast<float>(four_bodies::Calculate_dR(t1.GetMomentum(), t2.GetMomentum(), b1.GetMomentum(), b2.GetMomentum()));
+        tuple().dR_lj = static_cast<float>(four_bodies::Calculate_min_dR_lj(t1.GetMomentum(), t2.GetMomentum(), b1.GetMomentum(), b2.GetMomentum()));
 
     } else {
         tuple().m_bb = def_val;
@@ -214,9 +218,6 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
         tuple().mass_top2 = def_val;
         tuple().dR_lj = def_val;
     }
-    tuple().run = event->run;
-    tuple().lumi = event->lumi;
-    tuple().evt = event->evt;
     tuple.Fill();
 }
 
@@ -224,7 +225,7 @@ AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, Na
     file(root_ext::OpenRootFile(file_name))
 {
     static const NameSet essential_branches = { "dataIds", "all_weights", "has_2jets" };
-    static const NameSet other_branches = { "all_mva_scores", "weight" };
+    static const NameSet other_branches = { "all_mva_scores", "weight", "evt", "run", "lumi" };
     NameSet enabled_branches;
     if(active_var_names.size()) {
         enabled_branches.insert(essential_branches.begin(), essential_branches.end());

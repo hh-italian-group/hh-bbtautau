@@ -166,7 +166,6 @@ private:
 
             for(const auto& sub_entry : ssIsoData.template GetEntriesEx<TH1D>()) {
                 auto& entry_osIso = osIsoData.template GetEntryEx<TH1D>(sub_entry.first);
-                auto& entry_ss_looseIso = ssLooseIsoData.template GetEntryEx<TH1D>(sub_entry.first);
                 auto& entry_osAntiIso = osAntiIsoData.template GetEntryEx<TH1D>(sub_entry.first);
                 auto& entry_ssAntiIso = ssAntiIsoData.template GetEntryEx<TH1D>(sub_entry.first);
                 auto& entry_shape = shapeData.template GetEntryEx<TH1D>(sub_entry.first);

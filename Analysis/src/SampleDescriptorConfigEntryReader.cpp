@@ -17,9 +17,6 @@ void AnalyzerConfigEntryReader::EndEntry()
     CheckReadParamCounts("pt_sel_bins", 1, Condition::less_equal);
     CheckReadParamCounts("apply_mass_cut", 1, Condition::less_equal);
     CheckReadParamCounts("apply_os_cut", 1, Condition::less_equal);
-    CheckReadParamCounts("apply_tau_iso", 1, Condition::less_equal);
-    CheckReadParamCounts("tau_iso_wp", 1, Condition::less_equal);
-    CheckReadParamCounts("tau_iso_disc", 1, Condition::less_equal);
     CheckReadParamCounts("use_kinFit", 1, Condition::less_equal);
     CheckReadParamCounts("use_svFit", 1, Condition::less_equal);
     CheckReadParamCounts("applyTauID", 1, Condition::less_equal);
@@ -62,9 +59,6 @@ void AnalyzerConfigEntryReader::ReadParameter(const std::string& /*param_name*/,
     ParseEntryList("pt_sel_bins", current.pt_sel_bins);
     ParseEntry("apply_mass_cut", current.apply_mass_cut);
     ParseEntry("apply_os_cut", current.apply_os_cut);
-    ParseEntry("apply_tau_iso", current.apply_tau_iso);
-    ParseEntry("tau_iso_wp", current.tau_iso_wp);
-    ParseEntry("tau_iso_disc", current.tau_iso_disc);
     ParseEntry("use_kinFit", current.use_kinFit);
     ParseEntry("use_svFit", current.use_svFit);
     ParseEntry("applyTauID", current.applyTauID);
