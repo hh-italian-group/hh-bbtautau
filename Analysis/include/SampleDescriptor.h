@@ -22,12 +22,8 @@ struct AnalyzerSetup {
     QCDmethod qcd_method;
     EventRegion qcd_shape;
     DiscriminatorWP tauID_wp;
-    std::vector<std::string> final_variables;
     std::vector<double> pt_sel_bins;
-    bool apply_mass_cut{false}, apply_os_cut{true};
     bool use_kinFit{false}, use_svFit{false}, applyTauID{true};
-    DiscriminatorWP tau_iso_wp;
-    TauIdDiscriminator tau_iso_disc;
     std::set<UncertaintySource> unc_sources;
     EventCategorySet categories;
     EventSubCategorySet sub_categories;

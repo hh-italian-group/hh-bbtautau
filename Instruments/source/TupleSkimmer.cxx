@@ -435,6 +435,16 @@ private:
                                                  eventInfo->GetEventCandidate().GetEvent().isData)) return false;
         if(setup.apply_bb_cut && !eventInfo->HasBjetPair()) return false;
 
+        if (setup.apply_charge_cut && (eventInfo->GetLeg(1)->charge() + eventInfo->GetLeg(2)->charge()) != 0)
+            return false;
+        if(setup.apply_tau_iso){
+            if(eventInfo->GetLeg(2)->leg_type() == analysis::LegType::tau){
+                const LepCandidate& tau = eventInfo->GetLeg(2);
+                if(!tau->Passed(signalObjectSelector->GetTauVSjetDiscriminator().first,
+                                signalObjectSelector->GetTauVSjetDiscriminator().second)) return false;
+            }
+        }
+
         if(setup.apply_mass_cut) {
             bool pass_mass_cut = false;
             if (!eventInfo->HasBjetPair()) return false;
@@ -456,15 +466,6 @@ private:
                                    + eventInfo->GetMET().GetMomentum()).mass(), mbb);
 
             if(!pass_mass_cut) return false;
-        }
-
-        if (setup.apply_charge_cut && (eventInfo->GetLeg(1)->charge() + eventInfo->GetLeg(2)->charge()) != 0)
-            return false;
-        if(setup.apply_tau_iso){
-            if(eventInfo->GetLeg(2)->leg_type() == analysis::LegType::tau){
-                const LepCandidate& tau = eventInfo->GetLeg(2);
-                if(!tau->Passed(setup.tau_iso_disc, setup.tau_iso_wp)) return false;
-            }
         }
         return true;
     }

@@ -33,6 +33,7 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
 {
     using namespace ROOT::Math::VectorUtil;
     static constexpr float def_val = std::numeric_limits<float>::lowest();
+    std::vector<Float_t> def_vec = {0};
 
     if(!dataIds.size()) return;
     for(const auto& entry : dataIds) {
@@ -63,6 +64,23 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
 
     tuple().m_sv = runSVfit && event.GetSVFitResults().has_valid_momentum ?
                    static_cast<float>(event.GetHiggsTTMomentum(true).M()) : def_val;
+    tuple().m_sv_error = runSVfit && event.GetSVFitResults().has_valid_momentum ?
+                         static_cast<float>(event.GetSVFitResults().momentum_error.M()) : def_val;
+
+    tuple().pt_sv = runSVfit && event.GetSVFitResults().has_valid_momentum ?
+                    static_cast<float>(event.GetHiggsTTMomentum(true).Pt()) : def_val;
+    tuple().pt_sv_error = runSVfit && event.GetSVFitResults().has_valid_momentum ?
+                          static_cast<float>(event.GetSVFitResults().momentum_error.Pt()) : def_val;
+
+    tuple().eta_sv = runSVfit && event.GetSVFitResults().has_valid_momentum ?
+                     static_cast<float>(event.GetHiggsTTMomentum(true).Eta()) : def_val;
+    tuple().eta_sv_error = runSVfit && event.GetSVFitResults().has_valid_momentum ?
+                          static_cast<float>(event.GetSVFitResults().momentum_error.Eta()) : def_val;
+
+    tuple().phi_sv = runSVfit && event.GetSVFitResults().has_valid_momentum ?
+                     static_cast<float>(event.GetHiggsTTMomentum(true).Phi()) : def_val;
+    tuple().phi_sv_error = runSVfit && event.GetSVFitResults().has_valid_momentum ?
+                           static_cast<float>(event.GetSVFitResults().momentum_error.Phi()) : def_val;
 
     if(event.HasBjetPair()) {
         tuple().m_ttbb = runSVfit && event.GetSVFitResults().has_valid_momentum ?
@@ -194,7 +212,7 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
         tuple().dphi_hbbhtautau = runSVfit && event.GetSVFitResults().has_valid_momentum ?
                                   static_cast<float>(DeltaPhi(Hbb.GetMomentum(), event.GetHiggsTTMomentum(true))) : def_val;
         tuple().deta_hbbhtautau = runSVfit && event.GetSVFitResults().has_valid_momentum ?
-                                  static_cast<float>((Hbb.GetMomentum(),event.GetHiggsTTMomentum(true)).Eta()) : def_val;
+                                  static_cast<float>((Hbb.GetMomentum() - event.GetHiggsTTMomentum(true)).Eta()) : def_val;
         tuple().costheta_METhbb = static_cast<float>(four_bodies::Calculate_cosTheta_2bodies(
                                                          event.GetMET().GetMomentum(), Hbb.GetMomentum()));
         tuple().dR_b1b2 = static_cast<float>(DeltaR(b1.GetMomentum(), b2.GetMomentum()));

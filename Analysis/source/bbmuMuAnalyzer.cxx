@@ -24,7 +24,7 @@ protected:
         if(muon1.GetMomentum().Pt() < 20 || muon2.GetMomentum().Pt() < 20) return EventRegion::Unknown();
 
         EventRegion region_muon1, region_muon2;
-        const bool os = !ana_setup.apply_os_cut || muon1.GetCharge() * muon2.GetCharge() == -1;
+        const bool os = muon1.GetCharge() * muon2.GetCharge() == -1;
         region_muon1.SetCharge(os);
         region_muon2.SetCharge(os);
 
@@ -57,7 +57,7 @@ protected:
         if(region_muon1.GetLowerIso() >= DiscriminatorWP::Medium) return region_muon2;
         if(region_muon2.GetLowerIso() >= DiscriminatorWP::Medium) return region_muon1;
         return EventRegion::Unknown();
- 
+
 
         //return region;
     }

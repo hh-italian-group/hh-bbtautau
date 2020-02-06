@@ -18,7 +18,8 @@ SyncDescriptor::SyncDescriptor(const std::string& desc_str, std::shared_ptr<TFil
 }
 
 BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel channel) :
-    EventAnalyzerCore(_args, channel), args(_args), anaTupleWriter(args.output(), channel, ana_setup.use_kinFit, ana_setup.use_svFit),
+    EventAnalyzerCore(_args, channel), args(_args), anaTupleWriter(args.output(), channel, ana_setup.use_kinFit,
+                      ana_setup.use_svFit),
     trigger_patterns(ana_setup.trigger.at(channel)),signalObjectSelector(ana_setup.mode)
 {
     EventCandidate::InitializeJecUncertainties(ana_setup.period, false, args.working_path());
@@ -86,7 +87,8 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfoBase& even
     for(const auto& jet : jets) {
         ++n;
         for(const auto& btag_wp : btag_working_points){
-            if(bTagger->Pass(*jet, analysis::UncertaintySource::None, analysis::UncertaintyScale::Central, btag_wp.first)) ++bjet_counts[btag_wp.first];
+            if(bTagger->Pass(*jet, analysis::UncertaintySource::None, analysis::UncertaintyScale::Central,
+                             btag_wp.first)) ++bjet_counts[btag_wp.first];
         }
     }
 
@@ -290,7 +292,8 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                     const auto& regex_pattern = sync_descriptors.at(n).regex_pattern;
                     for(auto& dataId : dataIds){
                         if(boost::regex_match(dataId.first.GetName(), *regex_pattern)){
-                            htt_sync::FillSyncTuple(*event, *sync_descriptors.at(n).sync_tree, ana_setup.period,ana_setup.use_svFit,std::get<0>(dataId.second));
+                            htt_sync::FillSyncTuple(*event, *sync_descriptors.at(n).sync_tree, ana_setup.period,
+                                                    ana_setup.use_svFit,std::get<0>(dataId.second));
                             break;
                         }
                     }
