@@ -216,7 +216,7 @@ private:
                                                                                         "^" + RemoveFileExtension(input) +
                                                                                         "(_cache[0-9]+|)\\.root$");
                                 if(cache_files.size() == 0)
-                                std::cerr << "Cache files are not used, no matched found for sample: " << input << "'."
+                                std::cerr << "  Cache files are not used, no matched found for sample: " << input << "'."
                                           << std::endl;
                                 for (size_t i = 0; i < cache_files.size(); ++i)
                                     cacheFiles[channel].push_back(root_ext::OpenRootFile(tools::FullPath({full_path,
@@ -295,7 +295,8 @@ private:
                             processed_events.insert(fullId);
 
                             auto event_ptr = std::make_shared<Event>(event);
-			    if(static_cast<Channel>(event_ptr->channelId) == Channel::MuMu){ //temporary fix due tue a bug in mumu channel in production
+                //temporary fix due tue a bug in mumu channel in production
+			    if(static_cast<Channel>(event_ptr->channelId) == Channel::MuMu){
 			       event_ptr->first_daughter_indexes = {0};
 			       event_ptr->second_daughter_indexes = {1};
 			    }
@@ -439,16 +440,15 @@ private:
             if (!eventInfo->HasBjetPair()) return false;
             const double mbb = eventInfo->GetHiggsBB().GetMomentum().mass();
             const double mtautau = (eventInfo->GetLeg(1).GetMomentum() + eventInfo->GetLeg(2).GetMomentum()).mass();
-            pass_mass_cut = pass_mass_cut
-                    || cuts::hh_bbtautau_2016::hh_tag::IsInsideBoostedMassWindow(eventInfo->GetSVFitResults().momentum.mass(),mbb);
+            pass_mass_cut = pass_mass_cut || (eventInfo->GetSVFitResults().has_valid_momentum &&
+                        cuts::hh_bbtautau_2016::hh_tag::IsInsideBoostedMassWindow(eventInfo->GetSVFitResults().momentum.mass(),mbb));
 
             if(setup.massWindowParams.count(SelectionCut::mh))
-                pass_mass_cut = pass_mass_cut || setup.massWindowParams.at(SelectionCut::mh)
-                        .IsInside(eventInfo->GetSVFitResults().momentum.mass(),mbb);
+                pass_mass_cut = pass_mass_cut || (eventInfo->GetSVFitResults().has_valid_momentum &&
+                                setup.massWindowParams.at(SelectionCut::mh).IsInside(eventInfo->GetSVFitResults().momentum.mass(),mbb));
 
             if(setup.massWindowParams.count(SelectionCut::mhVis))
-                pass_mass_cut = pass_mass_cut || setup.massWindowParams.at(SelectionCut::mhVis)
-                        .IsInside(mtautau,mbb);
+                pass_mass_cut = pass_mass_cut || setup.massWindowParams.at(SelectionCut::mhVis).IsInside(mtautau, mbb);
 
             if(setup.massWindowParams.count(SelectionCut::mhMET))
                 pass_mass_cut = pass_mass_cut || setup.massWindowParams.at(SelectionCut::mhMET)

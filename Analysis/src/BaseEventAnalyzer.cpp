@@ -140,11 +140,10 @@ EventSubCategory BaseEventAnalyzer::DetermineEventSubCategory(EventInfoBase& eve
                 throw exception("Category mh inconsistent with the false requirement of SVfit.");
             if(ana_setup.massWindowParams.count(SelectionCut::mh)){
                 const bool cut_result = ana_setup.use_svFit && event.GetSVFitResults().has_valid_momentum
-                        && ana_setup.massWindowParams.at(SelectionCut::mh)
-                                    .IsInside(event.GetHiggsTTMomentum(true).mass(), mbb);
+                        && ana_setup.massWindowParams.at(SelectionCut::mh).IsInside(event.GetHiggsTTMomentum(true).mass(),
+                                                                                    mbb);
                 sub_category.SetCutResult(SelectionCut::mh, cut_result);
             }
-
             if(ana_setup.massWindowParams.count(SelectionCut::mhVis))
                 sub_category.SetCutResult(SelectionCut::mhVis,ana_setup.massWindowParams.at(SelectionCut::mhVis)
                         .IsInside(event.GetHiggsTTMomentum(false).mass(),mbb));
