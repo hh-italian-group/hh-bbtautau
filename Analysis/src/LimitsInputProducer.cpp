@@ -25,15 +25,15 @@ std::string LimitsInputProducer::FullDataCardName(const std::string& datacard_na
     return full_name.str();
 }
 
-std::string LimitsInputProducer::EventRegionSuffix(EventRegion region)
+std::string LimitsInputProducer::EventRegionSuffix(EventRegion region, SignalMode signal_mode)
 {
     static const std::map<EventRegion, std::string> regions {
-        { EventRegion::OS_AntiIsolated(), "_OS_antiiso" },
-        { EventRegion::SS_AntiIsolated(), "_SS_antiiso" },
-        { EventRegion::SS_Isolated(), "_SS_iso" },
+        { EventRegion::OS_AntiIsolated(signal_mode), "_OS_antiiso" },
+        { EventRegion::SS_AntiIsolated(signal_mode), "_SS_antiiso" },
+        { EventRegion::SS_Isolated(signal_mode), "_SS_iso" },
     };
 
-    if(region == EventRegion::SignalRegion())
+    if(region == EventRegion::SignalRegion(signal_mode))
         return "";
     if(regions.count(region))
         return regions.at(region);
@@ -46,7 +46,7 @@ void LimitsInputProducer::Produce(const std::string& outputFileNamePrefix, const
                                   EventSubCategory eventSubCategory,
                                   const std::set<UncertaintySource>& uncertaintySources,
                                   const EventRegionSet& eventRegions, const std::map<SelectionCut,
-                                  std::string>& sel_aliases)
+                                  std::string>& sel_aliases, SignalMode& signal_mode)
 {
     // static constexpr double tiny_value = 1e-9;
     // static constexpr double tiny_value_error = tiny_value;
@@ -67,7 +67,7 @@ void LimitsInputProducer::Produce(const std::string& outputFileNamePrefix, const
         if(!GetActiveUncertaintyScales(metaId.Get<UncertaintySource>()).count(metaId.Get<UncertaintyScale>()))
             continue;
         const std::string directoryName = dirNamePrefix + ToString(metaId.Get<EventCategory>()) +
-                                          EventRegionSuffix(metaId.Get<EventRegion>());
+                                          EventRegionSuffix(metaId.Get<EventRegion>(), signal_mode);
         TDirectory* directory = root_ext::GetDirectory(*outputFile, directoryName, true);
         const SampleWP& sampleWP = sampleWorkingPoints.at(metaId.Get<std::string>());
         const auto anaDataId = metaId.Set(eventSubCategory);
@@ -107,18 +107,18 @@ void LimitsInputProducer::Produce(const std::string& outputFileNamePrefix, const
     }
 }
 
-bool LimitsInputProducer::CanHaveEmptyHistogram(const EventAnalyzerDataId& id, bool& print_warning) const
-{
-    const auto& unc_source = id.Get<UncertaintySource>();
-    const SampleWP& sampleWP = sampleWorkingPoints.at(id.Get<std::string>());
-    print_warning = id.Get<EventRegion>() == EventRegion::SignalRegion();
-    if(unc_source == UncertaintySource::None)
-        return false;
-    if(sampleWP.sampleType == SampleType::Data || sampleWP.sampleType == SampleType::QCD)
-        return true;
-    if(unc_source == UncertaintySource::TopPt)
-        return sampleWP.sampleType != SampleType::TT;
-    return false;
-}
+// bool LimitsInputProducer::CanHaveEmptyHistogram(const EventAnalyzerDataId& id, bool& print_warning) const
+// {
+//     const auto& unc_source = id.Get<UncertaintySource>();
+//     const SampleWP& sampleWP = sampleWorkingPoints.at(id.Get<std::string>());
+//     print_warning = id.Get<EventRegion>() == EventRegion::SignalRegion();
+//     if(unc_source == UncertaintySource::None)
+//         return false;
+//     if(sampleWP.sampleType == SampleType::Data || sampleWP.sampleType == SampleType::QCD)
+//         return true;
+//     if(unc_source == UncertaintySource::TopPt)
+//         return sampleWP.sampleType != SampleType::TT;
+//     return false;
+// }
 
 } // namespace analysis

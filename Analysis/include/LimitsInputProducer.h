@@ -20,7 +20,7 @@ public:
 
     static std::string FullDataCardName(const std::string& datacard_name, UncertaintySource unc_source,
                                         UncertaintyScale unc_scale);
-    static std::string EventRegionSuffix(EventRegion region);
+    static std::string EventRegionSuffix(EventRegion region, SignalMode signal_mode);
 
     template<typename ...Args>
     LimitsInputProducer(AnaDataCollection& _anaDataCollection, Args&&... sample_descriptors) :
@@ -33,7 +33,7 @@ public:
     void Produce(const std::string& outputFileNamePrefix, const std::string& setup_name,
                  const std::map<EventCategory, std::string>& eventCategories, EventSubCategory eventSubCategory,
                  const std::set<UncertaintySource>& uncertaintySources, const EventRegionSet& eventRegions,
-                 const std::map<SelectionCut, std::string>& sel_aliases);
+                 const std::map<SelectionCut, std::string>& sel_aliases, SignalMode& signal_mode);
 
 private:
     void CollectWorkingPoints() {}

@@ -9,6 +9,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/Tools.h"
 #include "AnalysisTools/Core/include/TextIO.h"
 #include "h-tautau/Core/include/AnalysisTypes.h"
+#include "h-tautau/Analysis/include/SignalObjectSelector.h"
 
 namespace analysis {
 
@@ -35,14 +36,16 @@ ENUM_NAMES(DYFitModel) = {
 
 struct EventRegion {
     static const EventRegion& Unknown();
-    static const EventRegion& OS_Isolated();
-    static const EventRegion& OS_AntiIsolated();
-    static const EventRegion& SS_Isolated();
-    static const EventRegion& SS_LooseIsolated();
-    static const EventRegion& SS_AntiIsolated();
-    static const EventRegion& SignalRegion();
+    static const EventRegion& OS_Isolated(SignalMode& signal_mode);
+    static const EventRegion& OS_AntiIsolated(SignalMode& signal_mode);
+    static const EventRegion& SS_Isolated(SignalMode& signal_mode);
+    static const EventRegion& SS_LooseIsolated(SignalMode& signal_mode);
+    static const EventRegion& SS_AntiIsolated(SignalMode& signal_mode);
+    static const EventRegion& SignalRegion(SignalMode& signal_mode);
+    static const SignalObjectSelector InitializeWP(SignalMode& signal_mode);
 
     EventRegion() {}
+
     EventRegion& SetCharge(bool _os);
     EventRegion& SetLowerIso(DiscriminatorWP wp);
     EventRegion& SetUpperIso(DiscriminatorWP wp);
@@ -59,16 +62,16 @@ struct EventRegion {
     bool operator !=(const EventRegion& er) const;
     bool operator <(const EventRegion& er) const;
 
-    std::string ToString() const;
-    static EventRegion Parse(const std::string& str);
+    std::string ToString(SignalMode& signal_mode) const;
+    static EventRegion Parse(const std::string& str, SignalMode& signal_mode);
 
 private:
     boost::optional<bool> os;
     boost::optional<DiscriminatorWP> iso_lower, iso_upper;
 };
 
-std::istream& operator>>(std::istream& s, EventRegion& eventRegion);
-std::ostream& operator<<(std::ostream& os, const EventRegion& eventRegion);
+std::istream& operator>>(std::istream& s, EventRegion& eventRegion, SignalMode& signal_mode);
+std::ostream& operator<<(std::ostream& os, const EventRegion& eventRegion, SignalMode& signal_mode);
 
 
 struct EventCategory {

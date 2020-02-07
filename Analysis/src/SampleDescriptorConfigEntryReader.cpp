@@ -16,7 +16,6 @@ void AnalyzerConfigEntryReader::EndEntry()
     CheckReadParamCounts("pt_sel_bins", 1, Condition::less_equal);
     CheckReadParamCounts("use_kinFit", 1, Condition::less_equal);
     CheckReadParamCounts("use_svFit", 1, Condition::less_equal);
-    CheckReadParamCounts("applyTauID", 1, Condition::less_equal);
     CheckReadParamCounts("unc_sources", 1, Condition::less_equal);
     CheckReadParamCounts("categories", 1, Condition::less_equal);
     CheckReadParamCounts("sub_categories", 1, Condition::less_equal);
@@ -55,7 +54,6 @@ void AnalyzerConfigEntryReader::ReadParameter(const std::string& /*param_name*/,
     ParseEntryList("pt_sel_bins", current.pt_sel_bins);
     ParseEntry("use_kinFit", current.use_kinFit);
     ParseEntry("use_svFit", current.use_svFit);
-    ParseEntry("applyTauID", current.applyTauID);
     ParseEnumList("unc_sources", current.unc_sources);
     ParseEnumList("categories", current.categories);
     ParseEnumList("sub_categories", current.sub_categories);

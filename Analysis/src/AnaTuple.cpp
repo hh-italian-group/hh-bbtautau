@@ -33,7 +33,6 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
 {
     using namespace ROOT::Math::VectorUtil;
     static constexpr float def_val = std::numeric_limits<float>::lowest();
-    std::vector<Float_t> def_vec = {0};
 
     if(!dataIds.size()) return;
     for(const auto& entry : dataIds) {
@@ -66,6 +65,11 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
                    static_cast<float>(event.GetHiggsTTMomentum(true).M()) : def_val;
     tuple().m_sv_error = runSVfit && event.GetSVFitResults().has_valid_momentum ?
                          static_cast<float>(event.GetSVFitResults().momentum_error.M()) : def_val;
+
+     tuple().mt = runSVfit && event.GetSVFitResults().has_valid_momentum ?
+                  static_cast<float>(event.GetSVFitResults().transverseMass) : def_val;
+     tuple().mt_error = runSVfit && event.GetSVFitResults().has_valid_momentum ?
+                        static_cast<float>(event.GetSVFitResults().transverseMass_error) : def_val;
 
     tuple().pt_sv = runSVfit && event.GetSVFitResults().has_valid_momentum ?
                     static_cast<float>(event.GetHiggsTTMomentum(true).Pt()) : def_val;

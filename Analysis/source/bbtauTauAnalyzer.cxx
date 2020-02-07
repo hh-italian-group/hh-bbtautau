@@ -29,7 +29,7 @@ protected:
         region_tau2.SetCharge(os);
 
         for(auto wp_1 = working_points.rbegin(); wp_1 != working_points.rend(); ++wp_1) {
-            if(tau_1->Passed(signalObjectSelector.GetTauVSjetDiscriminator().first, *wp_1)) {
+            if(tau_1->Passed(signalObjectSelector.GetTauVSjetDiscriminator().at(ana_setup.mode).first, *wp_1)) {
                 region_tau1.SetLowerIso(*wp_1);
                 if(wp_1 != working_points.rbegin())
                     region_tau1.SetUpperIso(*(--wp_1));
@@ -38,7 +38,7 @@ protected:
         }
 
         for(auto wp_2 = working_points.rbegin(); wp_2 != working_points.rend(); ++wp_2) {
-            if(tau_2->Passed(signalObjectSelector.GetTauVSjetDiscriminator().first, *wp_2)) {
+            if(tau_2->Passed(signalObjectSelector.GetTauVSjetDiscriminator().at(ana_setup.mode).first, *wp_2)) {
                 region_tau2.SetLowerIso(*wp_2);
                 if(wp_2 != working_points.rbegin())
                     region_tau2.SetUpperIso(*(--wp_2));

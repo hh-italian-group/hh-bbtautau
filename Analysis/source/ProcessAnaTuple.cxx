@@ -87,7 +87,8 @@ public:
                     std::cout << "\t\tsetup_name: " << limit_setup.first <<  std::endl;
                     for(const auto& subCategory : subCategories)
                         limitsInputProducer.Produce(args.output(), limit_setup.first, limit_setup.second, subCategory,
-                                                    ana_setup.unc_sources, ana_setup.regions, mva_sel_aliases);
+                                                    ana_setup.unc_sources, ana_setup.regions, mva_sel_aliases,
+                                                    ana_setup.mode);
                 }
             }
             if(args.draw()) {
@@ -97,7 +98,7 @@ public:
                 std::string pdf_prefix = args.output();
                 if(n != 0)
                     pdf_prefix += "_part" + ToString(n + 1);
-                plotsProducer.PrintStackedPlots(pdf_prefix, EventRegion::SignalRegion(), ana_setup.categories,
+                plotsProducer.PrintStackedPlots(pdf_prefix, EventRegion::SignalRegion(ana_setup.mode), ana_setup.categories,
                                                 subCategories, signal_names);
             }
         }
@@ -157,11 +158,11 @@ private:
         for(const EventAnalyzerDataId& metaDataId : EventAnalyzerDataId::MetaLoop(ana_setup.categories,
                 subCategories, qcdUncSources, qcdUncScales)) {
             const auto anaDataId = metaDataId.Set(qcd_sample.name);
-            auto& osIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::OS_Isolated()));
-            auto& ssIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::SS_Isolated()));
-            auto& ssLooseIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::SS_LooseIsolated()));
-            auto& osAntiIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::OS_AntiIsolated()));
-            auto& ssAntiIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::SS_AntiIsolated()));
+            auto& osIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::OS_Isolated(ana_setup.mode)));
+            auto& ssIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::SS_Isolated(ana_setup.mode)));
+            auto& ssLooseIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::SS_LooseIsolated(ana_setup.mode)));
+            auto& osAntiIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::OS_AntiIsolated(ana_setup.mode)));
+            auto& ssAntiIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::SS_AntiIsolated(ana_setup.mode)));
             auto& shapeData = anaDataCollection.Get(anaDataId.Set(ana_setup.qcd_shape));
 
             for(const auto& sub_entry : ssIsoData.template GetEntriesEx<TH1D>()) {

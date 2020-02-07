@@ -23,7 +23,7 @@ struct AnalyzerSetup {
     EventRegion qcd_shape;
     DiscriminatorWP tauID_wp;
     std::vector<double> pt_sel_bins;
-    bool use_kinFit{false}, use_svFit{false}, applyTauID{true};
+    bool use_kinFit{false}, use_svFit{false};
     std::set<UncertaintySource> unc_sources;
     EventCategorySet categories;
     EventSubCategorySet sub_categories;
