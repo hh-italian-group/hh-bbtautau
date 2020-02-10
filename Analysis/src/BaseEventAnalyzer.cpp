@@ -222,6 +222,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
 {
     const SummaryInfo summary(prod_summary,channelId, ana_setup.trigger_path);
     std::set<UncertaintySource> unc_sources = { UncertaintySource::None };
+    std::set<analysis::EventRegion> regions;
     if(sample.sampleType != SampleType::Data)
         unc_sources = ana_setup.unc_sources;
     for(auto tupleEvent : *tuple) {
@@ -240,9 +241,15 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                     bool is_data = (sample.sampleType == SampleType::Data);
                     if(!signalObjectSelector.PassMETfilters(tupleEvent,ana_setup.period,is_data)) continue;
                     if(!signalObjectSelector.PassLeptonVetoSelection(tupleEvent)) continue;
+                    // EventRegion::Initialize(DiscriminatorWP iso_lower, DiscriminatorWP anti_iso_lower, DiscriminatorWP anti_iso_upper)
+                    EventRegion::Initialize(signalObjectSelector.GetTauVSjetDiscriminator().second,
+                                            signalObjectSelector.GetTauVSjetDiscriminator().second,
+                                            signalObjectSelector.GetTauVSjetDiscriminator().second);
+
+                    ana_setup.ConvertToEventRegion(ana_setup.regions, regions);
 
                     const EventRegion eventRegion = DetermineEventRegion(*event, eventCategory);
-                    for(const auto& region : ana_setup.regions){
+                    for(const auto& region : regions){
                         if(!eventRegion.Implies(region)) continue;
                         std::map<SelectionCut, double> mva_scores;
                         const auto eventSubCategory = DetermineEventSubCategory(*event, eventCategory, mva_scores);

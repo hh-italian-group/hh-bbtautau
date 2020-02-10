@@ -440,8 +440,8 @@ private:
         if(setup.apply_tau_iso){
             if(eventInfo->GetLeg(2)->leg_type() == analysis::LegType::tau){
                 const LepCandidate& tau = eventInfo->GetLeg(2);
-                if(!tau->Passed(signalObjectSelector->GetTauVSjetDiscriminator().at(setup.mode).first,
-                                signalObjectSelector->GetTauVSjetDiscriminator().at(setup.mode).second)) return false;
+                if(!tau->Passed(signalObjectSelector->GetTauVSjetDiscriminator().first,
+                                signalObjectSelector->GetTauVSjetDiscriminator().second)) return false;
             }
         }
 

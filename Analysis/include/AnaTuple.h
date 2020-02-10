@@ -27,7 +27,8 @@ namespace analysis {
     VAR(double, weight) /* weight */ \
     VAR(float, mva_score) /* mva score */ \
     VAR(ULong64_t, evt)  /* event */ \
-    VAR_LIST(float, pt_sv, pt_sv_error, eta_sv, eta_sv_error, phi_sv, phi_sv_error, m_sv, m_sv_error, mt, mt_error)  /* SVFit  p4 */\
+    VAR_LIST(float, pt_sv, pt_sv_error, eta_sv, eta_sv_error, phi_sv, phi_sv_error, m_sv, m_sv_error, \
+             mt_sv, mt_sv_error)  /* SVFit  p4 */\
     VAR_LIST(float, m_ttbb, m_ttbb_kinfit, chi2_kinFit, MT2, mt_tot, mt_1, mt_2, deta_hbbhtautau, dphi_hbbhtautau, m_tt_vis, \
              pt_H_tt, eta_H_tt, phi_H_tt, pt_H_tt_MET, iso_1,iso_2, deepTau_vs_e_2, deepTau_vs_mu_2, \
 	         deepTau_vs_jet_2, tauId_default, \

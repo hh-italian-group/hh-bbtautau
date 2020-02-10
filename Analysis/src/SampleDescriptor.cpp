@@ -28,6 +28,20 @@ void AnalyzerSetup::CreateLimitSetups()
         }
     }
 }
+void AnalyzerSetup::ConvertToEventRegion(const std::vector<std::string>& regions, EventRegionSet& event_region_set)
+{
+    std::map<std::string, EventRegion> predefined_regions = {
+        { "OS_Isolated", EventRegion::OS_Isolated() },
+        { "OS_AntiIsolated", EventRegion::OS_AntiIsolated() },
+        { "SS_LooseIsolated", EventRegion::SS_LooseIsolated() },
+        { "SS_Isolated", EventRegion::SS_Isolated() },
+        { "SS_AntiIsolated", EventRegion::SS_AntiIsolated() },
+        { "SS_AntiIsolated", EventRegion::SS_AntiIsolated() }
+    };
+    for(const auto& region : regions)
+        event_region_set.insert(predefined_regions.at(region));
+}
+
 
 void MvaReaderSetup::CreateSelections()
 {

@@ -66,9 +66,9 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
     tuple().m_sv_error = runSVfit && event.GetSVFitResults().has_valid_momentum ?
                          static_cast<float>(event.GetSVFitResults().momentum_error.M()) : def_val;
 
-     tuple().mt = runSVfit && event.GetSVFitResults().has_valid_momentum ?
+     tuple().mt_sv = runSVfit && event.GetSVFitResults().has_valid_momentum ?
                   static_cast<float>(event.GetSVFitResults().transverseMass) : def_val;
-     tuple().mt_error = runSVfit && event.GetSVFitResults().has_valid_momentum ?
+     tuple().mt_sv_error = runSVfit && event.GetSVFitResults().has_valid_momentum ?
                         static_cast<float>(event.GetSVFitResults().transverseMass_error) : def_val;
 
     tuple().pt_sv = runSVfit && event.GetSVFitResults().has_valid_momentum ?

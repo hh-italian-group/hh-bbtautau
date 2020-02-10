@@ -43,7 +43,7 @@ protected:
       		tauIdDiscriminator = TauIdDiscriminator::byDeepTau2017v2p1VSjet;
 
         if(ana_setup.qcd_method == QCDmethod::invert_muon){
-          if(!tau->Passed(signalObjectSelector.GetTauVSjetDiscriminator().at(ana_setup.mode).first, ana_setup.tauID_wp)) return EventRegion::Unknown();
+          if(!tau->Passed(signalObjectSelector.GetTauVSjetDiscriminator().first, ana_setup.tauID_wp)) return EventRegion::Unknown();
 
           for(auto wp = working_points_mu.rbegin(); wp != working_points_mu.rend(); ++wp) {
              if(muon.GetIsolation() < wp->second) {
@@ -60,7 +60,7 @@ protected:
           if(muon.GetIsolation() >= cuts::hh_bbtautau_2017::MuTau::muonID::pfRelIso04) return EventRegion::Unknown();
 
           for(auto wp = working_points_tau.rbegin(); wp != working_points_tau.rend(); ++wp) {
-             if(tau->Passed(signalObjectSelector.GetTauVSjetDiscriminator().at(ana_setup.mode).first, *wp)) {
+             if(tau->Passed(signalObjectSelector.GetTauVSjetDiscriminator().first, *wp)) {
                  region.SetLowerIso(*wp);
                  if(wp != working_points_tau.rbegin())
                      region.SetUpperIso(*(--wp));

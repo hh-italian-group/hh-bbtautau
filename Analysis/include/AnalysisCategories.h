@@ -9,7 +9,6 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/Tools.h"
 #include "AnalysisTools/Core/include/TextIO.h"
 #include "h-tautau/Core/include/AnalysisTypes.h"
-#include "h-tautau/Analysis/include/SignalObjectSelector.h"
 
 namespace analysis {
 
@@ -36,13 +35,13 @@ ENUM_NAMES(DYFitModel) = {
 
 struct EventRegion {
     static const EventRegion& Unknown();
-    static const EventRegion& OS_Isolated(SignalMode& signal_mode);
-    static const EventRegion& OS_AntiIsolated(SignalMode& signal_mode);
-    static const EventRegion& SS_Isolated(SignalMode& signal_mode);
-    static const EventRegion& SS_LooseIsolated(SignalMode& signal_mode);
-    static const EventRegion& SS_AntiIsolated(SignalMode& signal_mode);
-    static const EventRegion& SignalRegion(SignalMode& signal_mode);
-    static const SignalObjectSelector InitializeWP(SignalMode& signal_mode);
+    static const EventRegion& OS_Isolated();
+    static const EventRegion& OS_AntiIsolated();
+    static const EventRegion& SS_Isolated();
+    static const EventRegion& SS_LooseIsolated();
+    static const EventRegion& SS_AntiIsolated();
+    static const EventRegion& SignalRegion();
+    static void Initialize(DiscriminatorWP iso_lower, DiscriminatorWP anti_iso_lower, DiscriminatorWP anti_iso_upper);
 
     EventRegion() {}
 
@@ -62,16 +61,22 @@ struct EventRegion {
     bool operator !=(const EventRegion& er) const;
     bool operator <(const EventRegion& er) const;
 
-    std::string ToString(SignalMode& signal_mode) const;
-    static EventRegion Parse(const std::string& str, SignalMode& signal_mode);
+    std::string ToString() const;
+    static EventRegion Parse(const std::string& str);
 
 private:
+    static boost::optional<EventRegion> _OS_Isolated;
+    static boost::optional<EventRegion> _OS_AntiIsolated;
+    static boost::optional<EventRegion> _SS_Isolated;
+    static boost::optional<EventRegion> _SS_LooseIsolated;
+    static boost::optional<EventRegion> _SS_AntiIsolated;
     boost::optional<bool> os;
     boost::optional<DiscriminatorWP> iso_lower, iso_upper;
+
 };
 
-std::istream& operator>>(std::istream& s, EventRegion& eventRegion, SignalMode& signal_mode);
-std::ostream& operator<<(std::ostream& os, const EventRegion& eventRegion, SignalMode& signal_mode);
+std::istream& operator>>(std::istream& s, EventRegion& eventRegion);
+std::ostream& operator<<(std::ostream& os, const EventRegion& eventRegion);
 
 
 struct EventCategory {

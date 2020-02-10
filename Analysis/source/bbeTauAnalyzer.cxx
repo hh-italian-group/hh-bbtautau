@@ -30,7 +30,7 @@ protected:
         region.SetCharge(os);
 
         for(auto wp = working_points.rbegin(); wp != working_points.rend(); ++wp) {
-            if(tau->Passed(signalObjectSelector.GetTauVSjetDiscriminator().at(ana_setup.mode).first, *wp)) {
+            if(tau->Passed(signalObjectSelector.GetTauVSjetDiscriminator().first, *wp)) {
                 region.SetLowerIso(*wp);
                 if(wp != working_points.rbegin())
                     region.SetUpperIso(*(--wp));

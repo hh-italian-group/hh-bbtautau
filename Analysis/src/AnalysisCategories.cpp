@@ -5,18 +5,18 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include <boost/bimap.hpp>
 
 namespace {
-const boost::bimap<std::string, analysis::EventRegion>& EventRegionMapToString(analysis::SignalMode& signal_mode)
+const boost::bimap<std::string, analysis::EventRegion>& EventRegionMapToString()
 {
     using EventRegion = analysis::EventRegion;
     static boost::bimap<std::string, EventRegion> predefined_regions;
     if(!predefined_regions.left.size()){
         predefined_regions.insert({ "Unknown", EventRegion::Unknown() });
-        predefined_regions.insert({ "OS_Isolated", EventRegion::OS_Isolated(signal_mode) });
-        predefined_regions.insert({ "OS_AntiIsolated", EventRegion::OS_AntiIsolated(signal_mode) });
-        predefined_regions.insert({ "SS_LooseIsolated", EventRegion::SS_LooseIsolated(signal_mode) });
-        predefined_regions.insert({ "SS_Isolated", EventRegion::SS_Isolated(signal_mode) });
-        predefined_regions.insert({ "SS_AntiIsolated", EventRegion::SS_AntiIsolated(signal_mode) });
-        predefined_regions.insert({ "SignalRegion", EventRegion::SignalRegion(signal_mode) });
+        predefined_regions.insert({ "OS_Isolated", EventRegion::OS_Isolated() });
+        predefined_regions.insert({ "OS_AntiIsolated", EventRegion::OS_AntiIsolated() });
+        predefined_regions.insert({ "SS_LooseIsolated", EventRegion::SS_LooseIsolated() });
+        predefined_regions.insert({ "SS_Isolated", EventRegion::SS_Isolated() });
+        predefined_regions.insert({ "SS_AntiIsolated", EventRegion::SS_AntiIsolated() });
+        predefined_regions.insert({ "SignalRegion", EventRegion::SignalRegion() });
     }
     return predefined_regions;
 }
@@ -25,10 +25,19 @@ const boost::bimap<std::string, analysis::EventRegion>& EventRegionMapToString(a
 
 namespace analysis {
 
-const SignalObjectSelector EventRegion::InitializeWP(SignalMode& signal_mode)
+boost::optional<EventRegion> EventRegion::_OS_Isolated;
+boost::optional<EventRegion> EventRegion::_OS_AntiIsolated;
+boost::optional<EventRegion> EventRegion::_SS_Isolated;
+boost::optional<EventRegion> EventRegion::_SS_LooseIsolated;
+boost::optional<EventRegion> EventRegion::_SS_AntiIsolated;
+
+void EventRegion::Initialize(DiscriminatorWP iso_lower, DiscriminatorWP anti_iso_lower, DiscriminatorWP anti_iso_upper)
 {
-    SignalObjectSelector signalObjectSelector(signal_mode);
-    return signalObjectSelector;
+    _OS_Isolated = EventRegion().SetCharge(true).SetLowerIso(iso_lower);
+    _OS_AntiIsolated = EventRegion().SetCharge(true).SetLowerIso(anti_iso_lower);
+    _SS_Isolated = EventRegion().SetCharge(false).SetLowerIso(iso_lower);
+    _SS_LooseIsolated = EventRegion().SetCharge(false).SetLowerIso(iso_lower);
+    _SS_AntiIsolated = EventRegion().SetCharge(false).SetLowerIso(iso_lower);
 }
 
 const EventRegion& EventRegion::Unknown()
@@ -37,50 +46,44 @@ const EventRegion& EventRegion::Unknown()
     return er;
 }
 
-const EventRegion& EventRegion::OS_Isolated(SignalMode& signal_mode)
+const EventRegion& EventRegion::OS_Isolated()
 {
-    auto signal_object_selector = EventRegion::InitializeWP(signal_mode);
-    const DiscriminatorWP& wp = signal_object_selector.GetTauVSjetSidebandWPRange().at(signal_mode).second;
-    static const EventRegion er = EventRegion().SetCharge(true).SetLowerIso(wp);
-    return er;
+    if(!_OS_Isolated. is_initialized())
+        throw exception("Event regions (OS_Isolated) are not initialized");
+    return *_OS_Isolated;
 }
 
-const EventRegion& EventRegion::OS_AntiIsolated(SignalMode& signal_mode)
+const EventRegion& EventRegion::OS_AntiIsolated()
 {
-    auto signal_object_selector = EventRegion::InitializeWP(signal_mode);
-    const DiscriminatorWP& wp_loose = signal_object_selector.GetTauVSjetSidebandWPRange().at(signal_mode).first;
-    const DiscriminatorWP& wp_medium = signal_object_selector.GetTauVSjetSidebandWPRange().at(signal_mode).second;
-    static const EventRegion er = EventRegion().SetCharge(true).SetLowerIso(wp_loose).SetUpperIso(wp_medium);
-    return er;
+    if(!_OS_AntiIsolated. is_initialized())
+        throw exception("Event regions (OS_AntiIsolated) are not initialized");
+    return *_OS_AntiIsolated;
 }
 
-const EventRegion& EventRegion::SS_Isolated(SignalMode& signal_mode)
+const EventRegion& EventRegion::SS_Isolated()
 {
-    auto signal_object_selector = EventRegion::InitializeWP(signal_mode);
-    const DiscriminatorWP& wp_medium = signal_object_selector.GetTauVSjetSidebandWPRange().at(signal_mode).second;
-    static const EventRegion er = EventRegion().SetCharge(false).SetLowerIso(DiscriminatorWP::Medium);
-    return er;
+    if(!_SS_Isolated. is_initialized())
+        throw exception("Event regions (SS_Isolated) are not initialized");
+    return *_SS_Isolated;
 }
 
-const EventRegion& EventRegion::SS_LooseIsolated(SignalMode& signal_mode)
+const EventRegion& EventRegion::SS_LooseIsolated()
 {
-    auto signal_object_selector = EventRegion::InitializeWP(signal_mode);
-    const DiscriminatorWP& wp_loose = signal_object_selector.GetTauVSjetSidebandWPRange().at(signal_mode).first;
-    static const EventRegion er = EventRegion().SetCharge(false).SetLowerIso(wp_loose);
-    return er;
+    if(!_SS_LooseIsolated. is_initialized())
+        throw exception("Event regions (SS_LooseIsolated) not initialized");
+    return *_SS_LooseIsolated;
 }
 
-const EventRegion& EventRegion::SS_AntiIsolated(SignalMode& signal_mode)
+const EventRegion& EventRegion::SS_AntiIsolated()
 {
-    auto signal_object_selector = EventRegion::InitializeWP(signal_mode);
-    const DiscriminatorWP& wp_medium = signal_object_selector.GetTauVSjetSidebandWPRange().at(signal_mode).second;
-    static const EventRegion er = EventRegion().SetCharge(false).SetLowerIso(DiscriminatorWP::VVLoose).SetUpperIso(wp_medium);
-    return er;
+    if(!_SS_AntiIsolated. is_initialized())
+        throw exception("Event regions (SS_AntiIsolated) are not initialized");
+    return *_SS_AntiIsolated;
 }
 
-const EventRegion& EventRegion::SignalRegion(SignalMode& signal_mode)
+const EventRegion& EventRegion::SignalRegion()
 {
-    return OS_Isolated(signal_mode);
+    return OS_Isolated();
 }
 
 EventRegion& EventRegion::SetCharge(bool _os)
@@ -150,32 +153,32 @@ bool EventRegion::operator <(const EventRegion& er) const
     return iso_upper < er.iso_upper;
 }
 
-std::string EventRegion::ToString(SignalMode& signal_mode) const
+std::string EventRegion::ToString() const
 {
     if(*this == Unknown()) return "Unknown";
-    if(!EventRegionMapToString(signal_mode).right.count(*this))
+    if(!EventRegionMapToString().right.count(*this))
         throw exception("Unknown EventRegion. No conversion to String");
-    return EventRegionMapToString(signal_mode).right.at(*this);
+    return EventRegionMapToString().right.at(*this);
 }
 
-EventRegion EventRegion::Parse(const std::string& str, SignalMode& signal_mode)
+EventRegion EventRegion::Parse(const std::string& str)
 {
-    if(!EventRegionMapToString(signal_mode).left.count(str))
+    if(!EventRegionMapToString().left.count(str))
         throw exception("Unknown EventRegion = '%1%'.") % str;
-    return EventRegionMapToString(signal_mode).left.at(str);
+    return EventRegionMapToString().left.at(str);
 }
 
-std::istream& operator>>(std::istream& s, EventRegion& eventRegion, SignalMode& signal_mode)
+std::istream& operator>>(std::istream& s, EventRegion& eventRegion)
 {
     std::string str;
     s >> str;
-    eventRegion = EventRegion::Parse(str, signal_mode);
+    eventRegion = EventRegion::Parse(str);
     return s;
 }
 
-std::ostream& operator<<(std::ostream& os, const EventRegion& eventRegion, SignalMode& signal_mode)
+std::ostream& operator<<(std::ostream& os, const EventRegion& eventRegion)
 {
-    os << eventRegion.ToString(signal_mode);
+    os << eventRegion.ToString();
     return os;
 }
 
