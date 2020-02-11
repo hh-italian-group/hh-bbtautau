@@ -4,30 +4,15 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "hh-bbtautau/Analysis/include/AnalysisCategories.h"
 #include <boost/bimap.hpp>
 
-namespace {
-const boost::bimap<std::string, analysis::EventRegion>& EventRegionMapToString()
-{
-    using EventRegion = analysis::EventRegion;
-    static boost::bimap<std::string, EventRegion> predefined_regions;
-
-    EventRegion::Initialize(analysis::DiscriminatorWP::Medium, analysis::DiscriminatorWP::Medium,
-                            analysis::DiscriminatorWP::Medium, predefined_regions);
-
-    return predefined_regions;
-}
-
-}
-
 namespace analysis {
-
+boost::bimap<std::string, EventRegion> EventRegion::predefined_regions;
 boost::optional<EventRegion> EventRegion::_OS_Isolated;
 boost::optional<EventRegion> EventRegion::_OS_AntiIsolated;
 boost::optional<EventRegion> EventRegion::_SS_Isolated;
 boost::optional<EventRegion> EventRegion::_SS_LooseIsolated;
 boost::optional<EventRegion> EventRegion::_SS_AntiIsolated;
 
-void EventRegion::Initialize(DiscriminatorWP iso_lower, DiscriminatorWP anti_iso_lower, DiscriminatorWP anti_iso_upper,
-                             boost::bimap<std::string, EventRegion> predefined_regions)
+void EventRegion::Initialize(DiscriminatorWP iso_lower, DiscriminatorWP anti_iso_lower, DiscriminatorWP anti_iso_upper)
 {
     _OS_Isolated = EventRegion().SetCharge(true).SetLowerIso(iso_lower);
     _OS_AntiIsolated = EventRegion().SetCharge(true).SetLowerIso(anti_iso_lower);
@@ -44,6 +29,14 @@ void EventRegion::Initialize(DiscriminatorWP iso_lower, DiscriminatorWP anti_iso
         predefined_regions.insert({ "SS_AntiIsolated", EventRegion::SS_AntiIsolated() });
         predefined_regions.insert({ "SignalRegion", EventRegion::SignalRegion() });
     }
+}
+
+const boost::bimap<std::string, analysis::EventRegion>& EventRegion::EventRegionMapToString()
+{
+    if(predefined_regions.size() == 0)
+        throw exception("predefined regions maps is not initialized");
+    std::cout <<"predefined_regions.size()=" << predefined_regions.size()  << "\n";
+    return predefined_regions;
 }
 
 const EventRegion& EventRegion::Unknown()

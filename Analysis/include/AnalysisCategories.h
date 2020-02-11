@@ -43,8 +43,8 @@ struct EventRegion {
     static const EventRegion& SS_LooseIsolated();
     static const EventRegion& SS_AntiIsolated();
     static const EventRegion& SignalRegion();
-    static void Initialize(DiscriminatorWP iso_lower, DiscriminatorWP anti_iso_lower, DiscriminatorWP anti_iso_upper,
-                           boost::bimap<std::string, EventRegion> predefined_regions = {});
+    static void Initialize(DiscriminatorWP iso_lower, DiscriminatorWP anti_iso_lower, DiscriminatorWP anti_iso_upper);
+    static const boost::bimap<std::string, analysis::EventRegion>& EventRegionMapToString();
 
     EventRegion() {}
 
@@ -67,6 +67,8 @@ struct EventRegion {
     std::string ToString() const;
     static EventRegion Parse(const std::string& str);
 
+public:
+    static boost::bimap<std::string, EventRegion> predefined_regions;
 private:
     static boost::optional<EventRegion> _OS_Isolated;
     static boost::optional<EventRegion> _OS_AntiIsolated;
