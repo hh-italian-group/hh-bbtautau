@@ -163,9 +163,6 @@ private:
             auto& ssLooseIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::SS_LooseIsolated()));
             auto& osAntiIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::OS_AntiIsolated()));
             auto& ssAntiIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::SS_AntiIsolated()));
-
-            // auto& shapeData = anaDataCollection.Get(anaDataId.Set(EventRegion::SS_AntiIsolated()));
-
             auto& shapeData = anaDataCollection.Get(anaDataId.Set(ana_setup.qcd_shape));
 
             for(const auto& sub_entry : ssIsoData.template GetEntriesEx<TH1D>()) {
