@@ -88,7 +88,7 @@ protected:
     std::map<SelectionCut, std::string> mva_sel_aliases;
     std::string working_path;
     std::shared_ptr<BTagger> bTagger;
-    // SignalObjectSelector signalObjectSelector;
+    SignalObjectSelector signalObjectSelector;
 };
 
 } // namespace analysis

@@ -67,9 +67,8 @@ struct EventRegion {
     std::string ToString() const;
     static EventRegion Parse(const std::string& str);
 
-public:
-    static boost::bimap<std::string, EventRegion> predefined_regions;
 private:
+    static boost::bimap<std::string, EventRegion> predefined_regions;
     static boost::optional<EventRegion> _OS_Isolated;
     static boost::optional<EventRegion> _OS_AntiIsolated;
     static boost::optional<EventRegion> _SS_Isolated;

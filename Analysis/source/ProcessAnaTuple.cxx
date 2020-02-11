@@ -29,8 +29,7 @@ public:
     ProcessAnaTuple(const AnalyzerArguments& _args) :
         EventAnalyzerCore(_args, _args.channel()), args(_args), activeVariables(ParseVarSet(args.vars())),
         tupleReader(args.input(), args.channel(), activeVariables),
-        outputFile(root_ext::CreateRootFile(args.output() + "_full.root")),
-        signalObjectSelector(ana_setup.mode)
+        outputFile(root_ext::CreateRootFile(args.output() + "_full.root"))
     {
         histConfig.Parse(FullPath(ana_setup.hist_cfg));
         if(!ana_setup.unc_cfg.empty()) {
@@ -89,8 +88,7 @@ public:
                     std::cout << "\t\tsetup_name: " << limit_setup.first <<  std::endl;
                     for(const auto& subCategory : subCategories)
                         limitsInputProducer.Produce(args.output(), limit_setup.first, limit_setup.second, subCategory,
-                                                    ana_setup.unc_sources, ana_setup.regions, mva_sel_aliases,
-                                                    ana_setup.mode);
+                                                    ana_setup.unc_sources, ana_setup.regions, mva_sel_aliases);
                 }
             }
             if(args.draw()) {
@@ -230,7 +228,6 @@ private:
     std::shared_ptr<TFile> outputFile;
     PropertyConfigReader histConfig;
     std::shared_ptr<ModellingUncertaintyCollection> unc_collection;
-    SignalObjectSelector signalObjectSelector;
 };
 
 } // namespace analysis
