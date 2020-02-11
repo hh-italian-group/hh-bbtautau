@@ -72,12 +72,6 @@ public:
             std::cout << "\tProcessing combined samples and QCD... " << std::endl;
             for(const auto& subCategory : subCategories) {
 
-                EventRegion::Initialize(signalObjectSelector.GetTauVSjetDiscriminator().second,
-                                        signalObjectSelector.GetTauVSjetDiscriminator().second,
-                                        signalObjectSelector.GetTauVSjetDiscriminator().second);
-
-                ana_setup.ConvertToEventRegion(ana_setup.regions, regions);
-
                 ProcessCombinedSamples(anaDataCollection, subCategory, ana_setup.cmb_samples);
                 for(const auto& sample : sample_descriptors) {
                     if(sample.second.sampleType == SampleType::QCD) {
@@ -95,7 +89,7 @@ public:
                     std::cout << "\t\tsetup_name: " << limit_setup.first <<  std::endl;
                     for(const auto& subCategory : subCategories)
                         limitsInputProducer.Produce(args.output(), limit_setup.first, limit_setup.second, subCategory,
-                                                    ana_setup.unc_sources, regions, mva_sel_aliases,
+                                                    ana_setup.unc_sources, ana_setup.regions, mva_sel_aliases,
                                                     ana_setup.mode);
                 }
             }
@@ -172,11 +166,9 @@ private:
             auto& osAntiIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::OS_AntiIsolated()));
             auto& ssAntiIsoData = anaDataCollection.Get(anaDataId.Set(EventRegion::SS_AntiIsolated()));
 
-            std::vector<EventRegion> qcd_shape;
-            ana_setup.ConvertToEventRegion(ana_setup.qcd_shape, qcd_shape)
-            auto& shapeData =
-                anaDataCollection.Get(anaDataId.Set(Parse<EventRegion>(ana_setup.ConvertToEventRegion(ana_setup.qcd_shape,
-                                                                       qcd_shape).at(0))));
+            // auto& shapeData = anaDataCollection.Get(anaDataId.Set(EventRegion::SS_AntiIsolated()));
+
+            auto& shapeData = anaDataCollection.Get(anaDataId.Set(ana_setup.qcd_shape));
 
             for(const auto& sub_entry : ssIsoData.template GetEntriesEx<TH1D>()) {
                 auto& entry_osIso = osIsoData.template GetEntryEx<TH1D>(sub_entry.first);
@@ -238,7 +230,6 @@ private:
     std::shared_ptr<TFile> outputFile;
     PropertyConfigReader histConfig;
     std::shared_ptr<ModellingUncertaintyCollection> unc_collection;
-    std::set<EventRegion> regions;
     SignalObjectSelector signalObjectSelector;
 };
 

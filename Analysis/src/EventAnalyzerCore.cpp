@@ -41,6 +41,19 @@ EventAnalyzerCore::EventAnalyzerCore(const CoreAnalyzerArguments& args, Channel 
         throw exception("Setup '%1%' not found in the configuration file '%2%'.") % args.setup() % args.sources();
     ana_setup = ana_setup_collection.at(args.setup());
 
+    SignalObjectSelector signalObjectSelector(ana_setup.mode);
+    std::cout << "Nutella 1" << "\n";
+    std::cout << "ana_setup.region 1 = " << ana_setup.regions.size() << "\n";
+    EventRegion::Initialize(signalObjectSelector.GetTauVSjetDiscriminator().second,
+                            signalObjectSelector.GetTauVSjetDiscriminator().second,
+                            signalObjectSelector.GetTauVSjetDiscriminator().second);
+    std::cout << "ana_setup.region 2= " << ana_setup.regions.size() << "\n";
+    std::cout << "Nutella 2" << "\n";
+
+    ana_setup.ConvertToEventRegion();
+    std::cout << "ana_setup.region 3" << ana_setup.regions.size() << "\n";
+    std::cout << "Nocciola" << "\n";
+
     if(args.mva_setup().size()) {
         const auto mva_setup_names = SplitValueList(args.mva_setup(), false, ", \t", true);
         std::vector<MvaReaderSetup> mva_setups;
@@ -127,11 +140,8 @@ void EventAnalyzerCore::ProcessCombinedSamples(AnaDataCollection& anaDataCollect
 void EventAnalyzerCore::AddSampleToCombined(AnaDataCollection& anaDataCollection, const EventSubCategory& subCategory,
                                             CombinedSampleDescriptor& sample, SampleDescriptor& sub_sample)
 {
-    std::set<EventRegion> regions;
-    ana_setup.ConvertToEventRegion(ana_setup.regions, regions);
-    
     for(const EventAnalyzerDataId& metaDataId : EventAnalyzerDataId::MetaLoop(ana_setup.categories,
-            regions, ana_setup.unc_sources, GetAllUncertaintyScales())) {
+            ana_setup.regions, ana_setup.unc_sources, GetAllUncertaintyScales())) {
         const auto anaDataId = metaDataId.Set(sample.name).Set(subCategory);
         auto& anaData = anaDataCollection.Get(anaDataId);
         for(const auto& sub_sample_wp : sub_sample.working_points) {

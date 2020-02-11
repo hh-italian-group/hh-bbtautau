@@ -47,8 +47,8 @@ protected:
         }
 
         if(!region_tau1.HasLowerIso() || !region_tau2.HasLowerIso()) return EventRegion::Unknown();
-        if(region_tau1.GetLowerIso() >= DiscriminatorWP::Medium) return region_tau2;
-        if(region_tau2.GetLowerIso() >= DiscriminatorWP::Medium) return region_tau1;
+        if(region_tau1.GetLowerIso() >= signalObjectSelector.GetTauVSjetDiscriminator().second) return region_tau2;
+        if(region_tau2.GetLowerIso() >= signalObjectSelector.GetTauVSjetDiscriminator().second) return region_tau1;
         return EventRegion::Unknown();
     }
 };

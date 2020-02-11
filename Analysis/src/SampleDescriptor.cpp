@@ -28,7 +28,7 @@ void AnalyzerSetup::CreateLimitSetups()
         }
     }
 }
-void AnalyzerSetup::ConvertToEventRegion(const std::vector<std::string>& regions, EventRegionSet& event_region_set)
+void AnalyzerSetup::ConvertToEventRegion()
 {
     std::map<std::string, EventRegion> predefined_regions = {
         { "OS_Isolated", EventRegion::OS_Isolated() },
@@ -38,8 +38,15 @@ void AnalyzerSetup::ConvertToEventRegion(const std::vector<std::string>& regions
         { "SS_AntiIsolated", EventRegion::SS_AntiIsolated() },
         { "SS_AntiIsolated", EventRegion::SS_AntiIsolated() }
     };
-    for(const auto& region : regions)
-        event_region_set.insert(predefined_regions.at(region));
+    std::cout << "regions_str.sise()=" << regions_str.size() << "\n";
+    for(const auto& region : regions_str){
+        regions.insert(analysis::Parse<analysis::EventRegion>(region));}
+        // regions.insert(predefined_regions.at(region));
+
+    // std::cout << "SIZE=" << regions.size() << "\n";
+    qcd_shape = predefined_regions.at(qcd_shape_str);
+
+
 }
 
 
