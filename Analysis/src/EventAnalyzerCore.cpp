@@ -43,7 +43,6 @@ EventAnalyzerCore::EventAnalyzerCore(const CoreAnalyzerArguments& args, Channel 
 
     SignalObjectSelector signalObjectSelector(ana_setup.mode);
     EventRegion::Initialize(signalObjectSelector.GetTauVSjetDiscriminator().second,
-                            signalObjectSelector.GetTauVSjetDiscriminator().second,
                             signalObjectSelector.GetTauVSjetSidebandWPRange().first,
                             signalObjectSelector.GetTauVSjetDiscriminator().second);
 

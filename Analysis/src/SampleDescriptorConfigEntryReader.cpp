@@ -12,7 +12,6 @@ void AnalyzerConfigEntryReader::EndEntry()
     CheckReadParamCounts("mode", 1, Condition::less_equal);
     CheckReadParamCounts("qcd_method", 1, Condition::less_equal);
     CheckReadParamCounts("qcd_shape", 1, Condition::less_equal);
-    CheckReadParamCounts("qcd_shape_str", 1, Condition::less_equal);
     CheckReadParamCounts("tauID_wp", 1, Condition::less_equal);
     CheckReadParamCounts("pt_sel_bins", 1, Condition::less_equal);
     CheckReadParamCounts("use_kinFit", 1, Condition::less_equal);
@@ -21,7 +20,6 @@ void AnalyzerConfigEntryReader::EndEntry()
     CheckReadParamCounts("categories", 1, Condition::less_equal);
     CheckReadParamCounts("sub_categories", 1, Condition::less_equal);
     CheckReadParamCounts("regions", 1, Condition::less_equal);
-    CheckReadParamCounts("regions_str", 1, Condition::less_equal);
     CheckReadParamCounts("data", 1, Condition::less_equal);
     CheckReadParamCounts("signals", 1, Condition::less_equal);
     CheckReadParamCounts("backgrounds", 1, Condition::less_equal);
@@ -51,8 +49,7 @@ void AnalyzerConfigEntryReader::ReadParameter(const std::string& /*param_name*/,
     ParseEntry("period", current.period);
     ParseEntry("mode", current.mode);
     ParseEntry("qcd_method", current.qcd_method);
-    ParseEntry("qcd_shape", current.qcd_shape);
-    ParseEntry("qcd_shape_str", current.qcd_shape_str);
+    ParseEntry("qcd_shape", current.qcd_shape_str);
     ParseEntry("tauID_wp", current.tauID_wp);
     ParseEntryList("pt_sel_bins", current.pt_sel_bins);
     ParseEntry("use_kinFit", current.use_kinFit);
@@ -60,8 +57,7 @@ void AnalyzerConfigEntryReader::ReadParameter(const std::string& /*param_name*/,
     ParseEnumList("unc_sources", current.unc_sources);
     ParseEnumList("categories", current.categories);
     ParseEnumList("sub_categories", current.sub_categories);
-    ParseEnumList("regions", current.regions);
-    ParseEnumList("regions_str", current.regions_str);
+    ParseEnumList("regions", current.regions_str);
     ParseEntryList("data", current.data);
     ParseEntryList("signals", current.signals);
     ParseEntryList("backgrounds", current.backgrounds);
