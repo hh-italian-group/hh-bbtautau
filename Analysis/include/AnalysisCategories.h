@@ -5,6 +5,8 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include <boost/optional/optional.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
+#include <boost/bimap.hpp>
+
 
 #include "AnalysisTools/Core/include/Tools.h"
 #include "AnalysisTools/Core/include/TextIO.h"
@@ -41,7 +43,8 @@ struct EventRegion {
     static const EventRegion& SS_LooseIsolated();
     static const EventRegion& SS_AntiIsolated();
     static const EventRegion& SignalRegion();
-    static void Initialize(DiscriminatorWP iso_lower, DiscriminatorWP anti_iso_lower, DiscriminatorWP anti_iso_upper);
+    static void Initialize(DiscriminatorWP iso_lower, DiscriminatorWP anti_iso_lower, DiscriminatorWP anti_iso_upper,
+                           boost::bimap<std::string, EventRegion> predefined_regions = {});
 
     EventRegion() {}
 

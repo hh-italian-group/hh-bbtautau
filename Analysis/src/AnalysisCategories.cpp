@@ -9,15 +9,10 @@ const boost::bimap<std::string, analysis::EventRegion>& EventRegionMapToString()
 {
     using EventRegion = analysis::EventRegion;
     static boost::bimap<std::string, EventRegion> predefined_regions;
-    if(!predefined_regions.left.size()){
-        predefined_regions.insert({ "Unknown", EventRegion::Unknown() });
-        predefined_regions.insert({ "OS_Isolated", EventRegion::OS_Isolated() });
-        predefined_regions.insert({ "OS_AntiIsolated", EventRegion::OS_AntiIsolated() });
-        predefined_regions.insert({ "SS_LooseIsolated", EventRegion::SS_LooseIsolated() });
-        predefined_regions.insert({ "SS_Isolated", EventRegion::SS_Isolated() });
-        predefined_regions.insert({ "SS_AntiIsolated", EventRegion::SS_AntiIsolated() });
-        predefined_regions.insert({ "SignalRegion", EventRegion::SignalRegion() });
-    }
+
+    EventRegion::Initialize(analysis::DiscriminatorWP::Medium, analysis::DiscriminatorWP::Medium,
+                            analysis::DiscriminatorWP::Medium, predefined_regions);
+
     return predefined_regions;
 }
 
@@ -31,13 +26,24 @@ boost::optional<EventRegion> EventRegion::_SS_Isolated;
 boost::optional<EventRegion> EventRegion::_SS_LooseIsolated;
 boost::optional<EventRegion> EventRegion::_SS_AntiIsolated;
 
-void EventRegion::Initialize(DiscriminatorWP iso_lower, DiscriminatorWP anti_iso_lower, DiscriminatorWP anti_iso_upper)
+void EventRegion::Initialize(DiscriminatorWP iso_lower, DiscriminatorWP anti_iso_lower, DiscriminatorWP anti_iso_upper,
+                             boost::bimap<std::string, EventRegion> predefined_regions)
 {
     _OS_Isolated = EventRegion().SetCharge(true).SetLowerIso(iso_lower);
     _OS_AntiIsolated = EventRegion().SetCharge(true).SetLowerIso(anti_iso_lower);
     _SS_Isolated = EventRegion().SetCharge(false).SetLowerIso(iso_lower);
     _SS_LooseIsolated = EventRegion().SetCharge(false).SetLowerIso(iso_lower);
     _SS_AntiIsolated = EventRegion().SetCharge(false).SetLowerIso(iso_lower);
+
+    if(!predefined_regions.left.size()){
+        predefined_regions.insert({ "Unknown", EventRegion::Unknown() });
+        predefined_regions.insert({ "OS_Isolated", EventRegion::OS_Isolated() });
+        predefined_regions.insert({ "OS_AntiIsolated", EventRegion::OS_AntiIsolated() });
+        predefined_regions.insert({ "SS_LooseIsolated", EventRegion::SS_LooseIsolated() });
+        predefined_regions.insert({ "SS_Isolated", EventRegion::SS_Isolated() });
+        predefined_regions.insert({ "SS_AntiIsolated", EventRegion::SS_AntiIsolated() });
+        predefined_regions.insert({ "SignalRegion", EventRegion::SignalRegion() });
+    }
 }
 
 const EventRegion& EventRegion::Unknown()

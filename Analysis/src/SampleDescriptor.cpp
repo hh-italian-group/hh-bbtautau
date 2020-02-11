@@ -30,7 +30,7 @@ void AnalyzerSetup::CreateLimitSetups()
 }
 void AnalyzerSetup::ConvertToEventRegion()
 {
-    std::map<std::string, EventRegion> predefined_regions = {
+    std::map<std::string, EventRegion> predefined_regionS = {
         { "OS_Isolated", EventRegion::OS_Isolated() },
         { "OS_AntiIsolated", EventRegion::OS_AntiIsolated() },
         { "SS_LooseIsolated", EventRegion::SS_LooseIsolated() },
@@ -44,8 +44,7 @@ void AnalyzerSetup::ConvertToEventRegion()
         // regions.insert(predefined_regions.at(region));
 
     // std::cout << "SIZE=" << regions.size() << "\n";
-    qcd_shape = predefined_regions.at(qcd_shape_str);
-
+    qcd_shape = predefined_regionS.at(qcd_shape_str);
 
 }
 
