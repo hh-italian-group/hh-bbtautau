@@ -12,13 +12,14 @@ boost::optional<EventRegion> EventRegion::_SS_Isolated;
 boost::optional<EventRegion> EventRegion::_SS_LooseIsolated;
 boost::optional<EventRegion> EventRegion::_SS_AntiIsolated;
 
-void EventRegion::Initialize(DiscriminatorWP iso_lower, DiscriminatorWP anti_iso_lower, DiscriminatorWP anti_iso_upper)
+void EventRegion::Initialize(DiscriminatorWP iso_lower, DiscriminatorWP iso_upper,
+                             DiscriminatorWP anti_iso_lower, DiscriminatorWP anti_iso_upper)
 {
     _OS_Isolated = EventRegion().SetCharge(true).SetLowerIso(iso_lower);
-    _OS_AntiIsolated = EventRegion().SetCharge(true).SetLowerIso(anti_iso_lower);
+    _OS_AntiIsolated = EventRegion().SetCharge(true).SetUpperIso(anti_iso_upper);
     _SS_Isolated = EventRegion().SetCharge(false).SetLowerIso(iso_lower);
-    _SS_LooseIsolated = EventRegion().SetCharge(false).SetLowerIso(iso_lower);
-    _SS_AntiIsolated = EventRegion().SetCharge(false).SetLowerIso(iso_lower);
+    _SS_LooseIsolated = EventRegion().SetCharge(false).SetLowerIso(DiscriminatorWP::Loose);
+    _SS_AntiIsolated = EventRegion().SetCharge(false).SetLowerIso(anti_iso_lower).SetUpperIso(anti_iso_upper);
 
     if(!predefined_regions.left.size()){
         predefined_regions.insert({ "Unknown", EventRegion::Unknown() });
@@ -35,7 +36,6 @@ const boost::bimap<std::string, analysis::EventRegion>& EventRegion::EventRegion
 {
     if(predefined_regions.size() == 0)
         throw exception("predefined regions maps is not initialized");
-    std::cout <<"predefined_regions.size()=" << predefined_regions.size()  << "\n";
     return predefined_regions;
 }
 

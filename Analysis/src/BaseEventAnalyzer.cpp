@@ -242,9 +242,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                     if(!signalObjectSelector.PassLeptonVetoSelection(tupleEvent)) continue;
 
                     const EventRegion eventRegion = DetermineEventRegion(*event, eventCategory);
-                    // std::cout << "Nutella" << "\n";
                     for(const auto& region : ana_setup.regions){
-                        // std::cout << "Nocciola" << "\n";
                         if(!eventRegion.Implies(region)) continue;
                         std::map<SelectionCut, double> mva_scores;
                         const auto eventSubCategory = DetermineEventSubCategory(*event, eventCategory, mva_scores);

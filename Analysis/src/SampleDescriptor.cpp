@@ -28,26 +28,14 @@ void AnalyzerSetup::CreateLimitSetups()
         }
     }
 }
+
 void AnalyzerSetup::ConvertToEventRegion()
 {
-    std::map<std::string, EventRegion> predefined_regionS = {
-        { "OS_Isolated", EventRegion::OS_Isolated() },
-        { "OS_AntiIsolated", EventRegion::OS_AntiIsolated() },
-        { "SS_LooseIsolated", EventRegion::SS_LooseIsolated() },
-        { "SS_Isolated", EventRegion::SS_Isolated() },
-        { "SS_AntiIsolated", EventRegion::SS_AntiIsolated() },
-        { "SS_AntiIsolated", EventRegion::SS_AntiIsolated() }
-    };
-    std::cout << "regions_str.sise()=" << regions_str.size() << "\n";
-    for(const auto& region : regions_str){
-        regions.insert(analysis::Parse<analysis::EventRegion>(region));}
-        // regions.insert(predefined_regions.at(region));
+    qcd_shape = analysis::Parse<analysis::EventRegion>(qcd_shape_str);
 
-    // std::cout << "SIZE=" << regions.size() << "\n";
-    qcd_shape = predefined_regionS.at(qcd_shape_str);
-
+    for(const auto& region : regions_str)
+        regions.insert(analysis::Parse<analysis::EventRegion>(region));
 }
-
 
 void MvaReaderSetup::CreateSelections()
 {

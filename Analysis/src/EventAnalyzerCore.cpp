@@ -42,17 +42,12 @@ EventAnalyzerCore::EventAnalyzerCore(const CoreAnalyzerArguments& args, Channel 
     ana_setup = ana_setup_collection.at(args.setup());
 
     SignalObjectSelector signalObjectSelector(ana_setup.mode);
-    std::cout << "Nutella 1" << "\n";
-    std::cout << "ana_setup.region 1 = " << ana_setup.regions.size() << "\n";
     EventRegion::Initialize(signalObjectSelector.GetTauVSjetDiscriminator().second,
                             signalObjectSelector.GetTauVSjetDiscriminator().second,
+                            signalObjectSelector.GetTauVSjetSidebandWPRange().first,
                             signalObjectSelector.GetTauVSjetDiscriminator().second);
-    std::cout << "ana_setup.region 2= " << ana_setup.regions.size() << "\n";
-    std::cout << "Nutella 2" << "\n";
 
     ana_setup.ConvertToEventRegion();
-    std::cout << "ana_setup.region 3" << ana_setup.regions.size() << "\n";
-    std::cout << "Nocciola" << "\n";
 
     if(args.mva_setup().size()) {
         const auto mva_setup_names = SplitValueList(args.mva_setup(), false, ", \t", true);
