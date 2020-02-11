@@ -8,7 +8,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 namespace analysis {
 
 EventAnalyzerCore::EventAnalyzerCore(const CoreAnalyzerArguments& args, Channel _channel) :
-    channelId(_channel), working_path(args.working_path())
+    channelId(_channel), working_path(args.working_path()), signalObjectSelector(SignalMode::HH)
 
 {
     ROOT::EnableThreadSafety();
@@ -40,6 +40,13 @@ EventAnalyzerCore::EventAnalyzerCore(const CoreAnalyzerArguments& args, Channel 
     if(!ana_setup_collection.count(args.setup()))
         throw exception("Setup '%1%' not found in the configuration file '%2%'.") % args.setup() % args.sources();
     ana_setup = ana_setup_collection.at(args.setup());
+
+    signalObjectSelector = SignalObjectSelector(ana_setup.mode);
+    EventRegion::Initialize(signalObjectSelector.GetTauVSjetDiscriminator().second,
+                            signalObjectSelector.GetTauVSjetSidebandWPRange().first,
+                            signalObjectSelector.GetTauVSjetDiscriminator().second);
+
+    ana_setup.ConvertToEventRegion();
 
     if(args.mva_setup().size()) {
         const auto mva_setup_names = SplitValueList(args.mva_setup(), false, ", \t", true);

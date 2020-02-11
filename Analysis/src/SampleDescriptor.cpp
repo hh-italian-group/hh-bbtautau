@@ -29,6 +29,14 @@ void AnalyzerSetup::CreateLimitSetups()
     }
 }
 
+void AnalyzerSetup::ConvertToEventRegion()
+{
+    qcd_shape = analysis::Parse<analysis::EventRegion>(qcd_shape_str);
+
+    for(const auto& region : regions_str)
+        regions.insert(analysis::Parse<analysis::EventRegion>(region));
+}
+
 void MvaReaderSetup::CreateSelections()
 {
     selections.clear();

@@ -22,6 +22,7 @@ void SetupEntryReader::EndEntry()
     CheckReadParamCounts("apply_mass_cut", 1, Condition::less_equal);
     CheckReadParamCounts("apply_charge_cut", 1, Condition::less_equal);
     CheckReadParamCounts("apply_bb_cut", 1, Condition::less_equal);
+    CheckReadParamCounts("apply_tau_iso", 1, Condition::less_equal);
     CheckReadParamCounts("keep_genJets", 1, Condition::less_equal);
     CheckReadParamCounts("keep_genParticles", 1, Condition::less_equal);
     CheckReadParamCounts("keep_MET_cov",1,Condition::less_equal);
@@ -50,6 +51,7 @@ void SetupEntryReader::ReadParameter(const std::string& /*param_name*/, const st
     ParseEntry("apply_mass_cut", current.apply_mass_cut);
     ParseEntry("apply_charge_cut", current.apply_charge_cut);
     ParseEntry("apply_bb_cut", current.apply_bb_cut);
+    ParseEntry("apply_tau_iso", current.apply_tau_iso);
     ParseEntry("keep_genJets", current.keep_genJets);
     ParseEntry("keep_genParticles", current.keep_genParticles);
     ParseEntry("keep_MET_cov",current.keep_MET_cov);

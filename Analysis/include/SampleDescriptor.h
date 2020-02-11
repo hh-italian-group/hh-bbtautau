@@ -20,15 +20,16 @@ struct AnalyzerSetup {
     Period period;
     SignalMode mode;
     QCDmethod qcd_method;
+    std::string qcd_shape_str;
+    EventRegion qcd_shape;
     DiscriminatorWP tauID_wp;
-    std::vector<std::string> final_variables;
     std::vector<double> pt_sel_bins;
-    bool apply_mass_cut{false}, apply_os_cut{true}, apply_iso_cut{true};
-    bool use_kinFit{false}, use_svFit{false}, applyTauID{true};
+    bool use_kinFit{false}, use_svFit{false};
     std::set<UncertaintySource> unc_sources;
     EventCategorySet categories;
     EventSubCategorySet sub_categories;
     EventRegionSet regions;
+    std::vector<std::string> regions_str;
     std::vector<std::string> data, signals, backgrounds, cmb_samples;
     std::vector<std::string> draw_sequence;
     std::map<EventCategory, std::string> limit_categories;
@@ -45,6 +46,7 @@ struct AnalyzerSetup {
 
     bool IsSignal(const std::string& sample_name) const;
     void CreateLimitSetups();
+    void ConvertToEventRegion();
 };
 
 using AnalyzerSetupCollection = std::unordered_map<std::string, AnalyzerSetup>;

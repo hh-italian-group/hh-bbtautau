@@ -18,8 +18,9 @@ SyncDescriptor::SyncDescriptor(const std::string& desc_str, std::shared_ptr<TFil
 }
 
 BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel channel) :
-    EventAnalyzerCore(_args, channel), args(_args), anaTupleWriter(args.output(), channel, ana_setup.use_kinFit, ana_setup.use_svFit),
-    trigger_patterns(ana_setup.trigger.at(channel)),signalObjectSelector(ana_setup.mode)
+    EventAnalyzerCore(_args, channel), args(_args), anaTupleWriter(args.output(), channel, ana_setup.use_kinFit,
+                      ana_setup.use_svFit),
+    trigger_patterns(ana_setup.trigger.at(channel))
 {
     EventCandidate::InitializeJecUncertainties(ana_setup.period, false, args.working_path());
     InitializeMvaReader();
@@ -86,7 +87,8 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfoBase& even
     for(const auto& jet : jets) {
         ++n;
         for(const auto& btag_wp : btag_working_points){
-            if(bTagger->Pass(*jet, analysis::UncertaintySource::None, analysis::UncertaintyScale::Central, btag_wp.first)) ++bjet_counts[btag_wp.first];
+            if(bTagger->Pass(*jet, analysis::UncertaintySource::None, analysis::UncertaintyScale::Central,
+                             btag_wp.first)) ++bjet_counts[btag_wp.first];
         }
     }
 
@@ -130,7 +132,8 @@ EventSubCategory BaseEventAnalyzer::DetermineEventSubCategory(EventInfoBase& eve
         mbb = event.GetHiggsBB().GetMomentum().mass();
         if(category.HasBoostConstraint() && category.IsBoosted()){
             if(ana_setup.use_svFit){
-                bool isInsideBoostedCut = IsInsideBoostedMassWindow(event.GetHiggsTTMomentum(true).mass(),mbb);
+                bool isInsideBoostedCut = event.GetSVFitResults().has_valid_momentum
+                                          && IsInsideBoostedMassWindow(event.GetHiggsTTMomentum(true).mass(),mbb);
                 sub_category.SetCutResult(SelectionCut::mh,isInsideBoostedCut);
             }
         }
@@ -138,12 +141,11 @@ EventSubCategory BaseEventAnalyzer::DetermineEventSubCategory(EventInfoBase& eve
             if(!ana_setup.use_svFit && ana_setup.massWindowParams.count(SelectionCut::mh))
                 throw exception("Category mh inconsistent with the false requirement of SVfit.");
             if(ana_setup.massWindowParams.count(SelectionCut::mh)){
-                const bool cut_result = event.GetSVFitResults().has_valid_momentum
-                        && ana_setup.massWindowParams.at(SelectionCut::mh)
-                                    .IsInside(event.GetHiggsTTMomentum(true).mass(), mbb);
+                const bool cut_result = ana_setup.use_svFit && event.GetSVFitResults().has_valid_momentum
+                        && ana_setup.massWindowParams.at(SelectionCut::mh).IsInside(event.GetHiggsTTMomentum(true).mass(),
+                                                                                    mbb);
                 sub_category.SetCutResult(SelectionCut::mh, cut_result);
             }
-
             if(ana_setup.massWindowParams.count(SelectionCut::mhVis))
                 sub_category.SetCutResult(SelectionCut::mhVis,ana_setup.massWindowParams.at(SelectionCut::mhVis)
                         .IsInside(event.GetHiggsTTMomentum(false).mass(),mbb));
@@ -236,7 +238,8 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
 
                     //temporay fix for muMu
                     bool is_data = (sample.sampleType == SampleType::Data);
-                    if(!signalObjectSelector.PassLeptonVetoSelection(tupleEvent) || !signalObjectSelector.PassMETfilters(tupleEvent,ana_setup.period,is_data)) continue;
+                    if(!signalObjectSelector.PassMETfilters(tupleEvent,ana_setup.period,is_data)) continue;
+                    if(!signalObjectSelector.PassLeptonVetoSelection(tupleEvent)) continue;
 
                     const EventRegion eventRegion = DetermineEventRegion(*event, eventCategory);
                     for(const auto& region : ana_setup.regions){
@@ -271,7 +274,6 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                         mc_corrections::WeightType::BTag);
                                 double total_btag_weight = btag_weight->Get(*event);
 
-
                                 const double weight = (*event)->weight_total * sample.cross_section
                                     * ana_setup.int_lumi * total_lepton_weight * total_btag_weight
                                     / summary->totalShapeWeight * mva_weight_scale;
@@ -290,7 +292,8 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                     const auto& regex_pattern = sync_descriptors.at(n).regex_pattern;
                     for(auto& dataId : dataIds){
                         if(boost::regex_match(dataId.first.GetName(), *regex_pattern)){
-                            htt_sync::FillSyncTuple(*event, *sync_descriptors.at(n).sync_tree, ana_setup.period,ana_setup.use_svFit,std::get<0>(dataId.second));
+                            htt_sync::FillSyncTuple(*event, *sync_descriptors.at(n).sync_tree, ana_setup.period,
+                                                    ana_setup.use_svFit,std::get<0>(dataId.second));
                             break;
                         }
                     }

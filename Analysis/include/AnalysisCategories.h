@@ -5,6 +5,8 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include <boost/optional/optional.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
+#include <boost/bimap.hpp>
+
 
 #include "AnalysisTools/Core/include/Tools.h"
 #include "AnalysisTools/Core/include/TextIO.h"
@@ -41,8 +43,11 @@ struct EventRegion {
     static const EventRegion& SS_LooseIsolated();
     static const EventRegion& SS_AntiIsolated();
     static const EventRegion& SignalRegion();
+    static void Initialize(DiscriminatorWP iso_lower, DiscriminatorWP anti_iso_lower, DiscriminatorWP anti_iso_upper);
+    static const boost::bimap<std::string, analysis::EventRegion>& EventRegionMapToString();
 
     EventRegion() {}
+
     EventRegion& SetCharge(bool _os);
     EventRegion& SetLowerIso(DiscriminatorWP wp);
     EventRegion& SetUpperIso(DiscriminatorWP wp);
@@ -63,8 +68,15 @@ struct EventRegion {
     static EventRegion Parse(const std::string& str);
 
 private:
+    static boost::bimap<std::string, EventRegion> predefined_regions;
+    static boost::optional<EventRegion> _OS_Isolated;
+    static boost::optional<EventRegion> _OS_AntiIsolated;
+    static boost::optional<EventRegion> _SS_Isolated;
+    static boost::optional<EventRegion> _SS_LooseIsolated;
+    static boost::optional<EventRegion> _SS_AntiIsolated;
     boost::optional<bool> os;
     boost::optional<DiscriminatorWP> iso_lower, iso_upper;
+
 };
 
 std::istream& operator>>(std::istream& s, EventRegion& eventRegion);

@@ -26,11 +26,11 @@ protected:
             if(mt >= cuts::H_tautau_2016::mt) return EventRegion::Unknown();
         }
 
-        const bool os = !ana_setup.apply_os_cut || electron.GetCharge() * tau.GetCharge() == -1;
+        const bool os = electron.GetCharge() * tau.GetCharge() == -1;
         region.SetCharge(os);
 
         for(auto wp = working_points.rbegin(); wp != working_points.rend(); ++wp) {
-            if(tau->Passed(TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017, *wp)) {
+            if(tau->Passed(signalObjectSelector.GetTauVSjetDiscriminator().first, *wp)) {
                 region.SetLowerIso(*wp);
                 if(wp != working_points.rbegin())
                     region.SetUpperIso(*(--wp));
