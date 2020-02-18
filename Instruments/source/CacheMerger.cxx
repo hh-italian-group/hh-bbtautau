@@ -55,19 +55,15 @@ public:
         }
 
          for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) {
-             cache_out.GetEntry(current_entry);
-             const cache_tuple::CacheEvent& c_out = cache_out.data();
-             auto event_ptr = std::make_shared<cache_tuple::CacheEvent>(c_out);
-
-             EventCacheProvider eventCacheProvider(*event_ptr);
+             EventCacheProvider eventCacheProvider;
 
              for (int i = 0; i < cacheTuples.size(); ++i){
                  cacheTuples.at(i)->GetEntry(current_entry);
                  const cache_tuple::CacheEvent& cache_event = cacheTuples.at(i)->data();
-                 cache_out.Fill();
                  eventCacheProvider.AddEvent(cache_event);
             }
-            eventCacheProvider.FillEvent(*event_ptr);
+            cache_out.Fill();
+            eventCacheProvider.FillEvent(cache_out());
          }
          cache_out.Write();
          // std::cout << "final entries =" << cache_out.GetEntries()  << "\n";
