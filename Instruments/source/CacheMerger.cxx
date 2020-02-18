@@ -1,4 +1,4 @@
-/*! Merge multiple root files into a single file splitting by channels.
+/*! Merge multiple CacheTuples files into a single file.
 This file is part of https://github.com/hh-italian-group/h-tautau. */
 
 #include <iostream>
@@ -8,6 +8,8 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 #include "AnalysisTools/Core/include/TextIO.h"
 #include "h-tautau/Core/include/CacheTuple.h"
 #include "h-tautau/Core/include/EventTuple.h"
+#include "h-tautau/Analysis/include/EventCacheProvider.h"
+
 
 struct Arguments {
     REQ_ARG(std::vector<std::string>, inputs);
@@ -42,17 +44,33 @@ public:
                 cacheTuples.push_back(nullptr);
             }
         }
+        cache_tuple::CacheTuple cache_out(args.channel(), output.get(), false);
 
-         cache_tuple::CacheTuple cache_out(args.channel(), output.get(), false);
-         for (int i = 0; i < cacheTuples.size(); ++i){
-             auto n_entries = cacheTuples.at(i)->GetEntries();
-             for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) {
+        const Long64_t n_entries = cacheTuples.at(0)->GetEntries();
+
+        for (int i = 0; i < cacheTuples.size() ; ++i){
+            if(cacheTuples.at(0)->GetEntries() != cacheTuples.at(i)->GetEntries())
+                throw exception ("The cache ntuple number '%1%' has an incorrect number of events '%2%' ('%3%').") % i
+                                %cacheTuples.at(i)->GetEntries() %cacheTuples.at(0)->GetEntries();
+        }
+
+         for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) {
+             cache_out.GetEntry(current_entry);
+             const cache_tuple::CacheEvent& c_out = cache_out.data();
+             auto event_ptr = std::make_shared<cache_tuple::CacheEvent>(c_out);
+
+             EventCacheProvider eventCacheProvider(*event_ptr);
+
+             for (int i = 0; i < cacheTuples.size(); ++i){
                  cacheTuples.at(i)->GetEntry(current_entry);
                  const cache_tuple::CacheEvent& cache_event = cacheTuples.at(i)->data();
                  cache_out.Fill();
-             }
+                 eventCacheProvider.AddEvent(cache_event);
+            }
+            eventCacheProvider.FillEvent(*event_ptr);
          }
          cache_out.Write();
+         // std::cout << "final entries =" << cache_out.GetEntries()  << "\n";
     }
 private:
     Arguments args;
