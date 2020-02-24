@@ -92,8 +92,6 @@ public:
         auto summaryTuple = ntuple::CreateSummaryTuple("summary", originalFile.get(), true, ntuple::TreeState::Full);
         summaryTuple->GetEntry(0);
         SummaryInfo summaryInfo(summaryTuple->data(), Parse<Channel>(args.tree_name()), args.trigger_cfg());
-        EventIdentifier current_id = EventIdentifier::Undef_event();
-        std::map<UncertaintySource, ntuple::Event> events;
         std::cout << "n_entries" << n_entries << '\n';
 
         for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) {
@@ -107,26 +105,9 @@ public:
             // const EventIdentifier EventIdTest(1,5,4380);
             // if(!(EventId == EventIdTest)) continue;
            // std::cout << "n_entries"  << '\n';
-
-            EventIdentifier event_id(event);
-            if(event_id != current_id) {
-                if(!events.empty()) {
-                    FillSyncTuple(sync, events, summaryInfo);
-                    events.clear();
-                }
-                current_id = event_id;
-            }
-
-            //const auto es = static_cast<EventEnergyScale>(event.eventEnergyScale);
-            events[UncertaintySource::None] = event;
+            FillSyncTuple(sync, event, summaryInfo);
         }
-
-        if(!events.empty()){
-            FillSyncTuple(sync, events, summaryInfo);
-        }
-
         sync.Write();
-
     }
 
 private:
@@ -161,7 +142,7 @@ private:
         return signalMode_map.at(syncMode);
     }
 
-    void FillSyncTuple(SyncTuple& sync, const std::map<UncertaintySource, ntuple::Event>& events,const SummaryInfo& summaryInfo) const
+    void FillSyncTuple(SyncTuple& sync, const ntuple::Event& event,const SummaryInfo& summaryInfo) const
     {
         // 2018
         static const std::map<Channel, std::vector<std::string>> triggerPaths = {
@@ -178,9 +159,9 @@ private:
         };
         const Channel channel = Parse<Channel>(args.tree_name());
         std::map<UncertaintySource, std::shared_ptr<EventInfoBase>> event_infos;
-        for(const auto& entry : events) {
+        //for(const auto& entry : events) {
             // const auto es = entry.first;
-            const auto& event = entry.second;
+//            const auto& event = entry.second;
 
             // if(!args.fill_tau_es_vars() && (es == EventEnergyScale::TauUp || es == EventEnergyScale::TauDown)) continue;
             // if((!args.fill_jet_es_vars() || !args.jet_uncertainty().empty())
@@ -188,17 +169,18 @@ private:
 
             //JetOrdering jet_ordering = run_period == Period::Run2017 ? JetOrdering::DeepCSV : JetOrdering::CSV;
             JetOrdering jet_ordering = JetOrdering::DeepFlavour;
-            boost::optional<EventInfoBase> event_info_base = CreateEventInfo(event,signalObjectSelector,&summaryInfo,run_period,jet_ordering, true);
-            if(!event_info_base.is_initialized()) continue;
-            if(!event_info_base->GetTriggerResults().AnyAcceptAndMatchEx(triggerPaths.at(channel), event_info_base->GetFirstLeg().GetMomentum().pt(),
-                                                                                                event_info_base->GetSecondLeg().GetMomentum().pt())) continue;
-            if(syncMode == SyncMode::HH && !event_info_base->HasBjetPair()) continue;
-            if(syncMode == SyncMode::HH && !signalObjectSelector.PassLeptonVetoSelection(event)) continue;
-            if(syncMode == SyncMode::HH && !signalObjectSelector.PassMETfilters(event,run_period,args.isData())) continue;
+            boost::optional<EventInfoBase> event_info = CreateEventInfo(event,signalObjectSelector,&summaryInfo,run_period,jet_ordering, true);
+            if(!event_info.is_initialized()) return;
+            if(!event_info->GetTriggerResults().AnyAcceptAndMatchEx(triggerPaths.at(channel),
+                        event_info->GetFirstLeg().GetMomentum().pt(),
+                        event_info->GetSecondLeg().GetMomentum().pt())) return;
+            if(syncMode == SyncMode::HH && !event_info->HasBjetPair()) return;
+            if(syncMode == SyncMode::HH && !signalObjectSelector.PassLeptonVetoSelection(event)) return;
+            if(syncMode == SyncMode::HH && !signalObjectSelector.PassMETfilters(event,run_period,args.isData())) return;
             for(size_t leg_id = 1; leg_id <= 2; ++leg_id) {
-                const LepCandidate& lepton = event_info_base->GetLeg(leg_id);
+                const LepCandidate& lepton = event_info->GetLeg(leg_id);
                 if(lepton->leg_type() == LegType::tau){
-                    if(!lepton->Passed(TauIdDiscriminator::byDeepTau2017v2p1VSjet, DiscriminatorWP::Medium)) continue;
+                    if(!lepton->Passed(TauIdDiscriminator::byDeepTau2017v2p1VSjet, DiscriminatorWP::Medium)) return;
                 }
             }
 
@@ -206,39 +188,22 @@ private:
                 static const std::vector<std::string> trigger_patterns_vbf = {
                   "HLT_VBF_DoubleLooseChargedIsoPFTau20_Trk1_eta2p1_Reg_v"
                 };
-                const auto first_vbf_jet = event_info_base->GetVBFJet(1);
-                const auto second_vbf_jet = event_info_base->GetVBFJet(2);
+                const auto first_vbf_jet = event_info->GetVBFJet(1);
+                const auto second_vbf_jet = event_info->GetVBFJet(2);
 
                 std::vector<boost::multiprecision::uint256_t> jet_trigger_match = {
                     first_vbf_jet->triggerFilterMatch(),
                     second_vbf_jet->triggerFilterMatch()
                 };
-                if(syncMode == SyncMode::HH && !event_info_base->GetTriggerResults().AnyAcceptAndMatchEx(trigger_patterns_vbf, event_info_base->GetFirstLeg().GetMomentum().pt(),
-                                                                                                    event_info_base->GetSecondLeg().GetMomentum().pt(), jet_trigger_match))
-                    continue;
+                if(syncMode == SyncMode::HH &&
+                        !event_info->GetTriggerResults().AnyAcceptAndMatchEx(trigger_patterns_vbf,
+                            event_info->GetFirstLeg().GetMomentum().pt(),
+                            event_info->GetSecondLeg().GetMomentum().pt(), jet_trigger_match))
+                    return;
             }
 
-            std::shared_ptr<analysis::EventInfoBase> event_info = std::make_shared<analysis::EventInfoBase>(*event_info_base);
-            event_infos[entry.first] = event_info;
-        }
-
-        // if(!event_infos.count(EventEnergyScale::Central)) return;
-
-        // if(!args.jet_uncertainty().empty()) {
-        //     event_infos[EventEnergyScale::JetUp] = event_infos[EventEnergyScale::Central]->ApplyShift(Parse<UncertaintySource>(args.jet_uncertainty()), UncertaintyScale::Up);
-        //     event_infos[EventEnergyScale::JetDown] = event_infos[EventEnergyScale::Central]->ApplyShift(Parse<UncertaintySource>(args.jet_uncertainty()), UncertaintyScale::Down);
-        // }
-
-        htt_sync::FillSyncTuple(*event_infos[UncertaintySource::None], sync, run_period, false, 1,
-                                mva_reader.get(),
-                                // event_infos[EventEnergyScale::TauUp].get(),
-                                // event_infos[EventEnergyScale::TauDown].get(),
-                                // event_infos[EventEnergyScale::JetUp].get(),
-                                // event_infos[EventEnergyScale::JetDown].get());
-                                nullptr,
-                                nullptr,
-                                nullptr,
-                                nullptr);
+        htt_sync::FillSyncTuple(*event_info, sync, run_period, false, 1,
+                                mva_reader.get(), nullptr, nullptr, nullptr, nullptr);
     }
 
 private:
