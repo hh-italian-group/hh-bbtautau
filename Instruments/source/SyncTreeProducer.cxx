@@ -104,14 +104,16 @@ public:
             }
             const ntuple::Event& event = (*originalTuple).data();
             // const EventIdentifier EventId(event.run, event.lumi, event.evt);
-            // const EventIdentifier EventIdTest(1,5,4380);
+            // const EventIdentifier EventIdTest(1,1,27);
             // if(!(EventId == EventIdTest)) continue;
-           // std::cout << "n_entries"  << '\n';
+           std::cout << "n_entries"  << '\n';
 
+            // std::cout << "EVENT ID= "<< event.run <<"," << event.lumi << "," << event.evt << "\n";
             EventIdentifier event_id(event);
             if(event_id != current_id) {
                 if(!events.empty()) {
                     FillSyncTuple(sync, events, summaryInfo);
+
                     events.clear();
                 }
                 current_id = event_id;
@@ -163,6 +165,16 @@ private:
 
     void FillSyncTuple(SyncTuple& sync, const std::map<UncertaintySource, ntuple::Event>& events,const SummaryInfo& summaryInfo) const
     {
+        // // 2016
+        // static const std::map<Channel, std::vector<std::string>> triggerPaths = {
+        //     { Channel::ETau, { "HLT_Ele25_eta2p1_WPTight_Gsf_v" } },
+        //     { Channel::MuTau, { "HLT_IsoMu22_v", "HLT_IsoMu22_eta2p1_v", "HLT_IsoTkMu22_v", "HLT_IsoTkMu22_eta2p1_v",
+        //                         "HLT_IsoMu19_eta2p1_LooseIsoPFTau20_v", "HLT_IsoMu19_eta2p1_LooseIsoPFTau20_SingleL1_v"} },
+        //     { Channel::TauTau, { "HLT_DoubleMediumIsoPFTau35_Trk1_eta2p1_Reg_v",
+        //                           "HLT_DoubleMediumCombinedIsoPFTau35_Trk1_eta2p1_Reg_v" } },
+        //     { Channel::MuMu, { "HLT_IsoMu22_v" } }
+        // };
+
         // 2018
         static const std::map<Channel, std::vector<std::string>> triggerPaths = {
             { Channel::ETau, { "HLT_Ele32_WPTight_Gsf_v", "HLT_Ele35_WPTight_Gsf_v",
@@ -171,9 +183,9 @@ private:
             { Channel::MuTau, { "HLT_IsoMu24_v", "HLT_IsoMu27_v", "HLT_IsoMu20_eta2p1_LooseChargedIsoPFTau27_eta2p1_CrossL1_v",
                                 "HLT_IsoMu20_eta2p1_LooseChargedIsoPFTauHPS27_eta2p1_CrossL1_v"} },
             { Channel::TauTau, { "HLT_DoubleTightChargedIsoPFTau35_Trk1_TightID_eta2p1_Reg_v",
-                "HLT_DoubleMediumChargedIsoPFTau40_Trk1_TightID_eta2p1_Reg_v",
-                "HLT_DoubleTightChargedIsoPFTau40_Trk1_eta2p1_Reg_v",
-                "HLT_DoubleMediumChargedIsoPFTauHPS35_Trk1_eta2p1_Reg_v"} },
+                                 "HLT_DoubleMediumChargedIsoPFTau40_Trk1_TightID_eta2p1_Reg_v",
+                                 "HLT_DoubleTightChargedIsoPFTau40_Trk1_eta2p1_Reg_v",
+                                 "HLT_DoubleMediumChargedIsoPFTauHPS35_Trk1_eta2p1_Reg_v"} },
             { Channel::MuMu, { "HLT_IsoMu24_v", "HLT_IsoMu27_v" } },
         };
         const Channel channel = Parse<Channel>(args.tree_name());
@@ -188,10 +200,12 @@ private:
 
             //JetOrdering jet_ordering = run_period == Period::Run2017 ? JetOrdering::DeepCSV : JetOrdering::CSV;
             JetOrdering jet_ordering = JetOrdering::DeepFlavour;
-            boost::optional<EventInfoBase> event_info_base = CreateEventInfo(event,signalObjectSelector,&summaryInfo,run_period,jet_ordering, true);
+            boost::optional<EventInfoBase> event_info_base = CreateEventInfo(event,signalObjectSelector,&summaryInfo,
+                                                                             run_period,jet_ordering, true);
             if(!event_info_base.is_initialized()) continue;
-            if(!event_info_base->GetTriggerResults().AnyAcceptAndMatchEx(triggerPaths.at(channel), event_info_base->GetFirstLeg().GetMomentum().pt(),
-                                                                                                event_info_base->GetSecondLeg().GetMomentum().pt())) continue;
+            if(!event_info_base->GetTriggerResults().AnyAcceptAndMatchEx(triggerPaths.at(channel),
+                                                                         event_info_base->GetFirstLeg().GetMomentum().pt(),
+                                                                         event_info_base->GetSecondLeg().GetMomentum().pt())) continue;
             if(syncMode == SyncMode::HH && !event_info_base->HasBjetPair()) continue;
             if(syncMode == SyncMode::HH && !signalObjectSelector.PassLeptonVetoSelection(event)) continue;
             if(syncMode == SyncMode::HH && !signalObjectSelector.PassMETfilters(event,run_period,args.isData())) continue;
