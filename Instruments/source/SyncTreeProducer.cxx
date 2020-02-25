@@ -92,7 +92,7 @@ public:
         auto summaryTuple = ntuple::CreateSummaryTuple("summary", originalFile.get(), true, ntuple::TreeState::Full);
         summaryTuple->GetEntry(0);
         SummaryInfo summaryInfo(summaryTuple->data(), Parse<Channel>(args.tree_name()), args.trigger_cfg());
-        std::cout << "n_entries" << n_entries << '\n';
+        std::cout << "n_entries " << n_entries << '\n';
 
         for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) {
             originalTuple->GetEntry(current_entry);
@@ -144,74 +144,61 @@ private:
 
     void FillSyncTuple(SyncTuple& sync, const ntuple::Event& event,const SummaryInfo& summaryInfo) const
     {
-        // 2016
-        static const std::map<Channel, std::vector<std::string>> triggerPaths = {
-            { Channel::ETau, { "HLT_Ele25_eta2p1_WPTight_Gsf_v" } },
-            { Channel::MuTau, { "HLT_IsoMu22_v", "HLT_IsoMu22_eta2p1_v", "HLT_IsoTkMu22_v", "HLT_IsoTkMu22_eta2p1_v",
-                                "HLT_IsoMu19_eta2p1_LooseIsoPFTau20_v", "HLT_IsoMu19_eta2p1_LooseIsoPFTau20_SingleL1_v"} },
-            { Channel::TauTau, { "HLT_DoubleMediumIsoPFTau35_Trk1_eta2p1_Reg_v",
-                                 "HLT_DoubleMediumCombinedIsoPFTau35_Trk1_eta2p1_Reg_v" } },
-            { Channel::MuMu, { "HLT_IsoMu22_v" } }
+        static const std::map<std::pair<Period, Channel>, std::vector<std::string>> triggerPaths = {
+            { { Period::Run2016, Channel::ETau }, { "HLT_Ele25_eta2p1_WPTight_Gsf_v" } },
+            { { Period::Run2016, Channel::MuTau }, { "HLT_IsoMu22_v", "HLT_IsoMu22_eta2p1_v", "HLT_IsoTkMu22_v",
+                                "HLT_IsoTkMu22_eta2p1_v", "HLT_IsoMu19_eta2p1_LooseIsoPFTau20_v",
+                                "HLT_IsoMu19_eta2p1_LooseIsoPFTau20_SingleL1_v" } },
+            { { Period::Run2016, Channel::TauTau }, { "HLT_DoubleMediumIsoPFTau35_Trk1_eta2p1_Reg_v",
+                                "HLT_DoubleMediumCombinedIsoPFTau35_Trk1_eta2p1_Reg_v" } },
+            { { Period::Run2016, Channel::MuMu }, { "HLT_IsoMu22_v" } },
+            { { Period::Run2018, Channel::ETau }, { "HLT_Ele32_WPTight_Gsf_v", "HLT_Ele35_WPTight_Gsf_v",
+                                "HLT_Ele24_eta2p1_WPTight_Gsf_LooseChargedIsoPFTau30_eta2p1_CrossL1_v",
+                                "HLT_Ele24_eta2p1_WPTight_Gsf_LooseChargedIsoPFTauHPS30_eta2p1_CrossL1_v" } },
+            { { Period::Run2018, Channel::MuTau }, { "HLT_IsoMu24_v", "HLT_IsoMu27_v",
+                                "HLT_IsoMu20_eta2p1_LooseChargedIsoPFTau27_eta2p1_CrossL1_v",
+                                "HLT_IsoMu20_eta2p1_LooseChargedIsoPFTauHPS27_eta2p1_CrossL1_v" } },
+            { { Period::Run2018, Channel::TauTau }, { "HLT_DoubleTightChargedIsoPFTau35_Trk1_TightID_eta2p1_Reg_v",
+                                 "HLT_DoubleMediumChargedIsoPFTau40_Trk1_TightID_eta2p1_Reg_v",
+                                 "HLT_DoubleTightChargedIsoPFTau40_Trk1_eta2p1_Reg_v",
+                                 "HLT_DoubleMediumChargedIsoPFTauHPS35_Trk1_eta2p1_Reg_v" } },
+            { { Period::Run2018, Channel::MuMu }, { "HLT_IsoMu24_v", "HLT_IsoMu27_v" } },
+        };
+
+        static const std::map<std::pair<Period, Channel>, std::vector<std::string>> trigger_patterns_vbf = {
+            { { Period::Run2017, Channel::TauTau }, "HLT_VBF_DoubleLooseChargedIsoPFTau20_Trk1_eta2p1_Reg_v" },
         };
 
 
-        // // 2018
-        // static const std::map<Channel, std::vector<std::string>> triggerPaths = {
-        //     { Channel::ETau, { "HLT_Ele32_WPTight_Gsf_v", "HLT_Ele35_WPTight_Gsf_v",
-        //                        "HLT_Ele24_eta2p1_WPTight_Gsf_LooseChargedIsoPFTau30_eta2p1_CrossL1_v",
-        //                        "HLT_Ele24_eta2p1_WPTight_Gsf_LooseChargedIsoPFTauHPS30_eta2p1_CrossL1_v" } },
-        //     { Channel::MuTau, { "HLT_IsoMu24_v", "HLT_IsoMu27_v", "HLT_IsoMu20_eta2p1_LooseChargedIsoPFTau27_eta2p1_CrossL1_v",
-        //                         "HLT_IsoMu20_eta2p1_LooseChargedIsoPFTauHPS27_eta2p1_CrossL1_v"} },
-        //     { Channel::TauTau, { "HLT_DoubleTightChargedIsoPFTau35_Trk1_TightID_eta2p1_Reg_v",
-        //         "HLT_DoubleMediumChargedIsoPFTau40_Trk1_TightID_eta2p1_Reg_v",
-        //         "HLT_DoubleTightChargedIsoPFTau40_Trk1_eta2p1_Reg_v",
-        //         "HLT_DoubleMediumChargedIsoPFTauHPS35_Trk1_eta2p1_Reg_v"} },
-        //     { Channel::MuMu, { "HLT_IsoMu24_v", "HLT_IsoMu27_v" } },
-        // };
+        static const JetOrdering jet_ordering = JetOrdering::DeepFlavour;
         const Channel channel = Parse<Channel>(args.tree_name());
-        std::map<UncertaintySource, std::shared_ptr<EventInfoBase>> event_infos;
-        //for(const auto& entry : events) {
-            // const auto es = entry.first;
-//            const auto& event = entry.second;
+        const auto trig_key = std::make_pair(run_period, channel);
 
-            // if(!args.fill_tau_es_vars() && (es == EventEnergyScale::TauUp || es == EventEnergyScale::TauDown)) continue;
-            // if((!args.fill_jet_es_vars() || !args.jet_uncertainty().empty())
-            //         && (es == EventEnergyScale::JetUp || es == EventEnergyScale::JetDown)) continue;
+        auto event_info = CreateEventInfo(event,signalObjectSelector,&summaryInfo,run_period,jet_ordering, true);
+        if(!event_info.is_initialized()) return;
 
-            //JetOrdering jet_ordering = run_period == Period::Run2017 ? JetOrdering::DeepCSV : JetOrdering::CSV;
-            JetOrdering jet_ordering = JetOrdering::DeepFlavour;
-            boost::optional<EventInfoBase> event_info = CreateEventInfo(event,signalObjectSelector,&summaryInfo,run_period,jet_ordering, true);
-            if(!event_info.is_initialized()) return;
-            if(!event_info->GetTriggerResults().AnyAcceptAndMatchEx(triggerPaths.at(channel),
-                        event_info->GetFirstLeg().GetMomentum().pt(),
-                        event_info->GetSecondLeg().GetMomentum().pt())) return;
-            if(syncMode == SyncMode::HH && !event_info->HasBjetPair()) return;
-            if(syncMode == SyncMode::HH && !signalObjectSelector.PassLeptonVetoSelection(event)) return;
-            if(syncMode == SyncMode::HH && !signalObjectSelector.PassMETfilters(event,run_period,args.isData())) return;
-            for(size_t leg_id = 1; leg_id <= 2; ++leg_id) {
-                const LepCandidate& lepton = event_info->GetLeg(leg_id);
-                if(lepton->leg_type() == LegType::tau){
-                    if(!lepton->Passed(TauIdDiscriminator::byDeepTau2017v2p1VSjet, DiscriminatorWP::Medium)) return;
-                }
-            }
+        if(!event_info->GetTriggerResults().AnyAcceptAndMatchEx(triggerPaths.at(trig_key),
+                                                                event_info->GetFirstLeg().GetMomentum().pt(),
+                                                                event_info->GetSecondLeg().GetMomentum().pt()))
+            return;
+        if(syncMode == SyncMode::HH && !event_info->HasBjetPair()) return;
+        if(syncMode == SyncMode::HH && !signalObjectSelector.PassLeptonVetoSelection(event)) return;
+        if(syncMode == SyncMode::HH && !signalObjectSelector.PassMETfilters(event,run_period,args.isData())) return;
 
-            if(args.apply_trigger_vbf()){
-                static const std::vector<std::string> trigger_patterns_vbf = {
-                  "HLT_VBF_DoubleLooseChargedIsoPFTau20_Trk1_eta2p1_Reg_v"
-                };
-                const auto first_vbf_jet = event_info->GetVBFJet(1);
-                const auto second_vbf_jet = event_info->GetVBFJet(2);
+        if(args.apply_trigger_vbf() && trigger_patterns_vbf.count(trig_key)) {
+            const auto first_vbf_jet = event_info->GetVBFJet(1);
+            const auto second_vbf_jet = event_info->GetVBFJet(2);
 
-                std::vector<boost::multiprecision::uint256_t> jet_trigger_match = {
-                    first_vbf_jet->triggerFilterMatch(),
-                    second_vbf_jet->triggerFilterMatch()
-                };
-                if(syncMode == SyncMode::HH &&
-                        !event_info->GetTriggerResults().AnyAcceptAndMatchEx(trigger_patterns_vbf,
-                            event_info->GetFirstLeg().GetMomentum().pt(),
-                            event_info->GetSecondLeg().GetMomentum().pt(), jet_trigger_match))
-                    return;
-            }
+            std::vector<boost::multiprecision::uint256_t> jet_trigger_match = {
+                first_vbf_jet->triggerFilterMatch(),
+                second_vbf_jet->triggerFilterMatch()
+            };
+            if(syncMode == SyncMode::HH
+                    && !event_info->GetTriggerResults().AnyAcceptAndMatchEx(trigger_patterns_vbf.at(trig_key),
+                            event_info->GetFirstLeg().GetMomentum().pt(), event_info->GetSecondLeg().GetMomentum().pt(),
+                            jet_trigger_match))
+                return;
+        }
 
         htt_sync::FillSyncTuple(*event_info, sync, run_period, false, 1,
                                 mva_reader.get(), nullptr, nullptr, nullptr, nullptr);
