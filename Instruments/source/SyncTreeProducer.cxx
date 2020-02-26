@@ -166,9 +166,8 @@ private:
         };
 
         static const std::map<std::pair<Period, Channel>, std::vector<std::string>> trigger_patterns_vbf = {
-            { { Period::Run2017, Channel::TauTau }, "HLT_VBF_DoubleLooseChargedIsoPFTau20_Trk1_eta2p1_Reg_v" },
+            { { Period::Run2017, Channel::TauTau }, {"HLT_VBF_DoubleLooseChargedIsoPFTau20_Trk1_eta2p1_Reg_v" } }
         };
-
 
         static const JetOrdering jet_ordering = JetOrdering::DeepFlavour;
         const Channel channel = Parse<Channel>(args.tree_name());

@@ -45,7 +45,7 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().evt = event->evt;
     sync().sampleId = event->file_desc_id;
     sync().npv = event->npv;
-    sync().npu = event->npu;
+    // sync().npu = event->npu;
 
     sync().pt_1 = static_cast<float>(event.GetLeg(1).GetMomentum().Pt());
     sync().pt_tau_ES_up_1 = COND_VAL(event_tau_up, event_tau_up->GetLeg(1).GetMomentum().Pt());
