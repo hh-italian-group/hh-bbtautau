@@ -85,7 +85,7 @@ public:
 
         auto originalFile = root_ext::OpenRootFile(args.input_file());
         auto outputFile = root_ext::CreateRootFile(args.output_file());
-        auto originalTuple = ntuple::CreateEventTuple(args.tree_name(),originalFile.get(),true,ntuple::TreeState::Full);
+        auto originalTuple = ntuple::CreateEventTuple("events",originalFile.get(),true,ntuple::TreeState::Full);
         const Long64_t n_entries = originalTuple->GetEntries();
 
         SyncTuple sync(args.tree_name(), outputFile.get(), false);
@@ -101,6 +101,10 @@ public:
                     (*originalTuple)().second_daughter_indexes = {1};
             }
             const ntuple::Event& event = (*originalTuple).data();
+            if(ToString(static_cast<Channel>(event.channelId))  != args.tree_name()) continue;
+            // if(ToString(static_cast<Channel>(event.channelId)) == args.tree_name())
+                // std::cout << "Nutella" << "\n";
+
             // const EventIdentifier EventId(event.run, event.lumi, event.evt);
             // const EventIdentifier EventIdTest(1,5,4380);
             // if(!(EventId == EventIdTest)) continue;
@@ -152,6 +156,14 @@ private:
             { { Period::Run2016, Channel::TauTau }, { "HLT_DoubleMediumIsoPFTau35_Trk1_eta2p1_Reg_v",
                                 "HLT_DoubleMediumCombinedIsoPFTau35_Trk1_eta2p1_Reg_v" } },
             { { Period::Run2016, Channel::MuMu }, { "HLT_IsoMu22_v" } },
+            { { Period::Run2017, Channel::ETau }, { "HLT_Ele32_WPTight_Gsf_v", "HLT_Ele35_WPTight_Gsf_v",
+                                "HLT_Ele24_eta2p1_WPTight_Gsf_LooseChargedIsoPFTau30_eta2p1_CrossL1_v" } },
+            { { Period::Run2017, Channel::MuTau }, { "HLT_IsoMu24_v", "HLT_IsoMu27_v",
+                                "HLT_IsoMu20_eta2p1_LooseChargedIsoPFTau27_eta2p1_CrossL1_v" } },
+            { { Period::Run2017, Channel::TauTau }, { "HLT_DoubleTightChargedIsoPFTau35_Trk1_TightID_eta2p1_Reg_v",
+                                "HLT_DoubleMediumChargedIsoPFTau40_Trk1_TightID_eta2p1_Reg_v",
+                                "HLT_DoubleTightChargedIsoPFTau40_Trk1_eta2p1_Reg_v" } },
+            { { Period::Run2017, Channel::MuMu }, { "HLT_IsoMu24_v", "HLT_IsoMu27_v" } },
             { { Period::Run2018, Channel::ETau }, { "HLT_Ele32_WPTight_Gsf_v", "HLT_Ele35_WPTight_Gsf_v",
                                 "HLT_Ele24_eta2p1_WPTight_Gsf_LooseChargedIsoPFTau30_eta2p1_CrossL1_v",
                                 "HLT_Ele24_eta2p1_WPTight_Gsf_LooseChargedIsoPFTauHPS30_eta2p1_CrossL1_v" } },
@@ -175,11 +187,9 @@ private:
 
         auto event_info = CreateEventInfo(event,signalObjectSelector,&summaryInfo,run_period,jet_ordering, true);
         if(!event_info.is_initialized()) return;
-
         if(!event_info->GetTriggerResults().AnyAcceptAndMatchEx(triggerPaths.at(trig_key),
                                                                 event_info->GetFirstLeg().GetMomentum().pt(),
-                                                                event_info->GetSecondLeg().GetMomentum().pt()))
-            return;
+                                                                event_info->GetSecondLeg().GetMomentum().pt())) return;
         if(syncMode == SyncMode::HH && !event_info->HasBjetPair()) return;
         if(syncMode == SyncMode::HH && !signalObjectSelector.PassLeptonVetoSelection(event)) return;
         if(syncMode == SyncMode::HH && !signalObjectSelector.PassMETfilters(event,run_period,args.isData())) return;
