@@ -19,7 +19,7 @@ SyncDescriptor::SyncDescriptor(const std::string& desc_str, std::shared_ptr<TFil
 
 BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel channel) :
     EventAnalyzerCore(_args, channel), args(_args), anaTupleWriter(args.output(), channel, ana_setup.use_kinFit,
-                      ana_setup.use_svFit),
+                      ana_setup.use_svFit,ana_setup.allow_calc_svFit),
     trigger_patterns(ana_setup.trigger.at(channel))
 {
     EventCandidate::InitializeJecUncertainties(ana_setup.period, false, args.working_path());
@@ -132,8 +132,9 @@ EventSubCategory BaseEventAnalyzer::DetermineEventSubCategory(EventInfoBase& eve
         mbb = event.GetHiggsBB().GetMomentum().mass();
         if(category.HasBoostConstraint() && category.IsBoosted()){
             if(ana_setup.use_svFit){
-                bool isInsideBoostedCut = event.GetSVFitResults().has_valid_momentum
-                                          && IsInsideBoostedMassWindow(event.GetHiggsTTMomentum(true).mass(),mbb);
+                bool isInsideBoostedCut = event.GetSVFitResults(ana_setup.allow_calc_svFit).has_valid_momentum
+                                          && IsInsideBoostedMassWindow(event.GetHiggsTTMomentum(true,
+                                                                       ana_setup.allow_calc_svFit).mass(),mbb);
                 sub_category.SetCutResult(SelectionCut::mh,isInsideBoostedCut);
             }
         }
@@ -141,9 +142,10 @@ EventSubCategory BaseEventAnalyzer::DetermineEventSubCategory(EventInfoBase& eve
             if(!ana_setup.use_svFit && ana_setup.massWindowParams.count(SelectionCut::mh))
                 throw exception("Category mh inconsistent with the false requirement of SVfit.");
             if(ana_setup.massWindowParams.count(SelectionCut::mh)){
-                const bool cut_result = ana_setup.use_svFit && event.GetSVFitResults().has_valid_momentum
-                        && ana_setup.massWindowParams.at(SelectionCut::mh).IsInside(event.GetHiggsTTMomentum(true).mass(),
-                                                                                    mbb);
+                const bool cut_result = ana_setup.use_svFit && event.GetSVFitResults(ana_setup.allow_calc_svFit).has_valid_momentum
+                    && ana_setup.massWindowParams.at(SelectionCut::mh).IsInside(event.GetHiggsTTMomentum(true,
+                                                                                      ana_setup.allow_calc_svFit).mass(),
+                                                                                      mbb);
                 sub_category.SetCutResult(SelectionCut::mh, cut_result);
             }
             if(ana_setup.massWindowParams.count(SelectionCut::mhVis))
@@ -156,7 +158,8 @@ EventSubCategory BaseEventAnalyzer::DetermineEventSubCategory(EventInfoBase& eve
 
         }
         if(ana_setup.use_kinFit)
-            sub_category.SetCutResult(SelectionCut::KinematicFitConverged, event.GetKinFitResults().HasValidMass());
+            sub_category.SetCutResult(SelectionCut::KinematicFitConverged,
+                                      event.GetKinFitResults(ana_setup.allow_calc_svFit).HasValidMass());
     }
     if(mva_setup.is_initialized()) {
 
@@ -240,7 +243,6 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                     bool is_data = (sample.sampleType == SampleType::Data);
                     if(!signalObjectSelector.PassMETfilters(tupleEvent,ana_setup.period,is_data)) continue;
                     if(!signalObjectSelector.PassLeptonVetoSelection(tupleEvent)) continue;
-
                     const EventRegion eventRegion = DetermineEventRegion(*event, eventCategory);
                     for(const auto& region : ana_setup.regions){
                         if(!eventRegion.Implies(region)) continue;
