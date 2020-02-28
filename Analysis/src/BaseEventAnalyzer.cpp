@@ -71,7 +71,6 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfoBase& even
     if(event.HasVBFjetPair()){
         const auto vbf_jet_1 = event.GetVBFJet(1).GetMomentum();
         const auto vbf_jet_2 = event.GetVBFJet(2).GetMomentum();
-
         const auto deta_jj =  std::abs(vbf_jet_1.Eta() - vbf_jet_2.Eta());
         const auto m_jj = (vbf_jet_1 + vbf_jet_2).M();
 

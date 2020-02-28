@@ -165,10 +165,12 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
         tuple().eta_VBF_1 = static_cast<float>(event.GetVBFJet(1).GetMomentum().Eta());
         tuple().phi_VBF_1 = static_cast<float>(event.GetVBFJet(1).GetMomentum().Phi());
         tuple().m_VBF_1 = static_cast<float>(event.GetVBFJet(1).GetMomentum().M());
+        tuple().deep_flavour_VBF_1 = static_cast<float>(event.GetVBFJet(1)->deepFlavour());
         tuple().pt_VBF_2 = static_cast<float>(event.GetVBFJet(2).GetMomentum().Pt());
         tuple().eta_VBF_2 = static_cast<float>(event.GetVBFJet(2).GetMomentum().Eta());
         tuple().phi_VBF_2 = static_cast<float>(event.GetVBFJet(2).GetMomentum().Phi());
         tuple().m_VBF_2 = static_cast<float>(event.GetVBFJet(2).GetMomentum().M());
+        tuple().deep_flavour_VBF_2 = static_cast<float>(event.GetVBFJet(2)->deepFlavour());
     }
 
 
