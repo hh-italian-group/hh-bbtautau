@@ -80,9 +80,12 @@ public:
             throw exception("Tuple skimmer setup not found.");
         setup = setups.at(args.setup_name());
 
-        EventCandidate::InitializeJecUncertainties(setup.period,false,".");
-
         signalObjectSelector = std::make_shared<SignalObjectSelector>(setup.mode);
+
+        EventCandidate::InitializeUncertainties(setup.period, false, ".",
+                                                signalObjectSelectors.GetTauVSjetDiscriminator().first,
+                                                signalObjectSelectors.GetTauVSeDiscriminator().first,
+                                                signalObjectSelectors.GetTauVSeDiscriminator().second);
 
         std::cout << "done.\nLoading weights... " << std::flush;
         eventWeights_HH = std::make_shared<mc_corrections::EventWeights_HH>(setup.period, setup.jet_ordering,

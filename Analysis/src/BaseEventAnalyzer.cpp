@@ -22,7 +22,10 @@ BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel cha
                       ana_setup.use_svFit,ana_setup.allow_calc_svFit),
     trigger_patterns(ana_setup.trigger.at(channel))
 {
-    EventCandidate::InitializeJecUncertainties(ana_setup.period, false, args.working_path());
+    EventCandidate::InitializeUncertainties(ana_setup.period, false, args.working_path(),
+                                            signalObjectSelector.GetTauVSjetDiscriminator().first,
+                                            signalObjectSelector.GetTauVSeDiscriminator(channel).first,
+                                            signalObjectSelector.GetTauVSeDiscriminator(channel).second);
     InitializeMvaReader();
     if(ana_setup.syncDataIds.size()){
         outputFile_sync = root_ext::CreateRootFile(args.output_sync());

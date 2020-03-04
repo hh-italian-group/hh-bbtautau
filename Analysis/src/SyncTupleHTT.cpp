@@ -20,7 +20,7 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
 {
 
     static constexpr float default_value = std::numeric_limits<float>::lowest();
-    // static constexpr int default_int_value = std::numeric_limits<int>::lowest();
+    static constexpr int default_int_value = std::numeric_limits<int>::lowest();
     using TauIdDiscriminator = analysis::TauIdDiscriminator;
     using DiscriminatorWP = analysis::DiscriminatorWP;
     using LegType = analysis::LegType;
@@ -48,6 +48,7 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     // sync().npu = event->npu;
 
     sync().pt_1 = static_cast<float>(event.GetLeg(1).GetMomentum().Pt());
+    // std::cout << "pt_1=" << sync().pt_1 << "\n";
     sync().pt_tau_ES_up_1 = COND_VAL(event_tau_up, event_tau_up->GetLeg(1).GetMomentum().Pt());
     sync().pt_tau_ES_down_1 = COND_VAL(event_tau_down, event_tau_down->GetLeg(1).GetMomentum().Pt());
     sync().phi_1 = static_cast<float>(event.GetLeg(1).GetMomentum().Phi());
@@ -75,6 +76,7 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().byIsolationMVArun2017v2DBoldDMwLTraw2017_1 = event.GetLeg(1)->leg_type() == LegType::tau ? event.GetLeg(1)->GetRawValue(TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017) : default_value;
 
     sync().pt_2 = static_cast<float>(event.GetLeg(2).GetMomentum().Pt());
+    // std::cout << "pt_2=" << sync().pt_2 << "\n";
     sync().pt_tau_ES_up_2 = COND_VAL(event_tau_up, event_tau_up->GetLeg(2).GetMomentum().Pt());
     sync().pt_tau_ES_down_2 = COND_VAL(event_tau_down, event_tau_down->GetLeg(2).GetMomentum().Pt());
     sync().phi_2 = static_cast<float>(event.GetLeg(2).GetMomentum().Phi());
@@ -174,6 +176,7 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().bjet_eta_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1).GetMomentum().Eta());
     sync().bjet_phi_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1).GetMomentum().Phi());
     sync().bjet_rawf_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1)->rawf());
+    sync().bjet_deepflavour_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1)->deepFlavour());
     sync().bjet_csv_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1)->csv());
     sync().bjet_deepcsv_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1)->deepcsv() >= 0
             ? event.GetBJet(1)->deepcsv() : -2);
@@ -186,6 +189,7 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().bjet_csv_2 = COND_VAL(event.HasBjetPair(), event.GetBJet(2)->csv());
     sync().bjet_deepcsv_2 = COND_VAL(event.HasBjetPair(), event.GetBJet(2)->deepcsv() >= 0
             ? event.GetBJet(2)->deepcsv() : -2);
+    sync().bjet_deepflavour_2 = COND_VAL(event.HasBjetPair(), event.GetBJet(2)->deepFlavour());
     sync().bjet_resolution_2 = COND_VAL(event.HasBjetPair(),
                                         event.GetBJet(2)->resolution() * event.GetBJet(2).GetMomentum().E());
     sync().ht_other_jets = event.GetHT(false,true);
@@ -216,17 +220,18 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().deltaR_ll = static_cast<float>(ROOT::Math::VectorUtil::DeltaR(event.GetLeg(1).GetMomentum(), event.GetLeg(2).GetMomentum()));
 
     sync().nFatJets = static_cast<unsigned>(event.GetFatJets().size());
-    // const auto fatJet = event.SelectFatJet(30, 0.4);
-    // sync().hasFatJet = event.HasBjetPair() ? fatJet != nullptr : -1;
-    // sync().fatJet_pt = COND_VAL(fatJet, fatJet->GetMomentum().Pt());
-    // sync().fatJet_eta = COND_VAL(fatJet, fatJet->GetMomentum().Eta());
-    // sync().fatJet_phi = COND_VAL(fatJet, fatJet->GetMomentum().Phi());
-    // sync().fatJet_energy = COND_VAL(fatJet, fatJet->GetMomentum().E());
-    // sync().fatJet_m_softDrop = COND_VAL(fatJet, (*fatJet)->m(ntuple::TupleFatJet::MassType::SoftDrop));
-    // sync().fatJet_n_subjettiness_tau1 = COND_VAL(fatJet, (*fatJet)->jettiness(1));
-    // sync().fatJet_n_subjettiness_tau2 = COND_VAL(fatJet, (*fatJet)->jettiness(2));
-    // sync().fatJet_n_subjettiness_tau3 = COND_VAL(fatJet, (*fatJet)->jettiness(3));
-    // sync().fatJet_n_subjets = COND_VAL_INT(fatJet, (*fatJet)->subJets().size());
+    const auto fatJet = event.SelectFatJet(30, 0.4);
+    
+    sync().hasFatJet = event.HasBjetPair() ? fatJet != nullptr : -1;
+    sync().fatJet_pt = COND_VAL(fatJet, fatJet->GetMomentum().Pt());
+    sync().fatJet_eta = COND_VAL(fatJet, fatJet->GetMomentum().Eta());
+    sync().fatJet_phi = COND_VAL(fatJet, fatJet->GetMomentum().Phi());
+    sync().fatJet_energy = COND_VAL(fatJet, fatJet->GetMomentum().E());
+    sync().fatJet_m_softDrop = COND_VAL(fatJet, (*fatJet)->m(ntuple::TupleFatJet::MassType::SoftDrop));
+    sync().fatJet_n_subjettiness_tau1 = COND_VAL(fatJet, (*fatJet)->jettiness(1));
+    sync().fatJet_n_subjettiness_tau2 = COND_VAL(fatJet, (*fatJet)->jettiness(2));
+    sync().fatJet_n_subjettiness_tau3 = COND_VAL(fatJet, (*fatJet)->jettiness(3));
+    sync().fatJet_n_subjets = COND_VAL_INT(fatJet, (*fatJet)->subJets().size());
 
     // sync().topWeight = static_cast<Float_t>(event->weight_top_pt);
     // sync().shapeWeight = static_cast<Float_t>(event->weight_pu * event->weight_bsm_to_sm * event->weight_dy

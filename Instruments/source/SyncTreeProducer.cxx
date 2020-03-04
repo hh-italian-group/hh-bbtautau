@@ -102,13 +102,15 @@ public:
             }
             const ntuple::Event& event = (*originalTuple).data();
             if(ToString(static_cast<Channel>(event.channelId))  != args.tree_name()) continue;
-            // if(ToString(static_cast<Channel>(event.channelId)) == args.tree_name())
-                // std::cout << "Nutella" << "\n";
 
             // const EventIdentifier EventId(event.run, event.lumi, event.evt);
-            // const EventIdentifier EventIdTest(1,5,4380);
+            // const EventIdentifier EventIdTest(278366,169,347642270);
+            //
+            // if(EventId == EventIdTest){
+            //     std::cout << "Pippo" << "\n";
+            // }
             // if(!(EventId == EventIdTest)) continue;
-           // std::cout << "n_entries"  << '\n';
+          // std::cout << "n_entries"  << '\n';
             FillSyncTuple(sync, event, summaryInfo);
         }
         sync.Write();
@@ -187,6 +189,14 @@ private:
 
         auto event_info = CreateEventInfo(event,signalObjectSelector,&summaryInfo,run_period,jet_ordering, true);
         if(!event_info.is_initialized()) return;
+        const auto& trig_list = triggerPaths.at(trig_key);
+        // for(const auto& trig : trig_list) {
+        //     const std::vector<std::string> single_trig = {trig};
+        //     std::cout << trig << ": " << event_info->GetTriggerResults().AnyAcceptAndMatchEx(single_trig,
+        //                                                             event_info->GetFirstLeg().GetMomentum().pt(),
+        //                                                             event_info->GetSecondLeg().GetMomentum().pt())
+        //             << std::endl;
+        // }
         if(!event_info->GetTriggerResults().AnyAcceptAndMatchEx(triggerPaths.at(trig_key),
                                                                 event_info->GetFirstLeg().GetMomentum().pt(),
                                                                 event_info->GetSecondLeg().GetMomentum().pt())) return;
