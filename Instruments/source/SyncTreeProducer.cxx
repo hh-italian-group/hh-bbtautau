@@ -189,7 +189,7 @@ private:
 
         auto event_info = CreateEventInfo(event,signalObjectSelector,&summaryInfo,run_period,jet_ordering, true);
         if(!event_info.is_initialized()) return;
-        const auto& trig_list = triggerPaths.at(trig_key);
+        // const auto& trig_list = triggerPaths.at(trig_key);
         // for(const auto& trig : trig_list) {
         //     const std::vector<std::string> single_trig = {trig};
         //     std::cout << trig << ": " << event_info->GetTriggerResults().AnyAcceptAndMatchEx(single_trig,
