@@ -221,7 +221,7 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
 
     sync().nFatJets = static_cast<unsigned>(event.GetFatJets().size());
     const auto fatJet = event.SelectFatJet(30, 0.4);
-    
+
     sync().hasFatJet = event.HasBjetPair() ? fatJet != nullptr : -1;
     sync().fatJet_pt = COND_VAL(fatJet, fatJet->GetMomentum().Pt());
     sync().fatJet_eta = COND_VAL(fatJet, fatJet->GetMomentum().Eta());
