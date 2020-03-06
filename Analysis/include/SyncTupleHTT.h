@@ -53,6 +53,7 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
     JVAR(Float_t, csv, suff, pref) \
     JVAR(Float_t, deepcsv, suff, pref) \
     JVAR(Float_t, deepflavour, suff, pref) \
+    JVAR(Float_t, pu_id_raw, suff, pref) \
     JVAR(Float_t, resolution, suff, pref) /* Jet energy resolution in percentage */ \
     JVAR(Float_t, pt_tau_ES_up, suff, pref) \
     JVAR(Float_t, pt_tau_ES_down, suff, pref) \

@@ -173,16 +173,22 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().extraelec_veto = event->extraelec_veto;
     sync().nbjets = static_cast<int>(event.GetSelectedSignalJets().n_bjets);
     sync().bjet_pt_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1).GetMomentum().Pt());
+    // std::cout << "sync().bjet_pt_1=" << sync().bjet_pt_1 << "\n";
     sync().bjet_eta_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1).GetMomentum().Eta());
     sync().bjet_phi_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1).GetMomentum().Phi());
     sync().bjet_rawf_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1)->rawf());
     sync().bjet_deepflavour_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1)->deepFlavour());
+    sync().bjet_pu_id_raw_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1)->GetPuIdRaw());
+    sync().bjet_pu_id_raw_2 = COND_VAL(event.HasBjetPair(), event.GetBJet(2)->GetPuIdRaw());
+    // std::cout << "sync().bjet_pu_id_raw_1=" << sync().bjet_pu_id_raw_1 << "\n";
+    // std::cout << "sync().bjet_pu_id_raw_2=" << sync().bjet_pu_id_raw_2 << "\n";
     sync().bjet_csv_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1)->csv());
     sync().bjet_deepcsv_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1)->deepcsv() >= 0
             ? event.GetBJet(1)->deepcsv() : -2);
     sync().bjet_resolution_1 = COND_VAL(event.HasBjetPair(),
                                         event.GetBJet(1)->resolution() * event.GetBJet(1).GetMomentum().E());
     sync().bjet_pt_2 = COND_VAL(event.HasBjetPair(), event.GetBJet(2).GetMomentum().Pt());
+    // std::cout << "sync().bjet_pt_2=" << sync().bjet_pt_2 << "\n";
     sync().bjet_eta_2 = COND_VAL(event.HasBjetPair(), event.GetBJet(2).GetMomentum().Eta());
     sync().bjet_phi_2 = COND_VAL(event.HasBjetPair(), event.GetBJet(2).GetMomentum().Phi());
     sync().bjet_rawf_2 = COND_VAL(event.HasBjetPair(), event.GetBJet(2)->rawf());

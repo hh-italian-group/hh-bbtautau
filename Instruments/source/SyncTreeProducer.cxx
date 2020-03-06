@@ -15,6 +15,7 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 #include "hh-bbtautau/Analysis/include/SyncTupleHTT.h"
 #include "h-tautau/Analysis/include/SignalObjectSelector.h"
 #include "AnalysisTools/Core/include/EventIdentifier.h"
+// #include "h-tautau/Analysis/include/EventCandidate.h"
 
 struct Arguments {
     REQ_ARG(std::string, mode);
@@ -74,6 +75,10 @@ public:
             mva_reader = std::make_shared<analysis::mva_study::MvaReader>();
             InitializeMvaReader();
         }
+        // EventCandidate::InitializeUncertainties(run_period, false, ".",
+        //                                         TauIdDiscriminator::byDeepTau2017v2p1VSjet,
+        //                                         TauIdDiscriminator::byDeepTau2017v2p1VSe);
+
     }
 
     void Run()
@@ -104,12 +109,13 @@ public:
             if(ToString(static_cast<Channel>(event.channelId))  != args.tree_name()) continue;
 
             // const EventIdentifier EventId(event.run, event.lumi, event.evt);
-            // const EventIdentifier EventIdTest(278345,644,1115158271);
+            // const EventIdentifier EventIdTest(1,1681,263510);
             //
             // if(EventId == EventIdTest){
             //     std::cout << "Pippo" << "\n";
             // }
             // if(!(EventId == EventIdTest)) continue;
+            // std::cout << event.run << "," << event.lumi << ","<<  event.evt << "\n";
           // std::cout << "n_entries"  << '\n';
             FillSyncTuple(sync, event, summaryInfo);
         }
@@ -159,7 +165,8 @@ private:
                                 "HLT_DoubleMediumCombinedIsoPFTau35_Trk1_eta2p1_Reg_v" } },
             { { Period::Run2016, Channel::MuMu }, { "HLT_IsoMu22_v" } },
             { { Period::Run2017, Channel::ETau }, { "HLT_Ele32_WPTight_Gsf_v", "HLT_Ele35_WPTight_Gsf_v",
-                                "HLT_Ele24_eta2p1_WPTight_Gsf_LooseChargedIsoPFTau30_eta2p1_CrossL1_v" } },
+                                "HLT_Ele24_eta2p1_WPTight_Gsf_LooseChargedIsoPFTau30_eta2p1_CrossL1_v",
+                                "HLT_Ele32_WPTight_Gsf_L1DoubleEG" } },
             { { Period::Run2017, Channel::MuTau }, { "HLT_IsoMu24_v", "HLT_IsoMu27_v",
                                 "HLT_IsoMu20_eta2p1_LooseChargedIsoPFTau27_eta2p1_CrossL1_v" } },
             { { Period::Run2017, Channel::TauTau }, { "HLT_DoubleTightChargedIsoPFTau35_Trk1_TightID_eta2p1_Reg_v",
@@ -182,13 +189,18 @@ private:
         static const std::map<std::pair<Period, Channel>, std::vector<std::string>> trigger_patterns_vbf = {
             { { Period::Run2017, Channel::TauTau }, {"HLT_VBF_DoubleLooseChargedIsoPFTau20_Trk1_eta2p1_Reg_v" } }
         };
-
+        // std::cout << "1" << "\n";
         static const JetOrdering jet_ordering = JetOrdering::DeepFlavour;
         const Channel channel = Parse<Channel>(args.tree_name());
         const auto trig_key = std::make_pair(run_period, channel);
 
+        // EventCandidate::InitializeUncertainties(run_period, false, ".",
+        //                                         signalObjectSelector.GetTauVSjetDiscriminator().first,
+        //                                         signalObjectSelector.GetTauVSeDiscriminator(Parse<Channel>(args.tree_name())).first);
         auto event_info = CreateEventInfo(event,signalObjectSelector,&summaryInfo,run_period,jet_ordering, true);
+        // std::cout << "2" << "\n";
         if(!event_info.is_initialized()) return;
+        // std::cout << "3" << "\n";
         // const auto& trig_list = triggerPaths.at(trig_key);
         // for(const auto& trig : trig_list) {
         //     const std::vector<std::string> single_trig = {trig};
