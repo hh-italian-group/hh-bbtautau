@@ -245,6 +245,9 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
     VAR(Double_t, costheta_METhbb) \
     VAR(Double_t, costheta_b1hbb) \
     VAR(Double_t, costheta_htautau_svhhMET) \
+    VAR(double, prefiringweight) \
+    VAR(double, prefiringweightup) \
+    VAR(double, prefiringweightdown) 
     /**/
 
 #define VAR(type, name) DECLARE_BRANCH_VARIABLE(type, name)
