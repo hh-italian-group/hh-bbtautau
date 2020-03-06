@@ -31,6 +31,7 @@ struct Arguments {
     OPT_ARG(bool, fill_jet_es_vars, false);
     OPT_ARG(std::string, jet_unc_source, "");
     OPT_ARG(std::string, jet_uncertainty, "");
+    OPT_ARG(std::string, event_id, "");
 };
 
 namespace analysis {
@@ -99,25 +100,21 @@ public:
         SummaryInfo summaryInfo(summaryTuple->data(), Parse<Channel>(args.tree_name()), args.trigger_cfg());
         std::cout << "n_entries " << n_entries << '\n';
 
+        boost::optional<EventIdentifier> selected_event_id;
+        if(!args.event_id().empty())
+            selected_event_id = EventIdentifier(args.event_id());
         for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) {
             originalTuple->GetEntry(current_entry);
-            if(static_cast<Channel>((*originalTuple)().channelId) == Channel::MuMu){ //temporary fix due tue a bug in mumu channel in production
-                    (*originalTuple)().first_daughter_indexes = {0};
-                    (*originalTuple)().second_daughter_indexes = {1};
-            }
             const ntuple::Event& event = (*originalTuple).data();
             if(ToString(static_cast<Channel>(event.channelId))  != args.tree_name()) continue;
 
-            // const EventIdentifier EventId(event.run, event.lumi, event.evt);
-            // const EventIdentifier EventIdTest(1,1681,263510);
-            //
-            // if(EventId == EventIdTest){
-            //     std::cout << "Pippo" << "\n";
-            // }
-            // if(!(EventId == EventIdTest)) continue;
-            // std::cout << event.run << "," << event.lumi << ","<<  event.evt << "\n";
-          // std::cout << "n_entries"  << '\n';
-            FillSyncTuple(sync, event, summaryInfo);
+            if(selected_event_id.is_initialized()) {
+                const EventIdentifier eventId(event.run, event.lumi, event.evt);
+                if(eventId != *selected_event_id) continue;
+                std::cout << "Event: " << eventId << std::endl;
+
+            }
+            FillSyncTuple(sync, event, summaryInfo, selected_event_id.is_initialized());
         }
         sync.Write();
     }
@@ -154,7 +151,7 @@ private:
         return signalMode_map.at(syncMode);
     }
 
-    void FillSyncTuple(SyncTuple& sync, const ntuple::Event& event,const SummaryInfo& summaryInfo) const
+    void FillSyncTuple(SyncTuple& sync, const ntuple::Event& event, const SummaryInfo& summaryInfo, bool debug) const
     {
         static const std::map<std::pair<Period, Channel>, std::vector<std::string>> triggerPaths = {
             { { Period::Run2016, Channel::ETau }, { "HLT_Ele25_eta2p1_WPTight_Gsf_v" } },
@@ -201,14 +198,16 @@ private:
         // std::cout << "2" << "\n";
         if(!event_info.is_initialized()) return;
         // std::cout << "3" << "\n";
-        // const auto& trig_list = triggerPaths.at(trig_key);
-        // for(const auto& trig : trig_list) {
-        //     const std::vector<std::string> single_trig = {trig};
-        //     std::cout << trig << ": " << event_info->GetTriggerResults().AnyAcceptAndMatchEx(single_trig,
-        //                                                             event_info->GetFirstLeg().GetMomentum().pt(),
-        //                                                             event_info->GetSecondLeg().GetMomentum().pt())
-        //             << std::endl;
-        // }
+        if(debug) {
+            const auto& trig_list = triggerPaths.at(trig_key);
+            for(const auto& trig : trig_list) {
+                std::cout << trig << ": accept=" << event_info->GetTriggerResults().Accept(trig)
+                          << " match=" << event_info->GetTriggerResults().MatchEx(trig,
+                                                                        event_info->GetFirstLeg().GetMomentum().pt(),
+                                                                        event_info->GetSecondLeg().GetMomentum().pt())
+                          << std::endl;
+            }
+        }
         if(!event_info->GetTriggerResults().AnyAcceptAndMatchEx(triggerPaths.at(trig_key),
                                                                 event_info->GetFirstLeg().GetMomentum().pt(),
                                                                 event_info->GetSecondLeg().GetMomentum().pt())) return;
