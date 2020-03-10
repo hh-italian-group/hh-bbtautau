@@ -265,14 +265,10 @@ private:
                 }
             }
         }
-        if(!event_info->GetTriggerResults().AnyAcceptAndMatchEx(triggerPaths.at(trig_key),
-                                                                event_info->GetFirstLeg().GetMomentum().pt(),
-                                                                event_info->GetSecondLeg().GetMomentum().pt())) return;
-        if(syncMode == SyncMode::HH && !event_info->HasBjetPair()) return;
-        if(syncMode == SyncMode::HH && !signalObjectSelector.PassLeptonVetoSelection(event)) return;
-        if(syncMode == SyncMode::HH && !signalObjectSelector.PassMETfilters(event,run_period,args.isData())) return;
-
-        if(args.apply_trigger_vbf() && trigger_patterns_vbf.count(trig_key) && event_info->HasVBFjetPair()) {
+        bool pass_trigger = event_info->GetTriggerResults().AnyAcceptAndMatchEx(triggerPaths.at(trig_key),
+                event_info->GetFirstLeg().GetMomentum().pt(), event_info->GetSecondLeg().GetMomentum().pt());
+        if(!pass_trigger && args.apply_trigger_vbf() && trigger_patterns_vbf.count(trig_key)
+                && event_info->HasVBFjetPair()) {
             const auto& first_vbf_jet = event_info->GetVBFJet(1);
             const auto& second_vbf_jet = event_info->GetVBFJet(2);
 
@@ -280,12 +276,14 @@ private:
                 first_vbf_jet->triggerFilterMatch(),
                 second_vbf_jet->triggerFilterMatch()
             };
-            if(syncMode == SyncMode::HH
-                    && !event_info->GetTriggerResults().AnyAcceptAndMatchEx(trigger_patterns_vbf.at(trig_key),
-                            event_info->GetFirstLeg().GetMomentum().pt(), event_info->GetSecondLeg().GetMomentum().pt(),
-                            jet_trigger_match))
-                return;
+            pass_trigger = event_info->GetTriggerResults().AnyAcceptAndMatchEx(trigger_patterns_vbf.at(trig_key),
+                    event_info->GetFirstLeg().GetMomentum().pt(), event_info->GetSecondLeg().GetMomentum().pt(),
+                    jet_trigger_match);
         }
+        if(!pass_trigger) return;
+        if(syncMode == SyncMode::HH && !event_info->HasBjetPair()) return;
+        if(syncMode == SyncMode::HH && !signalObjectSelector.PassLeptonVetoSelection(event)) return;
+        if(syncMode == SyncMode::HH && !signalObjectSelector.PassMETfilters(event,run_period,args.isData())) return;
 
         htt_sync::FillSyncTuple(*event_info, sync, run_period, false, 1,
                                 mva_reader.get(), nullptr, nullptr, nullptr, nullptr);
