@@ -383,9 +383,9 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().mva_score_lm_320_jet_ES_down = COND_VAL(event_jet_down && mva_reader, mva_reader->Evaluate(analysis::mva_study::MvaReader::MvaKey{"mva_lmANkin", 320, 0}, event_jet_down));
     sync().mva_score_mm_400_jet_ES_down = COND_VAL(event_jet_down && mva_reader, mva_reader->Evaluate(analysis::mva_study::MvaReader::MvaKey{"mva_mmANkin", 400, 0}, event_jet_down));
     sync().mva_score_hm_650_jet_ES_down = COND_VAL(event_jet_down && mva_reader, mva_reader->Evaluate(analysis::mva_study::MvaReader::MvaKey{"mva_hmANkin", 650, 0}, event_jet_down));
-    sync().prefiringweight = event->theprefiringweight;
-    sync().prefiringweightup = event->theprefiringweightup;
-    sync().prefiringweightdown = event->theprefiringweightdown;
+    sync().prefiringweight = event->l1_prefiring_weight;
+    sync().prefiringweightup = event->l1_prefiring_weight_up;
+    sync().prefiringweightdown = event->l1_prefiring_weight_down;
 
     sync.Fill();
 }

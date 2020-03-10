@@ -160,19 +160,18 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
     tuple().n_jets_eta24_pu = event.EventInfoBase::SelectJets(20,2.4,true,false,JetOrdering::DeepCSV,
                                                               event.EventInfoBase::GetSelectedBjetIndicesSet()).size();
 
-    if(event.HasVBFjetPair()){
-        tuple().pt_VBF_1 = static_cast<float>(event.GetVBFJet(1).GetMomentum().Pt());
-        tuple().eta_VBF_1 = static_cast<float>(event.GetVBFJet(1).GetMomentum().Eta());
-        tuple().phi_VBF_1 = static_cast<float>(event.GetVBFJet(1).GetMomentum().Phi());
-        tuple().m_VBF_1 = static_cast<float>(event.GetVBFJet(1).GetMomentum().M());
-        tuple().deep_flavour_VBF_1 = static_cast<float>(event.GetVBFJet(1)->deepFlavour());
-        tuple().pt_VBF_2 = static_cast<float>(event.GetVBFJet(2).GetMomentum().Pt());
-        tuple().eta_VBF_2 = static_cast<float>(event.GetVBFJet(2).GetMomentum().Eta());
-        tuple().phi_VBF_2 = static_cast<float>(event.GetVBFJet(2).GetMomentum().Phi());
-        tuple().m_VBF_2 = static_cast<float>(event.GetVBFJet(2).GetMomentum().M());
-        tuple().deep_flavour_VBF_2 = static_cast<float>(event.GetVBFJet(2)->deepFlavour());
-    }
-
+    tuple().pt_VBF_1 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(1).GetMomentum().Pt()) : def_val;
+    tuple().eta_VBF_1 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(1).GetMomentum().Eta()) : def_val;
+    tuple().phi_VBF_1 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(1).GetMomentum().Phi()) : def_val;
+    tuple().m_VBF_1 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(1).GetMomentum().M()) : def_val;
+    tuple().deep_flavour_VBF_1 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(1)->deepFlavour())
+                                                       : def_val;
+    tuple().pt_VBF_2 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(2).GetMomentum().Pt()) : def_val;
+    tuple().eta_VBF_2 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(2).GetMomentum().Eta()) : def_val;
+    tuple().phi_VBF_2 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(2).GetMomentum().Phi()) : def_val;
+    tuple().m_VBF_2 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(2).GetMomentum().M()) : def_val;
+    tuple().deep_flavour_VBF_2 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(2)->deepFlavour())
+                                                       : def_val;
 
     tuple().n_selected_gen_jets =  event->genJets_p4.size();
     int n_bflavour=0;

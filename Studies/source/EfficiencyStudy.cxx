@@ -7,6 +7,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include <TLatex.h>
 #include <TStyle.h>
 #include "AnalysisTools/Print/include/PdfPrinter.h"
+#include "AnalysisTools/Core/include/AnalysisMath.h"
 
 struct Arguments {
         run::Argument<std::string> input_file{"input_file", "Input file of the samples"};
