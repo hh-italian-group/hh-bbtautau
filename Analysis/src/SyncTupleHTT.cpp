@@ -20,7 +20,7 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
 {
 
     static constexpr float default_value = std::numeric_limits<float>::lowest();
-    // static constexpr int default_int_value = std::numeric_limits<int>::lowest();
+    static constexpr int default_int_value = std::numeric_limits<int>::lowest();
     using TauIdDiscriminator = analysis::TauIdDiscriminator;
     using DiscriminatorWP = analysis::DiscriminatorWP;
     using LegType = analysis::LegType;
@@ -174,7 +174,10 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().bjet_eta_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1).GetMomentum().Eta());
     sync().bjet_phi_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1).GetMomentum().Phi());
     sync().bjet_rawf_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1)->rawf());
-    sync().bjet_csv_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1)->csv());
+    sync().bjet_deepflavour_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1)->deepFlavour());
+    sync().bjet_pu_id_raw_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1)->GetPuIdRaw());
+    sync().bjet_pu_id_raw_2 = COND_VAL(event.HasBjetPair(), event.GetBJet(2)->GetPuIdRaw());
+    //sync().bjet_csv_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1)->csv());
     sync().bjet_deepcsv_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1)->deepcsv() >= 0
             ? event.GetBJet(1)->deepcsv() : -2);
     sync().bjet_resolution_1 = COND_VAL(event.HasBjetPair(),
@@ -183,9 +186,10 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().bjet_eta_2 = COND_VAL(event.HasBjetPair(), event.GetBJet(2).GetMomentum().Eta());
     sync().bjet_phi_2 = COND_VAL(event.HasBjetPair(), event.GetBJet(2).GetMomentum().Phi());
     sync().bjet_rawf_2 = COND_VAL(event.HasBjetPair(), event.GetBJet(2)->rawf());
-    sync().bjet_csv_2 = COND_VAL(event.HasBjetPair(), event.GetBJet(2)->csv());
+    // sync().bjet_csv_2 = COND_VAL(event.HasBjetPair(), event.GetBJet(2)->csv());
     sync().bjet_deepcsv_2 = COND_VAL(event.HasBjetPair(), event.GetBJet(2)->deepcsv() >= 0
             ? event.GetBJet(2)->deepcsv() : -2);
+    sync().bjet_deepflavour_2 = COND_VAL(event.HasBjetPair(), event.GetBJet(2)->deepFlavour());
     sync().bjet_resolution_2 = COND_VAL(event.HasBjetPair(),
                                         event.GetBJet(2)->resolution() * event.GetBJet(2).GetMomentum().E());
     sync().ht_other_jets = event.GetHT(false,true);
@@ -216,17 +220,18 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().deltaR_ll = static_cast<float>(ROOT::Math::VectorUtil::DeltaR(event.GetLeg(1).GetMomentum(), event.GetLeg(2).GetMomentum()));
 
     sync().nFatJets = static_cast<unsigned>(event.GetFatJets().size());
-    // const auto fatJet = event.SelectFatJet(30, 0.4);
-    // sync().hasFatJet = event.HasBjetPair() ? fatJet != nullptr : -1;
-    // sync().fatJet_pt = COND_VAL(fatJet, fatJet->GetMomentum().Pt());
-    // sync().fatJet_eta = COND_VAL(fatJet, fatJet->GetMomentum().Eta());
-    // sync().fatJet_phi = COND_VAL(fatJet, fatJet->GetMomentum().Phi());
-    // sync().fatJet_energy = COND_VAL(fatJet, fatJet->GetMomentum().E());
-    // sync().fatJet_m_softDrop = COND_VAL(fatJet, (*fatJet)->m(ntuple::TupleFatJet::MassType::SoftDrop));
-    // sync().fatJet_n_subjettiness_tau1 = COND_VAL(fatJet, (*fatJet)->jettiness(1));
-    // sync().fatJet_n_subjettiness_tau2 = COND_VAL(fatJet, (*fatJet)->jettiness(2));
-    // sync().fatJet_n_subjettiness_tau3 = COND_VAL(fatJet, (*fatJet)->jettiness(3));
-    // sync().fatJet_n_subjets = COND_VAL_INT(fatJet, (*fatJet)->subJets().size());
+    const auto fatJet = event.SelectFatJet(30, 0.4);
+
+    sync().hasFatJet = event.HasBjetPair() ? fatJet != nullptr : -1;
+    sync().fatJet_pt = COND_VAL(fatJet, fatJet->GetMomentum().Pt());
+    sync().fatJet_eta = COND_VAL(fatJet, fatJet->GetMomentum().Eta());
+    sync().fatJet_phi = COND_VAL(fatJet, fatJet->GetMomentum().Phi());
+    sync().fatJet_energy = COND_VAL(fatJet, fatJet->GetMomentum().E());
+    sync().fatJet_m_softDrop = COND_VAL(fatJet, (*fatJet)->m(ntuple::TupleFatJet::MassType::SoftDrop));
+    sync().fatJet_n_subjettiness_tau1 = COND_VAL(fatJet, (*fatJet)->jettiness(1));
+    sync().fatJet_n_subjettiness_tau2 = COND_VAL(fatJet, (*fatJet)->jettiness(2));
+    sync().fatJet_n_subjettiness_tau3 = COND_VAL(fatJet, (*fatJet)->jettiness(3));
+    sync().fatJet_n_subjets = COND_VAL_INT(fatJet, (*fatJet)->subJets().size());
 
     // sync().topWeight = static_cast<Float_t>(event->weight_top_pt);
     // sync().shapeWeight = static_cast<Float_t>(event->weight_pu * event->weight_bsm_to_sm * event->weight_dy
@@ -378,6 +383,9 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     sync().mva_score_lm_320_jet_ES_down = COND_VAL(event_jet_down && mva_reader, mva_reader->Evaluate(analysis::mva_study::MvaReader::MvaKey{"mva_lmANkin", 320, 0}, event_jet_down));
     sync().mva_score_mm_400_jet_ES_down = COND_VAL(event_jet_down && mva_reader, mva_reader->Evaluate(analysis::mva_study::MvaReader::MvaKey{"mva_mmANkin", 400, 0}, event_jet_down));
     sync().mva_score_hm_650_jet_ES_down = COND_VAL(event_jet_down && mva_reader, mva_reader->Evaluate(analysis::mva_study::MvaReader::MvaKey{"mva_hmANkin", 650, 0}, event_jet_down));
+    sync().prefiringweight = event->l1_prefiring_weight;
+    sync().prefiringweightup = event->l1_prefiring_weight_up;
+    sync().prefiringweightdown = event->l1_prefiring_weight_down;
 
     sync.Fill();
 }

@@ -52,6 +52,8 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
     JVAR(Float_t, rawf, suff, pref) /* factor to be applied to the jet p4 to obtain its uncorrected p4 */ \
     JVAR(Float_t, csv, suff, pref) \
     JVAR(Float_t, deepcsv, suff, pref) \
+    JVAR(Float_t, deepflavour, suff, pref) \
+    JVAR(Float_t, pu_id_raw, suff, pref) \
     JVAR(Float_t, resolution, suff, pref) /* Jet energy resolution in percentage */ \
     JVAR(Float_t, pt_tau_ES_up, suff, pref) \
     JVAR(Float_t, pt_tau_ES_down, suff, pref) \
@@ -243,6 +245,9 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
     VAR(Double_t, costheta_METhbb) \
     VAR(Double_t, costheta_b1hbb) \
     VAR(Double_t, costheta_htautau_svhhMET) \
+    VAR(double, prefiringweight) \
+    VAR(double, prefiringweightup) \
+    VAR(double, prefiringweightdown) 
     /**/
 
 #define VAR(type, name) DECLARE_BRANCH_VARIABLE(type, name)

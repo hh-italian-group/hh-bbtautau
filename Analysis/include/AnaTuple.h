@@ -43,7 +43,8 @@ namespace analysis {
     VAR_LIST(float, n_jets, n_jets_pu, n_jets_eta24, n_jets_eta24_pu, n_jets_eta24_eta5, n_jets_eta24_eta5_pu) \
     VAR_LIST(float, pt_1,eta_1, phi_1, m_1, pt_2, eta_2, phi_2, m_2, pt_b1, eta_b1, phi_b1, m_b1, \
              pt_b2, eta_b2, phi_b2, m_b2, pt_VBF_1, eta_VBF_1, phi_VBF_1, m_VBF_1, \
-             pt_VBF_2, eta_VBF_2, phi_VBF_2, m_VBF_2) \
+             pt_VBF_2, eta_VBF_2, phi_VBF_2, m_VBF_2, deep_flavour_b1, deep_flavour_b2, deep_flavour_VBF_1, \
+             deep_flavour_VBF_2 ) \
     /**/
 
 #define VAR(type, name) DECLARE_BRANCH_VARIABLE(type, name)
@@ -83,7 +84,7 @@ public:
     using Range = ::analysis::Range<double>;
     using RangeMap = std::map<SelectionCut, Range>;
 
-    AnaTupleWriter(const std::string& file_name, Channel channel, bool _runKinFit, bool _runSVfit);
+    AnaTupleWriter(const std::string& file_name, Channel channel, bool _runKinFit, bool _runSVfit, bool _allow_calc_svFit);
     ~AnaTupleWriter();
     void AddEvent(EventInfoBase& event, const DataIdMap& dataIds);
 
@@ -93,6 +94,7 @@ private:
     AnaAuxTuple aux_tuple;
     bool runKinFit;
     bool runSVfit;
+    bool allow_calc_svFit;
     DataIdBiMap known_data_ids;
     RangeMap mva_ranges;
 };
