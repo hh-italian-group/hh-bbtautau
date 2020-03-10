@@ -83,7 +83,7 @@ public:
         signalObjectSelector = std::make_shared<SignalObjectSelector>(setup.mode);
 
         EventCandidate::InitializeUncertainties(setup.period, false, ".",
-                                                signalObjectSelectors.GetTauVSjetDiscriminator().first);
+                                                signalObjectSelector->GetTauVSjetDiscriminator().first);
 
         std::cout << "done.\nLoading weights... " << std::flush;
         eventWeights_HH = std::make_shared<mc_corrections::EventWeights_HH>(setup.period, setup.jet_ordering,

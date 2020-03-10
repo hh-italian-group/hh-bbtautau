@@ -20,17 +20,20 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 struct Arguments {
     REQ_ARG(std::string, mode);
     REQ_ARG(std::string, input_file);
-    REQ_ARG(std::string, tree_name);
+    REQ_ARG(std::string, channel);
     REQ_ARG(std::string, period);
     REQ_ARG(std::string, trigger_cfg);
     REQ_ARG(std::string, output_file);
     REQ_ARG(bool, apply_trigger_vbf);
     REQ_ARG(bool, isData);
+    OPT_ARG(std::string, tree_name, "");
     OPT_ARG(std::string, mva_setup, "");
     OPT_ARG(bool, fill_tau_es_vars, false);
     OPT_ARG(bool, fill_jet_es_vars, false);
     OPT_ARG(std::string, jet_unc_source, "");
     OPT_ARG(std::string, jet_uncertainty, "");
+    OPT_ARG(std::string, event_id, "");
+    OPT_ARG(bool, debug, false);
 };
 
 namespace analysis {
@@ -54,6 +57,7 @@ public:
 
     SyncTreeProducer(const Arguments& _args) : args(_args), syncMode(Parse<SyncMode>(args.mode())),
                                                             run_period(Parse<analysis::Period>(args.period())),
+                                                            channel(Parse<Channel>(args.channel())),
                                                             signalObjectSelector(ConvertMode(syncMode))
                                                             // eventWeights(Parse<analysis::Period>(args.period()), JetOrdering::DeepCSV, DiscriminatorWP::Medium, true),
 
@@ -87,37 +91,36 @@ public:
                    % args.input_file() % args.output_file() % args.mode();
 
         std::map<std::string,std::pair<std::shared_ptr<ntuple::EventTuple>,Long64_t>> map_event;
+        const std::string tree_name = args.tree_name().empty() ? args.channel() : args.tree_name();
 
         auto originalFile = root_ext::OpenRootFile(args.input_file());
         auto outputFile = root_ext::CreateRootFile(args.output_file());
-        auto originalTuple = ntuple::CreateEventTuple("events",originalFile.get(),true,ntuple::TreeState::Full);
+        auto originalTuple = ntuple::CreateEventTuple(tree_name, originalFile.get(), true, ntuple::TreeState::Full);
         const Long64_t n_entries = originalTuple->GetEntries();
 
-        SyncTuple sync(args.tree_name(), outputFile.get(), false);
+        SyncTuple sync(args.channel(), outputFile.get(), false);
         auto summaryTuple = ntuple::CreateSummaryTuple("summary", originalFile.get(), true, ntuple::TreeState::Full);
         summaryTuple->GetEntry(0);
-        SummaryInfo summaryInfo(summaryTuple->data(), Parse<Channel>(args.tree_name()), args.trigger_cfg());
+        SummaryInfo summaryInfo(summaryTuple->data(), channel, args.trigger_cfg());
         std::cout << "n_entries " << n_entries << '\n';
 
+        boost::optional<EventIdentifier> selected_event_id;
+        if(!args.event_id().empty())
+            selected_event_id = EventIdentifier(args.event_id());
+        debug = selected_event_id.is_initialized() || args.debug();
         for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) {
             originalTuple->GetEntry(current_entry);
-            if(static_cast<Channel>((*originalTuple)().channelId) == Channel::MuMu){ //temporary fix due tue a bug in mumu channel in production
-                    (*originalTuple)().first_daughter_indexes = {0};
-                    (*originalTuple)().second_daughter_indexes = {1};
-            }
-            const ntuple::Event& event = (*originalTuple).data();
-            if(ToString(static_cast<Channel>(event.channelId))  != args.tree_name()) continue;
+            ntuple::Event event = (*originalTuple).data();
+            event.isData = args.isData();
+            if(static_cast<Channel>(event.channelId) != channel) continue;
 
-            // const EventIdentifier EventId(event.run, event.lumi, event.evt);
-            // const EventIdentifier EventIdTest(1,1681,263510);
-            //
-            // if(EventId == EventIdTest){
-            //     std::cout << "Pippo" << "\n";
-            // }
-            // if(!(EventId == EventIdTest)) continue;
-            // std::cout << event.run << "," << event.lumi << ","<<  event.evt << "\n";
-          // std::cout << "n_entries"  << '\n';
-            FillSyncTuple(sync, event, summaryInfo);
+            if(debug) {
+                const EventIdentifier eventId(event.run, event.lumi, event.evt);
+                if(selected_event_id.is_initialized() && eventId != *selected_event_id) continue;
+                std::cout << "Event: " << eventId << std::endl;
+            }
+
+            FillSyncTuple(sync, event, summaryInfo, debug);
         }
         sync.Write();
     }
@@ -154,7 +157,7 @@ private:
         return signalMode_map.at(syncMode);
     }
 
-    void FillSyncTuple(SyncTuple& sync, const ntuple::Event& event,const SummaryInfo& summaryInfo) const
+    void FillSyncTuple(SyncTuple& sync, const ntuple::Event& event, const SummaryInfo& summaryInfo, bool debug) const
     {
         static const std::map<std::pair<Period, Channel>, std::vector<std::string>> triggerPaths = {
             { { Period::Run2016, Channel::ETau }, { "HLT_Ele25_eta2p1_WPTight_Gsf_v" } },
@@ -187,28 +190,35 @@ private:
         };
 
         static const std::map<std::pair<Period, Channel>, std::vector<std::string>> trigger_patterns_vbf = {
-            { { Period::Run2017, Channel::TauTau }, {"HLT_VBF_DoubleLooseChargedIsoPFTau20_Trk1_eta2p1_Reg_v" } }
+            { { Period::Run2017, Channel::TauTau }, {"HLT_VBF_DoubleLooseChargedIsoPFTau20_Trk1_eta2p1_Reg_v" } },
+            { { Period::Run2018, Channel::TauTau }, { "HLT_VBF_DoubleLooseChargedIsoPFTau20_Trk1_eta2p1",
+                                 "HLT_VBF_DoubleLooseChargedIsoPFTauHPS20_Trk1_eta2p1" } },
         };
-        // std::cout << "1" << "\n";
         static const JetOrdering jet_ordering = JetOrdering::DeepFlavour;
-        const Channel channel = Parse<Channel>(args.tree_name());
         const auto trig_key = std::make_pair(run_period, channel);
 
         // EventCandidate::InitializeUncertainties(run_period, false, ".",
         //                                         signalObjectSelector.GetTauVSjetDiscriminator().first,
         //                                         signalObjectSelector.GetTauVSeDiscriminator(Parse<Channel>(args.tree_name())).first);
-        auto event_info = CreateEventInfo(event,signalObjectSelector,&summaryInfo,run_period,jet_ordering, true);
-        // std::cout << "2" << "\n";
+        if(debug)
+            std::cout << "Creating event info..." << std::endl;
+        auto event_info = CreateEventInfo(event, signalObjectSelector, &summaryInfo, run_period, jet_ordering, true,
+                                          UncertaintySource::None, UncertaintyScale::Central, debug);
+        if(debug)
+            std::cout << "Event info is_initialized = " << event_info.is_initialized() << std::endl;
         if(!event_info.is_initialized()) return;
-        // std::cout << "3" << "\n";
-        // const auto& trig_list = triggerPaths.at(trig_key);
-        // for(const auto& trig : trig_list) {
-        //     const std::vector<std::string> single_trig = {trig};
-        //     std::cout << trig << ": " << event_info->GetTriggerResults().AnyAcceptAndMatchEx(single_trig,
-        //                                                             event_info->GetFirstLeg().GetMomentum().pt(),
-        //                                                             event_info->GetSecondLeg().GetMomentum().pt())
-        //             << std::endl;
-        // }
+        if(debug) {
+            std::cout << "First leg: " << LorentzVectorToString(event_info->GetFirstLeg().GetMomentum()) << std::endl;
+            std::cout << "Second leg: " << LorentzVectorToString(event_info->GetSecondLeg().GetMomentum()) << std::endl;
+            const auto& trig_list = triggerPaths.at(trig_key);
+            for(const auto& trig : trig_list) {
+                std::cout << trig << ": accept=" << event_info->GetTriggerResults().Accept(trig)
+                          << " match=" << event_info->GetTriggerResults().MatchEx(trig,
+                                                                        event_info->GetFirstLeg().GetMomentum().pt(),
+                                                                        event_info->GetSecondLeg().GetMomentum().pt())
+                          << std::endl;
+            }
+        }
         if(!event_info->GetTriggerResults().AnyAcceptAndMatchEx(triggerPaths.at(trig_key),
                                                                 event_info->GetFirstLeg().GetMomentum().pt(),
                                                                 event_info->GetSecondLeg().GetMomentum().pt())) return;
@@ -216,7 +226,7 @@ private:
         if(syncMode == SyncMode::HH && !signalObjectSelector.PassLeptonVetoSelection(event)) return;
         if(syncMode == SyncMode::HH && !signalObjectSelector.PassMETfilters(event,run_period,args.isData())) return;
 
-        if(args.apply_trigger_vbf() && trigger_patterns_vbf.count(trig_key)) {
+        if(args.apply_trigger_vbf() && trigger_patterns_vbf.count(trig_key) && event_info->HasVBFjetPair()) {
             const auto first_vbf_jet = event_info->GetVBFJet(1);
             const auto second_vbf_jet = event_info->GetVBFJet(2);
 
@@ -239,10 +249,12 @@ private:
     Arguments args;
     SyncMode syncMode;
     analysis::Period run_period;
+    Channel channel;
     // mc_corrections::EventWeights eventWeights;
     boost::optional<MvaReaderSetup> mva_setup;
     std::shared_ptr<analysis::mva_study::MvaReader> mva_reader;
     SignalObjectSelector signalObjectSelector;
+    bool debug{false};
 };
 
 } // namespace analysis
