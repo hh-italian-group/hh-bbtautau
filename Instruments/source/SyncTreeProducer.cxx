@@ -79,9 +79,8 @@ public:
             mva_reader = std::make_shared<analysis::mva_study::MvaReader>();
             InitializeMvaReader();
         }
-        // EventCandidate::InitializeUncertainties(run_period, false, ".",
-        //                                         TauIdDiscriminator::byDeepTau2017v2p1VSjet,
-        //                                         TauIdDiscriminator::byDeepTau2017v2p1VSe);
+        EventCandidate::InitializeUncertainties(run_period, false, ".",
+                                                TauIdDiscriminator::byDeepTau2017v2p1VSjet);
 
     }
 
@@ -197,9 +196,6 @@ private:
         static const JetOrdering jet_ordering = JetOrdering::DeepFlavour;
         const auto trig_key = std::make_pair(run_period, channel);
 
-        // EventCandidate::InitializeUncertainties(run_period, false, ".",
-        //                                         signalObjectSelector.GetTauVSjetDiscriminator().first,
-        //                                         signalObjectSelector.GetTauVSeDiscriminator(Parse<Channel>(args.tree_name())).first);
         if(debug)
             std::cout << "Creating event info..." << std::endl;
         auto event_info = CreateEventInfo(event, signalObjectSelector, &summaryInfo, run_period, jet_ordering, true,
@@ -208,8 +204,36 @@ private:
             std::cout << "Event info is_initialized = " << event_info.is_initialized() << std::endl;
         if(!event_info.is_initialized()) return;
         if(debug) {
-            std::cout << "First leg: " << LorentzVectorToString(event_info->GetFirstLeg().GetMomentum()) << std::endl;
-            std::cout << "Second leg: " << LorentzVectorToString(event_info->GetSecondLeg().GetMomentum()) << std::endl;
+            for(size_t leg_id = 1; leg_id <= 2; ++leg_id) {
+                const auto& leg = event_info->GetLeg(leg_id);
+                std::cout << "Leg " << leg_id << ": type=" << leg->leg_type() << ", gen_match=" << leg->gen_match()
+                          << ", charge=" << leg->charge() << "\n"
+                          << "\t" << LorentzVectorToString(leg.GetMomentum())
+                          << ", uncorrected " << LorentzVectorToString(leg->p4()) << "\n";
+                if(leg->leg_type() == LegType::tau) {
+                    std::cout << "\tdecayMode=" << leg->decayMode() << "\n";
+                }
+            }
+            if(event_info->HasBjetPair()) {
+                for(size_t leg_id = 1; leg_id <= 2; ++leg_id) {
+                    const auto& leg = event_info->GetBJet(leg_id);
+                    std::cout << "b jet " << leg_id << ":\n"
+                              << "\t" << LorentzVectorToString(leg.GetMomentum())
+                              << ", uncorrected " << LorentzVectorToString(leg->p4()) << "\n";
+                }
+            } else {
+                std::cout << "No b-jet pair was selected.\n";
+            }
+            if(event_info->HasVBFjetPair()) {
+                for(size_t leg_id = 1; leg_id <= 2; ++leg_id) {
+                    const auto& leg = event_info->GetVBFJet(leg_id);
+                    std::cout << "VBF jet " << leg_id << ":\n"
+                              << "\t" << LorentzVectorToString(leg.GetMomentum())
+                              << ", uncorrected " << LorentzVectorToString(leg->p4()) << "\n";
+                }
+            } else {
+                std::cout << "No VBF pair was selected.\n";
+            }
             const auto& trig_list = triggerPaths.at(trig_key);
             for(const auto& trig : trig_list) {
                 std::cout << trig << ": accept=" << event_info->GetTriggerResults().Accept(trig)
@@ -217,6 +241,28 @@ private:
                                                                         event_info->GetFirstLeg().GetMomentum().pt(),
                                                                         event_info->GetSecondLeg().GetMomentum().pt())
                           << std::endl;
+            }
+            if(args.apply_trigger_vbf() && trigger_patterns_vbf.count(trig_key)) {
+                boost::optional<JetCandidate> first_vbf_jet, second_vbf_jet;
+                boost::optional<std::vector<boost::multiprecision::uint256_t>> jet_trigger_match;
+                if(event_info->HasVBFjetPair()) {
+                    first_vbf_jet = event_info->GetVBFJet(1);
+                    second_vbf_jet = event_info->GetVBFJet(2);
+                    jet_trigger_match = std::vector<boost::multiprecision::uint256_t>({
+                        (*first_vbf_jet)->triggerFilterMatch(), (*second_vbf_jet)->triggerFilterMatch(),
+                    });
+                }
+                const auto& vbf_trig_list = trigger_patterns_vbf.at(trig_key);
+                for(const auto& trig : vbf_trig_list) {
+                    const bool match = event_info->HasVBFjetPair()
+                                     ? event_info->GetTriggerResults().MatchEx(trig,
+                                                           event_info->GetFirstLeg().GetMomentum().pt(),
+                                                           event_info->GetSecondLeg().GetMomentum().pt(),
+                                                           *jet_trigger_match)
+                                     : false;
+                    std::cout << trig << ": accept=" << event_info->GetTriggerResults().Accept(trig)
+                              << " match=" << match << std::endl;
+                }
             }
         }
         if(!event_info->GetTriggerResults().AnyAcceptAndMatchEx(triggerPaths.at(trig_key),
@@ -227,8 +273,8 @@ private:
         if(syncMode == SyncMode::HH && !signalObjectSelector.PassMETfilters(event,run_period,args.isData())) return;
 
         if(args.apply_trigger_vbf() && trigger_patterns_vbf.count(trig_key) && event_info->HasVBFjetPair()) {
-            const auto first_vbf_jet = event_info->GetVBFJet(1);
-            const auto second_vbf_jet = event_info->GetVBFJet(2);
+            const auto& first_vbf_jet = event_info->GetVBFJet(1);
+            const auto& second_vbf_jet = event_info->GetVBFJet(2);
 
             std::vector<boost::multiprecision::uint256_t> jet_trigger_match = {
                 first_vbf_jet->triggerFilterMatch(),
