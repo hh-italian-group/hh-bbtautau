@@ -23,8 +23,7 @@ BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel cha
     trigger_patterns(ana_setup.trigger.at(channel))
 {
     EventCandidate::InitializeUncertainties(ana_setup.period, false, args.working_path(),
-                                            signalObjectSelector.GetTauVSjetDiscriminator().first,
-                                            signalObjectSelector.GetTauVSeDiscriminator(channel).first);
+                                            signalObjectSelector.GetTauVSjetDiscriminator().first);
     InitializeMvaReader();
     if(ana_setup.syncDataIds.size()){
         outputFile_sync = root_ext::CreateRootFile(args.output_sync());
