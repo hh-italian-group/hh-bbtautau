@@ -168,7 +168,7 @@ private:
             { { Period::Run2016, Channel::MuMu }, { "HLT_IsoMu22_v" } },
             { { Period::Run2017, Channel::ETau }, { "HLT_Ele32_WPTight_Gsf_v", "HLT_Ele35_WPTight_Gsf_v",
                                 "HLT_Ele24_eta2p1_WPTight_Gsf_LooseChargedIsoPFTau30_eta2p1_CrossL1_v",
-                                "HLT_Ele32_WPTight_Gsf_L1DoubleEG" } },
+                                "HLT_Ele32_WPTight_Gsf_L1DoubleEG_v" } },
             { { Period::Run2017, Channel::MuTau }, { "HLT_IsoMu24_v", "HLT_IsoMu27_v",
                                 "HLT_IsoMu20_eta2p1_LooseChargedIsoPFTau27_eta2p1_CrossL1_v" } },
             { { Period::Run2017, Channel::TauTau }, { "HLT_DoubleTightChargedIsoPFTau35_Trk1_TightID_eta2p1_Reg_v",
@@ -206,7 +206,7 @@ private:
         if(debug) {
             for(size_t leg_id = 1; leg_id <= 2; ++leg_id) {
                 const auto& leg = event_info->GetLeg(leg_id);
-                std::cout << "Leg " << leg_id << ": type=" << leg->leg_type() << ", gen_match=" << leg->gen_match()
+                std::cout << "Leg " << leg_id << ": type=" << leg->leg_type() //<< ", gen_match=" << leg->gen_match()
                           << ", charge=" << leg->charge() << "\n"
                           << "\t" << LorentzVectorToString(leg.GetMomentum())
                           << ", uncorrected " << LorentzVectorToString(leg->p4()) << "\n";
@@ -284,7 +284,6 @@ private:
         if(syncMode == SyncMode::HH && !event_info->HasBjetPair()) return;
         if(syncMode == SyncMode::HH && !signalObjectSelector.PassLeptonVetoSelection(event)) return;
         if(syncMode == SyncMode::HH && !signalObjectSelector.PassMETfilters(event,run_period,args.isData())) return;
-
         htt_sync::FillSyncTuple(*event_info, sync, run_period, false, 1,
                                 mva_reader.get(), nullptr, nullptr, nullptr, nullptr);
     }
