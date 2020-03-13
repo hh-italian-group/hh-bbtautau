@@ -206,10 +206,14 @@ private:
         if(debug) {
             for(size_t leg_id = 1; leg_id <= 2; ++leg_id) {
                 const auto& leg = event_info->GetLeg(leg_id);
-                std::cout << "Leg " << leg_id << ": type=" << leg->leg_type() //<< ", gen_match=" << leg->gen_match()
-                          << ", charge=" << leg->charge() << "\n"
-                          << "\t" << LorentzVectorToString(leg.GetMomentum())
-                          << ", uncorrected " << LorentzVectorToString(leg->p4()) << "\n";
+                std::cout << "Leg " << leg_id << ": type=" << leg->leg_type();
+                if(!args.isData())
+                    std::cout << ", gen_match=" << leg->gen_match();
+                std::cout << ", charge=" << leg->charge() << "\n"
+                          << "\t" << LorentzVectorToString(leg.GetMomentum());
+                if(!args.isData())
+                    std::cout << ", uncorrected " << LorentzVectorToString(leg->p4());
+                std::cout << "\n";
                 if(leg->leg_type() == LegType::tau) {
                     std::cout << "\tdecayMode=" << leg->decayMode() << "\n";
                 }
@@ -218,8 +222,10 @@ private:
                 for(size_t leg_id = 1; leg_id <= 2; ++leg_id) {
                     const auto& leg = event_info->GetBJet(leg_id);
                     std::cout << "b jet " << leg_id << ":\n"
-                              << "\t" << LorentzVectorToString(leg.GetMomentum())
-                              << ", uncorrected " << LorentzVectorToString(leg->p4()) << "\n";
+                              << "\t" << LorentzVectorToString(leg.GetMomentum());
+                    if(!args.isData())
+                        std::cout << ", uncorrected " << LorentzVectorToString(leg->p4());
+                    std::cout << "\n";
                 }
             } else {
                 std::cout << "No b-jet pair was selected.\n";
@@ -228,8 +234,10 @@ private:
                 for(size_t leg_id = 1; leg_id <= 2; ++leg_id) {
                     const auto& leg = event_info->GetVBFJet(leg_id);
                     std::cout << "VBF jet " << leg_id << ":\n"
-                              << "\t" << LorentzVectorToString(leg.GetMomentum())
-                              << ", uncorrected " << LorentzVectorToString(leg->p4()) << "\n";
+                              << "\t" << LorentzVectorToString(leg.GetMomentum());
+                    if(!args.isData())
+                        std::cout << ", uncorrected " << LorentzVectorToString(leg->p4());
+                    std::cout << "\n";
                 }
             } else {
                 std::cout << "No VBF pair was selected.\n";
@@ -263,6 +271,49 @@ private:
                     std::cout << trig << ": accept=" << event_info->GetTriggerResults().Accept(trig)
                               << " match=" << match << std::endl;
                 }
+            }
+            std::cout << "PassLeptonVetoSelection = " << signalObjectSelector.PassLeptonVetoSelection(event) << "\n";
+            std::cout << "Other leptons:\n";
+            for(unsigned n = 0; n < event.other_lepton_p4.size(); ++n){
+                if(static_cast<LegType>(event.other_lepton_type.at(n)) == LegType::e){
+                    const DiscriminatorIdResults eleId_iso(event.other_lepton_eleId_iso.at(n));
+                    const DiscriminatorIdResults eleId_noIso(event.other_lepton_eleId_noIso.at(n));
+                    std::cout << "\tele " << LorentzVectorToString(event.other_lepton_p4.at(n))
+                              << ", pass Medium iso id = " << eleId_iso.Passed(DiscriminatorWP::Medium)
+                              << ", pass Medium noIso id = " << eleId_noIso.Passed(DiscriminatorWP::Medium)
+                              << ", pfRelIso04 = " << event.other_lepton_iso.at(n) << "\n";
+                }
+                if(static_cast<LegType>(event.other_lepton_type.at(n)) == LegType::mu){
+                    analysis::DiscriminatorIdResults muonId(event.other_lepton_muonId.at(n));
+                    std::cout << "\tmuon " << LorentzVectorToString(event.other_lepton_p4.at(n))
+                              << ", pass Medium id = " << muonId.Passed(DiscriminatorWP::Medium)
+                              << ", pass Tight id = " << muonId.Passed(DiscriminatorWP::Tight)
+                              << ", pfRelIso04 = " << event.other_lepton_iso.at(n) << "\n";
+                }
+            }
+            std::cout << "PassMETfilters = " << signalObjectSelector.PassMETfilters(event,run_period,args.isData())
+                      << "\n";
+            std::cout << "MET " << LorentzVectorToString(event_info->GetMET().GetMomentum(), LVectorRepr::PxPyPtPhi);
+            if(!args.isData())
+                std::cout << ", uncorrected " << LorentzVectorToString(event_info->GetMET()->p4(),
+                                                                       LVectorRepr::PxPyPtPhi);
+            std::cout << "\n";
+            if(!args.isData()) {
+                auto& evt_cand = event_info->GetEventCandidate();
+                std::cout << "Lepton corrections:\n";
+                LorentzVectorXYZ total_delta(0, 0, 0, 0);
+                for(const auto& lep : evt_cand.GetLeptons()) {
+                    const auto& delta = lep.GetMomentum() - lep->p4();
+                    total_delta += delta;
+                    std::cout << "\t" << lep->leg_type() << ", ";
+                    if(lep->leg_type() == LegType::tau) {
+                        std::cout << "decayMode=" << lep->decayMode() << ", gen_match=" << lep->gen_match() << ", ";
+                    }
+                    std::cout << LorentzVectorToString(lep->p4(), LVectorRepr::PxPyPzE)
+                              << " -> " << LorentzVectorToString(lep.GetMomentum(), LVectorRepr::PxPyPzE, false)
+                              << ", shift = " << LorentzVectorToString(delta, LVectorRepr::PxPyPzE, false) << "\n";
+                }
+                std::cout << "Total lepton shift: " << LorentzVectorToString(total_delta, LVectorRepr::PxPyPzE) << "\n";
             }
         }
         bool pass_trigger = event_info->GetTriggerResults().AnyAcceptAndMatchEx(triggerPaths.at(trig_key),
