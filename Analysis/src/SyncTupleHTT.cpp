@@ -8,15 +8,15 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 
 namespace htt_sync {
 
-void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, analysis::Period /*run_period*/,
+void FillSyncTuple(analysis::EventInfo& event, htt_sync::SyncTuple& sync, analysis::Period /*run_period*/,
                    bool /*apply_svFit*/,
                    double /*weight*/,
                    //double dy_weight,
                    analysis::mva_study::MvaReader* mva_reader,
-                   analysis::EventInfoBase* event_tau_up,
-                   analysis::EventInfoBase* event_tau_down,
-                   analysis::EventInfoBase* event_jet_up,
-                   analysis::EventInfoBase* event_jet_down)
+                   analysis::EventInfo* event_tau_up,
+                   analysis::EventInfo* event_tau_down,
+                   analysis::EventInfo* event_jet_up,
+                   analysis::EventInfo* event_jet_down)
 {
 
     static constexpr float default_value = std::numeric_limits<float>::lowest();
@@ -29,7 +29,7 @@ void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, an
     analysis::JetCollection jets_pt30;
    size_t index_leg_1 = 0;
    size_t index_leg_2 = 0;
-   auto select_jets = [&](analysis::EventInfoBase* event_info) {
+   auto select_jets = [&](analysis::EventInfo* event_info) {
        jets_pt20.clear();
        jets_pt30.clear();
        if(!event_info) return;

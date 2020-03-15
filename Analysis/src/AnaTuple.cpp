@@ -30,7 +30,7 @@ AnaTupleWriter::~AnaTupleWriter()
     tuple.Write();
 }
 
-void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataIdMap& dataIds)
+void AnaTupleWriter::AddEvent(EventInfo& event, const AnaTupleWriter::DataIdMap& dataIds)
 {
     using namespace ROOT::Math::VectorUtil;
     static constexpr float def_val = std::numeric_limits<float>::lowest();
@@ -147,18 +147,18 @@ void AnaTupleWriter::AddEvent(EventInfoBase& event, const AnaTupleWriter::DataId
     tuple().HT_otherjets = event->ht_other_jets;
     tuple().HT_otherjets_gen = static_cast<float>(event.GetHT(false,true));
     tuple().HT_total_gen = static_cast<float>(event.GetHT(true,true));
-    tuple().n_jets = event.EventInfoBase::SelectJets(20,5,false,false,JetOrdering::DeepCSV,
-                                                     event.EventInfoBase::GetSelectedBjetIndicesSet()).size();
-    tuple().n_jets_pu = event.EventInfoBase::SelectJets(20,5,true,false,JetOrdering::DeepCSV,
-                                                        event.EventInfoBase::GetSelectedBjetIndicesSet()).size();
-    tuple().n_jets_eta24_eta5 = event.EventInfoBase::SelectJets(20,5,false,false,JetOrdering::DeepCSV,
-                                                                event.EventInfoBase::GetSelectedBjetIndicesSet(),2.4).size();
-    tuple().n_jets_eta24_eta5_pu = event.EventInfoBase::SelectJets(20,5,true,false,JetOrdering::DeepCSV,
-                                                                   event.EventInfoBase::GetSelectedBjetIndicesSet(),2.4).size();
-    tuple().n_jets_eta24 = event.EventInfoBase::SelectJets(20,2.4,false,false,JetOrdering::DeepCSV,
-                                                           event.EventInfoBase::GetSelectedBjetIndicesSet()).size();
-    tuple().n_jets_eta24_pu = event.EventInfoBase::SelectJets(20,2.4,true,false,JetOrdering::DeepCSV,
-                                                              event.EventInfoBase::GetSelectedBjetIndicesSet()).size();
+    tuple().n_jets = event.EventInfo::SelectJets(20,5,false,false,JetOrdering::DeepCSV,
+                                                     event.EventInfo::GetSelectedBjetIndicesSet()).size();
+    tuple().n_jets_pu = event.EventInfo::SelectJets(20,5,true,false,JetOrdering::DeepCSV,
+                                                        event.EventInfo::GetSelectedBjetIndicesSet()).size();
+    tuple().n_jets_eta24_eta5 = event.EventInfo::SelectJets(20,5,false,false,JetOrdering::DeepCSV,
+                                                                event.EventInfo::GetSelectedBjetIndicesSet(),2.4).size();
+    tuple().n_jets_eta24_eta5_pu = event.EventInfo::SelectJets(20,5,true,false,JetOrdering::DeepCSV,
+                                                                   event.EventInfo::GetSelectedBjetIndicesSet(),2.4).size();
+    tuple().n_jets_eta24 = event.EventInfo::SelectJets(20,2.4,false,false,JetOrdering::DeepCSV,
+                                                           event.EventInfo::GetSelectedBjetIndicesSet()).size();
+    tuple().n_jets_eta24_pu = event.EventInfo::SelectJets(20,2.4,true,false,JetOrdering::DeepCSV,
+                                                              event.EventInfo::GetSelectedBjetIndicesSet()).size();
 
     tuple().pt_VBF_1 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(1).GetMomentum().Pt()) : def_val;
     tuple().eta_VBF_1 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(1).GetMomentum().Eta()) : def_val;

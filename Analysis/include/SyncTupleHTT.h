@@ -266,15 +266,15 @@ INITIALIZE_TREE(htt_sync, SyncTuple, SYNC_DATA)
 namespace htt_sync {
 
 
-void FillSyncTuple(analysis::EventInfoBase& event, htt_sync::SyncTuple& sync, analysis::Period run_period,
+void FillSyncTuple(analysis::EventInfo& event, htt_sync::SyncTuple& sync, analysis::Period run_period,
                    bool apply_svFit,
                    double weight,
                    //double dy_weight,
                    analysis::mva_study::MvaReader* mva_reader = nullptr,
-                   analysis::EventInfoBase* event_tau_up = nullptr,
-                   analysis::EventInfoBase* event_tau_down = nullptr,
-                   analysis::EventInfoBase* event_jet_up = nullptr,
-                   analysis::EventInfoBase* event_jet_down = nullptr);
+                   analysis::EventInfo* event_tau_up = nullptr,
+                   analysis::EventInfo* event_tau_down = nullptr,
+                   analysis::EventInfo* event_jet_up = nullptr,
+                   analysis::EventInfo* event_jet_down = nullptr);
 }
 
 #undef COND_VAL

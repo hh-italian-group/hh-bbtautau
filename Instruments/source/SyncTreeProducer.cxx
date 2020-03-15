@@ -8,14 +8,11 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 #include "AnalysisTools/Core/include/TextIO.h"
 #include "h-tautau/Analysis/include/EventInfo.h"
 #include "h-tautau/Core/include/AnalysisTypes.h"
-#include "h-tautau/Cuts/include/Btag_2016.h"
-#include "h-tautau/Cuts/include/Btag_2017.h"
 #include "h-tautau/McCorrections/include/EventWeights.h"
 #include "hh-bbtautau/Analysis/include/SampleDescriptorConfigEntryReader.h"
 #include "hh-bbtautau/Analysis/include/SyncTupleHTT.h"
 #include "h-tautau/Analysis/include/SignalObjectSelector.h"
 #include "AnalysisTools/Core/include/EventIdentifier.h"
-// #include "h-tautau/Analysis/include/EventCandidate.h"
 
 struct Arguments {
     REQ_ARG(std::string, mode);

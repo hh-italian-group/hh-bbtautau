@@ -13,8 +13,6 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/StatEstimators.h"
 #include "hh-bbtautau/Analysis/include/MvaVariables.h"
 #include "hh-bbtautau/Analysis/include/MvaConfiguration.h"
-#include "h-tautau/Cuts/include/Btag_2016.h"
-#include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
 #include "hh-bbtautau/Studies/include/MvaMethods.h"
 #include "hh-bbtautau/Analysis/include/MvaConfigReader.h"
 #include "h-tautau/Analysis/include/SignalObjectSelector.h"
@@ -179,7 +177,7 @@ public:
             auto sampleid = entry.id.IsSignal() ? SampleId::MassTot() : SampleId::Bkg();
 
             for(const Event& event : *tuple) {
-                boost::optional<EventInfoBase> eventbase = CreateEventInfo(event,signalObjectSelector);
+                boost::optional<EventInfo> eventbase = CreateEventInfo(event,signalObjectSelector);
                 if(!eventbase.is_initialized()) continue;
 //                if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(eventbase.GetHiggsTTMomentum(true).mass(), eventbase.GetHiggsBB().GetMomentum().mass()))
 //                    continue;

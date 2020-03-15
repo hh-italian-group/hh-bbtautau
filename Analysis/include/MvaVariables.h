@@ -53,12 +53,12 @@ public:
     using Lock = std::lock_guard<Mutex>;
 
     virtual ~MvaVariablesBase() {}
-    virtual void AddEvent(EventInfoBase& eventbase, const SampleId& mass, int  spin, double sample_weight = 1.,
+    virtual void AddEvent(EventInfo& eventbase, const SampleId& mass, int  spin, double sample_weight = 1.,
                           int which_test = -1) = 0;
     virtual double Evaluate();
     virtual std::shared_ptr<TMVA::Reader> GetReader() = 0;
 
-    double AddAndEvaluate(EventInfoBase& eventbase, const SampleId& mass, int spin,
+    double AddAndEvaluate(EventInfo& eventbase, const SampleId& mass, int spin,
                           double sample_weight = 1., int which_test = -1);
 
 private:
@@ -78,7 +78,7 @@ public:
     const std::unordered_set<std::string>& GetDisabledVars() const;
     bool IsEnabled(const std::string& name) const;
 
-    virtual void AddEvent(analysis::EventInfoBase& eventbase, const SampleId& mass, int spin,
+    virtual void AddEvent(analysis::EventInfo& eventbase, const SampleId& mass, int spin,
                           double sample_weight = 1., int which_test = -1) override;
 
 private:

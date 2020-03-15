@@ -9,8 +9,8 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/StatEstimators.h"
 #include "hh-bbtautau/Analysis/include/MvaVariables.h"
 #include "hh-bbtautau/Analysis/include/MvaConfiguration.h"
-#include "h-tautau/Cuts/include/Btag_2016.h"
-#include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
+#include "h-tautau/Cuts/include/btag_Run2.h"
+#include "h-tautau/Cuts/include/hh_bbtautau_Run2.h"
 #include "hh-bbtautau/Studies/include/MvaMethods.h"
 #include "hh-bbtautau/Analysis/include/MvaConfigReader.h"
 #include "h-tautau/Analysis/include/SignalObjectSelector.h"
@@ -94,14 +94,16 @@ public:
             auto tuple = ntuple::CreateEventTuple(args.tree_name(), input_file.get(), true, ntuple::TreeState::Skimmed);
             for(const Event& event : *tuple) {
                 LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
-                boost::optional<EventInfoBase> eventbase = CreateEventInfo(event,signalObjectSelector,nullptr, Period::Run2017, JetOrdering::DeepCSV);
+                boost::optional<EventInfo> eventbase = CreateEventInfo(event,signalObjectSelector,nullptr, Period::Run2017, JetOrdering::DeepCSV);
                 if(!eventbase.is_initialized()) continue;
                 if (args.suffix() == "_ANcut"){
-                    if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(eventbase->GetSVFitResults().momentum.mass(),bb.mass())) continue;
+                    if (!cuts::hh_bbtautau_Run2::hh_tag::m_hh_window.IsInside(
+                        eventbase->GetSVFitResults().momentum.mass(),bb.mass())) continue;
                 }
 
                 if (args.suffix() == "_newcut"){
-                    if (!cuts::hh_bbtautau_2016::hh_tag::new_m_hh_window().IsInside(eventbase->GetHiggsTTMomentum(false).M(),bb.mass())) continue;
+                    if (!cuts::hh_bbtautau_Run2::hh_tag::new_m_hh_window.IsInside(
+                        eventbase->GetHiggsTTMomentum(false).M(),bb.mass())) continue;
                 }
                 vars.AddEvent(*eventbase, entry.id, entry.spin, entry.weight);
             }
@@ -119,16 +121,17 @@ public:
             auto input_file = root_ext::OpenRootFile(args.input_path()+"/"+entry.filename);
             auto tuple = ntuple::CreateEventTuple(args.tree_name(), input_file.get(), true, ntuple::TreeState::Full);
             for(const Event& event : *tuple) {
-                boost::optional<EventInfoBase> eventbase = CreateEventInfo(event,signalObjectSelector,nullptr, Period::Run2017, JetOrdering::DeepCSV);
+                boost::optional<EventInfo> eventbase = CreateEventInfo(event,signalObjectSelector,nullptr, Period::Run2017, JetOrdering::DeepCSV);
                 if(!eventbase.is_initialized()) continue;
                 if (/*static_cast<EventEnergyScale>(event.eventEnergyScale) != EventEnergyScale::Central ||*/
                     (eventbase->GetLeg(1)->charge()+eventbase->GetLeg(2)->charge()) != 0 || event.jets_p4.size() < 2
-                    || event.extraelec_veto == true || event.extramuon_veto == true || event.jets_p4[0].eta() > cuts::btag_2016::eta
-                    || event.jets_p4[1].eta() > cuts::btag_2016::eta)
+                    || event.extraelec_veto == true || event.extramuon_veto == true || event.jets_p4[0].eta() > cuts::btag_Run2::eta
+                    || event.jets_p4[1].eta() > cuts::btag_Run2::eta)
                     continue;
 
                 LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
-                if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(eventbase->GetSVFitResults().momentum.mass(),bb.mass())) continue;
+                if (!cuts::hh_bbtautau_Run2::hh_tag::m_hh_window.IsInside(
+                    eventbase->GetSVFitResults().momentum.mass(),bb.mass())) continue;
                 if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
                 if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
 

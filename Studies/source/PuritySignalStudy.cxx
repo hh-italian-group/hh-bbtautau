@@ -6,7 +6,6 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/AnalyzerData.h"
 #include "h-tautau/Analysis/include/EventInfo.h"
 #include "h-tautau/JetTools/include/BTagger.h"
-#include "h-tautau/Cuts/include/Btag_2017.h"
 
 #include <iostream>
 #include <algorithm>
@@ -172,7 +171,7 @@ private:
             jet_info_vector.emplace_back(LorentzVectorE(event.jets_p4.at(jet_index)), jet_index, bTagger.BTag(event,
                 jet_index, unc_source, unc_scale, false));
 
-        return jet_ordering::OrderJets(jet_info_vector, true, cuts::btag_2017::pt, cuts::btag_2017::eta);
+        return jet_ordering::OrderJets(jet_info_vector, true, bTagger.PtCut(), bTagger.EtaCut());
     }
 
     std::vector<size_t> orderTaus(const Event& event, TauIdDiscriminator tau_id_discriminator, bool is_descending_order = true)

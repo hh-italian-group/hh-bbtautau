@@ -15,7 +15,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "hh-bbtautau/McCorrections/include/EventWeights_HH.h"
 #include "hh-bbtautau/Instruments/include/SkimmerConfigEntryReader.h"
 #include "AnalysisTools/Core/include/ConfigReader.h"
-#include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
+#include "h-tautau/Cuts/include/hh_bbtautau_Run2.h"
 #include "hh-bbtautau/Analysis/include/AnalysisCategories.h"
 #include "h-tautau/Analysis/include/MetFilters.h"
 
@@ -428,7 +428,7 @@ private:
         return summary;
     }
 
-    bool EventPassSelection(boost::optional<EventInfoBase>& eventInfo) const
+    bool EventPassSelection(boost::optional<EventInfo>& eventInfo) const
     {
         if(!eventInfo.is_initialized()) return false;
         if(!signalObjectSelector->PassLeptonVetoSelection(eventInfo->GetEventCandidate().GetEvent())) return false;
@@ -452,7 +452,8 @@ private:
             const double mbb = eventInfo->GetHiggsBB().GetMomentum().mass();
             const double mtautau = (eventInfo->GetLeg(1).GetMomentum() + eventInfo->GetLeg(2).GetMomentum()).mass();
             pass_mass_cut = pass_mass_cut || (eventInfo->GetSVFitResults().has_valid_momentum &&
-                        cuts::hh_bbtautau_2016::hh_tag::IsInsideBoostedMassWindow(eventInfo->GetSVFitResults().momentum.mass(),mbb));
+                        cuts::hh_bbtautau_Run2::hh_tag::IsInsideBoostedMassWindow(
+                            eventInfo->GetSVFitResults().momentum.mass(), mbb));
 
             if(setup.massWindowParams.count(SelectionCut::mh))
                 pass_mass_cut = pass_mass_cut || (eventInfo->GetSVFitResults().has_valid_momentum &&
@@ -471,7 +472,7 @@ private:
         return true;
     }
 
-    boost::optional<EventInfoBase> CreateAnyEventInfo(const Event& event) const
+    boost::optional<EventInfo> CreateAnyEventInfo(const Event& event) const
     {
         for(UncertaintySource unc_source : unc_sources) {
             for(UncertaintyScale unc_scale : GetActiveUncertaintyScales(unc_source)) {
@@ -481,7 +482,7 @@ private:
                     return eventInfo;
             }
         }
-        return boost::optional<EventInfoBase>();
+        return boost::optional<EventInfo>();
     }
 
     bool ProcessEvent(Event& event)
@@ -489,7 +490,7 @@ private:
         // using EventPart = ntuple::StorageMode::EventPart;
         using WeightType = mc_corrections::WeightType;
         using WeightingMode = mc_corrections::WeightingMode;
-        boost::optional<EventInfoBase> eventInfo = CreateAnyEventInfo(event);
+        boost::optional<EventInfo> eventInfo = CreateAnyEventInfo(event);
         if(!eventInfo.is_initialized()) return false;
 
         event.weight_pu = weighting_mode.count(WeightType::PileUp)

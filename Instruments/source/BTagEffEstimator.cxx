@@ -9,11 +9,8 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Core/include/EventTuple.h"
 #include "AnalysisTools/Core/include/AnalyzerData.h"
 #include "h-tautau/Core/include/AnalysisTypes.h"
-#include "h-tautau/Cuts/include/Btag_2017.h"
-#include "h-tautau/Cuts/include/hh_bbtautau_2017.h"
-#include "h-tautau/Cuts/include/Btag_2016.h"
-#include "h-tautau/Cuts/include/Btag_2018.h"
-#include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
+#include "h-tautau/Cuts/include/btag_Run2.h"
+#include "h-tautau/Cuts/include/hh_bbtautau_Run2.h"
 #include "AnalysisTools/Core/include/Tools.h"
 #include "AnalysisTools/Core/include/TextIO.h"
 #include "h-tautau/Core/include/TauIdResults.h"
@@ -118,7 +115,7 @@ public:
                 std::cout << "Processing " << name << "/" << channel << std::endl;
 
                 for(const Event& event : *tuple){
-                    boost::optional<EventInfoBase> eventInfo = CreateEventInfo(event,signalObjectSelector,nullptr,
+                    boost::optional<EventInfo> eventInfo = CreateEventInfo(event,signalObjectSelector,nullptr,
 										args.period(),args.csv_type());
                     if(!eventInfo.is_initialized()) continue;
                     // const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
@@ -148,9 +145,7 @@ public:
 
                     for (size_t i = 0; i < event.jets_p4.size(); ++i){
                         const auto& jet = event.jets_p4.at(i);
-                        if(args.period()==Period::Run2016 && std::abs(jet.eta()) >= cuts::btag_2016::eta) continue;
-                        else if(args.period()==Period::Run2017 && std::abs(jet.eta()) >= cuts::btag_2017::eta) continue;
-                        else if(args.period()==Period::Run2018 && std::abs(jet.eta()) >= cuts::btag_2018::eta) continue;
+                        if(std::abs(jet.eta()) >= cuts::btag_Run2::eta) continue;
 
                         //PU correction
                         /*if(apply_pu_id_cut){

@@ -41,7 +41,7 @@ private:
 
 public:
     LegacyMvaVariables(const std::string& _method_name, const std::string& bdt_weights, bool _isLow);
-    virtual void AddEvent(analysis::EventInfoBase& eventbase, const SampleId& /*mass*/ , int /* spin*/,
+    virtual void AddEvent(analysis::EventInfo& eventbase, const SampleId& /*mass*/ , int /* spin*/,
                           double /*sample_weight*/, int /*which_test*/) override;
     virtual double Evaluate() override;
     virtual std::shared_ptr<TMVA::Reader> GetReader() override;
@@ -63,7 +63,7 @@ public:
 
     VarsPtr Add(const MvaKey& key, const std::string& bdt_weights, const std::unordered_set<std::string>& enabled_vars,
                 bool is_legacy = false, bool is_Low = true);
-    double Evaluate(const MvaKey& key, EventInfoBase* event);
+    double Evaluate(const MvaKey& key, EventInfo* event);
 
 private:
     VarsPtr CreateMvaVariables(const std::string& method_name, const std::string&  bdt_weights,

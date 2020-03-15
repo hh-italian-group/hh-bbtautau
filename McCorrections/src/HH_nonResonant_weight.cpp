@@ -67,7 +67,7 @@ void WeightProvider::SetTargetPoint(const Point& _point)
     param_denom = GF_Parameterization::Denominator_13TeV().Evaluate(point);
 }
 
-double WeightProvider::Get(EventInfoBase& eventInfo) const
+double WeightProvider::Get(EventInfo& eventInfo) const
 {
     return Get(eventInfo->lhe_hh_m, eventInfo->lhe_hh_cosTheta);
 }

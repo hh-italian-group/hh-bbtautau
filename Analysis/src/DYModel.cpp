@@ -100,7 +100,7 @@ DYModel::DYModel(const SampleDescriptor& sample,const std::string& working_path)
 
 }
 
-void DYModel::ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& event, double weight,
+void DYModel::ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfo& event, double weight,
                            bbtautau::AnaTupleWriter::DataIdMap& dataIds)
 {
     //static constexpr double pt_cut =18, b_Flavour = 5;
@@ -237,7 +237,7 @@ DYModel_HTT::DYModel_HTT(const SampleDescriptor& sample,const std::string& worki
     workspace =  std::shared_ptr<RooWorkspace>(root_ext::ReadObject<RooWorkspace>(*input_file,"w"));
 }
 
-void DYModel_HTT::ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& event, double weight,
+void DYModel_HTT::ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfo& event, double weight,
                            bbtautau::AnaTupleWriter::DataIdMap& dataIds)
 {
     double norm_sf = 1;
