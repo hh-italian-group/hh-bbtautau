@@ -209,7 +209,7 @@ private:
                 std::cout << "Leg " << leg_id << ": type=" << leg->leg_type();
                 if(!args.isData())
                     std::cout << ", gen_match=" << leg->gen_match();
-                std::cout << ", charge=" << leg->charge() << "\n"
+                std::cout << ", charge=" << leg->charge() << ", dz=" << leg->dz() << "\n"
                           << "\t" << LorentzVectorToString(leg.GetMomentum());
                 if(!args.isData())
                     std::cout << ", uncorrected " << LorentzVectorToString(leg->p4());
