@@ -23,6 +23,7 @@ struct Arguments {
     REQ_ARG(std::string, output_file);
     REQ_ARG(bool, apply_trigger_vbf);
     REQ_ARG(bool, isData);
+    OPT_ARG(bool, use_svFit, false);
     OPT_ARG(std::string, tree_name, "");
     OPT_ARG(std::string, mva_setup, "");
     OPT_ARG(bool, fill_tau_es_vars, false);
@@ -332,7 +333,7 @@ private:
         if(syncMode == SyncMode::HH && !event_info->HasBjetPair()) return;
         if(syncMode == SyncMode::HH && !signalObjectSelector.PassLeptonVetoSelection(event)) return;
         if(syncMode == SyncMode::HH && !signalObjectSelector.PassMETfilters(event,run_period,args.isData())) return;
-        htt_sync::FillSyncTuple(*event_info, sync, run_period, false, 1,
+        htt_sync::FillSyncTuple(*event_info, sync, run_period, args.use_svFit(), 1,
                                 mva_reader.get(), nullptr, nullptr, nullptr, nullptr);
     }
 
