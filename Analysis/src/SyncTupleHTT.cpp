@@ -53,7 +53,6 @@ void FillSyncTuple(analysis::EventInfo& event, htt_sync::SyncTuple& sync, analys
     sync().phi_1 = static_cast<float>(event.GetLeg(1).GetMomentum().Phi());
     sync().eta_1 = static_cast<float>(event.GetLeg(1).GetMomentum().Eta());
     sync().m_1 = static_cast<float>(event.GetLeg(1).GetMomentum().mass());
-    std::cout << "sync().m_1 = " << sync().m_1 << "\n";
     sync().q_1 = event.GetLeg(1)->charge();
     sync().d0_1 = event.GetLeg(1)->dxy();
     sync().dZ_1 = event.GetLeg(1)->dz();
