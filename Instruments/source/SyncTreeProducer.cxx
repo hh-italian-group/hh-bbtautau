@@ -313,6 +313,9 @@ private:
                 }
                 std::cout << "Total lepton shift: " << LorentzVectorToString(total_delta, LVectorRepr::PxPyPzE) << "\n";
             }
+
+            const auto& sv_fit = event_info->GetSVFitResults(true);
+            std::cout << "SVfit: " << LorentzVectorToString(sv_fit.momentum, LVectorRepr::PtEtaPhiM) << "\n";
         }
         bool pass_trigger = event_info->GetTriggerResults().AnyAcceptAndMatchEx(triggerPaths.at(trig_key),
                 event_info->GetFirstLeg().GetMomentum().pt(), event_info->GetSecondLeg().GetMomentum().pt());

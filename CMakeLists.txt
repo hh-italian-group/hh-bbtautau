@@ -29,6 +29,7 @@ set_source_files_properties(${HH_KINFIT2_SRC} PROPERTIES COMPILE_FLAGS "-w")
 
 file(GLOB_RECURSE SVFIT_SRC "${CMSSW_BASE_SRC}/TauAnalysis/ClassicSVfit/src/*.cc")
 add_library(SVfit STATIC ${SVFIT_SRC})
+target_compile_definitions(SVfit PRIVATE USE_SVFITTF=1)
 set_source_files_properties(${SVFIT_SRC} PROPERTIES COMPILE_FLAGS "-w")
 
 #[[
