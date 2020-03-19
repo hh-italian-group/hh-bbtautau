@@ -23,7 +23,6 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/McCorrections/include/LeptonWeights.h"
 #include "h-tautau/McCorrections/include/BTagWeight.h"
 #include "h-tautau/McCorrections/include/TopPtWeight.h"
-#include "h-tautau/McCorrections/include/TauIdWeight.h"
 #include "h-tautau/McCorrections/include/GenEventWeight.h"
 #include "hh-bbtautau/McCorrections/include/HH_nonResonant_weight.h"
 #include "h-tautau/Analysis/include/SignalObjectSelector.h"

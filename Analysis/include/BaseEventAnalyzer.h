@@ -4,7 +4,6 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #pragma once
 
 #include "h-tautau/McCorrections/include/LeptonWeights.h"
-#include "h-tautau/McCorrections/include/TauIdWeight.h"
 #include "h-tautau/McCorrections/include/BTagWeight.h"
 #include "hh-bbtautau/McCorrections/include/EventWeights_HH.h"
 #include "h-tautau/Analysis/include/SignalObjectSelector.h"
