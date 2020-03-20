@@ -52,6 +52,7 @@ void FillSyncTuple(analysis::EventInfo& event, htt_sync::SyncTuple& sync, analys
     sync().pt_tau_ES_down_1 = COND_VAL(event_tau_down, event_tau_down->GetLeg(1).GetMomentum().Pt());
     sync().phi_1 = static_cast<float>(event.GetLeg(1).GetMomentum().Phi());
     sync().eta_1 = static_cast<float>(event.GetLeg(1).GetMomentum().Eta());
+    sync().E_1 = static_cast<float>(event.GetLeg(1).GetMomentum().E());
     sync().m_1 = static_cast<float>(event.GetLeg(1).GetMomentum().mass());
     sync().q_1 = event.GetLeg(1)->charge();
     sync().d0_1 = event.GetLeg(1)->dxy();
@@ -79,7 +80,7 @@ void FillSyncTuple(analysis::EventInfo& event, htt_sync::SyncTuple& sync, analys
     sync().pt_tau_ES_down_2 = COND_VAL(event_tau_down, event_tau_down->GetLeg(2).GetMomentum().Pt());
     sync().phi_2 = static_cast<float>(event.GetLeg(2).GetMomentum().Phi());
     sync().eta_2 = static_cast<float>(event.GetLeg(2).GetMomentum().Eta());
-    sync().m_2 = static_cast<float>(event.GetLeg(2).GetMomentum().mass());
+    sync().E_2 = static_cast<float>(event.GetLeg(2).GetMomentum().E());
     sync().q_2 = event.GetLeg(2)->charge();
     sync().d0_2 = event.GetLeg(2)->dxy();
     sync().dZ_2 = event.GetLeg(2)->dz();
