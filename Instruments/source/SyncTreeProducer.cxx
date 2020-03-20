@@ -315,6 +315,9 @@ private:
 
             const auto& sv_fit = event_info->GetSVFitResults(true);
             std::cout << "SVfit: " << LorentzVectorToString(sv_fit.momentum, LVectorRepr::PtEtaPhiM) << "\n";
+            const auto& kin_fit = event_info->GetKinFitResults(true);
+            std::cout << "KinFit: convergence=" << kin_fit.convergence << ", mass=" << kin_fit.mass
+                      << ", chi2=" << kin_fit.chi2 << "\n";
         }
         bool pass_trigger = event_info->GetTriggerResults().AnyAcceptAndMatchEx(triggerPaths.at(trig_key),
                 event_info->GetFirstLeg().GetMomentum().pt(), event_info->GetSecondLeg().GetMomentum().pt());
