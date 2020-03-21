@@ -5,37 +5,43 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include <boost/bimap.hpp>
 
 namespace analysis {
-boost::bimap<std::string, EventRegion> EventRegion::predefined_regions;
-boost::optional<EventRegion> EventRegion::_OS_Isolated;
-boost::optional<EventRegion> EventRegion::_OS_AntiIsolated;
-boost::optional<EventRegion> EventRegion::_SS_Isolated;
-boost::optional<EventRegion> EventRegion::_SS_LooseIsolated;
-boost::optional<EventRegion> EventRegion::_SS_AntiIsolated;
+const std::unique_ptr<boost::bimap<std::string, EventRegion>> EventRegion::predefined_regions =
+    std::make_unique<boost::bimap<std::string, EventRegion>>();
+const std::unique_ptr<boost::optional<EventRegion>> EventRegion::_OS_Isolated =
+    std::make_unique<boost::optional<EventRegion>>();
+const std::unique_ptr<boost::optional<EventRegion>> EventRegion::_OS_AntiIsolated =
+    std::make_unique<boost::optional<EventRegion>>();
+const std::unique_ptr<boost::optional<EventRegion>> EventRegion::_SS_Isolated =
+    std::make_unique<boost::optional<EventRegion>>();
+const std::unique_ptr<boost::optional<EventRegion>> EventRegion::_SS_LooseIsolated =
+    std::make_unique<boost::optional<EventRegion>>();
+const std::unique_ptr<boost::optional<EventRegion>> EventRegion::_SS_AntiIsolated =
+    std::make_unique<boost::optional<EventRegion>>();
 
 void EventRegion::Initialize(DiscriminatorWP iso_lower, DiscriminatorWP anti_iso_lower, DiscriminatorWP anti_iso_upper)
 {
-    _OS_Isolated = EventRegion().SetCharge(true).SetLowerIso(iso_lower);
-    _OS_AntiIsolated = EventRegion().SetCharge(true).SetLowerIso(anti_iso_lower).SetUpperIso(anti_iso_upper);
-    _SS_Isolated = EventRegion().SetCharge(false).SetLowerIso(iso_lower);
-    _SS_LooseIsolated = EventRegion().SetCharge(false).SetLowerIso(DiscriminatorWP::Loose);
-    _SS_AntiIsolated = EventRegion().SetCharge(false).SetLowerIso(anti_iso_lower).SetUpperIso(anti_iso_upper);
+    *_OS_Isolated = EventRegion().SetCharge(true).SetLowerIso(iso_lower);
+    *_OS_AntiIsolated = EventRegion().SetCharge(true).SetLowerIso(anti_iso_lower).SetUpperIso(anti_iso_upper);
+    *_SS_Isolated = EventRegion().SetCharge(false).SetLowerIso(iso_lower);
+    *_SS_LooseIsolated = EventRegion().SetCharge(false).SetLowerIso(DiscriminatorWP::Loose);
+    *_SS_AntiIsolated = EventRegion().SetCharge(false).SetLowerIso(anti_iso_lower).SetUpperIso(anti_iso_upper);
 
-    predefined_regions.clear();
-    predefined_regions.insert({ "Unknown", EventRegion::Unknown() });
-    predefined_regions.insert({ "OS_Isolated", EventRegion::OS_Isolated() });
-    predefined_regions.insert({ "OS_AntiIsolated", EventRegion::OS_AntiIsolated() });
-    predefined_regions.insert({ "SS_LooseIsolated", EventRegion::SS_LooseIsolated() });
-    predefined_regions.insert({ "SS_Isolated", EventRegion::SS_Isolated() });
-    predefined_regions.insert({ "SS_AntiIsolated", EventRegion::SS_AntiIsolated() });
-    predefined_regions.insert({ "SignalRegion", EventRegion::SignalRegion() });
+    predefined_regions->clear();
+    predefined_regions->insert({ "Unknown", EventRegion::Unknown() });
+    predefined_regions->insert({ "OS_Isolated", EventRegion::OS_Isolated() });
+    predefined_regions->insert({ "OS_AntiIsolated", EventRegion::OS_AntiIsolated() });
+    predefined_regions->insert({ "SS_LooseIsolated", EventRegion::SS_LooseIsolated() });
+    predefined_regions->insert({ "SS_Isolated", EventRegion::SS_Isolated() });
+    predefined_regions->insert({ "SS_AntiIsolated", EventRegion::SS_AntiIsolated() });
+    predefined_regions->insert({ "SignalRegion", EventRegion::SignalRegion() });
 
 }
 
 const boost::bimap<std::string, analysis::EventRegion>& EventRegion::EventRegionMapToString()
 {
-    if(predefined_regions.size() == 0)
+    if(predefined_regions->size() == 0)
         throw exception("predefined regions maps is not initialized");
-    return predefined_regions;
+    return *predefined_regions;
 }
 
 const EventRegion& EventRegion::Unknown()
@@ -46,37 +52,37 @@ const EventRegion& EventRegion::Unknown()
 
 const EventRegion& EventRegion::OS_Isolated()
 {
-    if(!_OS_Isolated. is_initialized())
+    if(!_OS_Isolated->is_initialized())
         throw exception("Event regions (OS_Isolated) are not initialized");
-    return *_OS_Isolated;
+    return **_OS_Isolated;
 }
 
 const EventRegion& EventRegion::OS_AntiIsolated()
 {
-    if(!_OS_AntiIsolated. is_initialized())
+    if(!_OS_AntiIsolated->is_initialized())
         throw exception("Event regions (OS_AntiIsolated) are not initialized");
-    return *_OS_AntiIsolated;
+    return **_OS_AntiIsolated;
 }
 
 const EventRegion& EventRegion::SS_Isolated()
 {
-    if(!_SS_Isolated. is_initialized())
+    if(!_SS_Isolated->is_initialized())
         throw exception("Event regions (SS_Isolated) are not initialized");
-    return *_SS_Isolated;
+    return **_SS_Isolated;
 }
 
 const EventRegion& EventRegion::SS_LooseIsolated()
 {
-    if(!_SS_LooseIsolated. is_initialized())
+    if(!_SS_LooseIsolated->is_initialized())
         throw exception("Event regions (SS_LooseIsolated) not initialized");
-    return *_SS_LooseIsolated;
+    return **_SS_LooseIsolated;
 }
 
 const EventRegion& EventRegion::SS_AntiIsolated()
 {
-    if(!_SS_AntiIsolated. is_initialized())
+    if(!_SS_AntiIsolated->is_initialized())
         throw exception("Event regions (SS_AntiIsolated) are not initialized");
-    return *_SS_AntiIsolated;
+    return **_SS_AntiIsolated;
 }
 
 const EventRegion& EventRegion::SignalRegion()

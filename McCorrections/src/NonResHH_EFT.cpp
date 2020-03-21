@@ -63,8 +63,8 @@ Benchmark::Benchmark(const Point _point, int _id, const std::string& _name) :
 
 const BenchmarkCollection& BenchmarkCollection::Benchmarks()
 {
-    static BenchmarkCollection col;
-    if(!col.size()) {
+    static const auto init_col = []() {
+        BenchmarkCollection col;
         col.insert({ 7.5, 1., -1., 0., 0. }, 1);
         col.insert({ 1., 1., 0.5, -0.8, 0.6 }, 2);
         col.insert({ 1., 1., -1.5, 0., -0.8 }, 3);
@@ -79,7 +79,9 @@ const BenchmarkCollection& BenchmarkCollection::Benchmarks()
         col.insert({ 15., 1., 1., 0., 0. }, 12);
         col.insert({ 0., 1., 0., 0., 0. }, 13, "box");
         col.insert(Point::SM_Point(), 14, "SM");
-    }
+        return col;
+    };
+    static const BenchmarkCollection col = init_col();
     return col;
 }
 
