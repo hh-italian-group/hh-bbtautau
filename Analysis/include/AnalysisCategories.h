@@ -68,12 +68,12 @@ struct EventRegion {
     static EventRegion Parse(const std::string& str);
 
 private:
-    static boost::bimap<std::string, EventRegion> predefined_regions;
-    static boost::optional<EventRegion> _OS_Isolated;
-    static boost::optional<EventRegion> _OS_AntiIsolated;
-    static boost::optional<EventRegion> _SS_Isolated;
-    static boost::optional<EventRegion> _SS_LooseIsolated;
-    static boost::optional<EventRegion> _SS_AntiIsolated;
+    static const std::unique_ptr<boost::bimap<std::string, EventRegion>> predefined_regions;
+    static const std::unique_ptr<boost::optional<EventRegion>> _OS_Isolated;
+    static const std::unique_ptr<boost::optional<EventRegion>> _OS_AntiIsolated;
+    static const std::unique_ptr<boost::optional<EventRegion>> _SS_Isolated;
+    static const std::unique_ptr<boost::optional<EventRegion>> _SS_LooseIsolated;
+    static const std::unique_ptr<boost::optional<EventRegion>> _SS_AntiIsolated;
     boost::optional<bool> os;
     boost::optional<DiscriminatorWP> iso_lower, iso_upper;
 
