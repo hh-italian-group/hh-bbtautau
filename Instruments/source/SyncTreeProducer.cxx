@@ -313,9 +313,9 @@ private:
                 std::cout << "Total lepton shift: " << LorentzVectorToString(total_delta, LVectorRepr::PxPyPzE) << "\n";
             }
 
-            const auto& sv_fit = event_info->GetSVFitResults(true);
+            const auto& sv_fit = event_info->GetSVFitResults(true, 1);
             std::cout << "SVfit: " << LorentzVectorToString(sv_fit.momentum, LVectorRepr::PtEtaPhiM) << "\n";
-            const auto& kin_fit = event_info->GetKinFitResults(true);
+            const auto& kin_fit = event_info->GetKinFitResults(true, 1);
             std::cout << "KinFit: convergence=" << kin_fit.convergence << ", mass=" << kin_fit.mass
                       << ", chi2=" << kin_fit.chi2 << "\n";
         }
