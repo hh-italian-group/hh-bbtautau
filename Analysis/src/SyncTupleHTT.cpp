@@ -268,7 +268,6 @@ void FillSyncTuple(analysis::EventInfo& event, htt_sync::SyncTuple& sync, analys
     if(event.HasBjetPair()){
         using namespace ROOT::Math::VectorUtil;
         const auto& Htt = event.GetHiggsTTMomentum(false);
-        const auto& Htt_sv = event.GetHiggsTTMomentum(true);
         const auto& t1 = event.GetLeg(1).GetMomentum();
         const auto& t2 = event.GetLeg(2).GetMomentum();
 
