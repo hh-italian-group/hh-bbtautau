@@ -1,18 +1,16 @@
 #!/usr/bin/env python
-# Calculate dataId
+# Get dataId hash
 # This file is part of https://github.com/hh-italian-group/hh-bbtautau.
 
 import uproot
 import pandas
-import sys
+import re
 
 def LoadDataIdFrame(file):
     """Load pandas DataFrame from root file."""
     file = uproot.open(file)
-
     aux = file['aux']
-
-    df = aux.arrays('*', outputtype=pandas.DataFrame)\
+    df = aux.arrays('*', outputtype=pandas.DataFrame)
 
     names = [ name.decode("utf-8") for name in df.dataId_names[0] ]
     new_df = pandas.DataFrame(data = {
@@ -21,19 +19,26 @@ def LoadDataIdFrame(file):
                               })
     return new_df
 
-def GetDataIdHash(df, dataId):
+def GetDataIdHash(df, dataId, use_regex=False):
     """Retrieve hash for the given dataId."""
-    id_df = df[df.name == dataId]
-    if id_df.shape[0] != 1:
-        raise RuntimeError("ERROR: Data Id not defined")
-    return id_df.id.values[0]
+    id_df = df[df.name.str.contains(dataId, regex=use_regex)]
+    result = {}
+    for n in range(id_df.shape[0]):
+        result[id_df.name.values[n]] = id_df.id.values[n]
+    return result
 
 if __name__ == '__main__':
-    if len(sys.argv) == 3 :
-        file = sys.argv[1]
-        dataId = sys.argv[2]
-        df = LoadDataIdFrame(file)
-        id = GetDataIdHash(df, dataId)
-        print(id)
+    import argparse
+    parser = argparse.ArgumentParser(description='Get dataId hash.')
+    parser.add_argument('input', type=str, help="Input file with anaTuple")
+    parser.add_argument('dataId', type=str, help="dataId")
+    args = parser.parse_args()
+    df = LoadDataIdFrame(args.input)
+    ids = GetDataIdHash(df, args.dataId, False)
+    if len(ids) == 0:
+        ids = GetDataIdHash(df, args.dataId, True)
+    if len(ids) != 0:
+        for name in ids:
+            print('{:<20}\t{}'.format(ids[name], name))
     else:
-        print("Two arguments are needed")
+        print("ERROR: Data Id not found")
