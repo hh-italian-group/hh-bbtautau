@@ -17,6 +17,7 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
     LVAR(Float_t, pt_tau_ES_down, pref) \
     LVAR(Float_t, phi, pref) \
     LVAR(Float_t, eta, pref) \
+    LVAR(Float_t, E, pref) \
     LVAR(Float_t, m, pref) \
     LVAR(Float_t, q, pref) \
     LVAR(Float_t, d0, pref) /* is dxy between leading track and first PV */ \
