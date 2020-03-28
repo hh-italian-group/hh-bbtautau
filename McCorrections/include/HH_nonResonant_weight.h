@@ -27,7 +27,7 @@ public:
     void CreatePdfs(TFile* file = nullptr);
     void SetTargetPoint(const Point& _point);
 
-    virtual double Get(EventInfoBase& eventInfo) const override;
+    virtual double Get(EventInfo& eventInfo) const override;
     virtual double Get(const ntuple::ExpressEvent& event) const override;
 
     template<typename Event>

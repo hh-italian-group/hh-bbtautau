@@ -86,7 +86,7 @@ public:
 
     AnaTupleWriter(const std::string& file_name, Channel channel, bool _runKinFit, bool _runSVfit, bool _allow_calc_svFit);
     ~AnaTupleWriter();
-    void AddEvent(EventInfoBase& event, const DataIdMap& dataIds);
+    void AddEvent(EventInfo& event, const DataIdMap& dataIds);
 
 private:
     std::shared_ptr<TFile> file;

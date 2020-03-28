@@ -15,7 +15,7 @@ namespace analysis{
 class DYModelBase {
 public:
     virtual ~DYModelBase(){} //destructor
-    virtual void ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& event, double weight,
+    virtual void ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfo& event, double weight,
                       bbtautau::AnaTupleWriter::DataIdMap& dataIds) = 0;
 
 };
@@ -24,7 +24,7 @@ class DYModel : public DYModelBase {
 public:
     DYModel(const SampleDescriptor& sample,const std::string& working_path);
 
-    virtual void ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& event, double weight,
+    virtual void ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfo& event, double weight,
                       bbtautau::AnaTupleWriter::DataIdMap& dataIds) override;
 
     template<typename T>
@@ -68,7 +68,7 @@ class DYModel_HTT : public DYModelBase {
 public:
     DYModel_HTT(const SampleDescriptor& sample,const std::string& working_path);
 
-    virtual void ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& event, double weight,
+    virtual void ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfo& event, double weight,
                       bbtautau::AnaTupleWriter::DataIdMap& dataIds) override;
 
 private:

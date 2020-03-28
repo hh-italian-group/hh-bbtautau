@@ -41,7 +41,7 @@ private:
 
 public:
     NonResModel(Period period, const SampleDescriptor& sample, std::shared_ptr<TFile> file);
-    void ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& event, double weight, double shape_weight,
+    void ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfo& event, double weight, double shape_weight,
                       bbtautau::AnaTupleWriter::DataIdMap& dataIds);
 
 private:

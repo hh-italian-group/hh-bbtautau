@@ -25,9 +25,9 @@ public:
         const Long64_t n_entries = eventTuple.GetEntries();
         for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) {
             eventTuple.GetEntry(current_entry);
-            const auto bjet_pair = EventInfoBase::SelectBjetPair(eventTuple.data(), cuts::Htautau_2015::btag::pt,
+            const auto bjet_pair = EventInfo::SelectBjetPair(eventTuple.data(), cuts::Htautau_2015::btag::pt,
                                                                  cuts::Htautau_2015::btag::eta, JetOrdering::CSV);
-            EventInfoBase event(eventTuple.data(), bjet_pair);
+            EventInfo event(eventTuple.data(), bjet_pair);
             if(eventId != event.GetEventId()) continue;
             if(event.GetEnergyScale() != EventEnergyScale::Central) continue;
 

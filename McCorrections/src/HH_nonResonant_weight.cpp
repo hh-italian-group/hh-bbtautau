@@ -67,7 +67,7 @@ void WeightProvider::SetTargetPoint(const Point& _point)
     param_denom = GF_Parameterization::Denominator_13TeV().Evaluate(point);
 }
 
-double WeightProvider::Get(EventInfoBase& eventInfo) const
+double WeightProvider::Get(EventInfo& eventInfo) const
 {
     return Get(eventInfo->lhe_hh_m, eventInfo->lhe_hh_cosTheta);
 }
@@ -94,10 +94,11 @@ double WeightProvider::Get(double lhe_hh_m, double lhe_hh_cosTheta) const
     const double weight = pdf_ratio * param_ratio;
     if(weight < 0) {
         if(enable_negative_weight_warning) {
-            static std::set<std::tuple<int, int, int, int, int, int, int>> reported_bins;
+            static const std::unique_ptr<std::set<std::tuple<int, int, int, int, int, int, int>>> reported_bins
+                = std::make_unique<std::set<std::tuple<int, int, int, int, int, int, int>>>();
             const auto bin_tuple = std::make_tuple(int(point.kt * 1000), int(point.kl * 1000), int(point.c2 * 1000),
                                                    int(point.cg * 1000), int(point.c2g * 1000), bin_x, bin_y);
-            if(!reported_bins.count(bin_tuple)) {
+            if(!reported_bins->count(bin_tuple)) {
                 std::cerr << boost::format("\nWarning: invalid EFT weight for m_hh = %1%, cos_theta = %2% in bin "
                              "(%3%, %4%): n_pangea = %5%, pdf_pangea = %6% +/- %7%, pdf_sm = %8% +/- %9%, "
                              "pdf_ratio = %10%, param_num = %11%, param_denom = %12%, param_ratio = %13%, "
@@ -107,7 +108,7 @@ double WeightProvider::Get(double lhe_hh_m, double lhe_hh_cosTheta) const
                              % sm_pdf->GetBinContent(bin_x, bin_y) % sm_pdf->GetBinError(bin_x, bin_y) % pdf_ratio
                              % parameterization.at(bin_x).at(bin_y).Evaluate(point) % param_denom % param_ratio
                              % weight % point % parameterization.at(bin_x).at(bin_y) << std::endl;
-                reported_bins.insert(bin_tuple);
+                reported_bins->insert(bin_tuple);
             }
         }
 

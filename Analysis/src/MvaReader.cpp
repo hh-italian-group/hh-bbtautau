@@ -55,7 +55,7 @@ LegacyMvaVariables::LegacyMvaVariables(const std::string& _method_name, const st
     reader->BookMVA(method_name, bdt_weights);
 }
 
-void LegacyMvaVariables::AddEvent(analysis::EventInfoBase& eventbase, const SampleId& /*mass*/ , int /* spin*/,
+void LegacyMvaVariables::AddEvent(analysis::EventInfo& eventbase, const SampleId& /*mass*/ , int /* spin*/,
                                   double /*sample_weight*/, int /*which_test*/)
 {
     const auto& Htt = eventbase.GetHiggsTTMomentum(false);
@@ -103,7 +103,7 @@ MvaReader::VarsPtr MvaReader::Add(const MvaKey& key, const std::string& bdt_weig
     return methods[key] = CreateMvaVariables(key.method_name, bdt_weights, enabled_vars, is_legacy, is_Low);
 }
 
-double MvaReader::Evaluate(const MvaKey& key, EventInfoBase* event)
+double MvaReader::Evaluate(const MvaKey& key, EventInfo* event)
 {
     auto iter = methods.find(key);
     if(iter == methods.end())

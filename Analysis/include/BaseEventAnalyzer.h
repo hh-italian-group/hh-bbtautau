@@ -4,7 +4,6 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #pragma once
 
 #include "h-tautau/McCorrections/include/LeptonWeights.h"
-#include "h-tautau/McCorrections/include/TauIdWeight.h"
 #include "h-tautau/McCorrections/include/BTagWeight.h"
 #include "hh-bbtautau/McCorrections/include/EventWeights_HH.h"
 #include "h-tautau/Analysis/include/SignalObjectSelector.h"
@@ -39,12 +38,12 @@ public:
     void Run();
 
 protected:
-    EventCategorySet DetermineEventCategories(EventInfoBase& event);
-    virtual EventRegion DetermineEventRegion(EventInfoBase& event, EventCategory eventCategory) = 0;
+    EventCategorySet DetermineEventCategories(EventInfo& event);
+    virtual EventRegion DetermineEventRegion(EventInfo& event, EventCategory eventCategory) = 0;
 
 
     void InitializeMvaReader();
-    virtual EventSubCategory DetermineEventSubCategory(EventInfoBase& event, const EventCategory& category,
+    virtual EventSubCategory DetermineEventSubCategory(EventInfo& event, const EventCategory& category,
                                                        std::map<SelectionCut, double>& mva_scores);
     void ProcessSamples(const std::vector<std::string>& sample_names, const std::string& sample_set_name);
 
@@ -52,8 +51,10 @@ protected:
                            std::shared_ptr<ntuple::EventTuple> tuple, const ntuple::ProdSummary& prod_summary);
 
     virtual void ProcessSpecialEvent(const SampleDescriptor& sample, const SampleDescriptor::Point& /*sample_wp*/,
-                                     const EventAnalyzerDataId& anaDataId, EventInfoBase& event, double weight,
+                                     const EventAnalyzerDataId& anaDataId, EventInfo& event, double weight,
                                      double shape_weight, bbtautau::AnaTupleWriter::DataIdMap& dataIds);
+
+    bool SetRegionIsoRange(const LepCandidate& cand, EventRegion& region) const;
 
 protected:
     AnalyzerArguments args;

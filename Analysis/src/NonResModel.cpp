@@ -69,7 +69,7 @@ NonResModel::NonResModel(Period period, const SampleDescriptor& sample, std::sha
     }
 }
 
-void NonResModel::ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfoBase& event, double weight,
+void NonResModel::ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfo& event, double weight,
                                double shape_weight, bbtautau::AnaTupleWriter::DataIdMap& dataIds)
 {
     for(const auto& wp : points) {

@@ -17,7 +17,7 @@ TTbar_weight::TTbar_weight(const std::string& ttbar_weight_file_name)
     }
 }
 
-double TTbar_weight::Get(EventInfoBase& eventInfo) const { return Get(eventInfo->genEventType); }
+double TTbar_weight::Get(EventInfo& eventInfo) const { return Get(eventInfo->genEventType); }
 double TTbar_weight::Get(const ntuple::ExpressEvent& event) const { return Get(event.genEventType); }
 
 double TTbar_weight::Get(int genEventType) const

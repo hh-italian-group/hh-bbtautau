@@ -221,7 +221,7 @@ public:
                 const JetOrdering jet_ordering = run_period == Period::Run2017
                                                ? JetOrdering::DeepCSV : JetOrdering::CSV;
 
-                boost::optional<EventInfoBase> eventInfo = CreateEventInfo(event,signalObjectSelector,summaryInfo.get(), run_period, jet_ordering);
+                boost::optional<EventInfo> eventInfo = CreateEventInfo(event,signalObjectSelector,summaryInfo.get(), run_period, jet_ordering);
                 if(!eventInfo.is_initialized()) continue;
                 if((*eventInfo)->extraelec_veto || (*eventInfo)->extramuon_veto) continue;
                 // if(eventInfo->GetEnergyScale() != EventEnergyScale::Central) continue;
@@ -303,7 +303,7 @@ private:
         return sample_desc;
     }
 
-    bool PassIsolation(Channel channel, EventInfoBase& event_base, TauIdDiscriminator discr,
+    bool PassIsolation(Channel channel, EventInfo& event_base, TauIdDiscriminator discr,
                        DiscriminatorWP wp) const
     {
         if(channel == Channel::ETau) {

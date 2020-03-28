@@ -12,7 +12,7 @@ namespace mc_corrections {
 class TTbar_weight : public IWeightProvider {
 public:
     TTbar_weight(const std::string& ttbar_weight_file_name);
-    virtual double Get(EventInfoBase& eventInfo) const override;
+    virtual double Get(EventInfo& eventInfo) const override;
     virtual double Get(const ntuple::ExpressEvent& event) const override;
 
 private:

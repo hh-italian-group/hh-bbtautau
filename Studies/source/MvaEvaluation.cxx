@@ -7,8 +7,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Core/include/AnalyzerData.h"
 #include "hh-bbtautau/Analysis/include/MvaConfiguration.h"
 #include "hh-bbtautau/Analysis/include/MvaVariables.h"
-#include "h-tautau/Cuts/include/Btag_2016.h"
-#include "h-tautau/Cuts/include/hh_bbtautau_2016.h"
+#include "h-tautau/Cuts/include/hh_bbtautau_Run2.h"
 #include "h-tautau/Core/include/AnalysisTypes.h"
 #include "AnalysisTools/Core/include/NumericPrimitives.h"
 #include "AnalysisTools/Core/include/AnalysisMath.h"
@@ -190,15 +189,17 @@ public:
                 for(Event event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
                     LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
-                    boost::optional<EventInfoBase> eventbase = CreateEventInfo(event,signalObjectSelector);
+                    boost::optional<EventInfo> eventbase = CreateEventInfo(event,signalObjectSelector);
                     if(!eventbase.is_initialized()) continue;
                     if (args.suffix() == "_ANcut"){
-                        if (!cuts::hh_bbtautau_2016::hh_tag::m_hh_window().IsInside(eventbase->GetSVFitResults().momentum.mass(),bb.mass())) continue;
+                        if (!cuts::hh_bbtautau_Run2::hh_tag::m_hh_window.IsInside(
+                            eventbase->GetSVFitResults().momentum.mass(),bb.mass())) continue;
                     }
                     auto step = (mergesummary.n_splits/2)/args.subdivisions();
 
                     if (args.suffix() == "_newcut"){
-                        if (!cuts::hh_bbtautau_2016::hh_tag::new_m_hh_window().IsInside(eventbase->GetHiggsTTMomentum(false).M(),bb.mass())) continue;
+                        if (!cuts::hh_bbtautau_Run2::hh_tag::new_m_hh_window.IsInside(
+                            eventbase->GetHiggsTTMomentum(false).M(),bb.mass())) continue;
                     }
                     size_t which_set=0;
                     if(!args.all_data()){

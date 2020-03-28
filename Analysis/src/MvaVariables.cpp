@@ -80,7 +80,7 @@ std::istream& operator>>(std::istream& is, SampleId& id)
 }
 
 double MvaVariablesBase::Evaluate() { throw exception("Not supported."); }
-double MvaVariablesBase::AddAndEvaluate(EventInfoBase& eventbase, const SampleId& mass, int spin,
+double MvaVariablesBase::AddAndEvaluate(EventInfo& eventbase, const SampleId& mass, int spin,
                                         double sample_weight, int which_test)
 {
     Lock lock(mutex);
@@ -108,7 +108,7 @@ bool MvaVariables::IsEnabled(const std::string& name) const
     return (!enabled_vars.size() && !disabled_vars.count(name)) || enabled_vars.count(name);
 }
 
-void MvaVariables::AddEvent(analysis::EventInfoBase& eventbase, const SampleId& mass, int spin, double sample_weight,
+void MvaVariables::AddEvent(analysis::EventInfo& eventbase, const SampleId& mass, int spin, double sample_weight,
                             int which_test)
 {
     using namespace ROOT::Math::VectorUtil;

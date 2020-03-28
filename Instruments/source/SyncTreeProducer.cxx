@@ -8,14 +8,11 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 #include "AnalysisTools/Core/include/TextIO.h"
 #include "h-tautau/Analysis/include/EventInfo.h"
 #include "h-tautau/Core/include/AnalysisTypes.h"
-#include "h-tautau/Cuts/include/Btag_2016.h"
-#include "h-tautau/Cuts/include/Btag_2017.h"
 #include "h-tautau/McCorrections/include/EventWeights.h"
 #include "hh-bbtautau/Analysis/include/SampleDescriptorConfigEntryReader.h"
 #include "hh-bbtautau/Analysis/include/SyncTupleHTT.h"
 #include "h-tautau/Analysis/include/SignalObjectSelector.h"
 #include "AnalysisTools/Core/include/EventIdentifier.h"
-// #include "h-tautau/Analysis/include/EventCandidate.h"
 
 struct Arguments {
     REQ_ARG(std::string, mode);
@@ -26,6 +23,7 @@ struct Arguments {
     REQ_ARG(std::string, output_file);
     REQ_ARG(bool, apply_trigger_vbf);
     REQ_ARG(bool, isData);
+    OPT_ARG(bool, use_svFit, false);
     OPT_ARG(std::string, tree_name, "");
     OPT_ARG(std::string, mva_setup, "");
     OPT_ARG(bool, fill_tau_es_vars, false);
@@ -168,7 +166,7 @@ private:
             { { Period::Run2016, Channel::MuMu }, { "HLT_IsoMu22_v" } },
             { { Period::Run2017, Channel::ETau }, { "HLT_Ele32_WPTight_Gsf_v", "HLT_Ele35_WPTight_Gsf_v",
                                 "HLT_Ele24_eta2p1_WPTight_Gsf_LooseChargedIsoPFTau30_eta2p1_CrossL1_v",
-                                "HLT_Ele32_WPTight_Gsf_L1DoubleEG" } },
+                                "HLT_Ele32_WPTight_Gsf_L1DoubleEG_v" } },
             { { Period::Run2017, Channel::MuTau }, { "HLT_IsoMu24_v", "HLT_IsoMu27_v",
                                 "HLT_IsoMu20_eta2p1_LooseChargedIsoPFTau27_eta2p1_CrossL1_v" } },
             { { Period::Run2017, Channel::TauTau }, { "HLT_DoubleTightChargedIsoPFTau35_Trk1_TightID_eta2p1_Reg_v",
@@ -206,10 +204,14 @@ private:
         if(debug) {
             for(size_t leg_id = 1; leg_id <= 2; ++leg_id) {
                 const auto& leg = event_info->GetLeg(leg_id);
-                std::cout << "Leg " << leg_id << ": type=" << leg->leg_type() << ", gen_match=" << leg->gen_match()
-                          << ", charge=" << leg->charge() << "\n"
-                          << "\t" << LorentzVectorToString(leg.GetMomentum())
-                          << ", uncorrected " << LorentzVectorToString(leg->p4()) << "\n";
+                std::cout << "Leg " << leg_id << ": type=" << leg->leg_type();
+                if(!args.isData())
+                    std::cout << ", gen_match=" << leg->gen_match();
+                std::cout << ", charge=" << leg->charge() << ", dz=" << leg->dz() << "\n"
+                          << "\t" << LorentzVectorToString(leg.GetMomentum());
+                if(!args.isData())
+                    std::cout << ", uncorrected " << LorentzVectorToString(leg->p4());
+                std::cout << "\n";
                 if(leg->leg_type() == LegType::tau) {
                     std::cout << "\tdecayMode=" << leg->decayMode() << "\n";
                 }
@@ -218,8 +220,10 @@ private:
                 for(size_t leg_id = 1; leg_id <= 2; ++leg_id) {
                     const auto& leg = event_info->GetBJet(leg_id);
                     std::cout << "b jet " << leg_id << ":\n"
-                              << "\t" << LorentzVectorToString(leg.GetMomentum())
-                              << ", uncorrected " << LorentzVectorToString(leg->p4()) << "\n";
+                              << "\t" << LorentzVectorToString(leg.GetMomentum());
+                    if(!args.isData())
+                        std::cout << ", uncorrected " << LorentzVectorToString(leg->p4());
+                    std::cout << "\n";
                 }
             } else {
                 std::cout << "No b-jet pair was selected.\n";
@@ -228,8 +232,10 @@ private:
                 for(size_t leg_id = 1; leg_id <= 2; ++leg_id) {
                     const auto& leg = event_info->GetVBFJet(leg_id);
                     std::cout << "VBF jet " << leg_id << ":\n"
-                              << "\t" << LorentzVectorToString(leg.GetMomentum())
-                              << ", uncorrected " << LorentzVectorToString(leg->p4()) << "\n";
+                              << "\t" << LorentzVectorToString(leg.GetMomentum());
+                    if(!args.isData())
+                        std::cout << ", uncorrected " << LorentzVectorToString(leg->p4());
+                    std::cout << "\n";
                 }
             } else {
                 std::cout << "No VBF pair was selected.\n";
@@ -264,6 +270,55 @@ private:
                               << " match=" << match << std::endl;
                 }
             }
+            std::cout << "PassLeptonVetoSelection = " << signalObjectSelector.PassLeptonVetoSelection(event) << "\n";
+            std::cout << "Other leptons:\n";
+            for(unsigned n = 0; n < event.other_lepton_p4.size(); ++n){
+                if(static_cast<LegType>(event.other_lepton_type.at(n)) == LegType::e){
+                    const DiscriminatorIdResults eleId_iso(event.other_lepton_eleId_iso.at(n));
+                    const DiscriminatorIdResults eleId_noIso(event.other_lepton_eleId_noIso.at(n));
+                    std::cout << "\tele " << LorentzVectorToString(event.other_lepton_p4.at(n))
+                              << ", pass Medium iso id = " << eleId_iso.Passed(DiscriminatorWP::Medium)
+                              << ", pass Medium noIso id = " << eleId_noIso.Passed(DiscriminatorWP::Medium)
+                              << ", pfRelIso04 = " << event.other_lepton_iso.at(n) << "\n";
+                }
+                if(static_cast<LegType>(event.other_lepton_type.at(n)) == LegType::mu){
+                    analysis::DiscriminatorIdResults muonId(event.other_lepton_muonId.at(n));
+                    std::cout << "\tmuon " << LorentzVectorToString(event.other_lepton_p4.at(n))
+                              << ", pass Medium id = " << muonId.Passed(DiscriminatorWP::Medium)
+                              << ", pass Tight id = " << muonId.Passed(DiscriminatorWP::Tight)
+                              << ", pfRelIso04 = " << event.other_lepton_iso.at(n) << "\n";
+                }
+            }
+            std::cout << "PassMETfilters = " << signalObjectSelector.PassMETfilters(event,run_period,args.isData())
+                      << "\n";
+            std::cout << "MET " << LorentzVectorToString(event_info->GetMET().GetMomentum(), LVectorRepr::PxPyPtPhi);
+            if(!args.isData())
+                std::cout << ", uncorrected " << LorentzVectorToString(event_info->GetMET()->p4(),
+                                                                       LVectorRepr::PxPyPtPhi);
+            std::cout << "\n";
+            if(!args.isData()) {
+                auto& evt_cand = event_info->GetEventCandidate();
+                std::cout << "Lepton corrections:\n";
+                LorentzVectorXYZ total_delta(0, 0, 0, 0);
+                for(const auto& lep : evt_cand.GetLeptons()) {
+                    const auto& delta = lep.GetMomentum() - lep->p4();
+                    total_delta += delta;
+                    std::cout << "\t" << lep->leg_type() << ", ";
+                    if(lep->leg_type() == LegType::tau) {
+                        std::cout << "decayMode=" << lep->decayMode() << ", gen_match=" << lep->gen_match() << ", ";
+                    }
+                    std::cout << LorentzVectorToString(lep->p4(), LVectorRepr::PxPyPzE)
+                              << " -> " << LorentzVectorToString(lep.GetMomentum(), LVectorRepr::PxPyPzE, false)
+                              << ", shift = " << LorentzVectorToString(delta, LVectorRepr::PxPyPzE, false) << "\n";
+                }
+                std::cout << "Total lepton shift: " << LorentzVectorToString(total_delta, LVectorRepr::PxPyPzE) << "\n";
+            }
+
+            const auto& sv_fit = event_info->GetSVFitResults(true, 1);
+            std::cout << "SVfit: " << LorentzVectorToString(sv_fit.momentum, LVectorRepr::PtEtaPhiM) << "\n";
+            const auto& kin_fit = event_info->GetKinFitResults(true, 1);
+            std::cout << "KinFit: convergence=" << kin_fit.convergence << ", mass=" << kin_fit.mass
+                      << ", chi2=" << kin_fit.chi2 << "\n";
         }
         bool pass_trigger = event_info->GetTriggerResults().AnyAcceptAndMatchEx(triggerPaths.at(trig_key),
                 event_info->GetFirstLeg().GetMomentum().pt(), event_info->GetSecondLeg().GetMomentum().pt());
@@ -284,8 +339,7 @@ private:
         if(syncMode == SyncMode::HH && !event_info->HasBjetPair()) return;
         if(syncMode == SyncMode::HH && !signalObjectSelector.PassLeptonVetoSelection(event)) return;
         if(syncMode == SyncMode::HH && !signalObjectSelector.PassMETfilters(event,run_period,args.isData())) return;
-
-        htt_sync::FillSyncTuple(*event_info, sync, run_period, false, 1,
+        htt_sync::FillSyncTuple(*event_info, sync, run_period, args.use_svFit(), 1,
                                 mva_reader.get(), nullptr, nullptr, nullptr, nullptr);
     }
 
