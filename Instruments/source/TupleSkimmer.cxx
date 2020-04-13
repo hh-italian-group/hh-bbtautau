@@ -235,13 +235,6 @@ private:
                 else
                     summary = std::make_shared<ProdSummary>(desc_summary);
 
-//                for(unsigned n = 0; n < desc_iter->inputs.size() && (n == 0 || !desc_iter->first_input_is_ref); ++n) {
-//                    if (desc_iter->input_is_partial.size() && desc_iter->input_is_partial.at(n) == true) continue;
-//                    const auto& input = desc_iter->inputs.at(n);
-//                    summary->file_desc_name.push_back(input);
-//                    summary->file_desc_id.push_back(n * 1000 + desc_id);
-//                }
-
                 summary->n_splits = setup.n_splits;
                 summary->split_seed = setup.split_seed;
 
@@ -295,11 +288,6 @@ private:
                             processed_events.insert(fullId);
 
                             auto event_ptr = std::make_shared<Event>(event);
-                //temporary fix due tue a bug in mumu channel in production
-			    if(static_cast<Channel>(event_ptr->channelId) == Channel::MuMu){
-			       event_ptr->first_daughter_indexes = {0};
-			       event_ptr->second_daughter_indexes = {1};
-			    }
                             event_ptr->weight_xs = weight_xs;
                             event_ptr->weight_xs_withTopPt = weight_xs_withTopPt;
                             event_ptr->file_desc_id = desc_id;
