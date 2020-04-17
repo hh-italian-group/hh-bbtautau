@@ -33,7 +33,9 @@ protected:
     virtual EventSubCategory DetermineEventSubCategory(EventInfo& event, const EventCategory& /*category*/,
                                                        std::map<SelectionCut, double>& /*mva_scores*/) override
     {
-        double mass_muMu = event.GetHiggsTTMomentum(false).M();
+        const double mass_muMu = event.GetHiggsTTMomentum(false)->M();
+        const double ht_other_jets = event.GetHT(false, true);
+        const double pt_mumu =  event.GetHiggsTTMomentum(false)->pt();
         //const bool jetMass = mass_jj > 80 && mass_jj < 160;
         //const bool muonMass= mass_muMu > 60;
         /*double pt_jets = event.GetHiggsBB().GetFirstDaughter().GetMomentum().Pt()
@@ -50,31 +52,29 @@ protected:
         }
         else sub_category.SetCutResult(SelectionCut::mh, false);
         sub_category.SetCutResult(SelectionCut::lowMET, event.GetMET().GetMomentum().Pt() < 45);
-        sub_category.SetCutResult(SelectionCut::lowHT, event->ht_other_jets <= 20);
-        sub_category.SetCutResult(SelectionCut::medHT,  event->ht_other_jets > 20 && event->ht_other_jets <= 250);
-        sub_category.SetCutResult(SelectionCut::highHT, event->ht_other_jets > 250);
-        sub_category.SetCutResult(SelectionCut::vlowPtNLO, event.GetHiggsTTMomentum(false).Pt() <= 20);
-        sub_category.SetCutResult(SelectionCut::lowPtNLO,  event.GetHiggsTTMomentum(false).Pt() > 20 &&
-                                                        event.GetHiggsTTMomentum(false).Pt() <= 40);
-        sub_category.SetCutResult(SelectionCut::medPtNLO, event.GetHiggsTTMomentum(false).Pt() > 40 &&
-                                                        event.GetHiggsTTMomentum(false).Pt() <= 100);
-        sub_category.SetCutResult(SelectionCut::highPtNLO, event.GetHiggsTTMomentum(false).Pt() > 100);
-        sub_category.SetCutResult(SelectionCut::vlowPtLO, ana_setup.pt_sel_bins.size() > 0 &&
-                                                           event.GetHiggsTTMomentum(false).Pt() <= ana_setup.pt_sel_bins.at(0));
-        sub_category.SetCutResult(SelectionCut::lowPtLO, ana_setup.pt_sel_bins.size() > 1 &&
-                                                        (event.GetHiggsTTMomentum(false).Pt() > ana_setup.pt_sel_bins.at(0) &&
-                                                        event.GetHiggsTTMomentum(false).Pt() <= ana_setup.pt_sel_bins.at(1)));
-        sub_category.SetCutResult(SelectionCut::medPt1LO, ana_setup.pt_sel_bins.size() > 2 &&
-                                                        (event.GetHiggsTTMomentum(false).Pt() > ana_setup.pt_sel_bins.at(1) &&
-                                                        event.GetHiggsTTMomentum(false).Pt() <= ana_setup.pt_sel_bins.at(2)));
-        sub_category.SetCutResult(SelectionCut::medPt2LO, ana_setup.pt_sel_bins.size() > 3 &&
-                                                        (event.GetHiggsTTMomentum(false).Pt() > ana_setup.pt_sel_bins.at(2) &&
-                                                        event.GetHiggsTTMomentum(false).Pt() <= ana_setup.pt_sel_bins.at(3)));
-        sub_category.SetCutResult(SelectionCut::highPtLO, ana_setup.pt_sel_bins.size() > 4 &&
-                                                        (event.GetHiggsTTMomentum(false).Pt() > ana_setup.pt_sel_bins.at(3) &&
-                                                        event.GetHiggsTTMomentum(false).Pt() <= ana_setup.pt_sel_bins.at(4)));
-        sub_category.SetCutResult(SelectionCut::vhighPtLO, ana_setup.pt_sel_bins.size() > 4 &&
-                                                        event.GetHiggsTTMomentum(false).Pt() > ana_setup.pt_sel_bins.at(4));
+        sub_category.SetCutResult(SelectionCut::lowHT, ht_other_jets <= 20);
+        sub_category.SetCutResult(SelectionCut::medHT, ht_other_jets > 20 && ht_other_jets <= 250);
+        sub_category.SetCutResult(SelectionCut::highHT, ht_other_jets > 250);
+        sub_category.SetCutResult(SelectionCut::vlowPtNLO, pt_mumu <= 20);
+        sub_category.SetCutResult(SelectionCut::lowPtNLO, pt_mumu > 20 && pt_mumu <= 40);
+        sub_category.SetCutResult(SelectionCut::medPtNLO, pt_mumu > 40 && pt_mumu <= 100);
+        sub_category.SetCutResult(SelectionCut::highPtNLO, pt_mumu > 100);
+        sub_category.SetCutResult(SelectionCut::vlowPtLO, ana_setup.pt_sel_bins.size() > 0
+                                                          && pt_mumu <= ana_setup.pt_sel_bins.at(0));
+        sub_category.SetCutResult(SelectionCut::lowPtLO, ana_setup.pt_sel_bins.size() > 1
+                                                         && pt_mumu > ana_setup.pt_sel_bins.at(0)
+                                                         && pt_mumu <= ana_setup.pt_sel_bins.at(1));
+        sub_category.SetCutResult(SelectionCut::medPt1LO, ana_setup.pt_sel_bins.size() > 2
+                                                          && pt_mumu > ana_setup.pt_sel_bins.at(1)
+                                                          && pt_mumu <= ana_setup.pt_sel_bins.at(2));
+        sub_category.SetCutResult(SelectionCut::medPt2LO, ana_setup.pt_sel_bins.size() > 3
+                                                          && pt_mumu > ana_setup.pt_sel_bins.at(2)
+                                                          && pt_mumu <= ana_setup.pt_sel_bins.at(3));
+        sub_category.SetCutResult(SelectionCut::highPtLO, ana_setup.pt_sel_bins.size() > 4
+                                                          && pt_mumu > ana_setup.pt_sel_bins.at(3)
+                                                          && pt_mumu <= ana_setup.pt_sel_bins.at(4));
+        sub_category.SetCutResult(SelectionCut::vhighPtLO, ana_setup.pt_sel_bins.size() > 4
+                                                           && pt_mumu > ana_setup.pt_sel_bins.at(4));
         sub_category.SetCutResult(SelectionCut::mtt, mass_muMu > 50);
 
         return sub_category;

@@ -47,8 +47,9 @@ public:
                                    {"muTau",bkg_spin},{"eTau",bkg_spin},{"tauTau",bkg_spin}};
     std::vector<ChannelSpin> set;
 
-    FindOptimalBandwidth(const Arguments& _args): args(_args), vars(1, 12345678,{}, {"channel", "mass", "spin"}),
-        reporter(std::make_shared<TimeReporter>()), signalObjectSelector(args.mode())
+    FindOptimalBandwidth(const Arguments& _args) :
+            args(_args), vars(1, 12345678,{}, {"channel", "mass", "spin"}), reporter(std::make_shared<TimeReporter>()),
+            signalObjectSelector(args.mode()), bTagger(Period::Run2016, BTaggerKind::DeepFlavour)
     {
         MvaSetupCollection setups;
         SampleEntryListCollection samples_list;
@@ -77,8 +78,8 @@ public:
                 for(const Event& event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
                     LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
-                    boost::optional<EventInfo> eventbase = CreateEventInfo(event,signalObjectSelector,nullptr, Period::Run2017, JetOrdering::DeepCSV);
-                    if(!eventbase.is_initialized()) continue;
+                    auto eventbase = EventInfo::Create(event, signalObjectSelector, bTagger, DiscriminatorWP::Medium);
+                    if(!eventbase) continue;
                     if (args.suffix() == "_ANcut"){
                         if (!cuts::hh_bbtautau_Run2::hh_tag::m_hh_window.IsInside(
                             eventbase->GetSVFitResults().momentum.mass(),bb.mass())) continue;
@@ -89,7 +90,7 @@ public:
 
                     if (args.suffix() == "_newcut"){
                         if (!cuts::hh_bbtautau_Run2::hh_tag::new_m_hh_window.IsInside(
-                            eventbase->GetHiggsTTMomentum(false).M(),bb.mass())) continue;
+                            eventbase->GetHiggsTTMomentum(false)->M(),bb.mass())) continue;
                     }
                     vars.AddEvent(*eventbase, entry.id, entry.spin, entry.weight);
                     tot_entries++;
@@ -170,6 +171,7 @@ private:
     std::map<ChannelSpin,SampleIdVarData> samples_mass, samples_range;
     std::map<ChannelSpin,SampleIdNameElement> bandwidth, bandwidth_range;
     SignalObjectSelector signalObjectSelector;
+    BTagger bTagger;
 };
 }
 }

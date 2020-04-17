@@ -57,8 +57,6 @@ public:
                                                             run_period(Parse<analysis::Period>(args.period())),
                                                             channel(Parse<Channel>(args.channel())),
                                                             signalObjectSelector(ConvertMode(syncMode))
-                                                            // eventWeights(Parse<analysis::Period>(args.period()), JetOrdering::DeepCSV, DiscriminatorWP::Medium, true),
-
     {
         if(args.mva_setup().size()) {
             ConfigReader config_reader;
@@ -98,9 +96,10 @@ public:
         SyncTuple sync(args.channel(), outputFile.get(), false);
         auto summaryTuple = ntuple::CreateSummaryTuple("summary", originalFile.get(), true, ntuple::TreeState::Full);
         summaryTuple->GetEntry(0);
-        SummaryInfo summaryInfo(summaryTuple->data(), channel, args.trigger_cfg());
+        auto summaryInfo = std::make_shared<SummaryInfo>(summaryTuple->data(), channel, args.trigger_cfg());
         std::cout << "n_entries " << n_entries << '\n';
 
+        const BTagger bTagger(run_period, BTaggerKind::DeepFlavour);
         boost::optional<EventIdentifier> selected_event_id;
         if(!args.event_id().empty())
             selected_event_id = EventIdentifier(args.event_id());
@@ -117,7 +116,7 @@ public:
                 std::cout << "Event: " << eventId << std::endl;
             }
 
-            FillSyncTuple(sync, event, summaryInfo, debug);
+            FillSyncTuple(sync, event, summaryInfo, bTagger, debug);
         }
         sync.Write();
     }
@@ -154,7 +153,8 @@ private:
         return signalMode_map.at(syncMode);
     }
 
-    void FillSyncTuple(SyncTuple& sync, const ntuple::Event& event, const SummaryInfo& summaryInfo, bool debug) const
+    void FillSyncTuple(SyncTuple& sync, const ntuple::Event& event, std::shared_ptr<const SummaryInfo> summaryInfo,
+                       const BTagger& bTagger, bool debug) const
     {
         static const std::map<std::pair<Period, Channel>, std::vector<std::string>> triggerPaths = {
             { { Period::Run2016, Channel::ETau }, { "HLT_Ele25_eta2p1_WPTight_Gsf_v" } },
@@ -191,16 +191,17 @@ private:
             { { Period::Run2018, Channel::TauTau }, { "HLT_VBF_DoubleLooseChargedIsoPFTau20_Trk1_eta2p1_v",
                                  "HLT_VBF_DoubleLooseChargedIsoPFTauHPS20_Trk1_eta2p1_v" } },
         };
-        static const JetOrdering jet_ordering = JetOrdering::DeepFlavour;
+
         const auto trig_key = std::make_pair(run_period, channel);
 
         if(debug)
             std::cout << "Creating event info..." << std::endl;
-        auto event_info = CreateEventInfo(event, signalObjectSelector, &summaryInfo, run_period, jet_ordering, true,
-                                          UncertaintySource::None, UncertaintyScale::Central, debug);
+        auto event_info = EventInfo::Create(event, signalObjectSelector, bTagger, DiscriminatorWP::Medium,
+                                            summaryInfo, UncertaintySource::None, UncertaintyScale::Central,
+                                            true, debug);
         if(debug)
-            std::cout << "Event info is_initialized = " << event_info.is_initialized() << std::endl;
-        if(!event_info.is_initialized()) return;
+            std::cout << "Event info is_initialized = " << (event_info.get() != nullptr) << std::endl;
+        if(!event_info) return;
         if(debug) {
             for(size_t leg_id = 1; leg_id <= 2; ++leg_id) {
                 const auto& leg = event_info->GetLeg(leg_id);

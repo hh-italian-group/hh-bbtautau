@@ -69,19 +69,21 @@ public:
     std::map<ChannelSpin,SampleIdVarData> samples_range;
 
 
-    VariableDistribution(const Arguments& _args): args(_args),
-        outfile(root_ext::CreateRootFile(args.output_file())), vars(args.number_sets(), args.seed(),{}, {"channel", "mass", "spin", "iso_2",
-                                                                    "decayMode_1", "decayMode_2", "iso_1", "csv_1", "csv_2",
-                                                                    "costheta_l1l2METhh_sv","costheta_htautau_svhhMET","costheta_htautau_svhh_sv",
-                                                                    "costheta_htautau_svhh", "costheta_htautauhh_sv", "costheta_hbbhh_sv",
-                                                                    "costheta_METhtautau_sv", "costheta_l2htautau_sv", "costheta_l1htautau_sv",
-                                                                    "costheta_star_leptons_sv", "phi_2_sv", "phi_1_sv", "phi_sv", "mass_H_sv",
-                                                                    "MT_htautau_sv", "mass_htautau_sv", "dR_l1l2_boosted_sv", "dR_l1l2Pt_htautau_sv",
-                                                                    "dR_hbbhtautau_sv", "dR_METhtautau_sv", "deta_hbbhtautau_sv", "abs_deta_hbbhtautau_sv"
-                                                                    "deta_METhtautau_sv", "abs_deta_METhtautau_sv","dphi_hbbhtautau_sv", "abs_dphi_hbbhatutau_sv",
-                                                                    "dphi_hbbhtautau_sv", "abs_dphi_hbbhatutau_sv", "dphi_METhtautau_sv", "abs_dphi_METhtautau_sv","pt_htautau_sv"
-}),
-              reporter(std::make_shared<TimeReporter>()), signalObjectSelector(args.mode())
+    VariableDistribution(const Arguments& _args) :
+            args(_args), outfile(root_ext::CreateRootFile(args.output_file())),
+            vars(args.number_sets(), args.seed(),{}, {
+                "channel", "mass", "spin", "iso_2",
+                "decayMode_1", "decayMode_2", "iso_1", "csv_1", "csv_2",
+                "costheta_l1l2METhh_sv","costheta_htautau_svhhMET","costheta_htautau_svhh_sv",
+                "costheta_htautau_svhh", "costheta_htautauhh_sv", "costheta_hbbhh_sv",
+                "costheta_METhtautau_sv", "costheta_l2htautau_sv", "costheta_l1htautau_sv",
+                "costheta_star_leptons_sv", "phi_2_sv", "phi_1_sv", "phi_sv", "mass_H_sv",
+                "MT_htautau_sv", "mass_htautau_sv", "dR_l1l2_boosted_sv", "dR_l1l2Pt_htautau_sv",
+                "dR_hbbhtautau_sv", "dR_METhtautau_sv", "deta_hbbhtautau_sv", "abs_deta_hbbhtautau_sv"
+                "deta_METhtautau_sv", "abs_deta_METhtautau_sv","dphi_hbbhtautau_sv", "abs_dphi_hbbhatutau_sv",
+                "dphi_hbbhtautau_sv", "abs_dphi_hbbhatutau_sv", "dphi_METhtautau_sv", "abs_dphi_METhtautau_sv","pt_htautau_sv"
+            }), reporter(std::make_shared<TimeReporter>()), signalObjectSelector(args.mode()),
+            bTagger(Period::Run2016, BTaggerKind::DeepFlavour)
     {
         MvaSetupCollection setups;
         SampleEntryListCollection samples_list;
@@ -315,8 +317,8 @@ public:
                 for(const Event& event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
                     LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
-                    boost::optional<EventInfo> eventbase = CreateEventInfo(event,signalObjectSelector,nullptr,Period::Run2017, JetOrdering::DeepCSV);
-                    if(!eventbase.is_initialized()) continue;
+                    auto eventbase = EventInfo::Create(event, signalObjectSelector, bTagger, DiscriminatorWP::Medium);
+                    if(!eventbase) continue;
                     if (args.suffix() == "_ANcut"){
                         if (!cuts::hh_bbtautau_Run2::hh_tag::m_hh_window.IsInside(
                             eventbase->GetSVFitResults().momentum.mass(),bb.mass())) continue;
@@ -326,7 +328,7 @@ public:
 
                     if (args.suffix() == "_newcut"){
                         if (!cuts::hh_bbtautau_Run2::hh_tag::new_m_hh_window.IsInside(
-                            eventbase->GetHiggsTTMomentum(false).M(),bb.mass())) continue;
+                            eventbase->GetHiggsTTMomentum(false)->M(),bb.mass())) continue;
                     }
                     vars.AddEvent(*eventbase, entry.id, entry.spin, entry.weight);
                     tot_entries++;
@@ -650,6 +652,7 @@ private:
     MvaVariablesStudy vars;
     std::shared_ptr<TimeReporter> reporter;
     SignalObjectSelector signalObjectSelector;
+    BTagger bTagger;
 };
 }
 }

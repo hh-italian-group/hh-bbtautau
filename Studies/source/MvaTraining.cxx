@@ -206,7 +206,7 @@ public:
 
     MVATraining(const Arguments& _args): args(_args),
         outfile(root_ext::CreateRootFile(args.output_file()+"_"+std::to_string(args.which_test())+".root")),
-        signalObjectSelector(args.mode())
+        signalObjectSelector(args.mode()), bTagger(Period::Run2016, BTaggerKind::DeepFlavour)
     {
         MvaSetupCollection setups;
         SampleEntryListCollection samples_list;
@@ -468,8 +468,8 @@ public:
                 for(Event event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
                     LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
-                    boost::optional<EventInfo> eventbase = CreateEventInfo(event,signalObjectSelector);
-                    if(!eventbase.is_initialized()) continue;
+                    auto eventbase = EventInfo::Create(event, signalObjectSelector, bTagger, DiscriminatorWP::Medium);
+                    if(!eventbase) continue;
                     if (args.suffix() == "_ANcut"){
                         if (!cuts::hh_bbtautau_Run2::hh_tag::m_hh_window.IsInside(
                             eventbase->GetSVFitResults().momentum.mass(),bb.mass())) continue;
@@ -503,7 +503,7 @@ public:
 
                     if (args.suffix() == "_newcut"){
                         if (!cuts::hh_bbtautau_Run2::hh_tag::new_m_hh_window.IsInside(
-                            eventbase->GetHiggsTTMomentum(false).M(),bb.mass())) continue;
+                            eventbase->GetHiggsTTMomentum(false)->M(), bb.mass())) continue;
                     }
 
                     if (!args.is_SM() && args.is_BSM())
@@ -818,6 +818,7 @@ private:
     std::shared_ptr<NonResHH_EFT::WeightProvider> reweight5D;
     NonResHH_EFT::BenchmarkCollection benchmarks;
     SignalObjectSelector signalObjectSelector;
+    BTagger bTagger;
 };
 
 }

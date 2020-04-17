@@ -70,16 +70,16 @@ void LegacyMvaVariables::AddEvent(analysis::EventInfo& eventbase, const SampleId
     const auto& met = eventbase.GetMET();
 
     dphi_mumet = static_cast<float>(std::abs(ROOT::Math::VectorUtil::DeltaPhi(t1.GetMomentum(), met.GetMomentum())));
-    dphi_metsv = static_cast<float>(std::abs(ROOT::Math::VectorUtil::DeltaPhi(Htt_sv, met.GetMomentum())));
+    dphi_metsv = static_cast<float>(std::abs(ROOT::Math::VectorUtil::DeltaPhi(*Htt_sv, met.GetMomentum())));
     dR_bb = static_cast<float>(std::abs(ROOT::Math::VectorUtil::DeltaR(b1.GetMomentum(), b2.GetMomentum())));
     dR_bbbb = static_cast<float>(ROOT::Math::VectorUtil::DeltaR(b1.GetMomentum(), b2.GetMomentum())
                                  * Hbb.GetMomentum().Pt());
     dR_taumu = static_cast<float>(std::abs(ROOT::Math::VectorUtil::DeltaR(t1.GetMomentum(), t2.GetMomentum())));
-    dR_taumusvfit = static_cast<float>(ROOT::Math::VectorUtil::DeltaR(t1.GetMomentum(), t2.GetMomentum())*Htt.Pt());
+    dR_taumusvfit = static_cast<float>(ROOT::Math::VectorUtil::DeltaR(t1.GetMomentum(), t2.GetMomentum())*Htt->Pt());
     mT1 = static_cast<float>(Calculate_MT(t1.GetMomentum(), met.GetMomentum()));
     mT2 = static_cast<float>(Calculate_MT(t2.GetMomentum(), met.GetMomentum()));
     dphi_bbmet = static_cast<float>(std::abs(ROOT::Math::VectorUtil::DeltaPhi(Hbb.GetMomentum(), met.GetMomentum())));
-    dphi_bbsv = static_cast<float>(std::abs(ROOT::Math::VectorUtil::DeltaPhi(Hbb.GetMomentum(), Htt_sv)));
+    dphi_bbsv = static_cast<float>(std::abs(ROOT::Math::VectorUtil::DeltaPhi(Hbb.GetMomentum(), *Htt_sv)));
 }
 
 double LegacyMvaVariables::Evaluate() { return reader->EvaluateMVA(method_name); }

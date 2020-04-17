@@ -85,8 +85,8 @@ public:
                                                 signalObjectSelector->GetTauVSjetDiscriminator().first);
 
         std::cout << "done.\nLoading weights... " << std::flush;
-        eventWeights_HH = std::make_shared<mc_corrections::EventWeights_HH>(setup.period, setup.jet_ordering,
-                                                                            setup.btag_wp, args.use_LLR_weights());
+        bTagger = std::make_unique<BTagger>(setup.period, setup.jet_ordering);
+        eventWeights_HH = std::make_shared<mc_corrections::EventWeights_HH>(setup.period, *bTagger);
         std::cout << "done." << std::endl;
 
         if(args.jobs() == "all") {
@@ -152,6 +152,7 @@ private:
             unc_sources = { UncertaintySource::None };
             if(!job.isData)
                 unc_sources = setup.unc_sources;
+            unc_variations = EnumerateUncVariations(unc_sources);
             for(auto desc_iter = job.files.begin(); desc_iter != job.files.end(); ++desc_iter, ++desc_id) {
                 if(desc_iter == job.files.begin() || !job.ProduceMergedOutput()) {
                     for (Channel channel : setup.channels){
@@ -293,6 +294,7 @@ private:
                             event_ptr->file_desc_id = desc_id;
                             event_ptr->split_id = 0;
                             event_ptr->isData = job.isData;
+                            event_ptr->period = static_cast<int>(setup.period);
                             if(split_distr) {
                                 const EventIdentifier event_id(event);
                                 event_ptr->split_id = (*split_distr)(gen_map.at(channel));
@@ -415,9 +417,9 @@ private:
         return summary;
     }
 
-    bool EventPassSelection(boost::optional<EventInfo>& eventInfo) const
+    bool EventPassSelection(const std::unique_ptr<EventInfo>& eventInfo) const
     {
-        if(!eventInfo.is_initialized()) return false;
+        if(!eventInfo) return false;
         if(!signalObjectSelector->PassLeptonVetoSelection(eventInfo->GetEventCandidate().GetEvent())) return false;
         if(!signalObjectSelector->PassMETfilters(eventInfo->GetEventCandidate().GetEvent(), setup.period,
                                                  eventInfo->GetEventCandidate().GetEvent().isData)) return false;
@@ -459,17 +461,15 @@ private:
         return true;
     }
 
-    boost::optional<EventInfo> CreateAnyEventInfo(const Event& event) const
+    std::unique_ptr<EventInfo> CreateAnyEventInfo(const Event& event) const
     {
-        for(UncertaintySource unc_source : unc_sources) {
-            for(UncertaintyScale unc_scale : GetActiveUncertaintyScales(unc_source)) {
-                auto eventInfo = CreateEventInfo(event, *signalObjectSelector, nullptr, setup.period,
-                                                 setup.jet_ordering, false, unc_source, unc_scale);
-                if(EventPassSelection(eventInfo))
-                    return eventInfo;
-            }
+        for(const auto& [unc_source, unc_scale] : unc_variations) {
+            auto eventInfo = EventInfo::Create(event, *signalObjectSelector, *bTagger, setup.btag_wp,
+                                               nullptr, unc_source, unc_scale);
+            if(EventPassSelection(eventInfo))
+                return eventInfo;
         }
-        return boost::optional<EventInfo>();
+        return std::unique_ptr<EventInfo>();
     }
 
     bool ProcessEvent(Event& event)
@@ -477,8 +477,8 @@ private:
         // using EventPart = ntuple::StorageMode::EventPart;
         using WeightType = mc_corrections::WeightType;
         using WeightingMode = mc_corrections::WeightingMode;
-        boost::optional<EventInfo> eventInfo = CreateAnyEventInfo(event);
-        if(!eventInfo.is_initialized()) return false;
+        const auto eventInfo = CreateAnyEventInfo(event);
+        if(!eventInfo) return false;
 
         event.weight_pu = weighting_mode.count(WeightType::PileUp)
                         ? eventWeights_HH->GetWeight(*eventInfo, WeightType::PileUp) : 1;
@@ -534,6 +534,8 @@ private:
     mc_corrections::WeightingMode weighting_mode;
     std::shared_ptr<SignalObjectSelector> signalObjectSelector;
     std::set<UncertaintySource> unc_sources;
+    std::vector<std::pair<UncertaintySource, UncertaintyScale>> unc_variations;
+    std::unique_ptr<BTagger> bTagger;
 };
 
 } // namespace tuple_skimmer

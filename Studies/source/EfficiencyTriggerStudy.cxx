@@ -47,7 +47,8 @@ public:
     };
 
     EfficiencyStudy(const Arguments& _args) :
-        args(_args), canvas("","", 600, 600), signalObjectSelector(args.mode())
+        args(_args), canvas("","", 600, 600), signalObjectSelector(args.mode()),
+        bTagger(args.period(), BTaggerKind::DeepFlavour)
     {
         gStyle->SetOptStat(0);
         canvas.SetGrid();
@@ -207,7 +208,7 @@ public:
             auto summaryTuple = ntuple::CreateSummaryTuple("summary", file.get(), true,
                                                            ntuple::TreeState::Full);
             auto summary = MergeSummaryTuple(*summaryTuple);
-            std::shared_ptr<SummaryInfo> summaryInfo(new SummaryInfo(summary,args.channel()));
+            auto summaryInfo = std::make_shared<SummaryInfo>(summary,args.channel());
             auto originalTuple = ntuple::CreateEventTuple(ToString(args.channel()), file.get(), true,
                                                           ntuple::TreeState::Full);
             const Channel channel = args.channel();
@@ -217,17 +218,17 @@ public:
 
             std::vector<size_t> passed(trigger_descs.size(), 0);
             for(const auto& event : *originalTuple) {
-                const Period run_period = args.period();
-                const JetOrdering jet_ordering = run_period == Period::Run2017
-                                               ? JetOrdering::DeepCSV : JetOrdering::CSV;
 
-                boost::optional<EventInfo> eventInfo = CreateEventInfo(event,signalObjectSelector,summaryInfo.get(), run_period, jet_ordering);
-                if(!eventInfo.is_initialized()) continue;
+                auto eventInfo = EventInfo::Create(event, signalObjectSelector, bTagger, DiscriminatorWP::Medium,
+                                                   summaryInfo);
+                if(!eventInfo) continue;
                 if((*eventInfo)->extraelec_veto || (*eventInfo)->extramuon_veto) continue;
                 // if(eventInfo->GetEnergyScale() != EventEnergyScale::Central) continue;
                 if(!eventInfo->HasBjetPair()) continue;
-                if(!sample_desc.massWindowParams.IsInside(eventInfo->GetHiggsTTMomentum(true).M(),
-                    eventInfo->GetHiggsBB().GetMomentum().M())) continue;
+                if(!eventInfo->GetHiggsTTMomentum(true)
+                        || !sample_desc.massWindowParams.IsInside(eventInfo->GetHiggsTTMomentum(true)->M(),
+                                                                  eventInfo->GetHiggsBB().GetMomentum().M()))
+                    continue;
                 if(eventInfo->GetLeg(1)->charge() == eventInfo->GetLeg(2)->charge()) continue;
 
                 std::vector<TriggerDescriptorCollection::BitsContainer> reco_jet_matches;
@@ -329,6 +330,7 @@ private:
     std::vector<TriggerDesc> trigger_descs;
     SampleDesc sample_desc;
     SignalObjectSelector signalObjectSelector;
+    BTagger bTagger;
 };
 }
 PROGRAM_MAIN(analysis::EfficiencyStudy, Arguments)

@@ -78,9 +78,10 @@ public:
     using DataVector = std::vector<double>;
     using MassData = std::map<SampleId, DataVector>;
 
-    MVAEvaluation(const Arguments& _args): args(_args),
-        outfile(root_ext::CreateRootFile(args.output_file()+".root")), gen(args.seed()), test_vs_training(0, args.number_sets()-1),
-        signalObjectSelector(args.mode())
+    MVAEvaluation(const Arguments& _args) :
+        args(_args), outfile(root_ext::CreateRootFile(args.output_file()+".root")), gen(args.seed()),
+        test_vs_training(0, args.number_sets()-1), signalObjectSelector(args.mode()),
+        bTagger(Period::Run2016, BTaggerKind::DeepFlavour)
     {
         MvaSetupCollection setups;
         SampleEntryListCollection samples_list;
@@ -189,8 +190,8 @@ public:
                 for(Event event : *tuple) {
                     if(tot_entries >= args.number_events()) break;
                     LorentzVectorE_Float bb = event.jets_p4[0] + event.jets_p4[1];
-                    boost::optional<EventInfo> eventbase = CreateEventInfo(event,signalObjectSelector);
-                    if(!eventbase.is_initialized()) continue;
+                    auto eventbase = EventInfo::Create(event, signalObjectSelector, bTagger, DiscriminatorWP::Medium);
+                    if(!eventbase) continue;
                     if (args.suffix() == "_ANcut"){
                         if (!cuts::hh_bbtautau_Run2::hh_tag::m_hh_window.IsInside(
                             eventbase->GetSVFitResults().momentum.mass(),bb.mass())) continue;
@@ -199,7 +200,7 @@ public:
 
                     if (args.suffix() == "_newcut"){
                         if (!cuts::hh_bbtautau_Run2::hh_tag::new_m_hh_window.IsInside(
-                            eventbase->GetHiggsTTMomentum(false).M(),bb.mass())) continue;
+                            eventbase->GetHiggsTTMomentum(false)->M(),bb.mass())) continue;
                     }
                     size_t which_set=0;
                     if(!args.all_data()){
@@ -416,6 +417,7 @@ private:
     std::uniform_int_distribution<size_t>  test_vs_training;
     std::shared_ptr<NonResHH_EFT::WeightProvider> reweight5D;
     SignalObjectSelector signalObjectSelector;
+    BTagger bTagger;
 };
 
 }

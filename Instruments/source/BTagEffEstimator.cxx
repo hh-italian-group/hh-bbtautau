@@ -20,12 +20,10 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 struct Arguments { // list of all program arguments
     REQ_ARG(std::string, output_file);
     REQ_ARG(analysis::SignalMode, mode);
-    //OPT_ARG(std::string, apply_pu_id_cut,"no");
+    REQ_ARG(analysis::BTaggerKind, btagger);
+    REQ_ARG(analysis::Period, period);
     OPT_ARG(unsigned, n_threads, 1);
-    OPT_ARG(analysis::JetOrdering, csv_type,analysis::JetOrdering::DeepCSV);
-    OPT_ARG(analysis::Period, period, analysis::Period::Run2017);
     REQ_ARG(std::vector<std::string>, input_file);
-
 };
 
 namespace analysis {
@@ -76,7 +74,7 @@ public:
         std::string channel_all = "all";
         std::set<std::string> channel_names = channels;
         channel_names.insert(channel_all);
-        BTagger bTagger(args.period(),args.csv_type());
+        const BTagger bTagger(args.period(),args.btagger());
         btag_working_points = {
             {"L", DiscriminatorWP::Loose }, {"M", DiscriminatorWP::Medium}, {"T", DiscriminatorWP::Tight}
         };
@@ -115,9 +113,8 @@ public:
                 std::cout << "Processing " << name << "/" << channel << std::endl;
 
                 for(const Event& event : *tuple){
-                    boost::optional<EventInfo> eventInfo = CreateEventInfo(event,signalObjectSelector,nullptr,
-										args.period(),args.csv_type());
-                    if(!eventInfo.is_initialized()) continue;
+                    auto eventInfo = EventInfo::Create(event, signalObjectSelector, bTagger, DiscriminatorWP::Medium);
+                    if(!eventInfo) continue;
                     // const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
                    /* if (args.period() == Period::Run2016 && (es != EventEnergyScale::Central || event.jets_p4.size() < 2 || event.extraelec_veto
                             || event.extramuon_veto
@@ -143,9 +140,8 @@ public:
 
                     std::string tau_iso = passTauId ? "Iso" : "NonIso";
 
-                    for (size_t i = 0; i < event.jets_p4.size(); ++i){
-                        const auto& jet = event.jets_p4.at(i);
-                        if(std::abs(jet.eta()) >= cuts::btag_Run2::eta) continue;
+                    for (const auto& jet_candidate : eventInfo->GetCentralJets()){
+                        const auto& jet = jet_candidate->GetMomentum();
 
                         //PU correction
                         /*if(apply_pu_id_cut){
@@ -153,10 +149,10 @@ public:
                                 double jet_mva = event.jets_mva.at(i);
                                 if(!PassJetPuId(jet.Pt(),jet_mva,pu_wp)) continue;
                             }
-                                if((event.jets_pu_id.at(i) & (1 << 2)) == 0) continue;s
+                                if((event.jets_pu_id.at(i) & (1 << 2)) == 0) continue;
                         }*/
 
-                        int jet_hadronFlavour = event.jets_hadronFlavour.at(i);
+                        const int jet_hadronFlavour = (*jet_candidate)->hadronFlavour();
                         const std::string& jet_flavour = flavours.at(jet_hadronFlavour);
 
                         //For folder/subfolder structure in Sign and Isolation
@@ -180,7 +176,7 @@ public:
                                 channel_all).Fill(jet.Pt(), std::abs(jet.Eta()));
 
                         for(const auto& btag_wp : btag_working_points) {
-                            if(bTagger.Pass(event,i,eventInfo->GetEventCandidate().GetUncSource(),eventInfo->GetEventCandidate().GetScale(),btag_wp.second)){
+                            if(bTagger.Pass(**jet_candidate, btag_wp.second)) {
                                 //For folder/subfolder structure in Sign and Isolation
                                 anaDataMap[tau_sign+tau_iso+eff]->h2(num, flavour_all, btag_wp.first, channel).
                                     Fill(jet.Pt(), std::abs(jet.Eta()));
