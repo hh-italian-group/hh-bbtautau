@@ -201,11 +201,11 @@ private:
                 }
                 std::cout << "\tProcessing";
                 std::vector<std::shared_ptr<TFile>> inputFiles;
-                std::vector<std::map<Channel, std::vector<std::shared_ptr<TFile>>>> inputCacheFiles;
+                std::vector<std::map<Channel, std::vector<std::string>>> inputCacheFiles;
                 for(const auto& input : desc_iter->inputs) {
                     std::cout << " " << input;
                     inputFiles.push_back(root_ext::OpenRootFile(args.inputPath() + "/" + input));
-                    std::map<Channel, std::vector<std::shared_ptr<TFile>>> cacheFiles;
+                    std::map<Channel, std::vector<std::string>> cacheFiles;
 
                     if(setup.use_cache){
                         for(UncertaintySource unc_source : unc_sources) {
@@ -213,15 +213,13 @@ private:
                                 auto full_path =  tools::FullPath({args.cachePathBase(), ToString(unc_source),
                                                                    ToString(channel)});
 
-                                std::vector<std::string> cache_files = tools::FindFiles(full_path,
-                                                                                        "^" + RemoveFileExtension(input) +
-                                                                                        "(_cache[0-9]+|)\\.root$");
-                                if(cache_files.size() == 0)
-                                std::cerr << "  Cache files are not used, no matched found for sample: " << input << "'."
-                                          << std::endl;
+                                const std::vector<std::string> cache_files = tools::FindFiles(
+                                        full_path, "^" + RemoveFileExtension(input) + "(_cache[0-9]+|)\\.root$");
+                                if(cache_files.empty())
+                                    throw exception("Cache files are not used, no matched found for sample: '%1%'.")
+                                        % input;
                                 for (size_t i = 0; i < cache_files.size(); ++i)
-                                    cacheFiles[channel].push_back(root_ext::OpenRootFile(tools::FullPath({full_path,
-                                                                                                 cache_files.at(i)})));
+                                    cacheFiles[channel].push_back(tools::FullPath({full_path, cache_files.at(i)}));
                             }
                         }
                     }
@@ -265,18 +263,7 @@ private:
                                       << desc_iter->inputs.at(n) << "'." << std::endl;
                         }
                         if(!tuple) continue;
-                        std::vector<std::shared_ptr<cache_tuple::CacheTuple>> cacheTuples;
-                        for(unsigned h = 0; h < inputCacheFiles.at(n)[channel].size(); ++h){
-                            auto cacheFile = inputCacheFiles.at(n)[channel].at(h);
-                            try {
-                                auto cacheTuple = std::make_shared<cache_tuple::CacheTuple>(treeName,cacheFile.get(),true);
-                                cacheTuples.push_back(cacheTuple);
-                            } catch(std::exception&) {
-                                std::cerr << "WARNING: tree " << treeName << " not found in cache file '"
-                                          << cacheFile->GetName() << "'." << std::endl;
-                                cacheTuples.push_back(nullptr);
-                            }
-                        }
+                        EventCacheReader cache_reader(inputCacheFiles.at(n)[channel], treeName);
                         const Long64_t n_entries = tuple->GetEntries();
                         for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) {
                             tuple->GetEntry(current_entry);
@@ -300,15 +287,8 @@ private:
                                 event_ptr->split_id = (*split_distr)(gen_map.at(channel));
                             }
                             event_ptr->split_id = split_distr ? (*split_distr)(gen_map.at(channel)) : 0;
-                            EventCacheProvider eventCacheProvider(*event_ptr);
-                            for(unsigned cc = 0; cc < cacheTuples.size(); ++cc){
-                                auto cacheTuple = cacheTuples.at(cc);
-                                if(!cacheTuple) continue;
-                                cacheTuple->GetEntry(current_entry);
-                                const cache_tuple::CacheEvent& cache_event = cacheTuple->data();
-                                eventCacheProvider.AddEvent(cache_event);
-                            }
-                            eventCacheProvider.FillEvent(*event_ptr);
+                            const auto cache_provider = cache_reader.Read(current_entry);
+                            cache_provider.FillEvent(*event_ptr);
                             processQueue.Push(event_ptr);
                         }
                     }
