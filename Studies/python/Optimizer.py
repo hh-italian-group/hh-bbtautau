@@ -66,7 +66,6 @@ def CreateGetLoss(file_name, cfg_mean_std, cfg_min_max, n_epoch):
                   optimizer=opt,
                   weighted_metrics=[pm.sel_acc_2])
         model.build(X.shape)
-        now = datetime.now()
         print(tf.timestamp(name='timestamp'))
         total_evt = X.shape[0]
         evt_training = int(total_evt * (1 - args.val_split))
@@ -74,7 +73,6 @@ def CreateGetLoss(file_name, cfg_mean_std, cfg_min_max, n_epoch):
         print('Events to train: ',evt_training, 'Events to validate during training: ', evt_val)
         history = model.fit(X, Y, validation_split=args.val_split, epochs=args.n_epochs,
                             batch_size=params['batch_size'], verbose=0)
-        now = datetime.now()
         print(tf.timestamp(name='timestamp'))
         tf.keras.backend.clear_session()
 
