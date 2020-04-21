@@ -68,7 +68,7 @@ def CreateGetLoss(file_name, cfg_mean_std, cfg_min_max, n_epoch):
         model.build(X.shape)
         now = datetime.now()
         timestamp = datetime.timestamp(now)
-        tf.print("timestamp =", timestamp)
+        print(tf.print("timestamp =", timestamp))
         total_evt = X.shape[0]
         evt_training = int(total_evt * (1 - args.val_split))
         evt_val = total_evt - evt_training
@@ -77,7 +77,7 @@ def CreateGetLoss(file_name, cfg_mean_std, cfg_min_max, n_epoch):
                             batch_size=params['batch_size'], verbose=0)
         now = datetime.now()
         timestamp = datetime.timestamp(now)
-        tf.print("timestamp =", timestamp)
+        print(tf.print("timestamp =", timestamp))
         tf.keras.backend.clear_session()
 
         return np.amax(history.history['val_sel_acc_2'])
