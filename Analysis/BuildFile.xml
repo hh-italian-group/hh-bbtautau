@@ -7,4 +7,5 @@
 <use name="h-tautau/Analysis"/>
 <use name="h-tautau/Core"/>
 <use name="hh-bbtautau/McCorrections"/>
+<flags CXXFLAGS="-Wno-non-virtual-dtor"/>
 <export> <lib name="1"/> </export>

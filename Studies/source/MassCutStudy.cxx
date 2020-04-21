@@ -37,7 +37,7 @@ public:
     using EventTuple = ntuple::EventTuple;
 
     MassCutStudy(const Arguments& _args): args(_args), reporter(std::make_shared<TimeReporter>()),
-					  signalObjectSelector(args.mode())
+					  signalObjectSelector(args.mode()), bTagger(Period::Run2016, BTaggerKind::DeepFlavour)
     {
         MvaSetupCollection setups;
         SampleEntryListCollection samples_list;
@@ -177,13 +177,13 @@ public:
             auto sampleid = entry.id.IsSignal() ? SampleId::MassTot() : SampleId::Bkg();
 
             for(const Event& event : *tuple) {
-                boost::optional<EventInfo> eventbase = CreateEventInfo(event,signalObjectSelector);
-                if(!eventbase.is_initialized()) continue;
+                auto eventbase = EventInfo::Create(event, signalObjectSelector, bTagger, DiscriminatorWP::Medium);
+                if(!eventbase) continue;
 //                if (!cuts::hh_bbtautau_2016::hh_tag::IsInsideMassWindow(eventbase.GetHiggsTTMomentum(true).mass(), eventbase.GetHiggsBB().GetMomentum().mass()))
 //                    continue;
                 const auto& Hbb = eventbase->GetHiggsBB().GetMomentum();
 //                const auto& Htt_sv = eventbase.GetHiggsTTMomentum(true);
-                const auto& Htt = eventbase->GetHiggsTTMomentum(false);
+                const auto& Htt = *eventbase->GetHiggsTTMomentum(false);
 //                const auto& met = eventbase.GetMET().GetMomentum();
 //                element[sampleid].emplace_back(Hbb.M(), (Htt_sv).M(), eventbase->weight_total);
 //                element[sampleid].emplace_back(Hbb.M(), (Htt+met).M(), eventbase->weight_total);
@@ -239,6 +239,7 @@ private:
     std::shared_ptr<TimeReporter> reporter;
     SampleEntryCollection samples;
     SignalObjectSelector signalObjectSelector;
+    BTagger bTagger;
 };
 }
 }

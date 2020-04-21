@@ -85,8 +85,8 @@ public:
                                                 signalObjectSelector->GetTauVSjetDiscriminator().first);
 
         std::cout << "done.\nLoading weights... " << std::flush;
-        eventWeights_HH = std::make_shared<mc_corrections::EventWeights_HH>(setup.period, setup.jet_ordering,
-                                                                            setup.btag_wp, args.use_LLR_weights());
+        bTagger = std::make_unique<BTagger>(setup.period, setup.jet_ordering);
+        eventWeights_HH = std::make_shared<mc_corrections::EventWeights_HH>(setup.period, *bTagger);
         std::cout << "done." << std::endl;
 
         if(args.jobs() == "all") {
@@ -152,6 +152,7 @@ private:
             unc_sources = { UncertaintySource::None };
             if(!job.isData)
                 unc_sources = setup.unc_sources;
+            unc_variations = EnumerateUncVariations(unc_sources);
             for(auto desc_iter = job.files.begin(); desc_iter != job.files.end(); ++desc_iter, ++desc_id) {
                 if(desc_iter == job.files.begin() || !job.ProduceMergedOutput()) {
                     for (Channel channel : setup.channels){
@@ -200,11 +201,11 @@ private:
                 }
                 std::cout << "\tProcessing";
                 std::vector<std::shared_ptr<TFile>> inputFiles;
-                std::vector<std::map<Channel, std::vector<std::shared_ptr<TFile>>>> inputCacheFiles;
+                std::vector<std::map<Channel, std::vector<std::string>>> inputCacheFiles;
                 for(const auto& input : desc_iter->inputs) {
                     std::cout << " " << input;
                     inputFiles.push_back(root_ext::OpenRootFile(args.inputPath() + "/" + input));
-                    std::map<Channel, std::vector<std::shared_ptr<TFile>>> cacheFiles;
+                    std::map<Channel, std::vector<std::string>> cacheFiles;
 
                     if(setup.use_cache){
                         for(UncertaintySource unc_source : unc_sources) {
@@ -212,15 +213,13 @@ private:
                                 auto full_path =  tools::FullPath({args.cachePathBase(), ToString(unc_source),
                                                                    ToString(channel)});
 
-                                std::vector<std::string> cache_files = tools::FindFiles(full_path,
-                                                                                        "^" + RemoveFileExtension(input) +
-                                                                                        "(_cache[0-9]+|)\\.root$");
-                                if(cache_files.size() == 0)
-                                std::cerr << "  Cache files are not used, no matched found for sample: " << input << "'."
-                                          << std::endl;
+                                const std::vector<std::string> cache_files = tools::FindFiles(
+                                        full_path, "^" + RemoveFileExtension(input) + "(_cache[0-9]+|)\\.root$");
+                                if(cache_files.empty())
+                                    throw exception("Cache files are not used, no matched found for sample: '%1%'.")
+                                        % input;
                                 for (size_t i = 0; i < cache_files.size(); ++i)
-                                    cacheFiles[channel].push_back(root_ext::OpenRootFile(tools::FullPath({full_path,
-                                                                                                 cache_files.at(i)})));
+                                    cacheFiles[channel].push_back(tools::FullPath({full_path, cache_files.at(i)}));
                             }
                         }
                     }
@@ -234,13 +233,6 @@ private:
                     ntuple::MergeProdSummaries(*summary, desc_summary);
                 else
                     summary = std::make_shared<ProdSummary>(desc_summary);
-
-//                for(unsigned n = 0; n < desc_iter->inputs.size() && (n == 0 || !desc_iter->first_input_is_ref); ++n) {
-//                    if (desc_iter->input_is_partial.size() && desc_iter->input_is_partial.at(n) == true) continue;
-//                    const auto& input = desc_iter->inputs.at(n);
-//                    summary->file_desc_name.push_back(input);
-//                    summary->file_desc_id.push_back(n * 1000 + desc_id);
-//                }
 
                 summary->n_splits = setup.n_splits;
                 summary->split_seed = setup.split_seed;
@@ -271,18 +263,7 @@ private:
                                       << desc_iter->inputs.at(n) << "'." << std::endl;
                         }
                         if(!tuple) continue;
-                        std::vector<std::shared_ptr<cache_tuple::CacheTuple>> cacheTuples;
-                        for(unsigned h = 0; h < inputCacheFiles.at(n)[channel].size(); ++h){
-                            auto cacheFile = inputCacheFiles.at(n)[channel].at(h);
-                            try {
-                                auto cacheTuple = std::make_shared<cache_tuple::CacheTuple>(treeName,cacheFile.get(),true);
-                                cacheTuples.push_back(cacheTuple);
-                            } catch(std::exception&) {
-                                std::cerr << "WARNING: tree " << treeName << " not found in cache file '"
-                                          << cacheFile->GetName() << "'." << std::endl;
-                                cacheTuples.push_back(nullptr);
-                            }
-                        }
+                        EventCacheReader cache_reader(inputCacheFiles.at(n)[channel], treeName);
                         const Long64_t n_entries = tuple->GetEntries();
                         for(Long64_t current_entry = 0; current_entry < n_entries; ++current_entry) {
                             tuple->GetEntry(current_entry);
@@ -295,30 +276,19 @@ private:
                             processed_events.insert(fullId);
 
                             auto event_ptr = std::make_shared<Event>(event);
-                //temporary fix due tue a bug in mumu channel in production
-			    if(static_cast<Channel>(event_ptr->channelId) == Channel::MuMu){
-			       event_ptr->first_daughter_indexes = {0};
-			       event_ptr->second_daughter_indexes = {1};
-			    }
                             event_ptr->weight_xs = weight_xs;
                             event_ptr->weight_xs_withTopPt = weight_xs_withTopPt;
                             event_ptr->file_desc_id = desc_id;
                             event_ptr->split_id = 0;
                             event_ptr->isData = job.isData;
+                            event_ptr->period = static_cast<int>(setup.period);
                             if(split_distr) {
                                 const EventIdentifier event_id(event);
                                 event_ptr->split_id = (*split_distr)(gen_map.at(channel));
                             }
                             event_ptr->split_id = split_distr ? (*split_distr)(gen_map.at(channel)) : 0;
-                            EventCacheProvider eventCacheProvider(*event_ptr);
-                            for(unsigned cc = 0; cc < cacheTuples.size(); ++cc){
-                                auto cacheTuple = cacheTuples.at(cc);
-                                if(!cacheTuple) continue;
-                                cacheTuple->GetEntry(current_entry);
-                                const cache_tuple::CacheEvent& cache_event = cacheTuple->data();
-                                eventCacheProvider.AddEvent(cache_event);
-                            }
-                            eventCacheProvider.FillEvent(*event_ptr);
+                            const auto cache_provider = cache_reader.Read(current_entry);
+                            cache_provider.FillEvent(*event_ptr);
                             processQueue.Push(event_ptr);
                         }
                     }
@@ -427,9 +397,9 @@ private:
         return summary;
     }
 
-    bool EventPassSelection(boost::optional<EventInfo>& eventInfo) const
+    bool EventPassSelection(const std::unique_ptr<EventInfo>& eventInfo) const
     {
-        if(!eventInfo.is_initialized()) return false;
+        if(!eventInfo) return false;
         if(!signalObjectSelector->PassLeptonVetoSelection(eventInfo->GetEventCandidate().GetEvent())) return false;
         if(!signalObjectSelector->PassMETfilters(eventInfo->GetEventCandidate().GetEvent(), setup.period,
                                                  eventInfo->GetEventCandidate().GetEvent().isData)) return false;
@@ -471,17 +441,15 @@ private:
         return true;
     }
 
-    boost::optional<EventInfo> CreateAnyEventInfo(const Event& event) const
+    std::unique_ptr<EventInfo> CreateAnyEventInfo(const Event& event) const
     {
-        for(UncertaintySource unc_source : unc_sources) {
-            for(UncertaintyScale unc_scale : GetActiveUncertaintyScales(unc_source)) {
-                auto eventInfo = CreateEventInfo(event, *signalObjectSelector, nullptr, setup.period,
-                                                 setup.jet_ordering, false, unc_source, unc_scale);
-                if(EventPassSelection(eventInfo))
-                    return eventInfo;
-            }
+        for(const auto& [unc_source, unc_scale] : unc_variations) {
+            auto eventInfo = EventInfo::Create(event, *signalObjectSelector, *bTagger, setup.btag_wp,
+                                               nullptr, unc_source, unc_scale);
+            if(EventPassSelection(eventInfo))
+                return eventInfo;
         }
-        return boost::optional<EventInfo>();
+        return std::unique_ptr<EventInfo>();
     }
 
     bool ProcessEvent(Event& event)
@@ -489,8 +457,8 @@ private:
         // using EventPart = ntuple::StorageMode::EventPart;
         using WeightType = mc_corrections::WeightType;
         using WeightingMode = mc_corrections::WeightingMode;
-        boost::optional<EventInfo> eventInfo = CreateAnyEventInfo(event);
-        if(!eventInfo.is_initialized()) return false;
+        const auto eventInfo = CreateAnyEventInfo(event);
+        if(!eventInfo) return false;
 
         event.weight_pu = weighting_mode.count(WeightType::PileUp)
                         ? eventWeights_HH->GetWeight(*eventInfo, WeightType::PileUp) : 1;
@@ -546,6 +514,8 @@ private:
     mc_corrections::WeightingMode weighting_mode;
     std::shared_ptr<SignalObjectSelector> signalObjectSelector;
     std::set<UncertaintySource> unc_sources;
+    std::vector<std::pair<UncertaintySource, UncertaintyScale>> unc_variations;
+    std::unique_ptr<BTagger> bTagger;
 };
 
 } // namespace tuple_skimmer

@@ -22,7 +22,7 @@ struct Setup {
     DiscriminatorWP btag_wp;
     bool use_cache;
     mc_corrections::WeightingMode common_weights;
-    JetOrdering jet_ordering;
+    BTaggerKind jet_ordering;
     unsigned n_splits{0};
     unsigned split_seed{0};
 

@@ -7,6 +7,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Analysis/include/EventInfo.h"
 #include "h-tautau/JetTools/include/BTagger.h"
 
+#include <numeric>
 #include <iostream>
 #include <algorithm>
 #include "TEfficiency.h"
@@ -64,10 +65,10 @@ public:
                if(!(EventId == EventIdTest)) continue;
            }
 
-            size_t matches_deep_flavour = calculateMatchesJets(event, JetOrdering::DeepFlavour);
-            calculateMatchesJets(event, JetOrdering::DeepCSV);
-            calculateMatchesJets(event, JetOrdering::Pt);
-            calculateMatchesJets(event, JetOrdering::CSV);
+            size_t matches_deep_flavour = calculateMatchesJets(event, BTaggerKind::DeepFlavour);
+            calculateMatchesJets(event, BTaggerKind::DeepCSV);
+            calculateMatchesJets(event, BTaggerKind::Pt);
+            calculateMatchesJets(event, BTaggerKind::CSV);
 
             size_t matches_deep_tau = calculateMatchesTaus(event, TauIdDiscriminator::byDeepTau2017v2p1VSjet);
             calculateMatchesTaus(event, TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017);
@@ -82,12 +83,12 @@ public:
 
         }
         printStats(anaData.n("both_two_matches"), 2, "both matches");
-        printStats(anaData.jet_matches(ToString(JetOrdering::DeepFlavour)), 3, "DeepFlavour two matches");
+        printStats(anaData.jet_matches(ToString(BTaggerKind::DeepFlavour)), 3, "DeepFlavour two matches");
         printStats(anaData.lep_matches(ToString(TauIdDiscriminator::byDeepTau2017v2p1VSjet)), 2, "deepTau two matches");
 
-        std::vector<TH1D> jet_histos = {anaData.jet_matches(ToString(JetOrdering::Pt)),anaData.jet_matches(ToString(JetOrdering::CSV)),
-                                         anaData.jet_matches(ToString(JetOrdering::DeepCSV)), anaData.jet_matches(ToString(JetOrdering::DeepFlavour))};
-        drawHistoTogether(jet_histos, {ToString(JetOrdering::Pt), ToString(JetOrdering::CSV), ToString(JetOrdering::DeepCSV), ToString(JetOrdering::DeepFlavour)} );
+        std::vector<TH1D> jet_histos = {anaData.jet_matches(ToString(BTaggerKind::Pt)),anaData.jet_matches(ToString(BTaggerKind::CSV)),
+                                         anaData.jet_matches(ToString(BTaggerKind::DeepCSV)), anaData.jet_matches(ToString(BTaggerKind::DeepFlavour))};
+        drawHistoTogether(jet_histos, {ToString(BTaggerKind::Pt), ToString(BTaggerKind::CSV), ToString(BTaggerKind::DeepCSV), ToString(BTaggerKind::DeepFlavour)} );
 
         std::vector<TH1D> lep_histos = {anaData.lep_matches(ToString(TauIdDiscriminator::byDeepTau2017v2p1VSjet)),
                                         anaData.lep_matches(ToString(TauIdDiscriminator::byCombinedIsolationDeltaBetaCorr3Hits)),
@@ -129,7 +130,7 @@ private:
         canvas.Print(("match_plots_" + ToString(args.channel()) + ".pdf").c_str(), "Title:jet_ordering");
     }
 
-    size_t calculateMatchesJets(const Event& event, JetOrdering jet_ordering)
+    size_t calculateMatchesJets(const Event& event, BTaggerKind jet_ordering)
     {
         auto ordered_jets = orderJets(event, jet_ordering);
         const size_t n_max = std::min<size_t>(ordered_jets.size(), 2);
@@ -160,21 +161,23 @@ private:
 
 private:
 
-    std::vector<analysis::jet_ordering::JetInfo<LorentzVector>> orderJets(const Event& event, JetOrdering jet_ordering)
+    std::vector<analysis::jet_ordering::JetInfo> orderJets(const Event& event, BTaggerKind jet_ordering)
     {
-        std::vector<analysis::jet_ordering::JetInfo<LorentzVector>> jet_info_vector;
+        std::vector<analysis::jet_ordering::JetInfo> jet_info_vector;
         BTagger bTagger(Parse<analysis::Period>(args.period()), jet_ordering);
 
-        UncertaintySource unc_source = analysis::UncertaintySource::None;
-        UncertaintyScale unc_scale = analysis::UncertaintyScale::Central;
-        for(size_t jet_index = 0; jet_index < event.jets_p4.size(); ++jet_index)
-            jet_info_vector.emplace_back(LorentzVectorE(event.jets_p4.at(jet_index)), jet_index, bTagger.BTag(event,
-                jet_index, unc_source, unc_scale, false));
+        for(size_t jet_index = 0; jet_index < event.jets_p4.size(); ++jet_index) {
+            ntuple::TupleJet tuple_jet(event, jet_index);
+            jet_info_vector.emplace_back(LorentzVectorE(event.jets_p4.at(jet_index)), jet_index,
+                                         bTagger.BTag(tuple_jet, false));
+        }
 
-        return jet_ordering::OrderJets(jet_info_vector, true, bTagger.PtCut(), bTagger.EtaCut());
+        return jet_ordering::OrderJets(jet_info_vector, true, Cut1D_Bound::L(bTagger.PtCut()),
+                                       Cut1D_Bound::AbsU(bTagger.EtaCut()));
     }
 
-    std::vector<size_t> orderTaus(const Event& event, TauIdDiscriminator tau_id_discriminator, bool is_descending_order = true)
+    std::vector<size_t> orderTaus(const Event& event, TauIdDiscriminator tau_id_discriminator,
+                                  bool is_descending_order = true)
     {
         std::vector<float> raw_values;
         for(size_t lep_index = 0; lep_index < event.lep_p4.size(); ++lep_index){

@@ -36,7 +36,7 @@ struct AnalyzerSetup {
     std::string mva_setup, hist_cfg, trigger_path;
     std::vector<std::string> syncDataIds;
     std::string plot_cfg, plot_page_opt, unc_cfg;
-    JetOrdering jet_ordering;
+    BTaggerKind jet_ordering;
     double qcd_ss_os_sf{0};
     double qcd_ss_os_err{0};
     std::map<Channel, std::vector<std::string>> trigger;

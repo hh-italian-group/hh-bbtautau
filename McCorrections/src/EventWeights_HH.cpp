@@ -10,19 +10,16 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 namespace analysis {
 namespace mc_corrections {
 
-EventWeights_HH::EventWeights_HH(Period period, JetOrdering jet_ordering, DiscriminatorWP btag_wp,
-                                 bool use_LLR_weights, WeightingMode mode) :
-    EventWeights(period, jet_ordering, btag_wp, mode)
+EventWeights_HH::EventWeights_HH(Period period, const BTagger& bTagger, const WeightingMode& mode) :
+        EventWeights(period, bTagger, mode)
 {
     if (period == Period::Run2016) {
-        std::string dy_weights = use_LLR_weights ? Full_Cfg_Name("2016/dyjets_weights_LLR.cfg")
-                                                 : Full_Cfg_Name("2016/dyjets_weights.cfg");
+        std::string dy_weights = Full_Cfg_Name("2016/dyjets_weights.cfg");
         if(mode.empty() || mode.count(WeightType::DY))
             providers[WeightType::DY] = std::make_shared<NJets_HT_weight>("DY", dy_weights);
         if(mode.empty() || mode.count(WeightType::TTbar))
             providers[WeightType::TTbar] = std::make_shared<TTbar_weight>(Full_Cfg_Name("2016/ttbar_weights_full.cfg"));
-        std::string wjet_weights =
-                use_LLR_weights ? Full_Cfg_Name("2016/wjets_weights_LLR.cfg") : Full_Cfg_Name("2016/wjets_weights.cfg");
+        std::string wjet_weights = Full_Cfg_Name("2016/wjets_weights.cfg");
         if(mode.empty() || mode.count(WeightType::Wjets))
             providers[WeightType::Wjets] = std::make_shared<NJets_HT_weight>("Wjets", wjet_weights);
     }
@@ -42,7 +39,6 @@ EventWeights_HH::EventWeights_HH(Period period, JetOrdering jet_ordering, Discri
         std::string wjet_weights = Full_Cfg_Name("2018/wjets_weights_2018.cfg");
         if(mode.empty() || mode.count(WeightType::Wjets))
             providers[WeightType::Wjets] = std::make_shared<NJets_HT_weight>("Wjets", wjet_weights);
-
     }
     else
         throw exception("Period %1% is not supported (EventWeights_HH).") % period;
@@ -55,9 +51,9 @@ EventWeights_HH::EventWeights_HH(Period period, JetOrdering jet_ordering, Discri
 ntuple::ProdSummary EventWeights_HH::GetSummaryWithWeights(const std::shared_ptr<TFile>& file,
                                                            const WeightingMode& weighting_mode) const
 {
-    static const WeightingMode shape_weights = { WeightType::PileUp, WeightType::BSM_to_SM, WeightType::DY,
-                                               WeightType::TTbar, WeightType::Wjets, WeightType::GenEventWeight };
-    static const WeightingMode shape_weights_withTopPt = shape_weights | WeightingMode({WeightType::TopPt});
+    static const WeightingMode shape_weights(WeightType::PileUp, WeightType::BSM_to_SM, WeightType::DY,
+                                             WeightType::TTbar, WeightType::Wjets, WeightType::GenEventWeight);
+    static const WeightingMode shape_weights_withTopPt = shape_weights | WeightingMode(WeightType::TopPt);
 
     auto summary_tuple = ntuple::CreateSummaryTuple("summary", file.get(), true, ntuple::TreeState::Full);
     auto summary = ntuple::MergeSummaryTuple(*summary_tuple);
@@ -69,8 +65,7 @@ ntuple::ProdSummary EventWeights_HH::GetSummaryWithWeights(const std::shared_ptr
     const bool calc_withTopPt = mode_withTopPt.count(WeightType::TopPt);
 
     if(mode.size() || mode_withTopPt.size()) {
-        auto all_events = ntuple::CreateExpressTuple("all_events", file.get(), true,
-                                                       ntuple::TreeState::Full);
+        auto all_events = ntuple::CreateExpressTuple("all_events", file.get(), true, ntuple::TreeState::Full);
 
         using EventIdSet = std::set<EventIdentifier>;
         EventIdSet processed_events;

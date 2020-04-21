@@ -41,8 +41,7 @@ BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel cha
                 dymod[sample.name] = std::make_shared<DYModel>(sample, args.working_path());
         }
     }
-    eventWeights_HH = std::make_shared<mc_corrections::EventWeights_HH>(ana_setup.period, ana_setup.jet_ordering,
-                                                                        DiscriminatorWP::Medium, false);
+    eventWeights_HH = std::make_shared<mc_corrections::EventWeights_HH>(ana_setup.period, *bTagger);
 }
 
 void BaseEventAnalyzer::Run()
@@ -65,8 +64,8 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfo& event)
                                                                           {DiscriminatorWP::Tight, 0}};
     EventCategorySet categories;
     // const bool is_boosted =  false;
-    const bool is_boosted = event.SelectFatJet(cuts::hh_bbtautau_Run2::fatJetID::mass,
-                                               cuts::hh_bbtautau_Run2::fatJetID::deltaR_subjet) != nullptr;
+    auto fatJet = SignalObjectSelector::SelectFatJet(event.GetEventCandidate(), event.GetSelectedSignalJets());
+    const bool is_boosted = fatJet != nullptr;
     bool is_VBF = false;
     std::set<size_t> jets_to_exclude;
     if(event.HasVBFjetPair()){
@@ -80,20 +79,20 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfo& event)
         jets_to_exclude.insert(event.GetVBFJet(1)->jet_index());
         jets_to_exclude.insert(event.GetVBFJet(2)->jet_index());
     }
-    const auto& jets = event.SelectJets(bTagger->PtCut(), bTagger->EtaCut(), true, false, ana_setup.jet_ordering,
-                                        jets_to_exclude);
-    std::map<DiscriminatorWP, size_t> bjet_counts = btag_working_points;
-    size_t n = 0;
-    for(const auto& jet : jets) {
-        ++n;
-        for(const auto& btag_wp : btag_working_points){
-            if(bTagger->Pass(*jet, analysis::UncertaintySource::None, analysis::UncertaintyScale::Central,
-                             btag_wp.first)) ++bjet_counts[btag_wp.first];
+
+    const auto& all_jets = event.GetAllJets();
+
+    auto bjet_counts = btag_working_points;
+    for(size_t bjet_index = 1; bjet_index <= 2; ++bjet_index) {
+        const auto& jet = event.GetBJet(bjet_index);
+        for(const auto& btag_wp : btag_working_points) {
+            if(bTagger->Pass(*jet, btag_wp.first))
+                ++bjet_counts[btag_wp.first];
         }
     }
 
     for(const auto& category : ana_setup.categories) {
-        if(category.Contains(jets.size(), bjet_counts, is_VBF ,is_boosted)){
+        if(category.Contains(all_jets.size(), bjet_counts, is_VBF, is_boosted)) {
             categories.insert(category);
         }
     }
@@ -127,34 +126,32 @@ EventSubCategory BaseEventAnalyzer::DetermineEventSubCategory(EventInfo& event, 
     using MvaKey = mva_study::MvaReader::MvaKey;
 
     EventSubCategory sub_category;
-    double mbb = 0;
-    if(event.HasBjetPair()){
-        mbb = event.GetHiggsBB().GetMomentum().mass();
-        if(category.HasBoostConstraint() && category.IsBoosted()){
-            if(ana_setup.use_svFit){
-                bool isInsideBoostedCut = event.GetSVFitResults(ana_setup.allow_calc_svFit).has_valid_momentum
-                                          && IsInsideBoostedMassWindow(event.GetHiggsTTMomentum(true,
-                                                                       ana_setup.allow_calc_svFit).mass(),mbb);
-                sub_category.SetCutResult(SelectionCut::mh,isInsideBoostedCut);
+    if(event.HasBjetPair()) {
+        const double mbb = event.GetHiggsBB().GetMomentum().mass();
+
+        if(category.HasBoostConstraint() && category.IsBoosted()) {
+            if(ana_setup.use_svFit) {
+                const auto htt = event.GetHiggsTTMomentum(true, ana_setup.allow_calc_svFit);
+                const bool isInsideBoostedCut = htt && IsInsideBoostedMassWindow(htt->mass(), mbb);
+                sub_category.SetCutResult(SelectionCut::mh, isInsideBoostedCut);
             }
-        }
-        else{
+        } else {
             if(!ana_setup.use_svFit && ana_setup.massWindowParams.count(SelectionCut::mh))
                 throw exception("Category mh inconsistent with the false requirement of SVfit.");
-            if(ana_setup.massWindowParams.count(SelectionCut::mh)){
-                const bool cut_result = ana_setup.use_svFit && event.GetSVFitResults(ana_setup.allow_calc_svFit).has_valid_momentum
-                    && ana_setup.massWindowParams.at(SelectionCut::mh).IsInside(event.GetHiggsTTMomentum(true,
-                                                                                      ana_setup.allow_calc_svFit).mass(),
-                                                                                      mbb);
+            if(ana_setup.massWindowParams.count(SelectionCut::mh)) {
+                const bool cut_result = ana_setup.use_svFit
+                    && event.GetSVFitResults(ana_setup.allow_calc_svFit).has_valid_momentum
+                    && ana_setup.massWindowParams.at(SelectionCut::mh).IsInside(
+                            event.GetHiggsTTMomentum(true, ana_setup.allow_calc_svFit)->mass(), mbb);
                 sub_category.SetCutResult(SelectionCut::mh, cut_result);
             }
             if(ana_setup.massWindowParams.count(SelectionCut::mhVis))
                 sub_category.SetCutResult(SelectionCut::mhVis,ana_setup.massWindowParams.at(SelectionCut::mhVis)
-                        .IsInside(event.GetHiggsTTMomentum(false).mass(),mbb));
+                        .IsInside(event.GetHiggsTTMomentum(false)->mass(), mbb));
 
             if(ana_setup.massWindowParams.count(SelectionCut::mhMET))
                 sub_category.SetCutResult(SelectionCut::mhMET,ana_setup.massWindowParams.at(SelectionCut::mhMET)
-                        .IsInside((event.GetHiggsTTMomentum(false) + event.GetMET().GetMomentum()).mass(),mbb));
+                        .IsInside((*event.GetHiggsTTMomentum(false) + event.GetMET().GetMomentum()).mass(), mbb));
 
         }
         if(ana_setup.use_kinFit)
@@ -223,81 +220,78 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                           std::shared_ptr<ntuple::EventTuple> tuple,
                                           const ntuple::ProdSummary& prod_summary)
 {
-    const SummaryInfo summary(prod_summary,channelId, ana_setup.trigger_path);
+    const auto summary = std::make_shared<SummaryInfo>(prod_summary,channelId, ana_setup.trigger_path);
     std::set<UncertaintySource> unc_sources = { UncertaintySource::None };
     if(sample.sampleType != SampleType::Data)
         unc_sources = ana_setup.unc_sources;
-    for(auto tupleEvent : *tuple) {
-        for(UncertaintySource unc_source : unc_sources) {
-            for(UncertaintyScale unc_scale : GetActiveUncertaintyScales(unc_source)) {
-                auto event = CreateEventInfo(tupleEvent,signalObjectSelector, &summary,
-                                             ana_setup.period, ana_setup.jet_ordering, false, unc_source, unc_scale);
-                if(!event.is_initialized()) continue;
-                if(!event->GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) continue;
-                bbtautau::AnaTupleWriter::DataIdMap dataIds;
-                const auto eventCategories = DetermineEventCategories(*event);
-                for(auto eventCategory : eventCategories) {
-                    //if (!ana_setup.categories.count(eventCategory)) continue;
+    const auto unc_variations = EnumerateUncVariations(unc_sources);
+    const bool is_data = sample.sampleType == SampleType::Data;
+    for(const auto& tupleEvent : *tuple) {
+        if(!signalObjectSelector.PassMETfilters(tupleEvent,ana_setup.period,is_data)) continue;
+        if(!signalObjectSelector.PassLeptonVetoSelection(tupleEvent)) continue;
 
-                    //temporay fix for muMu
-                    bool is_data = (sample.sampleType == SampleType::Data);
-                    if(!signalObjectSelector.PassMETfilters(tupleEvent,ana_setup.period,is_data)) continue;
-                    if(!signalObjectSelector.PassLeptonVetoSelection(tupleEvent)) continue;
-                    const EventRegion eventRegion = DetermineEventRegion(*event, eventCategory);
-                    for(const auto& region : ana_setup.regions){
-                        if(!eventRegion.Implies(region)) continue;
-                        std::map<SelectionCut, double> mva_scores;
-                        const auto eventSubCategory = DetermineEventSubCategory(*event, eventCategory, mva_scores);
-                        for(const auto& subCategory : sub_categories_to_process) {
-                            if(!eventSubCategory.Implies(subCategory)) continue;
-                            SelectionCut mva_cut;
-                            double mva_score = 0, mva_weight_scale = 1.;
-                            if(subCategory.TryGetLastMvaCut(mva_cut)) {
-                                mva_score = mva_scores.at(mva_cut);
-                                const auto& mva_params = mva_setup->selections.at(mva_cut);
-                                if(mva_params.training_range.is_initialized()
-                                        && mva_params.samples.count(sample.name)) {
-                                    if(mva_params.training_range->Contains((*event)->split_id)) continue;
-                                    mva_weight_scale = double(summary->n_splits)
-                                            / (summary->n_splits - mva_params.training_range->size());
-                                }
+        for(const auto& [unc_source, unc_scale] : unc_variations) {
+            auto event = EventInfo::Create(tupleEvent, signalObjectSelector, *bTagger, DiscriminatorWP::Medium,
+                                           summary, unc_source, unc_scale);
+            if(!event) continue;
+            if(!event->GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) continue;
+            bbtautau::AnaTupleWriter::DataIdMap dataIds;
+            const auto eventCategories = DetermineEventCategories(*event);
+            for(auto eventCategory : eventCategories) {
+                const EventRegion eventRegion = DetermineEventRegion(*event, eventCategory);
+                for(const auto& region : ana_setup.regions){
+                    if(!eventRegion.Implies(region)) continue;
+                    std::map<SelectionCut, double> mva_scores;
+                    const auto eventSubCategory = DetermineEventSubCategory(*event, eventCategory, mva_scores);
+                    for(const auto& subCategory : sub_categories_to_process) {
+                        if(!eventSubCategory.Implies(subCategory)) continue;
+                        SelectionCut mva_cut;
+                        double mva_score = 0, mva_weight_scale = 1.;
+                        if(subCategory.TryGetLastMvaCut(mva_cut)) {
+                            mva_score = mva_scores.at(mva_cut);
+                            const auto& mva_params = mva_setup->selections.at(mva_cut);
+                            if(mva_params.training_range.is_initialized()
+                                    && mva_params.samples.count(sample.name)) {
+                                if(mva_params.training_range->Contains((*event)->split_id)) continue;
+                                mva_weight_scale = double((*summary)->n_splits)
+                                        / ((*summary)->n_splits - mva_params.training_range->size());
                             }
-                            event->SetMvaScore(mva_score);
-                            const EventAnalyzerDataId anaDataId(eventCategory, subCategory, region,
-                                                                unc_source, unc_scale, sample_wp.full_name);
-                            if(sample.sampleType == SampleType::Data) {
-                                dataIds[anaDataId] = std::make_tuple(1., mva_score);
-                            } else {
-                                auto lepton_weight = eventWeights_HH->GetProviderT<mc_corrections::LeptonWeights>(
-                                        mc_corrections::WeightType::LeptonTrigIdIso);
-                                double total_lepton_weight = lepton_weight->Get(*event);
+                        }
+                        event->SetMvaScore(mva_score);
+                        const EventAnalyzerDataId anaDataId(eventCategory, subCategory, region,
+                                                            unc_source, unc_scale, sample_wp.full_name);
+                        if(sample.sampleType == SampleType::Data) {
+                            dataIds[anaDataId] = std::make_tuple(1., mva_score);
+                        } else {
+                            auto lepton_weight = eventWeights_HH->GetProviderT<mc_corrections::LeptonWeights>(
+                                    mc_corrections::WeightType::LeptonTrigIdIso);
+                            double total_lepton_weight = lepton_weight->Get(*event);
 
-                                auto btag_weight = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(
-                                        mc_corrections::WeightType::BTag);
-                                double total_btag_weight = btag_weight->Get(*event);
+                            auto btag_weight = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(
+                                    mc_corrections::WeightType::BTag);
+                            double total_btag_weight = btag_weight->Get(*event);
 
-                                const double weight = (*event)->weight_total * sample.cross_section
-                                    * ana_setup.int_lumi * total_lepton_weight * total_btag_weight
-                                    / summary->totalShapeWeight * mva_weight_scale;
-                                if(sample.sampleType == SampleType::MC) {
-                                    dataIds[anaDataId] = std::make_tuple(weight, mva_score);
-                                } else
-                                    ProcessSpecialEvent(sample, sample_wp, anaDataId, *event, weight,
-                                                        summary->totalShapeWeight, dataIds);
-                            }
+                            const double weight = (*event)->weight_total * sample.cross_section
+                                * ana_setup.int_lumi * total_lepton_weight * total_btag_weight
+                                / (*summary)->totalShapeWeight * mva_weight_scale;
+                            if(sample.sampleType == SampleType::MC) {
+                                dataIds[anaDataId] = std::make_tuple(weight, mva_score);
+                            } else
+                                ProcessSpecialEvent(sample, sample_wp, anaDataId, *event, weight,
+                                                    (*summary)->totalShapeWeight, dataIds);
                         }
                     }
                 }
-                //dataId
-                anaTupleWriter.AddEvent(*event, dataIds);
-                for (size_t n = 0; n < sync_descriptors.size(); ++n) {
-                    const auto& regex_pattern = sync_descriptors.at(n).regex_pattern;
-                    for(auto& dataId : dataIds){
-                        if(boost::regex_match(dataId.first.GetName(), *regex_pattern)){
-                            htt_sync::FillSyncTuple(*event, *sync_descriptors.at(n).sync_tree, ana_setup.period,
-                                                    ana_setup.use_svFit,std::get<0>(dataId.second));
-                            break;
-                        }
+            }
+            //dataId
+            anaTupleWriter.AddEvent(*event, dataIds);
+            for (size_t n = 0; n < sync_descriptors.size(); ++n) {
+                const auto& regex_pattern = sync_descriptors.at(n).regex_pattern;
+                for(auto& dataId : dataIds){
+                    if(boost::regex_match(dataId.first.GetName(), *regex_pattern)){
+                        htt_sync::FillSyncTuple(*event, *sync_descriptors.at(n).sync_tree, ana_setup.period,
+                                                ana_setup.use_svFit,std::get<0>(dataId.second));
+                        break;
                     }
                 }
             }

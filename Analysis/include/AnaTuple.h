@@ -36,7 +36,7 @@ namespace analysis {
              pt_l1l2MET, MT_htautau, \
              npv, MET, phiMET, pt_MET, m_bb, pt_H_bb, csv_b1, deepcsv_b1, csv_b2, \
              deepcsv_b2, costheta_METhbb, dR_b1b2, dR_b1b2_boosted, HT_otherjets, mass_top1, mass_top2, p_zeta, \
-             p_zetavisible, HT_total, HT_otherjets_gen, HT_total_gen, n_selected_gen_jets, n_selected_gen_bjets, \
+             p_zetavisible, HT_total, lhe_HT, n_selected_gen_jets, n_selected_gen_bjets, \
              n_selected_gen_notbjets, genJets_nTotal, jets_nTotal_hadronFlavour_b, jets_nTotal_hadronFlavour_c, \
 	         gen_match_1, gen_match_2, dR_lj) \
     VAR_LIST(UInt_t, run, lumi) \
