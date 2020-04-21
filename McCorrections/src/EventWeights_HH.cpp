@@ -51,9 +51,9 @@ EventWeights_HH::EventWeights_HH(Period period, const BTagger& bTagger, const We
 ntuple::ProdSummary EventWeights_HH::GetSummaryWithWeights(const std::shared_ptr<TFile>& file,
                                                            const WeightingMode& weighting_mode) const
 {
-    static const WeightingMode shape_weights = { WeightType::PileUp, WeightType::BSM_to_SM, WeightType::DY,
-                                               WeightType::TTbar, WeightType::Wjets, WeightType::GenEventWeight };
-    static const WeightingMode shape_weights_withTopPt = shape_weights | WeightingMode({WeightType::TopPt});
+    static const WeightingMode shape_weights(WeightType::PileUp, WeightType::BSM_to_SM, WeightType::DY,
+                                             WeightType::TTbar, WeightType::Wjets, WeightType::GenEventWeight);
+    static const WeightingMode shape_weights_withTopPt = shape_weights | WeightingMode(WeightType::TopPt);
 
     auto summary_tuple = ntuple::CreateSummaryTuple("summary", file.get(), true, ntuple::TreeState::Full);
     auto summary = ntuple::MergeSummaryTuple(*summary_tuple);
