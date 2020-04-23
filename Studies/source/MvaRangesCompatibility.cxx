@@ -308,7 +308,7 @@ public:
             }
             k++;
         }
-        root_ext::WriteObject(*matrix_intersection, directory_set);;
+        root_ext::WriteObject(*matrix_intersection, directory_set);
     }
 
     void VariablesSelection(const ChannelSpin& set) const
