@@ -19,8 +19,8 @@ SyncDescriptor::SyncDescriptor(const std::string& desc_str, std::shared_ptr<TFil
 
 BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel channel) :
     EventAnalyzerCore(_args, channel), args(_args), anaTupleWriter(args.output(), channel, ana_setup.use_kinFit,
-                      ana_setup.use_svFit,ana_setup.allow_calc_svFit),
-    trigger_patterns(ana_setup.trigger.at(channel))
+                      ana_setup.use_svFit,ana_setup.allow_calc_svFit), trigger_patterns(ana_setup.trigger.at(channel))
+
 {
     EventCandidate::InitializeUncertainties(ana_setup.period, false, args.working_path(),
                                             signalObjectSelector.GetTauVSjetDiscriminator().first);
@@ -233,8 +233,12 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
         for(const auto& [unc_source, unc_scale] : unc_variations) {
             auto event = EventInfo::Create(tupleEvent, signalObjectSelector, *bTagger, DiscriminatorWP::Medium,
                                            summary, unc_source, unc_scale);
+
             if(!event) continue;
-            if(!event->GetTriggerResults().AnyAcceptAndMatch(trigger_patterns)) continue;
+            bool pass_trigger = event->GetTriggerResults().AnyAcceptAndMatch(trigger_patterns);
+            if(!pass_trigger && event->HasVBFjetPair() && ana_setup.trigger_vbf.count(channelId))
+                pass_trigger = event->GetTriggerResults().AnyAcceptAndMatch(ana_setup.trigger_vbf.at(channelId));
+            if(!pass_trigger) continue; 
             bbtautau::AnaTupleWriter::DataIdMap dataIds;
             const auto eventCategories = DetermineEventCategories(*event);
             for(auto eventCategory : eventCategories) {
@@ -333,8 +337,8 @@ bool BaseEventAnalyzer::SetRegionIsoRange(const LepCandidate& cand, EventRegion&
             const DiscriminatorWP wp = static_cast<DiscriminatorWP>(wp_index);
             if(cand->Passed(tau_discr, wp)) {
                 region.SetLowerIso(wp);
-                if(wp != wp_max)
-                    region.SetUpperIso(static_cast<DiscriminatorWP>(wp_index - 1));
+                if(wp != wp_max){
+                    region.SetUpperIso(static_cast<DiscriminatorWP>(wp_index + 1));}
                 break;
             }
         }

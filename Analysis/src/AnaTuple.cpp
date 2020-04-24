@@ -156,12 +156,16 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const AnaTupleWriter::DataIdMap&
     tuple().m_VBF_1 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(1).GetMomentum().M()) : def_val;
     tuple().deep_flavour_VBF_1 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(1)->deepFlavour())
                                                        : def_val;
+    tuple().hh_btag_VBF_1 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(1)->hh_btag())
+                                                  : def_val;
     tuple().pt_VBF_2 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(2).GetMomentum().Pt()) : def_val;
     tuple().eta_VBF_2 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(2).GetMomentum().Eta()) : def_val;
     tuple().phi_VBF_2 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(2).GetMomentum().Phi()) : def_val;
     tuple().m_VBF_2 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(2).GetMomentum().M()) : def_val;
     tuple().deep_flavour_VBF_2 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(2)->deepFlavour())
                                                        : def_val;
+   tuple().hh_btag_VBF_2 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(2)->hh_btag())
+                                                 : def_val;
 
     tuple().n_selected_gen_jets =  event->genJets_p4.size();
     int n_bflavour=0;
@@ -193,6 +197,7 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const AnaTupleWriter::DataIdMap&
         tuple().csv_b1 = b1->csv();
         tuple().deepcsv_b1 = b1->deepcsv();
         tuple().deep_flavour_b1 = b1->deepFlavour();
+        tuple().hh_btag_b1 = b1->hh_btag();
         tuple().pt_b2 = static_cast<float>(b2.GetMomentum().Pt());
         tuple().eta_b2 = static_cast<float>(b2.GetMomentum().Eta());
         tuple().phi_b2 = static_cast<float>(b2.GetMomentum().Phi());
@@ -200,6 +205,7 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const AnaTupleWriter::DataIdMap&
         tuple().csv_b2 = b2->csv();
         tuple().deepcsv_b2 = b2->deepcsv();
         tuple().deep_flavour_b2 = b2->deepFlavour();
+        tuple().hh_btag_b2 = b2->hh_btag();
         tuple().dphi_hbbhtautau = runSVfit && event.GetSVFitResults(allow_calc_svFit).has_valid_momentum ?
                                   static_cast<float>(DeltaPhi(Hbb.GetMomentum(),
                                                     *event.GetHiggsTTMomentum(true,allow_calc_svFit))) : def_val;
