@@ -40,6 +40,7 @@ struct AnalyzerSetup {
     double qcd_ss_os_sf{0};
     double qcd_ss_os_err{0};
     std::map<Channel, std::vector<std::string>> trigger;
+    std::map<Channel, std::vector<std::string>> trigger_vbf;
     std::map<SelectionCut,analysis::EllipseParameters> massWindowParams;
     std::map<std::string, std::vector<std::string>> limit_setup_raw;
     std::map<std::string, std::map<EventCategory, std::string>> limit_setup;
@@ -100,7 +101,7 @@ using MvaReaderSetupCollection = std::unordered_map<std::string, MvaReaderSetup>
 
 struct SampleDescriptorBase {
     struct Point {
-        std::string name, full_name, title, file_path, datacard_name, trigger;
+        std::string name, full_name, title, file_path, datacard_name, trigger, trigger_vbf;
         SampleType sampleType;
         double norm_sf{1}, datacard_sf{1}, draw_sf{1};
         bool draw{false};
