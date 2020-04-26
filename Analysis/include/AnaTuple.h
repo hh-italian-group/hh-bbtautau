@@ -44,7 +44,7 @@ namespace analysis {
     VAR_LIST(float, pt_1,eta_1, phi_1, m_1, pt_2, eta_2, phi_2, m_2, pt_b1, eta_b1, phi_b1, m_b1, \
              pt_b2, eta_b2, phi_b2, m_b2, pt_VBF_1, eta_VBF_1, phi_VBF_1, m_VBF_1, \
              pt_VBF_2, eta_VBF_2, phi_VBF_2, m_VBF_2, deep_flavour_b1, deep_flavour_b2, deep_flavour_VBF_1, \
-             deep_flavour_VBF_2 ) \
+             deep_flavour_VBF_2, hh_btag_b1, hh_btag_b2, hh_btag_VBF_1, hh_btag_VBF_2 ) \
     /**/
 
 #define VAR(type, name) DECLARE_BRANCH_VARIABLE(type, name)
