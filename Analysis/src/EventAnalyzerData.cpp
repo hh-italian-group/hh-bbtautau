@@ -13,7 +13,7 @@ EventAnalyzerData::EventAnalyzerData(std::shared_ptr<TFile> outputFile, const st
     for(const auto& h_name : histogram_names) {
         const auto& desc = FindDescriptor(h_name, channel, dataId, descriptors);
         auto entry_ptr = std::make_shared<Entry>(h_name, this, desc);
-        const auto branch_ptr = anaTuple ? &anaTuple->get<ValueType>(h_name) : nullptr;
+        const auto branch_ptr = anaTuple ? anaTuple->GetVarAddress(h_name) : nullptr;
         (*entry_ptr)().SetSystematicUncertainty(sample_unc.unc);
         (*entry_ptr)().SetPostfitScaleFactor(sample_unc.sf);
         histograms[h_name] = EntrySource(entry_ptr, branch_ptr);

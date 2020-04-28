@@ -6,13 +6,81 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 namespace analysis {
 namespace bbtautau {
 
+void AnaEvent::UpdateSecondaryVariables()
+{
+    using namespace ROOT::Math::VectorUtil;
+    static constexpr float def_val = std::numeric_limits<float>::lowest();
+
+    #define FVAR(name) name##_float = name;
+    #define CREATE_FVAR(r, x, name) FVAR(name)
+    #define FVAR_LIST(x, ...) BOOST_PP_SEQ_FOR_EACH(CREATE_FVAR, x, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
+
+    FVAR_LIST(x, tau1_q, tau1_gen_match, tau2_q, tau2_gen_match, b1_hadronFlavour, b2_hadronFlavour, VBF1_hadronFlavour,
+              VBF2_hadronFlavour, SVfit_valid, kinFit_convergence)
+
+    #undef FVAR
+    #undef CREATE_FVAR
+    #undef FVAR_LIST
+
+    const LorentzVectorM t1(tau1_pt, tau1_eta, tau1_phi, tau1_m), t2(tau2_pt, tau2_eta, tau2_phi, tau2_m);
+    const auto Htt = t1 + t2;
+    const LorentzVectorM MET(MET_pt, 0, MET_phi, 0);
+
+    boost::optional<LorentzVectorM> b1, b2, vbf1, vbf2, Hbb, SVfit;
+    if(has_b_pair) {
+        b1 = LorentzVectorM(b1_pt, b1_eta, b1_phi, b1_m);
+        b2 = LorentzVectorM(b2_pt, b2_eta, b2_phi, b2_m);
+        Hbb = *b1 + *b2;
+    }
+    if(has_VBF_pair) {
+        vbf1 = LorentzVectorM(VBF1_pt, VBF1_eta, VBF1_phi, VBF1_m);
+        vbf2 = LorentzVectorM(VBF2_pt, VBF2_eta, VBF2_phi, VBF2_m);
+    }
+    if(SVfit_valid)
+        SVfit = LorentzVectorM(SVfit_pt, SVfit_eta, SVfit_phi, SVfit_m);
+
+    m_tt_vis = static_cast<float>(Htt.M());
+    pt_H_tt = static_cast<float>(Htt.Pt());
+    eta_H_tt = static_cast<float>(Htt.Eta());
+    phi_H_tt = static_cast<float>(Htt.Phi());
+    pt_H_tt_MET = static_cast<float>((Htt + MET).Pt());
+    mt_1 = static_cast<float>(Calculate_MT(t1, MET));
+    mt_2 = static_cast<float>(Calculate_MT(t2, MET));
+    dR_l1l2 = static_cast<float>(DeltaR(t1, t2));
+    abs_dphi_l1MET = static_cast<float>(std::abs(DeltaPhi(t1, MET)));
+    dphi_htautauMET = SVfit ? static_cast<float>(DeltaPhi(*SVfit, MET)) : def_val;
+    dR_l1l2MET = static_cast<float>(DeltaR(Htt, MET));
+    dR_l1l2Pt_htautau = SVfit ? static_cast<float>(DeltaR(t1, t2) * SVfit->pt()) : def_val;
+    mass_l1l2MET = static_cast<float>((Htt + MET).M());
+    pt_l1l2MET = static_cast<float>((Htt + MET).pt());
+    MT_htautau = SVfit ? static_cast<float>(Calculate_MT(*SVfit, MET)) : def_val;
+    p_zeta = static_cast<float>(Calculate_Pzeta(t1, t2, MET));
+    p_zetavisible = static_cast<float>(Calculate_visiblePzeta(t1, t2));
+    mt_tot = static_cast<float>(Calculate_TotalMT(t1, t2, MET));
+
+    m_bb = Hbb ? static_cast<float>(Hbb->mass()) : def_val;
+    pt_H_bb = Hbb ? static_cast<float>(Hbb->pt()) : def_val;
+
+    dphi_hbbhtautau = Hbb && SVfit ? static_cast<float>(DeltaPhi(*Hbb, *SVfit)) : def_val;
+    deta_hbbhtautau = Hbb && SVfit ? static_cast<float>(((*Hbb) - (*SVfit)).eta()) : def_val;
+    costheta_METhbb = Hbb ? static_cast<float>(four_bodies::Calculate_cosTheta_2bodies(MET, *Hbb)) : def_val;
+    dR_b1b2 = Hbb ? static_cast<float>(DeltaR(*b1, *b2)) : def_val;
+    dR_b1b2_boosted = Hbb ? static_cast<float>(four_bodies::Calculate_dR_boosted(*b1, *b2, *Hbb)) : def_val;
+    dR_lj = Hbb ? static_cast<float>(four_bodies::Calculate_min_dR_lj(t1, t2, *b1, *b2)) : def_val;
+
+    boost::optional<std::pair<double, double>> topMasses;
+    if(Hbb)
+        topMasses = four_bodies::Calculate_topPairMasses(t1, t2, *b1, *b2, MET);
+    mass_top1 = topMasses ? static_cast<float>(topMasses->first) : def_val;
+    mass_top2 = topMasses ? static_cast<float>(topMasses->second) : def_val;
+}
+
 AnaTupleWriter::AnaTupleWriter(const std::string& file_name, Channel channel, bool _runKinFit, bool _runSVfit,
                                bool _allow_calc_svFit) :
     file(root_ext::CreateRootFile(file_name)), tuple(ToString(channel), file.get(), false),
     aux_tuple(file.get(), false), runKinFit(_runKinFit), runSVfit(_runSVfit), allow_calc_svFit(_allow_calc_svFit)
 {
 }
-
 
 AnaTupleWriter::~AnaTupleWriter()
 {
@@ -32,8 +100,8 @@ AnaTupleWriter::~AnaTupleWriter()
 
 void AnaTupleWriter::AddEvent(EventInfo& event, const AnaTupleWriter::DataIdMap& dataIds)
 {
-    using namespace ROOT::Math::VectorUtil;
     static constexpr float def_val = std::numeric_limits<float>::lowest();
+    static constexpr int def_val_int = std::numeric_limits<int>::lowest();
 
     if(!dataIds.size()) return;
     for(const auto& entry : dataIds) {
@@ -57,217 +125,136 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const AnaTupleWriter::DataIdMap&
 
     tuple().weight = def_val;
     tuple().mva_score = def_val;
-    tuple().has_2jets = event.HasBjetPair();
+    tuple().has_b_pair = event.HasBjetPair();
+    tuple().has_VBF_pair = event.HasVBFjetPair();
     tuple().run = event->run;
     tuple().lumi = event->lumi;
     tuple().evt = event->evt;
 
-    tuple().m_sv = runSVfit && event.GetSVFitResults(allow_calc_svFit).has_valid_momentum ?
-                   static_cast<float>(event.GetHiggsTTMomentum(true,allow_calc_svFit)->M()) : def_val;
-     tuple().m_sv_error = runSVfit && event.GetSVFitResults(allow_calc_svFit).has_valid_momentum ?
-                         static_cast<float>(event.GetSVFitResults(allow_calc_svFit).momentum_error.M()) : def_val;
-     tuple().mt_sv = runSVfit && event.GetSVFitResults(allow_calc_svFit).has_valid_momentum ?
-                  static_cast<float>(event.GetSVFitResults(allow_calc_svFit).transverseMass) : def_val;
-     tuple().mt_sv_error = runSVfit && event.GetSVFitResults(allow_calc_svFit).has_valid_momentum ?
-                        static_cast<float>(event.GetSVFitResults(allow_calc_svFit).transverseMass_error) : def_val;
-    tuple().pt_sv = runSVfit && event.GetSVFitResults(allow_calc_svFit).has_valid_momentum ?
-                    static_cast<float>(event.GetHiggsTTMomentum(true,allow_calc_svFit)->Pt()) : def_val;
-    tuple().pt_sv_error = runSVfit && event.GetSVFitResults(allow_calc_svFit).has_valid_momentum ?
-                          static_cast<float>(event.GetSVFitResults(allow_calc_svFit).momentum_error.Pt()) : def_val;
-    tuple().eta_sv = runSVfit && event.GetSVFitResults(allow_calc_svFit).has_valid_momentum ?
-                     static_cast<float>(event.GetHiggsTTMomentum(true,allow_calc_svFit)->Eta()) : def_val;
-    tuple().eta_sv_error = runSVfit && event.GetSVFitResults(allow_calc_svFit).has_valid_momentum ?
-                          static_cast<float>(event.GetSVFitResults(allow_calc_svFit).momentum_error.Eta()) : def_val;
-    tuple().phi_sv = runSVfit && event.GetSVFitResults(allow_calc_svFit).has_valid_momentum ?
-                     static_cast<float>(event.GetHiggsTTMomentum(true,allow_calc_svFit)->Phi()) : def_val;
-    tuple().phi_sv_error = runSVfit && event.GetSVFitResults(allow_calc_svFit).has_valid_momentum ?
-                           static_cast<float>(event.GetSVFitResults(allow_calc_svFit).momentum_error.Phi()) : def_val;
-    if(event.HasBjetPair()) {
-        tuple().m_ttbb = runSVfit && event.GetSVFitResults(allow_calc_svFit).has_valid_momentum ?
-            static_cast<float>(event.GetResonanceMomentum(true, false, allow_calc_svFit)->M()) : def_val;
-        if(runKinFit){
-            const auto& kinfit = event.GetKinFitResults(allow_calc_svFit);
-            tuple().m_ttbb_kinfit = kinfit.HasValidMass() ? static_cast<float>(kinfit.mass) : def_val;
-            tuple().chi2_kinFit = kinfit.HasValidMass() ? static_cast<float>(kinfit.chi2) : def_val;
-        }
-        tuple().MT2 = static_cast<float>(event.GetMT2());
-    } else {
-        tuple().m_ttbb = def_val;
-        tuple().m_ttbb_kinfit = def_val;
-        tuple().MT2 = def_val;
-    }
-    const auto& Htt = *event.GetHiggsTTMomentum(false);
+    #define TAU_DATA(name, obj) \
+        tuple().name##_pt = static_cast<float>(obj.GetMomentum().pt()); \
+        tuple().name##_eta = static_cast<float>(obj.GetMomentum().eta()); \
+        tuple().name##_phi = static_cast<float>(obj.GetMomentum().phi()); \
+        tuple().name##_m = static_cast<float>(obj.GetMomentum().M()); \
+        tuple().name##_iso = obj->leg_type() != LegType::tau ? static_cast<float>(obj.GetIsolation()) : def_val; \
+        tuple().name##_DeepTauVSe = obj->leg_type() == LegType::tau \
+                                  ? obj->GetRawValue(TauIdDiscriminator::byDeepTau2017v2p1VSe) : def_val; \
+        tuple().name##_DeepTauVSmu = obj->leg_type() == LegType::tau \
+                                   ? obj->GetRawValue(TauIdDiscriminator::byDeepTau2017v2p1VSmu) : def_val; \
+        tuple().name##_DeepTauVSjet = obj->leg_type() == LegType::tau \
+                                    ? obj->GetRawValue(TauIdDiscriminator::byDeepTau2017v2p1VSjet) : def_val; \
+        tuple().name##_q = obj->charge(); \
+        tuple().name##_gen_match = static_cast<int>(obj->gen_match()); \
+        /**/
+
     const auto& t1 = event.GetLeg(1);
     const auto& t2 = event.GetLeg(2);
+    TAU_DATA(tau1, t1)
+    TAU_DATA(tau2, t2)
+    #undef TAU_DATA
 
-    tuple().m_tt_vis = static_cast<float>(Htt.M());
-    tuple().pt_H_tt = static_cast<float>(Htt.Pt());
-    tuple().eta_H_tt = static_cast<float>(Htt.Eta());
-    tuple().phi_H_tt = static_cast<float>(Htt.Phi());
-    tuple().pt_H_tt_MET = static_cast<float>((Htt + event.GetMET().GetMomentum()).Pt());
-    tuple().pt_1 = static_cast<float>(t1.GetMomentum().pt());
-    tuple().eta_1 = static_cast<float>(t1.GetMomentum().eta());
-    tuple().phi_1 = static_cast<float>(t1.GetMomentum().phi());
-    tuple().m_1 = static_cast<float>(t1.GetMomentum().M());
-    tuple().iso_1 = static_cast<float>(t1.GetIsolation());
-    tuple().mt_1 = static_cast<float>(Calculate_MT(t1.GetMomentum(), event.GetMET().GetMomentum()));
-    tuple().pt_2 = static_cast<float>(t2.GetMomentum().pt());
-    tuple().eta_2 = static_cast<float>(t2.GetMomentum().eta());
-    tuple().phi_2 = static_cast<float>(t2.GetMomentum().phi());
-    tuple().m_2 = static_cast<float>(t2.GetMomentum().M());
-    tuple().iso_2 = static_cast<float>(t2.GetIsolation());
-    if(t2->leg_type() == LegType::tau){
-      tuple().deepTau_vs_e_2 = static_cast<float>(t2->GetRawValue(TauIdDiscriminator::byDeepTau2017v2p1VSe));
-      tuple().deepTau_vs_mu_2 = static_cast<float>(t2->GetRawValue(TauIdDiscriminator::byDeepTau2017v2p1VSmu));
-      tuple().deepTau_vs_jet_2 = static_cast<float>(t2->GetRawValue(TauIdDiscriminator::byDeepTau2017v2p1VSjet));
-      tuple().tauId_default = static_cast<float>(t2->GetRawValue(TauIdDiscriminator::byIsolationMVArun2017v2DBoldDMwLT2017));
+    #define JET_DATA(name, obj) \
+        tuple().name##_pt = obj ? static_cast<float>(obj->GetMomentum().pt()) : def_val; \
+        tuple().name##_eta = obj ? static_cast<float>(obj->GetMomentum().eta()) : def_val; \
+        tuple().name##_phi = obj ? static_cast<float>(obj->GetMomentum().phi()) : def_val; \
+        tuple().name##_m = obj ? static_cast<float>(obj->GetMomentum().M()) : def_val; \
+        tuple().name##_CSV = obj ? (*obj)->csv() : def_val; \
+        tuple().name##_DeepCSV = obj ? (*obj)->deepcsv() : def_val; \
+        tuple().name##_DeepFlavour = obj ? (*obj)->deepFlavour() : def_val; \
+        tuple().name##_DeepFlavour_CvsL = obj ? (*obj)->deepFlavour_CvsL() : def_val; \
+        tuple().name##_DeepFlavour_CvsB = obj ? (*obj)->deepFlavour_CvsB() : def_val; \
+        tuple().name##_HHbtag = obj ? (*obj)->hh_btag() : def_val; \
+        tuple().name##_valid = obj != nullptr; \
+        tuple().name##_hadronFlavour = obj ? (*obj)->hadronFlavour() : def_val_int; \
+        /**/
+
+    const JetCandidate *b1 = nullptr, *b2 = nullptr, *vbf1 = nullptr, *vbf2 = nullptr;
+    if(event.HasBjetPair()) {
+        b1 = &event.GetBJet(1);
+        b2 = &event.GetBJet(2);
     }
-    tuple().mt_2 = static_cast<float>(Calculate_MT(t2.GetMomentum(), event.GetMET().GetMomentum()));
-    tuple().dR_l1l2 = static_cast<float>(DeltaR(t1.GetMomentum(),t2.GetMomentum()));
-    tuple().abs_dphi_l1MET = static_cast<float>(std::abs(DeltaPhi(t1.GetMomentum(), event.GetMET().GetMomentum())));
-    tuple().dphi_htautauMET = runSVfit && event.GetSVFitResults(allow_calc_svFit).has_valid_momentum ?
-                              static_cast<float>(DeltaPhi(*event.GetHiggsTTMomentum(true,allow_calc_svFit), event.GetMET().GetMomentum())) : def_val;
-    tuple().dR_l1l2MET = static_cast<float>(DeltaR(*event.GetHiggsTTMomentum(false), event.GetMET().GetMomentum()));
-    tuple().dR_l1l2Pt_htautau = runSVfit && event.GetSVFitResults(allow_calc_svFit).has_valid_momentum ?
-                                static_cast<float>(DeltaR(t1.GetMomentum(), t2.GetMomentum())
-                                * event.GetHiggsTTMomentum(true,allow_calc_svFit)->pt()) : def_val;
-    tuple().mass_l1l2MET = static_cast<float>((*event.GetHiggsTTMomentum(false) + event.GetMET().GetMomentum()).M());
-    tuple().pt_l1l2MET = static_cast<float>((*event.GetHiggsTTMomentum(false) + event.GetMET().GetMomentum()).pt());
-    tuple().MT_htautau = runSVfit && event.GetSVFitResults(allow_calc_svFit).has_valid_momentum ?
-                         static_cast<float>(Calculate_MT(*event.GetHiggsTTMomentum(true,allow_calc_svFit),event.GetMET().GetMomentum())) : def_val;
+    if(event.HasVBFjetPair()) {
+        vbf1 = &event.GetVBFJet(1);
+        vbf2 = &event.GetVBFJet(2);
+    }
+    JET_DATA(b1, b1)
+    JET_DATA(b2, b2)
+    JET_DATA(VBF1, vbf1)
+    JET_DATA(VBF2, vbf2)
+
+    #undef JET_DATA
+
+    tuple().MET_pt = static_cast<float>(event.GetMET().GetMomentum().pt());
+    tuple().MET_phi = static_cast<float>(event.GetMET().GetMomentum().phi());
+
+
+    const sv_fit_ana::FitResults* SVfit = nullptr;
+    if(runSVfit && event.GetSVFitResults(allow_calc_svFit).has_valid_momentum)
+        SVfit = &event.GetSVFitResults(allow_calc_svFit);
+    tuple().SVfit_valid = SVfit != nullptr;
+    tuple().SVfit_pt = SVfit ? static_cast<float>(SVfit->momentum.pt()) : def_val;
+    tuple().SVfit_eta = SVfit ? static_cast<float>(SVfit->momentum.eta()) : def_val;
+    tuple().SVfit_phi = SVfit ? static_cast<float>(SVfit->momentum.phi()) : def_val;
+    tuple().SVfit_m = SVfit ? static_cast<float>(SVfit->momentum.mass()) : def_val;
+    tuple().SVfit_mt = SVfit ? static_cast<float>(SVfit->transverseMass) : def_val;
+    tuple().SVfit_pt_error = SVfit ? static_cast<float>(SVfit->momentum_error.pt()) : def_val;
+    tuple().SVfit_eta_error = SVfit ? static_cast<float>(SVfit->momentum_error.eta()) : def_val;
+    tuple().SVfit_phi_error = SVfit ? static_cast<float>(SVfit->momentum_error.phi()) : def_val;
+    tuple().SVfit_m_error = SVfit ? static_cast<float>(SVfit->momentum_error.mass()) : def_val;
+    tuple().SVfit_mt_error = SVfit ? static_cast<float>(SVfit->transverseMass_error) : def_val;
+
+    const kin_fit::FitResults* kinFit = nullptr;
+    if(runKinFit && event.HasBjetPair())
+        kinFit = &event.GetKinFitResults(allow_calc_svFit);
+    tuple().kinFit_convergence = kinFit ? kinFit->convergence : def_val_int;
+    tuple().kinFit_m = kinFit && kinFit->HasValidMass() ? static_cast<float>(kinFit->mass) : def_val;
+    tuple().kinFit_chi2 = kinFit && kinFit->HasValidMass() ? static_cast<float>(kinFit->chi2) : def_val;
+
+    tuple().MT2 = event.HasBjetPair() ? static_cast<float>(event.GetMT2()) : def_val;
+
     tuple().npv = event->npv;
-    tuple().MET = static_cast<float>(event.GetMET().GetMomentum().Pt());
-    tuple().phiMET = static_cast<float>(event.GetMET().GetMomentum().Phi());
-    tuple().pt_MET = static_cast<float>(event.GetMET().GetMomentum().pt());
-    tuple().p_zeta = static_cast<float>(Calculate_Pzeta(t1.GetMomentum(), t2.GetMomentum(),
-                                                        event.GetMET().GetMomentum()));
-    tuple().p_zetavisible = static_cast<float>(Calculate_visiblePzeta(t1.GetMomentum(), t2.GetMomentum()));
-    tuple().mt_tot = static_cast<float>(Calculate_TotalMT(t1.GetMomentum(),t2.GetMomentum(),
-                                                          event.GetMET().GetMomentum()));
+    tuple().HT_total = static_cast<float>(event.GetHT(true, true));
     tuple().HT_otherjets = static_cast<float>(event.GetHT(false, true));
     tuple().lhe_HT = event->lhe_HT;
     tuple().n_jets = event.GetAllJets().size();
-    tuple().n_jets_eta24_eta5 = event.GetForwardJets().size();
     tuple().n_jets_eta24 = event.GetCentralJets().size();
-
-    tuple().pt_VBF_1 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(1).GetMomentum().Pt()) : def_val;
-    tuple().eta_VBF_1 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(1).GetMomentum().Eta()) : def_val;
-    tuple().phi_VBF_1 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(1).GetMomentum().Phi()) : def_val;
-    tuple().m_VBF_1 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(1).GetMomentum().M()) : def_val;
-    tuple().deep_flavour_VBF_1 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(1)->deepFlavour())
-                                                       : def_val;
-    tuple().hh_btag_VBF_1 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(1)->hh_btag())
-                                                  : def_val;
-    tuple().pt_VBF_2 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(2).GetMomentum().Pt()) : def_val;
-    tuple().eta_VBF_2 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(2).GetMomentum().Eta()) : def_val;
-    tuple().phi_VBF_2 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(2).GetMomentum().Phi()) : def_val;
-    tuple().m_VBF_2 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(2).GetMomentum().M()) : def_val;
-    tuple().deep_flavour_VBF_2 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(2)->deepFlavour())
-                                                       : def_val;
-   tuple().hh_btag_VBF_2 = event.HasVBFjetPair() ? static_cast<float>(event.GetVBFJet(2)->hh_btag())
-                                                 : def_val;
+    tuple().n_jets_eta24_eta5 = event.GetForwardJets().size();
 
     tuple().n_selected_gen_jets =  event->genJets_p4.size();
     int n_bflavour=0;
-    int n_otherflavour=0;
     static constexpr double b_Flavour = 5;
-    for(size_t i=0;i<event->genJets_hadronFlavour.size();i++){
-        if(event->genJets_hadronFlavour.at(i)==b_Flavour) n_bflavour++;
-        else n_otherflavour++;
+    for(size_t i = 0; i < event->genJets_hadronFlavour.size(); ++i) {
+        if(event->genJets_hadronFlavour.at(i) == b_Flavour) ++n_bflavour;
     }
     tuple().n_selected_gen_bjets = n_bflavour;
-    tuple().n_selected_gen_notbjets = n_otherflavour;
     tuple().genJets_nTotal = event->genJets_nTotal;
     tuple().jets_nTotal_hadronFlavour_b = event->jets_nTotal_hadronFlavour_b;
     tuple().jets_nTotal_hadronFlavour_c = event->jets_nTotal_hadronFlavour_c;
 
-    tuple().gen_match_1 = static_cast<float>(event.GetLeg(1)->gen_match());
-    tuple().gen_match_2 = static_cast<float>(event.GetLeg(2)->gen_match());
-
-    if(event.HasBjetPair()) {
-        const auto& Hbb = event.GetHiggsBB();
-        const auto& b1 = Hbb.GetFirstDaughter();
-        const auto& b2 = Hbb.GetSecondDaughter();
-        tuple().m_bb = static_cast<float>(Hbb.GetMomentum().M());
-        tuple().pt_H_bb = static_cast<float>(Hbb.GetMomentum().Pt());
-        tuple().pt_b1 = static_cast<float>(b1.GetMomentum().pt());
-        tuple().eta_b1 = static_cast<float>(b1.GetMomentum().Eta());
-        tuple().phi_b1 = static_cast<float>(b1.GetMomentum().Phi());
-        tuple().m_b1 = static_cast<float>(b1.GetMomentum().M());
-        tuple().csv_b1 = b1->csv();
-        tuple().deepcsv_b1 = b1->deepcsv();
-        tuple().deep_flavour_b1 = b1->deepFlavour();
-        tuple().hh_btag_b1 = b1->hh_btag();
-        tuple().pt_b2 = static_cast<float>(b2.GetMomentum().Pt());
-        tuple().eta_b2 = static_cast<float>(b2.GetMomentum().Eta());
-        tuple().phi_b2 = static_cast<float>(b2.GetMomentum().Phi());
-        tuple().m_b2 = static_cast<float>(b2.GetMomentum().M());
-        tuple().csv_b2 = b2->csv();
-        tuple().deepcsv_b2 = b2->deepcsv();
-        tuple().deep_flavour_b2 = b2->deepFlavour();
-        tuple().hh_btag_b2 = b2->hh_btag();
-        tuple().dphi_hbbhtautau = runSVfit && event.GetSVFitResults(allow_calc_svFit).has_valid_momentum ?
-                                  static_cast<float>(DeltaPhi(Hbb.GetMomentum(),
-                                                    *event.GetHiggsTTMomentum(true,allow_calc_svFit))) : def_val;
-        tuple().deta_hbbhtautau = runSVfit && event.GetSVFitResults(allow_calc_svFit).has_valid_momentum ?
-                                  static_cast<float>((Hbb.GetMomentum() -
-                                  *event.GetHiggsTTMomentum(true,allow_calc_svFit)).Eta()) : def_val;
-        tuple().costheta_METhbb = static_cast<float>(four_bodies::Calculate_cosTheta_2bodies(
-                                                         event.GetMET().GetMomentum(), Hbb.GetMomentum()));
-        tuple().dR_b1b2 = static_cast<float>(DeltaR(b1.GetMomentum(), b2.GetMomentum()));
-        tuple().dR_b1b2_boosted = static_cast<float>(four_bodies::Calculate_dR_boosted(
-                                                         b1.GetMomentum(), b2.GetMomentum(), Hbb.GetMomentum()));
-        tuple().mass_top1 = static_cast<float>(four_bodies::Calculate_topPairMasses(
-                                                   t1.GetMomentum(), t2.GetMomentum(), b1.GetMomentum(),
-                                                   b2.GetMomentum(), event.GetMET().GetMomentum()).first);
-        tuple().mass_top2 = static_cast<float>(four_bodies::Calculate_topPairMasses(
-                                                   t1.GetMomentum(), t2.GetMomentum(), b1.GetMomentum(),
-                                                   b2.GetMomentum(), event.GetMET().GetMomentum()).second);
-        tuple().HT_total = static_cast<float>(event.GetHT(true, true));
-        tuple().dR_lj = static_cast<float>(four_bodies::Calculate_min_dR_lj(t1.GetMomentum(), t2.GetMomentum(),
-                                           b1.GetMomentum(), b2.GetMomentum()));
-
-    } else {
-        tuple().m_bb = def_val;
-        tuple().pt_H_bb = def_val;
-        tuple().pt_b1 = def_val;
-        tuple().eta_b1 = def_val;
-        tuple().csv_b1 = def_val;
-        tuple().pt_b2 = def_val;
-        tuple().eta_b2 = def_val;
-        tuple().csv_b2 = def_val;
-        tuple().dphi_hbbhtautau = def_val;
-        tuple().deta_hbbhtautau = def_val;
-        tuple().costheta_METhbb = def_val;
-        tuple().dR_b1b2 = def_val;
-        tuple().dR_b1b2_boosted = def_val;
-        tuple().mass_top1 = def_val;
-        tuple().mass_top2 = def_val;
-        tuple().dR_lj = def_val;
-    }
     tuple.Fill();
 }
 
 AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names) :
     file(root_ext::OpenRootFile(file_name))
 {
-    static const NameSet essential_branches = { "dataIds", "all_weights", "has_2jets" };
-    static const NameSet other_branches = { "all_mva_scores", "weight", "evt", "run", "lumi" };
-    NameSet enabled_branches;
-    if(active_var_names.size()) {
-        enabled_branches.insert(essential_branches.begin(), essential_branches.end());
-        enabled_branches.insert(active_var_names.begin(), active_var_names.end());
-        if(active_var_names.count("mva_score"))
-            enabled_branches.insert("all_mva_scores");
-
-    } else {
-        enabled_branches = ExtractAllBranchNames(channel);
-        for(const auto& name : enabled_branches) {
-            if(!essential_branches.count(name) && !other_branches.count(name))
-                active_var_names.insert(name);
+    static const NameSet essential_branches = { "dataIds", "all_weights", "has_b_pair", "has_VBF_pair" };
+    static const NameSet other_branches = {
+        "all_mva_scores", "weight", "evt", "run", "lumi", "tau1_q", "tau1_gen_match", "tau2_q", "tau2_gen_match",
+        "b1_valid", "b1_hadronFlavour", "b2_valid", "b2_hadronFlavour", "VBF1_valid", "VBF1_hadronFlavour",
+        "VBF2_valid", "VBF2_hadronFlavour", "SVfit_valid", "kinFit_convergence"
+    };
+    tuple = std::make_shared<AnaTuple>(ToString(channel), file.get(), true);
+    if(active_var_names.empty()) {
+        std::vector<const std::set<std::string>*> names = {
+            &tuple->GetActiveBranches(), &tuple->GetSecondaryVariables()
+        };
+        for(auto name_set : names) {
+            for(const auto& name : *name_set) {
+                if(!essential_branches.count(name) && !other_branches.count(name))
+                    active_var_names.insert(name);
+            }
         }
     }
-    tuple = std::make_shared<AnaTuple>(ToString(channel), file.get(), true, NameSet(), enabled_branches);
 
     AnaAuxTuple aux_tuple(file.get(), true);
     aux_tuple.GetEntry(0);
@@ -337,12 +324,6 @@ void AnaTupleReader::ExtractMvaRanges(const AnaAux& aux)
             throw exception("Duplicated mva selection = %1% in AnaAux tuple.") % sel;
         mva_ranges[sel] = Range(aux.mva_min.at(n), aux.mva_max.at(n));
     }
-}
-
-AnaTupleReader::NameSet AnaTupleReader::ExtractAllBranchNames(Channel channel) const
-{
-    AnaTuple tmpTuple(ToString(channel), file.get(), true);
-    return tmpTuple.GetActiveBranches();
 }
 
 float AnaTupleReader::GetNormalizedMvaScore(const DataId& dataId, float raw_score) const

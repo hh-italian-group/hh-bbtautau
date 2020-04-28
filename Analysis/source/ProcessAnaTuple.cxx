@@ -113,6 +113,7 @@ private:
         auto& tuple = tupleReader.GetAnaTuple();
         for(Long64_t entryIndex = 0; entryIndex < tuple.GetEntries(); ++entryIndex) {
             tuple.GetEntry(entryIndex);
+            tuple().UpdateSecondaryVariables();
             for(size_t n = 0; n < tuple().dataIds.size(); ++n) {
                 const auto& dataId = tupleReader.GetDataIdByIndex(n);
                 if(!subCategories.count(dataId.Get<EventSubCategory>())) continue;
