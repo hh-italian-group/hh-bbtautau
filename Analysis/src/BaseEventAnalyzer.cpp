@@ -275,7 +275,8 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                     mc_corrections::WeightType::BTag);
                             double total_btag_weight = btag_weight->Get(*event);
 
-                            double cross_section = (*summary)->cross_section > 0 ? (*summary)->cross_section : sample.cross_section;
+                            double cross_section = (*summary)->cross_section > 0 ? (*summary)->cross_section :
+                                                                                    sample.cross_section;
                             const double weight = (*event)->weight_total * cross_section
                                 * ana_setup.int_lumi * total_lepton_weight * total_btag_weight
                                 / (*summary)->totalShapeWeight * mva_weight_scale;

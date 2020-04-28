@@ -30,6 +30,7 @@ void SetupEntryReader::EndEntry()
     CheckReadParamCounts("massWindowParams", 0, Condition::greater_equal);
     CheckReadParamCounts("apply_kinfit", 1, Condition::less_equal);
     CheckReadParamCounts("applyTauId", 1, Condition::less_equal);
+    CheckReadParamCounts("xs_cfg", 1, Condition::less_equal);
 
     ConfigEntryReaderT<Setup>::EndEntry();
 }
@@ -40,7 +41,7 @@ void SetupEntryReader::ReadParameter(const std::string& /*param_name*/, const st
     ParseEnumList("unc_sources", current.unc_sources);
     ParseEnumList("channels", current.channels);
     ParseEntry("period", current.period);
-    ParseEntry("mode", current.mode);
+    ParseEnumList("mode", current.mode);
     ParseEntry("btag_wp", current.btag_wp);
     ParseEntry("use_cache", current.use_cache);
     ParseEntryList("common_weights", current.common_weights);
@@ -59,6 +60,7 @@ void SetupEntryReader::ReadParameter(const std::string& /*param_name*/, const st
     ParseEntry("massWindowParams", current.massWindowParams);
     ParseEntry("apply_kinfit",current.apply_kinfit);
     ParseEntry("applyTauId",current.applyTauId);
+    ParseEntry("xs_cfg",current.xs_cfg);
 }
 
 void SkimJobEntryReader::EndEntry()

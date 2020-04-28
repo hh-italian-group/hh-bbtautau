@@ -79,12 +79,8 @@ public:
             throw exception("Tuple skimmer setup not found.");
         setup = setups.at(args.setup_name());
 
-        std::cout << "Mode size =  " <<setup.mode.size()<< std::endl;
-        std::cout << "******* type ********* " << typeid(setup.mode).name() << "\n";
-        for(auto mode : setup.mode){
-            std::cout << "Mode... " << mode << std::endl;
+        for(const auto& mode : setup.mode)
             signalObjectSelector[mode] = std::make_shared<SignalObjectSelector>(mode);
-        }
 
         EventCandidate::InitializeUncertainties(setup.period, false, ".", TauIdDiscriminator::byDeepTau2017v2p1VSjet);
 
@@ -405,7 +401,7 @@ private:
     double ReadCrossSections(const SkimJob& job)
     {
         PropertyConfigReader reader;
-        reader.Parse("hh-bbtautau/Instruments/config/cross_section.cfg");
+        reader.Parse(setup.xs_cfg);
         const auto& items = reader.GetItems();
 
         double xs = 0;
@@ -540,7 +536,6 @@ private:
 	std::shared_ptr<TFile> outputFile;
     mc_corrections::WeightingMode weighting_mode;
     std::map<SignalMode, std::shared_ptr<SignalObjectSelector>> signalObjectSelector;
-    // std::shared_ptr<SignalObjectSelector> signalObjectSelector;
     std::set<UncertaintySource> unc_sources;
     std::vector<std::pair<UncertaintySource, UncertaintyScale>> unc_variations;
     std::unique_ptr<BTagger> bTagger;

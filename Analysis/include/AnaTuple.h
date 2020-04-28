@@ -72,6 +72,7 @@ namespace analysis {
                      p_zetavisible, mt_tot) \
     SVAR_LIST(float, m_bb, pt_H_bb, dphi_hbbhtautau, deta_hbbhtautau, costheta_METhbb, dR_b1b2, dR_b1b2_boosted, \
                      dR_lj, mass_top1, mass_top2) \
+    SVAR_LIST(float, hh_btag_b1, hh_btag_b2, hh_btag_VBF_1, hh_btag_VBF_2, hh_btag_b1b2, hh_btag_VBF1VBF2) \
     /**/
 
 namespace bbtautau {

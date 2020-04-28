@@ -73,6 +73,13 @@ void AnaEvent::UpdateSecondaryVariables()
         topMasses = four_bodies::Calculate_topPairMasses(t1, t2, *b1, *b2, MET);
     mass_top1 = topMasses ? static_cast<float>(topMasses->first) : def_val;
     mass_top2 = topMasses ? static_cast<float>(topMasses->second) : def_val;
+
+    hh_btag_b1 = Hbb ? b1_HHbtag : def_val;
+    hh_btag_b2 = Hbb ? b2_HHbtag : def_val;
+    hh_btag_b1b2 = Hbb ? b1_HHbtag + b2_HHbtag : def_val;
+    hh_btag_VBF_1 = has_VBF_pair ? static_cast<float>(VBF1_HHbtag) : def_val;
+    hh_btag_VBF_2 = has_VBF_pair ? static_cast<float>(VBF2_HHbtag) : def_val;
+    hh_btag_VBF1VBF2 = has_VBF_pair ? static_cast<float>(VBF1_HHbtag + VBF2_HHbtag) : def_val;
 }
 
 AnaTupleWriter::AnaTupleWriter(const std::string& file_name, Channel channel, bool _runKinFit, bool _runSVfit,

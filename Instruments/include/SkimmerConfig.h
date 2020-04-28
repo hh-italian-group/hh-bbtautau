@@ -18,7 +18,6 @@ struct Setup {
     std::set<UncertaintySource> unc_sources;
     std::set<Channel> channels;
     Period period;
-    // std::vector<SignalMode> mode;
     std::set<SignalMode> mode;
     DiscriminatorWP btag_wp;
     bool use_cache;
@@ -26,6 +25,7 @@ struct Setup {
     BTaggerKind jet_ordering;
     unsigned n_splits{0};
     unsigned split_seed{0};
+    std::string xs_cfg;
 
     //light setup
     bool apply_mass_cut{false}, apply_charge_cut{false}, apply_bb_cut{true}, apply_tau_iso{false};
