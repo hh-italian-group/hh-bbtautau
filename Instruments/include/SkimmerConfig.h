@@ -18,7 +18,8 @@ struct Setup {
     std::set<UncertaintySource> unc_sources;
     std::set<Channel> channels;
     Period period;
-    SignalMode mode;
+    // std::vector<SignalMode> mode;
+    std::set<SignalMode> mode;
     DiscriminatorWP btag_wp;
     bool use_cache;
     mc_corrections::WeightingMode common_weights;

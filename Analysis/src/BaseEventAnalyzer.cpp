@@ -238,7 +238,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
             bool pass_trigger = event->GetTriggerResults().AnyAcceptAndMatch(trigger_patterns);
             if(!pass_trigger && event->HasVBFjetPair() && ana_setup.trigger_vbf.count(channelId))
                 pass_trigger = event->GetTriggerResults().AnyAcceptAndMatch(ana_setup.trigger_vbf.at(channelId));
-            if(!pass_trigger) continue; 
+            if(!pass_trigger) continue;
             bbtautau::AnaTupleWriter::DataIdMap dataIds;
             const auto eventCategories = DetermineEventCategories(*event);
             for(auto eventCategory : eventCategories) {
@@ -275,7 +275,8 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                     mc_corrections::WeightType::BTag);
                             double total_btag_weight = btag_weight->Get(*event);
 
-                            const double weight = (*event)->weight_total * sample.cross_section
+                            double cross_section = (*summary)->cross_section > 0 ? (*summary)->cross_section : sample.cross_section;
+                            const double weight = (*event)->weight_total * cross_section
                                 * ana_setup.int_lumi * total_lepton_weight * total_btag_weight
                                 / (*summary)->totalShapeWeight * mva_weight_scale;
                             if(sample.sampleType == SampleType::MC) {
