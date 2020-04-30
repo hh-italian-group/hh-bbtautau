@@ -69,6 +69,7 @@ void SkimJobEntryReader::EndEntry()
     CheckReadParamCounts("apply_common_weights", 1, Condition::less_equal);
     CheckReadParamCounts("weights", 1, Condition::less_equal);
     CheckReadParamCounts("isData", 1, Condition::less_equal);
+    CheckReadParamCounts("cross_section", 1, Condition::less_equal);
 
     const size_t n_files = GetReadParamCounts("file");
     const size_t n_files_ex = GetReadParamCounts("file_ex");
@@ -91,6 +92,7 @@ void SkimJobEntryReader::ReadParameter(const std::string& param_name, const std:
     ParseEntry("apply_common_weights", current.apply_common_weights);
     ParseEntryList("weights", current.weights);
     ParseEntry("isData", current.isData);
+    ParseEntry("cross_section", current.cross_section);
 }
 
 void SkimJobEntryReader::ParseFileDescriptor(const std::string& param_name, const std::string& param_value)
@@ -98,20 +100,20 @@ void SkimJobEntryReader::ParseFileDescriptor(const std::string& param_name, cons
     std::vector<std::string> inputs;
     if(param_name == "file") {
         inputs = SplitValueList(param_value, false);
-        current.files.emplace_back(inputs);
+        current.files.emplace_back(inputs, "", current.cross_section );
     } else if(param_name == "file_ex") {
         auto columns = SplitValueList(param_value, true);
         if(columns.size() < 2)
             throw exception("Invalid extended file description.");
         inputs.insert(inputs.end(), columns.begin() + 1, columns.end());
-        current.files.emplace_back(inputs, columns.at(0));
+        current.files.emplace_back(inputs, columns.at(0), "");
     } else if(param_name == "file_xs") {
         auto columns = SplitValueList(param_value, false);
         if(columns.size() < 2)
             throw exception("Invalid description for file with cross-section.");
         inputs.insert(inputs.end(), columns.begin() + 1, columns.end());
-        const double xs = Parse<double>(columns.at(0));
-        current.files.emplace_back(inputs, xs);
+        const std::string xs = columns.at(0);
+        current.files.emplace_back(inputs,"" , xs);
     } else {
         return;
     }

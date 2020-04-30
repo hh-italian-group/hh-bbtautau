@@ -43,19 +43,27 @@ struct Setup {
 
 using SetupCollection = std::unordered_map<std::string, Setup>;
 
+class CrossSectionProvider{
+public:
+    CrossSectionProvider(std::string cross_section_cfg);
+    double GetCrossSection(const std::string& process) const;
+
+private:
+    PropertyConfigReader xs_items;
+};
+
 struct FileDescriptor {
     std::vector<std::string> inputs;
     std::string output;
-    double cross_section;
+    std::string cross_section;
     bool first_input_is_ref;
     std::vector<bool> input_is_partial;
 
-    FileDescriptor(const std::vector<std::string>& _inputs = {});
-    FileDescriptor(const std::vector<std::string>& _inputs, const std::string& _output);
-    FileDescriptor(const std::vector<std::string>& _inputs, double _cross_section);
+    FileDescriptor(const std::vector<std::string>& _inputs, const std::string& _output, const std::string& _cross_section);
 
     bool HasCrossSection() const;
-    double GetCrossSectionWeight() const;
+    double GetCrossSection(const CrossSectionProvider& xs_provider) const;
+
 };
 
 struct SkimJob {
@@ -65,11 +73,14 @@ struct SkimJob {
     bool apply_common_weights{true};
     bool isData{false};
     mc_corrections::WeightingMode weights;
+    std::string cross_section;
 
     bool ProduceMergedOutput() const;
+    double GetCrossSection(const CrossSectionProvider& xs_provider) const;
 };
 
 using SkimJobCollection = std::unordered_map<std::string, SkimJob>;
+
 
 } // namespace tuple_skimmer
 } // namespace analysis

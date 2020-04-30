@@ -102,6 +102,7 @@ public:
                 jobs.push_back(all_jobs.at(job_name));
             }
         }
+        crossSectionProvider = std::make_shared<CrossSectionProvider>(setup.xs_cfg);
     }
 
     void Run()
@@ -236,7 +237,8 @@ private:
 
                 summary->n_splits = setup.n_splits;
                 summary->split_seed = setup.split_seed;
-                summary->cross_section = ReadCrossSections(job);
+
+                summary->cross_section = job.GetCrossSection(*crossSectionProvider);
 
                 for(Channel channel : setup.channels) {
                     const std::string treeName = ToString(channel);
@@ -387,10 +389,10 @@ private:
             }
         }
         if(desc.HasCrossSection()) {
-            weight_xs = desc.GetCrossSectionWeight() / summary.totalShapeWeight;
-            summary.totalShapeWeight = desc.GetCrossSectionWeight();
-            weight_xs_withTopPt = desc.GetCrossSectionWeight() / summary.totalShapeWeight_withTopPt;
-            summary.totalShapeWeight_withTopPt = desc.GetCrossSectionWeight();
+            weight_xs = desc.GetCrossSection(*crossSectionProvider) / summary.totalShapeWeight;
+            summary.totalShapeWeight = desc.GetCrossSection(*crossSectionProvider);
+            weight_xs_withTopPt = desc.GetCrossSection(*crossSectionProvider) / summary.totalShapeWeight_withTopPt;
+            summary.totalShapeWeight_withTopPt = desc.GetCrossSection(*crossSectionProvider);
         } else {
             weight_xs = 1;
             weight_xs_withTopPt = 1;
@@ -405,15 +407,20 @@ private:
         const auto& items = reader.GetItems();
 
         double xs = 0;
-        if(items.count(job.name)){
-            const auto& sample_params = items.at(job.name);
-
-            for(auto desc_iter = job.files.begin(); desc_iter != job.files.end(); ++desc_iter) {
-                for(const auto& input : desc_iter->inputs){
-                    if(!sample_params.Has(RemoveFileExtension(input))) continue;
-                    xs +=  std::stod(sample_params.Get<>(RemoveFileExtension(input)));
+        if(job.cross_section.empty()) {
+            if(items.count(job.name)){ //The job is listed in the config
+                const auto& sample_params = items.at(job.name);
+                for(auto desc_iter = job.files.begin(); desc_iter != job.files.end(); ++desc_iter) {
+                    for(const auto& input : desc_iter->inputs){
+                        if(!sample_params.Has(RemoveFileExtension(input))) continue; //The sample of the job is listed in the config
+                        xs +=  std::stod(sample_params.Get<>(RemoveFileExtension(input)));
+                    }
                 }
             }
+        }
+        else{
+            // for(const auto& input : desc_iter->inputs)
+                xs +=  std::stod(job.cross_section);
         }
         return xs;
     }
@@ -539,6 +546,7 @@ private:
     std::set<UncertaintySource> unc_sources;
     std::vector<std::pair<UncertaintySource, UncertaintyScale>> unc_variations;
     std::unique_ptr<BTagger> bTagger;
+    std::shared_ptr<CrossSectionProvider> crossSectionProvider;
 };
 
 } // namespace tuple_skimmer
