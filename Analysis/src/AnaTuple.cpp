@@ -88,6 +88,10 @@ AnaTupleWriter::~AnaTupleWriter()
         aux_tuple().dataIds.push_back(id.second);
         aux_tuple().dataId_names.push_back(id.first.GetName());
     }
+    for(const auto& id : known_sample_ids.left) {
+        aux_tuple().sampleIds.push_back(id.second);
+        aux_tuple().sampleId_names.push_back(id.first);
+    }
     for(const auto& range : mva_ranges) {
         aux_tuple().mva_selections.push_back(static_cast<unsigned>(range.first));
         aux_tuple().mva_min.push_back(range.second.min());
@@ -104,27 +108,57 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const AnaTupleWriter::DataIdMap&
     static constexpr int def_val_int = std::numeric_limits<int>::lowest();
 
     if(!dataIds.size()) return;
+    tuple().is_central_es = false;
+    tuple().weight = def_val;
+    tuple().mva_score = def_val;
+
+    boost::optional<std::string> sample_id;
     for(const auto& entry : dataIds) {
-        if(!known_data_ids.left.count(entry.first)) {
-            const size_t hash = std::hash<std::string>{}(entry.first.GetName());
+        const DataId& data_id = entry.first;
+        const double weight = std::get<0>(entry.second);
+        const double mva_score = std::get<1>(entry.second);
+        const UncertaintySource unc_source = data_id.Get<UncertaintySource>();
+
+        if(!sample_id) {
+            sample_id = data_id.Get<std::string>();
+            if(!known_sample_ids.left.count(*sample_id)) {
+                const size_t hash = std::hash<std::string>{}(*sample_id);
+                if(known_sample_ids.right.count(hash))
+                    throw exception("Duplicated hash for sample id '%1%' and '%2%'.") % (*sample_id)
+                        %  known_sample_ids.right.at(hash);
+                known_sample_ids.insert({*sample_id, hash});
+            }
+            tuple().sample_id = known_sample_ids.left.at(*sample_id);
+        }
+        if(*sample_id != data_id.Get<std::string>()) {
+            throw exception("Single event has two distinct sample ids: %1% and %2%") % (*sample_id)
+                    % data_id.Get<std::string>();
+        }
+
+        if(!known_data_ids.left.count(data_id)) {
+            const size_t hash = std::hash<std::string>{}(data_id.GetName());
             if(known_data_ids.right.count(hash))
-                throw exception("Duplicated hash for event id '%1%' and '%2%'.") % entry.first
+                throw exception("Duplicated hash for event id '%1%' and '%2%'.") % data_id
                     %  known_data_ids.right.at(hash);
-            known_data_ids.insert({entry.first, hash});
+            known_data_ids.insert({data_id, hash});
+        }
+
+        if(unc_source == UncertaintySource::None) {
+            tuple().is_central_es = true;
+            tuple().weight = weight;
+            tuple().mva_score = static_cast<float>(mva_score);
         }
 
         SelectionCut mva_cut;
-        if(entry.first.Get<EventSubCategory>().TryGetLastMvaCut(mva_cut)) {
-            mva_ranges[mva_cut] = mva_ranges[mva_cut].Extend(std::get<1>(entry.second));
+        if(data_id.Get<EventSubCategory>().TryGetLastMvaCut(mva_cut)) {
+            mva_ranges[mva_cut] = mva_ranges[mva_cut].Extend(mva_score);
         }
 
-        tuple().dataIds.push_back(known_data_ids.left.at(entry.first));
-        tuple().all_weights.push_back(std::get<0>(entry.second));
-        tuple().all_mva_scores.push_back(static_cast<float>(std::get<1>(entry.second)));
+        tuple().dataIds.push_back(known_data_ids.left.at(data_id));
+        tuple().all_weights.push_back(weight);
+        tuple().all_mva_scores.push_back(static_cast<float>(mva_score));
     }
 
-    tuple().weight = def_val;
-    tuple().mva_score = def_val;
     tuple().has_b_pair = event.HasBjetPair();
     tuple().has_VBF_pair = event.HasVBFjetPair();
     tuple().run = event->run;
@@ -239,9 +273,9 @@ AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, Na
 {
     static const NameSet essential_branches = { "dataIds", "all_weights", "has_b_pair", "has_VBF_pair" };
     static const NameSet other_branches = {
-        "all_mva_scores", "weight", "evt", "run", "lumi", "tau1_q", "tau1_gen_match", "tau2_q", "tau2_gen_match",
-        "b1_valid", "b1_hadronFlavour", "b2_valid", "b2_hadronFlavour", "VBF1_valid", "VBF1_hadronFlavour",
-        "VBF2_valid", "VBF2_hadronFlavour", "SVfit_valid", "kinFit_convergence"
+        "is_central_es", "sample_id", "all_mva_scores", "weight", "evt", "run", "lumi", "tau1_q", "tau1_gen_match",
+        "tau2_q", "tau2_gen_match", "b1_valid", "b1_hadronFlavour", "b2_valid", "b2_hadronFlavour", "VBF1_valid",
+        "VBF1_hadronFlavour", "VBF2_valid", "VBF2_hadronFlavour", "SVfit_valid", "kinFit_convergence"
     };
     tuple = std::make_shared<AnaTuple>(ToString(channel), file.get(), true);
     if(active_var_names.empty()) {
