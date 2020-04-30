@@ -45,6 +45,8 @@ namespace analysis {
     VAR(std::vector<double>, all_weights) /* all weight */ \
     VAR(std::vector<float>, all_mva_scores) /* all mva scores */ \
     VAR_LIST(bool, has_b_pair, has_VBF_pair) /* has 2 jets */ \
+    VAR(bool, is_central_es) \
+    VAR(ULong64_t, sample_id) \
     VAR(double, weight) /* weight */ \
     VAR(float, mva_score) /* mva score */ \
     VAR(ULong64_t, evt)  /* event */ \
@@ -144,6 +146,8 @@ private:
 #define ANA_AUX_DATA() \
     VAR(std::vector<size_t>, dataIds) /* EventAnalyzerDataId code */ \
     VAR(std::vector<std::string>, dataId_names) /* EventAnalyzerDataId name */ \
+    VAR(std::vector<size_t>, sampleIds) /* sample code */ \
+    VAR(std::vector<std::string>, sampleId_names) /* sample name */ \
     VAR(std::vector<unsigned>, mva_selections) /* SelectionCut for mva selection */ \
     VAR(std::vector<double>, mva_min) /* Minimal value for the given mva SelectionCut */ \
     VAR(std::vector<double>, mva_max) /* Maximal value for the given mva SelectionCut */ \
@@ -164,6 +168,7 @@ public:
     using DataId = EventAnalyzerDataId;
     using DataIdBiMap = boost::bimap<DataId, size_t>;
     using DataIdMap = std::map<DataId, std::tuple<double, double>>;
+    using SampleIdBiMap = boost::bimap<std::string, size_t>;
     using Range = ::analysis::Range<double>;
     using RangeMap = std::map<SelectionCut, Range>;
 
@@ -179,6 +184,7 @@ private:
     bool runSVfit;
     bool allow_calc_svFit;
     DataIdBiMap known_data_ids;
+    SampleIdBiMap known_sample_ids;
     RangeMap mva_ranges;
 };
 
