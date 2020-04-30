@@ -400,31 +400,6 @@ private:
         return summary;
     }
 
-    double ReadCrossSections(const SkimJob& job)
-    {
-        PropertyConfigReader reader;
-        reader.Parse(setup.xs_cfg);
-        const auto& items = reader.GetItems();
-
-        double xs = 0;
-        if(job.cross_section.empty()) {
-            if(items.count(job.name)){ //The job is listed in the config
-                const auto& sample_params = items.at(job.name);
-                for(auto desc_iter = job.files.begin(); desc_iter != job.files.end(); ++desc_iter) {
-                    for(const auto& input : desc_iter->inputs){
-                        if(!sample_params.Has(RemoveFileExtension(input))) continue; //The sample of the job is listed in the config
-                        xs +=  std::stod(sample_params.Get<>(RemoveFileExtension(input)));
-                    }
-                }
-            }
-        }
-        else{
-            // for(const auto& input : desc_iter->inputs)
-                xs +=  std::stod(job.cross_section);
-        }
-        return xs;
-    }
-
     bool EventPassSelection(const std::unique_ptr<EventInfo>& eventInfo, const SignalMode& mode) const
     {
         if(!eventInfo) return false;
