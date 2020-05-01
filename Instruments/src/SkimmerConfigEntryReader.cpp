@@ -100,7 +100,7 @@ void SkimJobEntryReader::ParseFileDescriptor(const std::string& param_name, cons
     std::vector<std::string> inputs;
     if(param_name == "file") {
         inputs = SplitValueList(param_value, false);
-        current.files.emplace_back(inputs, "", current.cross_section );
+        current.files.emplace_back(inputs, "", "");
     } else if(param_name == "file_ex") {
         auto columns = SplitValueList(param_value, true);
         if(columns.size() < 2)

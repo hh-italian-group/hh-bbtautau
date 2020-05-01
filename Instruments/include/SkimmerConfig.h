@@ -45,7 +45,7 @@ using SetupCollection = std::unordered_map<std::string, Setup>;
 
 class CrossSectionProvider{
 public:
-    CrossSectionProvider(std::string cross_section_cfg);
+    CrossSectionProvider(const std::string& cross_section_cfg);
     double GetCrossSection(const std::string& process) const;
 
 private:

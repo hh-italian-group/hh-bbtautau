@@ -43,7 +43,7 @@ double SkimJob::GetCrossSection(const CrossSectionProvider& xs_provider) const
     return xs;
 }
 
-CrossSectionProvider::CrossSectionProvider(std::string cross_section_cfg)
+CrossSectionProvider::CrossSectionProvider(const std::string& cross_section_cfg)
 {
     xs_items.Parse(cross_section_cfg);
 }
