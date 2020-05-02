@@ -103,10 +103,11 @@ void SkimJobEntryReader::ParseFileDescriptor(const std::string& param_name, cons
         current.files.emplace_back(inputs, "", "");
     } else if(param_name == "file_ex") {
         auto columns = SplitValueList(param_value, true);
-        if(columns.size() < 2)
+        if(columns.size() < 3)
             throw exception("Invalid extended file description.");
-        inputs.insert(inputs.end(), columns.begin() + 1, columns.end());
-        current.files.emplace_back(inputs, columns.at(0), "");
+        inputs.insert(inputs.end(), columns.begin() + 2, columns.end());
+        const std::string xs = columns.at(0);
+        current.files.emplace_back(inputs, columns.at(1), xs);
     } else if(param_name == "file_xs") {
         auto columns = SplitValueList(param_value, false);
         if(columns.size() < 2)

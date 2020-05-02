@@ -239,6 +239,8 @@ private:
                 summary->split_seed = setup.split_seed;
 
                 summary->cross_section = job.GetCrossSection(*crossSectionProvider);
+                summary->cross_section = job.ProduceMergedOutput() ? job.GetCrossSection(*crossSectionProvider) :
+                                                                     desc_iter->GetCrossSection(*crossSectionProvider);
 
                 for(Channel channel : setup.channels) {
                     const std::string treeName = ToString(channel);
