@@ -30,6 +30,7 @@ void SetupEntryReader::EndEntry()
     CheckReadParamCounts("massWindowParams", 0, Condition::greater_equal);
     CheckReadParamCounts("apply_kinfit", 1, Condition::less_equal);
     CheckReadParamCounts("applyTauId", 1, Condition::less_equal);
+    CheckReadParamCounts("xs_cfg", 1, Condition::less_equal);
 
     ConfigEntryReaderT<Setup>::EndEntry();
 }
@@ -40,7 +41,7 @@ void SetupEntryReader::ReadParameter(const std::string& /*param_name*/, const st
     ParseEnumList("unc_sources", current.unc_sources);
     ParseEnumList("channels", current.channels);
     ParseEntry("period", current.period);
-    ParseEntry("mode", current.mode);
+    ParseEnumList("mode", current.mode);
     ParseEntry("btag_wp", current.btag_wp);
     ParseEntry("use_cache", current.use_cache);
     ParseEntryList("common_weights", current.common_weights);
@@ -59,6 +60,7 @@ void SetupEntryReader::ReadParameter(const std::string& /*param_name*/, const st
     ParseEntry("massWindowParams", current.massWindowParams);
     ParseEntry("apply_kinfit",current.apply_kinfit);
     ParseEntry("applyTauId",current.applyTauId);
+    ParseEntry("xs_cfg",current.xs_cfg);
 }
 
 void SkimJobEntryReader::EndEntry()
@@ -67,6 +69,7 @@ void SkimJobEntryReader::EndEntry()
     CheckReadParamCounts("apply_common_weights", 1, Condition::less_equal);
     CheckReadParamCounts("weights", 1, Condition::less_equal);
     CheckReadParamCounts("isData", 1, Condition::less_equal);
+    CheckReadParamCounts("cross_section", 1, Condition::less_equal);
 
     const size_t n_files = GetReadParamCounts("file");
     const size_t n_files_ex = GetReadParamCounts("file_ex");
@@ -89,6 +92,7 @@ void SkimJobEntryReader::ReadParameter(const std::string& param_name, const std:
     ParseEntry("apply_common_weights", current.apply_common_weights);
     ParseEntryList("weights", current.weights);
     ParseEntry("isData", current.isData);
+    ParseEntry("cross_section", current.cross_section);
 }
 
 void SkimJobEntryReader::ParseFileDescriptor(const std::string& param_name, const std::string& param_value)
@@ -96,20 +100,21 @@ void SkimJobEntryReader::ParseFileDescriptor(const std::string& param_name, cons
     std::vector<std::string> inputs;
     if(param_name == "file") {
         inputs = SplitValueList(param_value, false);
-        current.files.emplace_back(inputs);
+        current.files.emplace_back(inputs, "", "");
     } else if(param_name == "file_ex") {
         auto columns = SplitValueList(param_value, true);
-        if(columns.size() < 2)
+        if(columns.size() < 3)
             throw exception("Invalid extended file description.");
-        inputs.insert(inputs.end(), columns.begin() + 1, columns.end());
-        current.files.emplace_back(inputs, columns.at(0));
+        inputs.insert(inputs.end(), columns.begin() + 2, columns.end());
+        const std::string xs = columns.at(0);
+        current.files.emplace_back(inputs, columns.at(1), xs);
     } else if(param_name == "file_xs") {
         auto columns = SplitValueList(param_value, false);
         if(columns.size() < 2)
             throw exception("Invalid description for file with cross-section.");
         inputs.insert(inputs.end(), columns.begin() + 1, columns.end());
-        const double xs = Parse<double>(columns.at(0));
-        current.files.emplace_back(inputs, xs);
+        const std::string xs = columns.at(0);
+        current.files.emplace_back(inputs,"" , xs);
     } else {
         return;
     }

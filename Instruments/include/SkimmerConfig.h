@@ -9,6 +9,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/McCorrections/include/WeightingMode.h"
 #include "hh-bbtautau/Analysis/include/AnalysisCategories.h"
 #include "h-tautau/Analysis/include/SignalObjectSelector.h"
+#include "AnalysisTools/Core/include/NumericPrimitives.h"
 
 namespace analysis {
 namespace tuple_skimmer {
@@ -18,13 +19,14 @@ struct Setup {
     std::set<UncertaintySource> unc_sources;
     std::set<Channel> channels;
     Period period;
-    SignalMode mode;
+    std::set<SignalMode> mode;
     DiscriminatorWP btag_wp;
     bool use_cache;
     mc_corrections::WeightingMode common_weights;
     BTaggerKind jet_ordering;
     unsigned n_splits{0};
     unsigned split_seed{0};
+    std::string xs_cfg;
 
     //light setup
     bool apply_mass_cut{false}, apply_charge_cut{false}, apply_bb_cut{true}, apply_tau_iso{false};
@@ -42,19 +44,27 @@ struct Setup {
 
 using SetupCollection = std::unordered_map<std::string, Setup>;
 
+class CrossSectionProvider{
+public:
+    CrossSectionProvider(const std::string& cross_section_cfg);
+    double GetCrossSection(const std::string& process) const;
+
+private:
+    PropertyConfigReader xs_items;
+};
+
 struct FileDescriptor {
     std::vector<std::string> inputs;
     std::string output;
-    double cross_section;
+    std::string cross_section;
     bool first_input_is_ref;
     std::vector<bool> input_is_partial;
 
-    FileDescriptor(const std::vector<std::string>& _inputs = {});
-    FileDescriptor(const std::vector<std::string>& _inputs, const std::string& _output);
-    FileDescriptor(const std::vector<std::string>& _inputs, double _cross_section);
+    FileDescriptor(const std::vector<std::string>& _inputs, const std::string& _output, const std::string& _cross_section);
 
     bool HasCrossSection() const;
-    double GetCrossSectionWeight() const;
+    double GetCrossSection(const CrossSectionProvider& xs_provider) const;
+
 };
 
 struct SkimJob {
@@ -64,11 +74,14 @@ struct SkimJob {
     bool apply_common_weights{true};
     bool isData{false};
     mc_corrections::WeightingMode weights;
+    std::string cross_section;
 
     bool ProduceMergedOutput() const;
+    double GetCrossSection(const CrossSectionProvider& xs_provider) const;
 };
 
 using SkimJobCollection = std::unordered_map<std::string, SkimJob>;
+
 
 } // namespace tuple_skimmer
 } // namespace analysis

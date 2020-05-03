@@ -8,17 +8,9 @@ namespace tuple_skimmer {
 
 bool Setup::ApplyTauIdCuts() const { return !tau_id_cuts.empty(); }
 
-FileDescriptor::FileDescriptor(const std::vector<std::string>& _inputs) :
-    inputs(_inputs), output(inputs.size() ? inputs.front() : ""),
-    cross_section(std::numeric_limits<double>::quiet_NaN()), first_input_is_ref(true) {}
-
-FileDescriptor::FileDescriptor(const std::vector<std::string>& _inputs, const std::string& _output) :
-    inputs(_inputs), output(_output), cross_section(std::numeric_limits<double>::quiet_NaN()),
-    first_input_is_ref(false) {}
-
-FileDescriptor::FileDescriptor(const std::vector<std::string>& _inputs, double _cross_section) :
-    output(inputs.size() ? inputs.front() : ""), cross_section(_cross_section),
-    first_input_is_ref(false)
+FileDescriptor::FileDescriptor(const std::vector<std::string>& _inputs, const std::string& _output,
+                               const std::string& _cross_section) :
+    output(_output), cross_section(_cross_section), first_input_is_ref(false)
 {
     for(const auto& entry: _inputs){
         std::size_t pos = entry.find(":");
@@ -30,10 +22,40 @@ FileDescriptor::FileDescriptor(const std::vector<std::string>& _inputs, double _
     }
 }
 
-bool FileDescriptor::HasCrossSection() const { return !std::isnan(cross_section); }
-double FileDescriptor::GetCrossSectionWeight() const { return HasCrossSection() ? cross_section : 1; }
+bool FileDescriptor::HasCrossSection() const { return !cross_section.empty(); }
+
+double FileDescriptor::GetCrossSection(const CrossSectionProvider& xs_provider) const
+{
+    if(!HasCrossSection()) throw exception("Not provided cross-section");
+    return xs_provider.GetCrossSection(cross_section);
+}
 
 bool SkimJob::ProduceMergedOutput() const { return merged_output.size(); }
 
-} // namespace tuple_skimmer
+double SkimJob::GetCrossSection(const CrossSectionProvider& xs_provider) const
+{
+    if(!cross_section.empty()) return xs_provider.GetCrossSection(cross_section);
+    if(merged_output.empty()) return -1;
+    double xs = 0;
+    for(auto file : files)
+        xs += file.GetCrossSection(xs_provider);
+
+    return xs;
+}
+
+CrossSectionProvider::CrossSectionProvider(const std::string& cross_section_cfg)
+{
+    xs_items.Parse(cross_section_cfg);
+}
+
+double CrossSectionProvider::GetCrossSection(const std::string& process) const
+{
+    const auto& items = xs_items.GetItems();
+    if(!items.count(process)) throw exception("Not found process %1% in the cross-section list") %process;
+    const auto& item = items.at(process);
+    if(!item.Has("xs")) throw exception("Not found cross-section for process %1%") %process ;
+    const NumericalExpression expr(item.Get<>("xs"));
+    return expr.value();
+}
+} //tuple_skimmer
 } // namespace analysis

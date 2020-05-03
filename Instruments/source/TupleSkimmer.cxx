@@ -79,10 +79,10 @@ public:
             throw exception("Tuple skimmer setup not found.");
         setup = setups.at(args.setup_name());
 
-        signalObjectSelector = std::make_shared<SignalObjectSelector>(setup.mode);
+        for(const auto& mode : setup.mode)
+            signalObjectSelector[mode] = std::make_shared<SignalObjectSelector>(mode);
 
-        EventCandidate::InitializeUncertainties(setup.period, false, ".",
-                                                signalObjectSelector->GetTauVSjetDiscriminator().first);
+        EventCandidate::InitializeUncertainties(setup.period, false, ".", TauIdDiscriminator::byDeepTau2017v2p1VSjet);
 
         std::cout << "done.\nLoading weights... " << std::flush;
         bTagger = std::make_unique<BTagger>(setup.period, setup.jet_ordering);
@@ -102,6 +102,7 @@ public:
                 jobs.push_back(all_jobs.at(job_name));
             }
         }
+        crossSectionProvider = std::make_shared<CrossSectionProvider>(setup.xs_cfg);
     }
 
     void Run()
@@ -237,6 +238,9 @@ private:
                 summary->n_splits = setup.n_splits;
                 summary->split_seed = setup.split_seed;
 
+                summary->cross_section = job.GetCrossSection(*crossSectionProvider);
+                summary->cross_section = job.ProduceMergedOutput() ? job.GetCrossSection(*crossSectionProvider) :
+                                                                     desc_iter->GetCrossSection(*crossSectionProvider);
                 for(Channel channel : setup.channels) {
                     const std::string treeName = ToString(channel);
 
@@ -386,10 +390,10 @@ private:
             }
         }
         if(desc.HasCrossSection()) {
-            weight_xs = desc.GetCrossSectionWeight() / summary.totalShapeWeight;
-            summary.totalShapeWeight = desc.GetCrossSectionWeight();
-            weight_xs_withTopPt = desc.GetCrossSectionWeight() / summary.totalShapeWeight_withTopPt;
-            summary.totalShapeWeight_withTopPt = desc.GetCrossSectionWeight();
+            weight_xs = desc.GetCrossSection(*crossSectionProvider) / summary.totalShapeWeight;
+            summary.totalShapeWeight = desc.GetCrossSection(*crossSectionProvider);
+            weight_xs_withTopPt = desc.GetCrossSection(*crossSectionProvider) / summary.totalShapeWeight_withTopPt;
+            summary.totalShapeWeight_withTopPt = desc.GetCrossSection(*crossSectionProvider);
         } else {
             weight_xs = 1;
             weight_xs_withTopPt = 1;
@@ -397,11 +401,11 @@ private:
         return summary;
     }
 
-    bool EventPassSelection(const std::unique_ptr<EventInfo>& eventInfo) const
+    bool EventPassSelection(const std::unique_ptr<EventInfo>& eventInfo, const SignalMode& mode) const
     {
         if(!eventInfo) return false;
-        if(!signalObjectSelector->PassLeptonVetoSelection(eventInfo->GetEventCandidate().GetEvent())) return false;
-        if(!signalObjectSelector->PassMETfilters(eventInfo->GetEventCandidate().GetEvent(), setup.period,
+        if(!signalObjectSelector.at(mode)->PassLeptonVetoSelection(eventInfo->GetEventCandidate().GetEvent())) return false;
+        if(!signalObjectSelector.at(mode)->PassMETfilters(eventInfo->GetEventCandidate().GetEvent(), setup.period,
                                                  eventInfo->GetEventCandidate().GetEvent().isData)) return false;
         if(setup.apply_bb_cut && !eventInfo->HasBjetPair()) return false;
 
@@ -410,8 +414,8 @@ private:
         if(setup.apply_tau_iso){
             if(eventInfo->GetLeg(2)->leg_type() == analysis::LegType::tau){
                 const LepCandidate& tau = eventInfo->GetLeg(2);
-                if(!tau->Passed(signalObjectSelector->GetTauVSjetDiscriminator().first,
-                                signalObjectSelector->GetTauVSjetDiscriminator().second)) return false;
+                if(!tau->Passed(signalObjectSelector.at(mode)->GetTauVSjetDiscriminator().first,
+                                signalObjectSelector.at(mode)->GetTauVSjetDiscriminator().second)) return false;
             }
         }
 
@@ -444,10 +448,12 @@ private:
     std::unique_ptr<EventInfo> CreateAnyEventInfo(const Event& event) const
     {
         for(const auto& [unc_source, unc_scale] : unc_variations) {
-            auto eventInfo = EventInfo::Create(event, *signalObjectSelector, *bTagger, setup.btag_wp,
-                                               nullptr, unc_source, unc_scale);
-            if(EventPassSelection(eventInfo))
-                return eventInfo;
+                for(const auto mode: setup.mode){
+                auto eventInfo = EventInfo::Create(event, *signalObjectSelector.at(mode), *bTagger, setup.btag_wp,
+                                                   nullptr, unc_source, unc_scale);
+                if(EventPassSelection(eventInfo, mode))
+                    return eventInfo;
+            }
         }
         return std::unique_ptr<EventInfo>();
     }
@@ -512,10 +518,11 @@ private:
     std::shared_ptr<mc_corrections::EventWeights_HH> eventWeights_HH;
 	std::shared_ptr<TFile> outputFile;
     mc_corrections::WeightingMode weighting_mode;
-    std::shared_ptr<SignalObjectSelector> signalObjectSelector;
+    std::map<SignalMode, std::shared_ptr<SignalObjectSelector>> signalObjectSelector;
     std::set<UncertaintySource> unc_sources;
     std::vector<std::pair<UncertaintySource, UncertaintyScale>> unc_variations;
     std::unique_ptr<BTagger> bTagger;
+    std::shared_ptr<CrossSectionProvider> crossSectionProvider;
 };
 
 } // namespace tuple_skimmer
