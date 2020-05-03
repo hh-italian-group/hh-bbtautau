@@ -54,8 +54,10 @@ double CrossSectionProvider::GetCrossSection(const std::string& process) const
     if(!items.count(process)) throw exception("Not found process %1% in the cross-section list") %process;
     const auto& item = items.at(process);
     if(!item.Has("xs")) throw exception("Not found cross-section for process %1%") %process ;
-    return item.Get<double>("xs");
+    const NumericalExpression expr(item.Get<>("xs"));
+    return expr.value();
 
+    // return expr.value();
 }
 } //tuple_skimmer
 } // namespace analysis
