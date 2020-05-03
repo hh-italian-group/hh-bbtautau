@@ -11,7 +11,6 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Analysis/include/SignalObjectSelector.h"
 #include "AnalysisTools/Core/include/NumericPrimitives.h"
 
-
 namespace analysis {
 namespace tuple_skimmer {
 
