@@ -227,8 +227,8 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const AnaTupleWriter::DataIdMap&
 
 
     const sv_fit_ana::FitResults* SVfit = nullptr;
-    if(runSVfit && event.GetSVFitResults(allow_calc_svFit).has_valid_momentum)
-        SVfit = &event.GetSVFitResults(allow_calc_svFit);
+    if(runSVfit && event.GetSVFitResults(allow_calc_svFit).has_valid_momentum){
+        SVfit = &event.GetSVFitResults(allow_calc_svFit);}
     tuple().SVfit_valid = SVfit != nullptr;
     tuple().SVfit_pt = SVfit ? static_cast<float>(SVfit->momentum.pt()) : def_val;
     tuple().SVfit_eta = SVfit ? static_cast<float>(SVfit->momentum.eta()) : def_val;
