@@ -84,14 +84,14 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfo& event)
 
     auto bjet_counts = btag_working_points;
     if(event.HasBjetPair()) {
-    for(size_t bjet_index = 1; bjet_index <= 2; ++bjet_index) {
-        const auto& jet = event.GetBJet(bjet_index);
-        for(const auto& btag_wp : btag_working_points) {
-            if(bTagger->Pass(*jet, btag_wp.first))
-                ++bjet_counts[btag_wp.first];
+        for(size_t bjet_index = 1; bjet_index <= 2; ++bjet_index) {
+            const auto& jet = event.GetBJet(bjet_index);
+            for(const auto& btag_wp : btag_working_points) {
+                if(bTagger->Pass(*jet, btag_wp.first))
+                    ++bjet_counts[btag_wp.first];
+            }
         }
     }
-}
 
     for(const auto& category : ana_setup.categories) {
         if(category.Contains(all_jets.size(), bjet_counts, is_VBF, is_boosted)) {
@@ -147,11 +147,10 @@ EventSubCategory BaseEventAnalyzer::DetermineEventSubCategory(EventInfo& event, 
                             event.GetHiggsTTMomentum(true, ana_setup.allow_calc_svFit)->mass(), mbb);
                 sub_category.SetCutResult(SelectionCut::mh, cut_result);
             }
-            if(ana_setup.massWindowParams.count(SelectionCut::mhVis)){
-
+            if(ana_setup.massWindowParams.count(SelectionCut::mhVis))
                 sub_category.SetCutResult(SelectionCut::mhVis,ana_setup.massWindowParams.at(SelectionCut::mhVis)
                         .IsInside(event.GetHiggsTTMomentum(false)->mass(), mbb));
-}
+
             if(ana_setup.massWindowParams.count(SelectionCut::mhMET))
                 sub_category.SetCutResult(SelectionCut::mhMET,ana_setup.massWindowParams.at(SelectionCut::mhMET)
                         .IsInside((*event.GetHiggsTTMomentum(false) + event.GetMET().GetMomentum()).mass(), mbb));
@@ -238,10 +237,6 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                            summary, unc_source, unc_scale);
 
             if(!event) continue;
-            // const EventIdentifier EventId((*event)->run, (*event)->lumi, (*event)->evt);
-            // const EventIdentifier EventIdTest(1,251,478580);
-            // if(!(EventId == EventIdTest)) continue;
-
             const bool pass_normal_trigger = event->GetTriggerResults().AnyAcceptAndMatchEx(trigger_patterns,
                                                                                     event->GetLeg(1).GetMomentum().pt(),
                                                                                     event->GetLeg(2).GetMomentum().pt());
