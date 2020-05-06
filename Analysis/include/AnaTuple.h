@@ -45,6 +45,7 @@ namespace analysis {
     VAR(std::vector<double>, all_weights) /* all weight */ \
     VAR(std::vector<float>, all_mva_scores) /* all mva scores */ \
     VAR_LIST(bool, has_b_pair, has_VBF_pair) /* has 2 jets */ \
+    VAR(bool, pass_VBF_trigger) \
     VAR(bool, is_central_es) \
     VAR(ULong64_t, sample_id) \
     VAR(double, weight) /* weight */ \
@@ -174,7 +175,7 @@ public:
 
     AnaTupleWriter(const std::string& file_name, Channel channel, bool _runKinFit, bool _runSVfit, bool _allow_calc_svFit);
     ~AnaTupleWriter();
-    void AddEvent(EventInfo& event, const DataIdMap& dataIds);
+    void AddEvent(EventInfo& event, const DataIdMap& dataIds, const bool& pass_vbf_trigger);
 
 private:
     std::shared_ptr<TFile> file;

@@ -242,10 +242,22 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
             // const EventIdentifier EventIdTest(1,251,478580);
             // if(!(EventId == EventIdTest)) continue;
 
-            bool pass_trigger = event->GetTriggerResults().AnyAcceptAndMatch(trigger_patterns);
-            if(!pass_trigger && event->HasVBFjetPair() && ana_setup.trigger_vbf.count(channelId))
-                pass_trigger = event->GetTriggerResults().AnyAcceptAndMatch(ana_setup.trigger_vbf.at(channelId));
+            const bool pass_normal_trigger = event->GetTriggerResults().AnyAcceptAndMatchEx(trigger_patterns,
+                                                                                    event->GetLeg(1).GetMomentum().pt(),
+                                                                                    event->GetLeg(2).GetMomentum().pt());
+            bool pass_vbf_trigger = false;
+            if(event->HasVBFjetPair() && ana_setup.trigger_vbf.count(channelId)) {
+                const std::vector<boost::multiprecision::uint256_t> jet_trigger_match = {
+                    event->GetVBFJet(1)->triggerFilterMatch(),
+                    event->GetVBFJet(2)->triggerFilterMatch()
+                };
+
+                pass_vbf_trigger = event->GetTriggerResults().AnyAcceptAndMatchEx(ana_setup.trigger_vbf.at(channelId),
+                event->GetLeg(1).GetMomentum().pt(), event->GetLeg(2).GetMomentum().pt(), jet_trigger_match);
+            }
+            const bool pass_trigger = pass_normal_trigger || pass_vbf_trigger;
             if(!pass_trigger) continue;
+
             bbtautau::AnaTupleWriter::DataIdMap dataIds;
             const auto eventCategories = DetermineEventCategories(*event);
             for(auto eventCategory : eventCategories) {
@@ -297,7 +309,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                 }
             }
             //dataId
-            anaTupleWriter.AddEvent(*event, dataIds);
+            anaTupleWriter.AddEvent(*event, dataIds, pass_vbf_trigger);
             for (size_t n = 0; n < sync_descriptors.size(); ++n) {
                 const auto& regex_pattern = sync_descriptors.at(n).regex_pattern;
                 for(auto& dataId : dataIds){
