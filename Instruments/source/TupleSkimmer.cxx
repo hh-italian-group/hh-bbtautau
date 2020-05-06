@@ -238,9 +238,9 @@ private:
                 summary->n_splits = setup.n_splits;
                 summary->split_seed = setup.split_seed;
 
-                summary->cross_section = job.GetCrossSection(*crossSectionProvider);
-                summary->cross_section = job.ProduceMergedOutput() ? job.GetCrossSection(*crossSectionProvider) :
-                                                                     desc_iter->GetCrossSection(*crossSectionProvider);
+                if(!job.isData)
+                    summary->cross_section = job.ProduceMergedOutput() ? job.GetCrossSection(*crossSectionProvider) :
+                                                                        desc_iter->GetCrossSection(*crossSectionProvider);
                 for(Channel channel : setup.channels) {
                     const std::string treeName = ToString(channel);
 
@@ -447,8 +447,11 @@ private:
 
     std::unique_ptr<EventInfo> CreateAnyEventInfo(const Event& event) const
     {
+        if(!SignalObjectSelector::PassLeptonVetoSelection(event) ||
+            !SignalObjectSelector::PassMETfilters(event, setup.period, event.isData)) return std::unique_ptr<EventInfo>();
         for(const auto& [unc_source, unc_scale] : unc_variations) {
-                for(const auto mode: setup.mode){
+            if(event.isData && unc_scale != UncertaintyScale::Central) continue;
+            for(const auto mode: setup.mode){
                 auto eventInfo = EventInfo::Create(event, *signalObjectSelector.at(mode), *bTagger, setup.btag_wp,
                                                    nullptr, unc_source, unc_scale);
                 if(EventPassSelection(eventInfo, mode))

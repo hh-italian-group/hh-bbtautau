@@ -106,7 +106,7 @@ AnaTupleWriter::~AnaTupleWriter()
     tuple.Write();
 }
 
-void AnaTupleWriter::AddEvent(EventInfo& event, const AnaTupleWriter::DataIdMap& dataIds)
+void AnaTupleWriter::AddEvent(EventInfo& event, const AnaTupleWriter::DataIdMap& dataIds, const bool pass_VBF_trigger)
 {
     static constexpr float def_val = std::numeric_limits<float>::lowest();
     static constexpr int def_val_int = std::numeric_limits<int>::lowest();
@@ -165,6 +165,7 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const AnaTupleWriter::DataIdMap&
 
     tuple().has_b_pair = event.HasBjetPair();
     tuple().has_VBF_pair = event.HasVBFjetPair();
+    tuple().pass_VBF_trigger = pass_VBF_trigger;
     tuple().run = event->run;
     tuple().lumi = event->lumi;
     tuple().evt = event->evt;
@@ -279,7 +280,7 @@ AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, Na
     static const NameSet other_branches = {
         "is_central_es", "sample_id", "all_mva_scores", "weight", "evt", "run", "lumi", "tau1_q", "tau1_gen_match",
         "tau2_q", "tau2_gen_match", "b1_valid", "b1_hadronFlavour", "b2_valid", "b2_hadronFlavour", "VBF1_valid",
-        "VBF1_hadronFlavour", "VBF2_valid", "VBF2_hadronFlavour", "SVfit_valid", "kinFit_convergence"
+        "VBF1_hadronFlavour", "VBF2_valid", "VBF2_hadronFlavour", "SVfit_valid", "kinFit_convergence", "pass_VBF_trigger"
     };
     tuple = std::make_shared<AnaTuple>(ToString(channel), file.get(), true);
     if(active_var_names.empty()) {
