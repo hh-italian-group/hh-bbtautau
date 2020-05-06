@@ -175,7 +175,7 @@ public:
 
     AnaTupleWriter(const std::string& file_name, Channel channel, bool _runKinFit, bool _runSVfit, bool _allow_calc_svFit);
     ~AnaTupleWriter();
-    void AddEvent(EventInfo& event, const DataIdMap& dataIds, const bool& pass_vbf_trigger);
+    void AddEvent(EventInfo& event, const DataIdMap& dataIds, const bool pass_VBF_trigger);
 
 private:
     std::shared_ptr<TFile> file;
