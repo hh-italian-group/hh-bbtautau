@@ -327,9 +327,7 @@ EventCategory EventCategory::Parse(const std::string& str)
     static const std::string jets_suffix = "j", btag_suffix = "b";
     static const std::map<char, bool> boosted_suffix = { { 'R', false }, { 'B', true } };
     static const std::map<std::string, std::pair<bool, boost::optional<DiscriminatorWP>>> VBF_suffix =
-        { { "noVBF", { false, DiscriminatorWP::Medium }},
-          { "VBF",   { true,   DiscriminatorWP::Medium }},
-          { "noVBF", { false, boost::optional<DiscriminatorWP>() }},
+        { { "noVBF", { false, boost::optional<DiscriminatorWP>() }},
           { "VBF",   { true,  boost::optional<DiscriminatorWP>() }},
           { "VBFL",  { true, boost::optional<DiscriminatorWP>(DiscriminatorWP::Loose) }},
           { "VBFT",  { true, boost::optional<DiscriminatorWP>(DiscriminatorWP::Tight) }} };
@@ -387,14 +385,14 @@ EventCategory EventCategory::Parse(const std::string& str)
 }
 
 bool EventCategory::Contains(size_t num_jets, const std::map<DiscriminatorWP, size_t>& num_btag, bool is_vbf,
-                             bool is_boosted, const std::map<DiscriminatorWP, size_t>& num_vbftag) const
+                             bool is_boosted, const boost::optional<DiscriminatorWP>& vbf_tag) const
 {
     if(btag_wp && !num_btag.count(*btag_wp))
         throw exception("The btag_wp, is not defined") ;
 
     return (!n_jets || num_jets >= *n_jets) && (!n_btag
                         || (*strict_n_btag ? (num_btag.at(*btag_wp) == n_btag) : (num_btag.at(*btag_wp) >= *n_btag)))
-                        && (!is_VBF || is_vbf == *is_VBF) && (num_vbftag.at(*VBF_wp) >= 2)
+                        && (!is_VBF || is_vbf == *is_VBF) && (!VBF_wp || VBF_wp == vbf_tag)
                         && (!boosted || is_boosted == *boosted);
 }
 

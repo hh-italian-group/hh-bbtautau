@@ -62,15 +62,12 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfo& event)
     static const std::map<DiscriminatorWP, size_t> btag_working_points = {{DiscriminatorWP::Loose, 0},
                                                                           {DiscriminatorWP::Medium, 0},
                                                                           {DiscriminatorWP::Tight, 0}};
-
-    static const std::map<DiscriminatorWP, size_t> vbf_working_points = {{DiscriminatorWP::Loose, 0},
-                                                                        {DiscriminatorWP::Tight, 0}};
-
     EventCategorySet categories;
     // const bool is_boosted =  false;
     auto fatJet = SignalObjectSelector::SelectFatJet(event.GetEventCandidate(), event.GetSelectedSignalJets());
     const bool is_boosted = fatJet != nullptr;
     bool is_VBF = false;
+    boost::optional<DiscriminatorWP> vbf_tag;
     std::set<size_t> jets_to_exclude;
     if(event.HasVBFjetPair()){
         const auto vbf_jet_1 = event.GetVBFJet(1).GetMomentum();
@@ -80,6 +77,10 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfo& event)
 
         is_VBF = (m_jj > cuts::hh_bbtautau_Run2::VBF::mass_jj
                     && deta_jj > cuts::hh_bbtautau_Run2::VBF::deltaeta_jj);
+        if(is_VBF) {
+            const bool is_tight = m_jj > cuts::hh_bbtautau_Run2::VBF::mass_jj_tight && pass_vbf_trigger;
+            vbf_tag = is_tight ? DiscriminatorWP::Tight : DiscriminatorWP::Loose;
+        }
         jets_to_exclude.insert(event.GetVBFJet(1)->jet_index());
         jets_to_exclude.insert(event.GetVBFJet(2)->jet_index());
     }
@@ -96,21 +97,10 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfo& event)
             }
         }
     }
-    auto vbf_counts = vbf_working_points;
-    if(is_VBF){
-        for(size_t vbf_index = 1; vbf_index <= 2; ++vbf_index) {
-            const auto& vbf_jet = event.GetVBFJet(vbf_index);
-            for(const auto& vbf_wp : vbf_working_points) {
-                if(bTagger->Pass(*vbf_jet, vbf_wp.first))
-                    ++vbf_counts[vbf_wp.first];
-            }
-        }
-    }
 
     for(const auto& category : ana_setup.categories) {
-        if(category.Contains(all_jets.size(), bjet_counts, is_VBF, is_boosted, vbf_counts)) {
+        if(category.Contains(all_jets.size(), bjet_counts, is_VBF, is_boosted, vbf_tag))
             categories.insert(category);
-        }
     }
     return categories;
 }
@@ -254,7 +244,8 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
             const bool pass_normal_trigger = event->GetTriggerResults().AnyAcceptAndMatchEx(trigger_patterns,
                                                                                     event->GetLeg(1).GetMomentum().pt(),
                                                                                     event->GetLeg(2).GetMomentum().pt());
-            bool pass_vbf_trigger = false;
+            // bool pass_vbf_trigger = false;
+            pass_vbf_trigger = false;
             if(event->HasVBFjetPair() && ana_setup.trigger_vbf.count(channelId)) {
                 const std::vector<boost::multiprecision::uint256_t> jet_trigger_match = {
                     event->GetVBFJet(1)->triggerFilterMatch(),

@@ -116,7 +116,7 @@ struct EventCategory {
     static EventCategory Parse(const std::string& str);
 
     bool Contains(size_t num_jets, const std::map<DiscriminatorWP, size_t>& num_btag, bool is_vbf,
-                  bool is_boosted, const std::map<DiscriminatorWP, size_t>& num_vbftag) const;
+                  bool is_boosted, const boost::optional<DiscriminatorWP>& vbf_tag) const;
 private:
     boost::optional<size_t> n_jets, n_btag ;
     boost::optional<bool> strict_n_btag;
