@@ -106,7 +106,7 @@ struct SampleDescriptorBase {
         double norm_sf{1}, datacard_sf{1}, draw_sf{1};
         bool draw{false};
         root_ext::Color color{kBlack};
-        std::vector<double> param_values;
+        std::vector<std::string> param_values;
     };
     using PointCollection = std::vector<Point>;
 
@@ -154,7 +154,7 @@ public:
     std::string name_suffix, reference_pu_sample;
     std::string file_path;
     double cross_section{1};
-    std::map<std::string, std::vector<double>> points; // mass for resonant, radion or graviton, nodes for non-resonant
+    std::map<std::string, std::vector<std::string>> points; // mass for resonant, radion or graviton, nodes for non-resonant
     std::map<std::string, root_ext::Color> draw_ex;
     std::vector<double> norm_sf;
 

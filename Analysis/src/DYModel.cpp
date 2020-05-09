@@ -42,19 +42,19 @@ DYModel::DYModel(const SampleDescriptor& sample,const std::string& working_path)
     }
 
     for(const auto& sample_wp : sample.working_points) {
-        const size_t n_b_partons = static_cast<size_t>(sample_wp.param_values.at(b_index));
+        const size_t n_b_partons = Parse<size_t>(sample_wp.param_values.at(b_index));
         if(ht_found){
-            const size_t ht_wp = static_cast<size_t>(sample_wp.param_values.at(ht_index));
+            const size_t ht_wp = static_cast<size_t>(std::stod(sample_wp.param_values.at(ht_index)));
             working_points_map[std::pair<size_t,size_t>(n_b_partons,ht_wp)] = sample_wp;
             ht_wp_set.insert(ht_wp);
         }
         else if(jet_found){
-            const size_t njet_wp = static_cast<size_t>(sample_wp.param_values.at(njet_index));
+            const size_t njet_wp = static_cast<size_t>(std::stod(sample_wp.param_values.at(njet_index)));
             working_points_map[std::pair<size_t,size_t>(n_b_partons,njet_wp)] = sample_wp;
             njet_wp_set.insert(njet_wp);
         }
         else if(pt_found){
-            const size_t pt_wp = static_cast<size_t>(sample_wp.param_values.at(pt_index));
+            const size_t pt_wp = static_cast<size_t>(std::stod(sample_wp.param_values.at(pt_index)));
             working_points_map[std::pair<size_t,size_t>(n_b_partons,pt_wp)] = sample_wp;
             pt_wp_set.insert(pt_wp);
         }
