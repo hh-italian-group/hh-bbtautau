@@ -43,7 +43,7 @@ void NonResModel::ParamPositionDesc::SetValue(const ValueVec& values, const std:
     if(pos) {
         if(values.size() <= *pos)
             throw exception("Value not found for EFT parameter %1%.") % name;
-        value = values.at(*pos);
+        value = Parse<double>(values.at(*pos));
     }
 }
 

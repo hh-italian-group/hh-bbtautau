@@ -28,7 +28,7 @@ private:
 
     struct ParamPositionDesc {
         using NameMap = std::map<std::string, size_t>;
-        using ValueVec = std::vector<double>;
+        using ValueVec = std::vector<std::string>;
         using OptPos = boost::optional<size_t>;
         OptPos kl, kt, c2, cg, c2g;
 
