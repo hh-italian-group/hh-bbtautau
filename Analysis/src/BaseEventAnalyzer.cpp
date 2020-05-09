@@ -57,7 +57,7 @@ void BaseEventAnalyzer::Run()
     }
 }
 
-EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfo& event)
+EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfo& event, bool pass_vbf_trigger)
 {
     static const std::map<DiscriminatorWP, size_t> btag_working_points = {{DiscriminatorWP::Loose, 0},
                                                                           {DiscriminatorWP::Medium, 0},
@@ -244,8 +244,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
             const bool pass_normal_trigger = event->GetTriggerResults().AnyAcceptAndMatchEx(trigger_patterns,
                                                                                     event->GetLeg(1).GetMomentum().pt(),
                                                                                     event->GetLeg(2).GetMomentum().pt());
-            // bool pass_vbf_trigger = false;
-            pass_vbf_trigger = false;
+            bool pass_vbf_trigger = false;
             if(event->HasVBFjetPair() && ana_setup.trigger_vbf.count(channelId)) {
                 const std::vector<boost::multiprecision::uint256_t> jet_trigger_match = {
                     event->GetVBFJet(1)->triggerFilterMatch(),
@@ -259,7 +258,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
             if(!pass_trigger) continue;
 
             bbtautau::AnaTupleWriter::DataIdMap dataIds;
-            const auto eventCategories = DetermineEventCategories(*event);
+            const auto eventCategories = DetermineEventCategories(*event, pass_vbf_trigger);
             for(auto eventCategory : eventCategories) {
                 const EventRegion eventRegion = DetermineEventRegion(*event, eventCategory);
                 for(const auto& region : ana_setup.regions){
