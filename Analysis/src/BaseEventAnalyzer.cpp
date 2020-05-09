@@ -62,6 +62,10 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfo& event)
     static const std::map<DiscriminatorWP, size_t> btag_working_points = {{DiscriminatorWP::Loose, 0},
                                                                           {DiscriminatorWP::Medium, 0},
                                                                           {DiscriminatorWP::Tight, 0}};
+
+    static const std::map<DiscriminatorWP, size_t> vbf_working_points = {{DiscriminatorWP::Loose, 0},
+                                                                        {DiscriminatorWP::Tight, 0}};
+
     EventCategorySet categories;
     // const bool is_boosted =  false;
     auto fatJet = SignalObjectSelector::SelectFatJet(event.GetEventCandidate(), event.GetSelectedSignalJets());
@@ -92,9 +96,19 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfo& event)
             }
         }
     }
+    auto vbf_counts = vbf_working_points;
+    if(is_VBF){
+        for(size_t vbf_index = 1; vbf_index <= 2; ++vbf_index) {
+            const auto& vbf_jet = event.GetVBFJet(vbf_index);
+            for(const auto& vbf_wp : vbf_working_points) {
+                if(bTagger->Pass(*vbf_jet, vbf_wp.first))
+                    ++vbf_counts[vbf_wp.first];
+            }
+        }
+    }
 
     for(const auto& category : ana_setup.categories) {
-        if(category.Contains(all_jets.size(), bjet_counts, is_VBF, is_boosted)) {
+        if(category.Contains(all_jets.size(), bjet_counts, is_VBF, is_boosted, vbf_counts)) {
             categories.insert(category);
         }
     }
