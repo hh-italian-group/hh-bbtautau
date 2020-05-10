@@ -84,6 +84,7 @@ public:
         std::set<std::string> flavour_names = analysis::tools::collect_map_values(flavours);
         flavour_names.insert(flavour_all);
         static const std::string num = "Num", denom = "Denom";
+        EventCandidate::InitializeUncertainties(args.period(), false, ".", TauIdDiscriminator::byDeepTau2017v2p1VSjet);
 
         /*static const std::set<std::string> disabled_branches;
         static const std::set<std::string> enabled_branches = {
@@ -103,8 +104,9 @@ public:
                 std::shared_ptr<TFile> in_file(root_ext::OpenRootFile(name));
                 std::shared_ptr<EventTuple> tuple;
                 try {
-                    tuple = std::make_shared<EventTuple>(channel, in_file.get(), true);//, disabled_branches,
-                                                         //enabled_branches);
+                    tuple = ntuple::CreateEventTuple(channel, in_file.get(), true, ntuple::TreeState::Full);
+		    //std::make_shared<EventTuple>(channel, in_file.get(), true);//, disabled_branches,
+		    //enabled_branches);
                 } catch(std::exception&) {
                     std::cerr << "WARNING: tree "<<channel<<" not found in file"<<name<< std::endl;
                     continue;
@@ -112,7 +114,9 @@ public:
 
                 std::cout << "Processing " << name << "/" << channel << std::endl;
 
-                for(const Event& event : *tuple){
+                for(Event event : *tuple){
+		    event.isData = false;
+		    event.period = static_cast<int>(args.period()); 
                     auto eventInfo = EventInfo::Create(event, signalObjectSelector, bTagger, DiscriminatorWP::Medium);
                     if(!eventInfo) continue;
                     // const EventEnergyScale es = static_cast<EventEnergyScale>(event.eventEnergyScale);
