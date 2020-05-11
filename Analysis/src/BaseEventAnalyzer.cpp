@@ -57,7 +57,7 @@ void BaseEventAnalyzer::Run()
     }
 }
 
-EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfo& event)
+EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfo& event, bool pass_vbf_trigger)
 {
     static const std::map<DiscriminatorWP, size_t> btag_working_points = {{DiscriminatorWP::Loose, 0},
                                                                           {DiscriminatorWP::Medium, 0},
@@ -67,6 +67,7 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfo& event)
     auto fatJet = SignalObjectSelector::SelectFatJet(event.GetEventCandidate(), event.GetSelectedSignalJets());
     const bool is_boosted = fatJet != nullptr;
     bool is_VBF = false;
+    boost::optional<DiscriminatorWP> vbf_tag;
     std::set<size_t> jets_to_exclude;
     if(event.HasVBFjetPair()){
         const auto vbf_jet_1 = event.GetVBFJet(1).GetMomentum();
@@ -76,6 +77,10 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfo& event)
 
         is_VBF = (m_jj > cuts::hh_bbtautau_Run2::VBF::mass_jj
                     && deta_jj > cuts::hh_bbtautau_Run2::VBF::deltaeta_jj);
+        if(is_VBF) {
+            const bool is_tight = m_jj > cuts::hh_bbtautau_Run2::VBF::mass_jj_tight && pass_vbf_trigger;
+            vbf_tag = is_tight ? DiscriminatorWP::Tight : DiscriminatorWP::Loose;
+        }
         jets_to_exclude.insert(event.GetVBFJet(1)->jet_index());
         jets_to_exclude.insert(event.GetVBFJet(2)->jet_index());
     }
@@ -94,9 +99,8 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfo& event)
     }
 
     for(const auto& category : ana_setup.categories) {
-        if(category.Contains(all_jets.size(), bjet_counts, is_VBF, is_boosted)) {
+        if(category.Contains(all_jets.size(), bjet_counts, is_VBF, is_boosted, vbf_tag))
             categories.insert(category);
-        }
     }
     return categories;
 }
@@ -254,7 +258,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
             if(!pass_trigger) continue;
 
             bbtautau::AnaTupleWriter::DataIdMap dataIds;
-            const auto eventCategories = DetermineEventCategories(*event);
+            const auto eventCategories = DetermineEventCategories(*event, pass_vbf_trigger);
             for(auto eventCategory : eventCategories) {
                 const EventRegion eventRegion = DetermineEventRegion(*event, eventCategory);
                 for(const auto& region : ana_setup.regions){

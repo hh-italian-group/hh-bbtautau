@@ -92,6 +92,8 @@ struct EventCategory {
     EventCategory(size_t _n_jets, size_t _n_btag, bool _strict_n_btag, DiscriminatorWP _btag_wp, bool _boosted);
     EventCategory(size_t _n_jets, size_t _n_btag, bool _strict_n_btag, DiscriminatorWP _btag_wp,
                   boost::optional<bool> _boosted, bool _is_VBF);
+    EventCategory(size_t _n_jets, size_t _n_btag, bool _strict_n_btag, DiscriminatorWP _btag_wp,
+                  boost::optional<bool> _boosted, bool _is_VBF, boost::optional<DiscriminatorWP> _VBF_wp);
 
     bool HasJetConstraint() const;
     size_t N_jets() const;
@@ -114,12 +116,13 @@ struct EventCategory {
     static EventCategory Parse(const std::string& str);
 
     bool Contains(size_t num_jets, const std::map<DiscriminatorWP, size_t>& num_btag, bool is_vbf,
-                  bool is_boosted) const;
+                  bool is_boosted, const boost::optional<DiscriminatorWP>& vbf_tag) const;
 private:
     boost::optional<size_t> n_jets, n_btag ;
     boost::optional<bool> strict_n_btag;
     boost::optional<DiscriminatorWP> btag_wp;
     boost::optional<bool> boosted, is_VBF;
+    boost::optional<DiscriminatorWP> VBF_wp;
 };
 
 std::ostream& operator<<(std::ostream& os, const EventCategory& eventCategory);
