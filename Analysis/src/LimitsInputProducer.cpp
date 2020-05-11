@@ -46,11 +46,12 @@ void LimitsInputProducer::Produce(const std::string& outputFileNamePrefix, const
                                   EventSubCategory eventSubCategory,
                                   const std::set<UncertaintySource>& uncertaintySources,
                                   const EventRegionSet& eventRegions, const std::map<SelectionCut,
-                                  std::string>& sel_aliases)
+                                  std::string>& sel_aliases, Period period)
 {
     // static constexpr double tiny_value = 1e-9;
     // static constexpr double tiny_value_error = tiny_value;
-    static const std::string dirNamePrefix = ToString(anaDataCollection->ChannelId()) + "_";
+    static const std::string dirNamePrefix = boost::str(boost::format("%1%_%2%_")
+            % static_cast<int>(period) % anaDataCollection->ChannelId());
 
     std::ostringstream s_file_name;
     s_file_name << outputFileNamePrefix << "_" << setup_name;

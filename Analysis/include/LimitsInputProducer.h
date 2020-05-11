@@ -33,7 +33,7 @@ public:
     void Produce(const std::string& outputFileNamePrefix, const std::string& setup_name,
                  const std::map<EventCategory, std::string>& eventCategories, EventSubCategory eventSubCategory,
                  const std::set<UncertaintySource>& uncertaintySources, const EventRegionSet& eventRegions,
-                 const std::map<SelectionCut, std::string>& sel_aliases);
+                 const std::map<SelectionCut, std::string>& sel_aliases, Period period);
 
 private:
     void CollectWorkingPoints() {}

@@ -12,6 +12,7 @@ namespace analysis {
 
 struct AnalyzerArguments : CoreAnalyzerArguments {
     REQ_ARG(Channel, channel);
+    REQ_ARG(Period, period);
     REQ_ARG(std::string, input);
     REQ_ARG(std::string, output);
     OPT_ARG(bool, shapes, true);
@@ -88,7 +89,8 @@ public:
                     std::cout << "\t\tsetup_name: " << limit_setup.first <<  std::endl;
                     for(const auto& subCategory : subCategories)
                         limitsInputProducer.Produce(args.output(), limit_setup.first, limit_setup.second, subCategory,
-                                                    ana_setup.unc_sources, ana_setup.regions, mva_sel_aliases);
+                                                    ana_setup.unc_sources, ana_setup.regions, mva_sel_aliases,
+                                                    args.period());
                 }
             }
             if(args.draw()) {
