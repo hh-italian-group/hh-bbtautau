@@ -81,7 +81,7 @@ void AnaEvent::UpdateSecondaryVariables()
 
 AnaTupleWriter::AnaTupleWriter(const std::string& file_name, Channel channel, bool _runKinFit, bool _runSVfit,
                                bool _allow_calc_svFit) :
-    file(root_ext::CreateRootFile(file_name)), tuple(ToString(channel), file.get(), false),
+    file(root_ext::CreateRootFile(file_name, ROOT::kLZ4, 4)), tuple(ToString(channel), file.get(), false),
     aux_tuple(file.get(), false), runKinFit(_runKinFit), runSVfit(_runSVfit), allow_calc_svFit(_allow_calc_svFit)
 {
 }
