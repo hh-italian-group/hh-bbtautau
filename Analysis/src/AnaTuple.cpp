@@ -6,79 +6,6 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 namespace analysis {
 namespace bbtautau {
 
-void AnaEvent::UpdateSecondaryVariables()
-{
-    using namespace ROOT::Math::VectorUtil;
-    static constexpr float def_val = std::numeric_limits<float>::lowest();
-
-    #define FVAR(name) name##_float = name;
-    #define CREATE_FVAR(r, x, name) FVAR(name)
-    #define FVAR_LIST(x, ...) BOOST_PP_SEQ_FOR_EACH(CREATE_FVAR, x, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
-
-    FVAR_LIST(x, tau1_q, tau1_gen_match, tau2_q, tau2_gen_match, b1_hadronFlavour, b2_hadronFlavour, VBF1_hadronFlavour,
-              VBF2_hadronFlavour, SVfit_valid, kinFit_convergence)
-
-    #undef FVAR
-    #undef CREATE_FVAR
-    #undef FVAR_LIST
-
-    const LorentzVectorM t1(tau1_pt, tau1_eta, tau1_phi, tau1_m), t2(tau2_pt, tau2_eta, tau2_phi, tau2_m);
-    const auto Htt = t1 + t2;
-    const LorentzVectorM MET(MET_pt, 0, MET_phi, 0);
-
-    boost::optional<LorentzVectorM> b1, b2, vbf1, vbf2, Hbb, SVfit;
-    if(has_b_pair) {
-        b1 = LorentzVectorM(b1_pt, b1_eta, b1_phi, b1_m);
-        b2 = LorentzVectorM(b2_pt, b2_eta, b2_phi, b2_m);
-        Hbb = *b1 + *b2;
-    }
-    if(has_VBF_pair) {
-        vbf1 = LorentzVectorM(VBF1_pt, VBF1_eta, VBF1_phi, VBF1_m);
-        vbf2 = LorentzVectorM(VBF2_pt, VBF2_eta, VBF2_phi, VBF2_m);
-    }
-    if(SVfit_valid)
-        SVfit = LorentzVectorM(SVfit_pt, SVfit_eta, SVfit_phi, SVfit_m);
-
-    m_tt_vis = static_cast<float>(Htt.M());
-    pt_H_tt = static_cast<float>(Htt.Pt());
-    eta_H_tt = static_cast<float>(Htt.Eta());
-    phi_H_tt = static_cast<float>(Htt.Phi());
-    pt_H_tt_MET = static_cast<float>((Htt + MET).Pt());
-    mt_1 = static_cast<float>(Calculate_MT(t1, MET));
-    mt_2 = static_cast<float>(Calculate_MT(t2, MET));
-    dR_l1l2 = static_cast<float>(DeltaR(t1, t2));
-    abs_dphi_l1MET = static_cast<float>(std::abs(DeltaPhi(t1, MET)));
-    dphi_htautauMET = SVfit ? static_cast<float>(DeltaPhi(*SVfit, MET)) : def_val;
-    dR_l1l2MET = static_cast<float>(DeltaR(Htt, MET));
-    dR_l1l2Pt_htautau = SVfit ? static_cast<float>(DeltaR(t1, t2) * SVfit->pt()) : def_val;
-    mass_l1l2MET = static_cast<float>((Htt + MET).M());
-    pt_l1l2MET = static_cast<float>((Htt + MET).pt());
-    MT_htautau = SVfit ? static_cast<float>(Calculate_MT(*SVfit, MET)) : def_val;
-    p_zeta = static_cast<float>(Calculate_Pzeta(t1, t2, MET));
-    p_zetavisible = static_cast<float>(Calculate_visiblePzeta(t1, t2));
-    mt_tot = static_cast<float>(Calculate_TotalMT(t1, t2, MET));
-
-    m_bb = Hbb ? static_cast<float>(Hbb->mass()) : def_val;
-    pt_H_bb = Hbb ? static_cast<float>(Hbb->pt()) : def_val;
-
-    dphi_hbbhtautau = Hbb && SVfit ? static_cast<float>(DeltaPhi(*Hbb, *SVfit)) : def_val;
-    deta_hbbhtautau = Hbb && SVfit ? static_cast<float>(((*Hbb) - (*SVfit)).eta()) : def_val;
-    costheta_METhbb = Hbb ? static_cast<float>(four_bodies::Calculate_cosTheta_2bodies(MET, *Hbb)) : def_val;
-    dR_b1b2 = Hbb ? static_cast<float>(DeltaR(*b1, *b2)) : def_val;
-    dR_b1b2_boosted = Hbb ? static_cast<float>(four_bodies::Calculate_dR_boosted(*b1, *b2, *Hbb)) : def_val;
-    dR_lj = Hbb ? static_cast<float>(four_bodies::Calculate_min_dR_lj(t1, t2, *b1, *b2)) : def_val;
-
-    boost::optional<std::pair<double, double>> topMasses;
-    if(Hbb)
-        topMasses = four_bodies::Calculate_topPairMasses(t1, t2, *b1, *b2, MET);
-    mass_top1 = topMasses ? static_cast<float>(topMasses->first) : def_val;
-    mass_top2 = topMasses ? static_cast<float>(topMasses->second) : def_val;
-
-    hh_btag_b1b2 = Hbb ? b1_HHbtag + b2_HHbtag : def_val;
-    hh_btag_b1_minus_b2 = Hbb ? b1_HHbtag - b2_HHbtag : def_val;
-    hh_btag_VBF1VBF2 = has_VBF_pair ? VBF1_HHbtag + VBF2_HHbtag : def_val;
-}
-
 AnaTupleWriter::AnaTupleWriter(const std::string& file_name, Channel channel, bool _runKinFit, bool _runSVfit,
                                bool _allow_calc_svFit) :
     file(root_ext::CreateRootFile(file_name, ROOT::kLZ4, 4)), tuple(ToString(channel), file.get(), false),
@@ -273,23 +200,37 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const AnaTupleWriter::DataIdMap&
     tuple.Fill();
 }
 
+const AnaTupleReader::NameSet AnaTupleReader::BoolBranches = {
+    "has_b_pair", "has_VBF_pair", "pass_VBF_trigger"
+};
+
+const AnaTupleReader::NameSet AnaTupleReader::IntBranches = {
+    "tau1_q", "tau1_gen_match", "tau2_q", "tau2_gen_match",
+    "b1_valid", "b1_hadronFlavour", "b2_valid", "b2_hadronFlavour",
+    "VBF1_valid", "VBF1_hadronFlavour", "VBF2_valid", "VBF2_hadronFlavour",
+    "SVfit_valid", "kinFit_convergence"
+};
+
 AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names) :
-    file(root_ext::OpenRootFile(file_name))
+    file(root_ext::OpenRootFile(file_name)), tree(root_ext::ReadObject<TTree>(*file, ToString(channel))),
+    dataFrame(*tree), df(dataFrame)
 {
-    static const NameSet essential_branches = { "dataIds", "all_weights", "has_b_pair", "has_VBF_pair" };
-    static const NameSet other_branches = {
-        "is_central_es", "sample_id", "all_mva_scores", "weight", "evt", "run", "lumi", "tau1_q", "tau1_gen_match",
-        "tau2_q", "tau2_gen_match", "b1_valid", "b1_hadronFlavour", "b2_valid", "b2_hadronFlavour", "VBF1_valid",
-        "VBF1_hadronFlavour", "VBF2_valid", "VBF2_hadronFlavour", "SVfit_valid", "kinFit_convergence", "pass_VBF_trigger"
+    static const NameSet support_branches = {
+        "dataIds", "all_weights", "is_central_es", "sample_id", "all_mva_scores",
+        "weight", "evt", "run", "lumi", "tau1_p4", "tau2_p4", "b1_valid", "b1_p4", "b2_valid", "b2_p4", "MET_p4",
+        "Hbb_p4", "Htt_p4", "HttMET_p4", "VBF1_valid", "VBF1_p4", "VBF2_valid", "VBF2_p4", "SVfit_p4", "mass_top_pair",
     };
-    tuple = std::make_shared<AnaTuple>(ToString(channel), file.get(), true);
+
+    DefineBranches(active_var_names, active_var_names.empty());
     if(active_var_names.empty()) {
-        std::vector<const std::set<std::string>*> names = {
-            &tuple->GetActiveBranches(), &tuple->GetSecondaryVariables()
+        std::vector<std::vector<std::string>> names = {
+            df.GetColumnNames(),
         };
-        for(auto name_set : names) {
-            for(const auto& name : *name_set) {
-                if(!essential_branches.count(name) && !other_branches.count(name))
+        for(auto& other_df : skimmed_df)
+            names.push_back(other_df.GetColumnNames());
+        for(const auto& name_set : names) {
+            for(const auto& name : name_set) {
+                if(!support_branches.count(name))
                     active_var_names.insert(name);
             }
         }
@@ -301,6 +242,143 @@ AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, Na
     ExtractMvaRanges(aux_tuple());
 }
 
+void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
+{
+    // const auto Define = [&](RDF& target_df, const std::string& var, const std::string& expr) {
+    //     if(all || active_var_names.count(var))
+    //         target_df = target_df.Define(var, boost::str(boost::format("static_cast<double>(%1%)") % expr));
+    // };
+
+    const auto Define = [&](RDF& target_df, const std::string& var, auto expr,
+                              const std::vector<std::string>& columns) {
+        if(all || active_var_names.count(var))
+            target_df = target_df.Define(var, expr, columns);
+    };
+
+    const auto Filter = [](RDF& target_df, const std::string& var) -> RDF {
+        return target_df.Filter([](bool flag){ return flag; }, {var});
+    };
+
+    const auto FilterInt = [](RDF& target_df, const std::string& var) -> RDF {
+        return target_df.Filter([](int flag) -> bool { return flag; }, {var});
+    };
+
+    const auto Sum = [](float a, float b) -> double { return a + b; };
+    const auto Delta = [](float a, float b) -> double { return a - b; };
+
+    const auto ReturnP4 = [](float pt, float eta, float phi, float mass) {
+        return LorentzVectorM(pt, eta, phi, mass);
+    };
+
+    const auto SumP4 = [](const LorentzVectorM& p4_1, const LorentzVectorM& p4_2) {
+        return p4_1 + p4_2;
+    };
+
+    const auto GetPt = [](const LorentzVectorM& p4) { return p4.pt(); };
+    const auto GetEta = [](const LorentzVectorM& p4) { return p4.eta(); };
+    const auto GetPhi = [](const LorentzVectorM& p4) { return p4.phi(); };
+    const auto GetMass = [](const LorentzVectorM& p4) { return p4.mass(); };
+
+    const auto DeltaPhi = [](const LorentzVectorM& p4_1, const LorentzVectorM& p4_2) {
+        return ROOT::Math::VectorUtil::DeltaPhi(p4_1, p4_2);
+    };
+    const auto AbsDeltaPhi = [](const LorentzVectorM& p4_1, const LorentzVectorM& p4_2) {
+        return std::abs(ROOT::Math::VectorUtil::DeltaPhi(p4_1, p4_2));
+    };
+    const auto DeltaEta = [](const LorentzVectorM& p4_1, const LorentzVectorM& p4_2) {
+        return p4_1.eta() - p4_2.eta();
+    };
+    const auto DeltaR = [](const LorentzVectorM& p4_1, const LorentzVectorM& p4_2) {
+        return ROOT::Math::VectorUtil::DeltaR(p4_1, p4_2);
+    };
+
+    const auto DefineP4 = [&](RDF& target_df, const std::string& prefix) {
+        Define(target_df, prefix + "_p4", ReturnP4,
+               { prefix + "_pt", prefix + "_eta", prefix + "_phi", prefix + "_m" });
+    };
+
+    const auto _Calculate_MT = [](const LorentzVectorM& p4, const LorentzVectorM& MET_p4) {
+        return Calculate_MT(p4, MET_p4);
+    };
+
+    DefineP4(df, "tau1");
+    DefineP4(df, "tau2");
+    Define(df, "Htt_p4", SumP4, { "tau1_p4", "tau2_p4" });
+    Define(df, "MET_p4", [](float pt, float phi) { return LorentzVectorM(pt, 0, phi, 0); }, {"MET_pt", "MET_phi"});
+    Define(df, "HttMET_p4", SumP4, { "Htt_p4", "MET_p4" });
+
+    auto df_bb = Filter(df, "has_b_pair");
+    DefineP4(df_bb, "b1");
+    DefineP4(df_bb, "b2");
+    Define(df_bb, "Hbb_p4", SumP4, { "b1_p4", "b2_p4" });
+
+    auto df_vbf = Filter(df_bb, "has_VBF_pair");
+    DefineP4(df_vbf, "VBF1");
+    DefineP4(df_vbf, "VBF2");
+
+    auto df_sv = FilterInt(df, "SVfit_valid");
+    DefineP4(df_sv, "SVfit");
+
+    auto df_bb_sv = FilterInt(df_bb, "SVfit_valid");
+    DefineP4(df_bb_sv, "SVfit");
+
+    Define(df, "m_tt_vis", GetMass, {"Htt_p4"});
+    Define(df, "pt_H_tt", GetPt, {"Htt_p4"});
+    Define(df, "eta_H_tt", GetEta, {"Htt_p4"});
+    Define(df, "phi_H_tt", GetPhi, {"Htt_p4"});
+    Define(df, "mt_1", _Calculate_MT, {"tau1_p4", "MET_p4"});
+    Define(df, "mt_2", _Calculate_MT, {"tau2_p4", "MET_p4"});
+    Define(df_sv, "MT_htautau", _Calculate_MT, {"SVfit_p4", "MET_p4"});
+
+    Define(df, "dR_l1l2", DeltaR, {"tau1_p4", "tau2_p4"});
+    Define(df, "abs_dphi_l1MET", AbsDeltaPhi, {"tau1_p4", "MET_p4"});
+    Define(df_sv, "dphi_htautauMET", DeltaPhi, {"SVfit_p4", "MET_p4"});
+    Define(df, "dR_l1l2MET", DeltaR, {"Htt_p4", "MET_p4"});
+    Define(df_sv, "dR_l1l2Pt_htautau", [](const LorentzVectorM& p4_1, const LorentzVectorM& p4_2, float pt)
+        { return ROOT::Math::VectorUtil::DeltaR(p4_1, p4_2) * pt; }, {"tau1_p4", "tau2_p4", "SVfit_pt"});
+    Define(df, "mass_l1l2MET", GetMass, {"HttMET_p4"});
+    Define(df, "pt_l1l2MET", GetPt, {"HttMET_p4"});
+    Define(df, "p_zeta", [](const LorentzVectorM& tau1_p4, const LorentzVectorM& tau2_p4, const LorentzVectorM& MET_p4)
+        { return Calculate_Pzeta(tau1_p4, tau2_p4, MET_p4); }, {"tau1_p4", "tau2_p4", "MET_p4"});
+    Define(df, "p_zetavisible", [](const LorentzVectorM& tau1_p4, const LorentzVectorM& tau2_p4)
+        { return Calculate_visiblePzeta(tau1_p4, tau2_p4); }, {"tau1_p4", "tau2_p4"});
+    Define(df, "mt_tot", [](const LorentzVectorM& tau1_p4, const LorentzVectorM& tau2_p4, const LorentzVectorM& MET_p4)
+        { return Calculate_TotalMT(tau1_p4, tau2_p4, MET_p4); }, {"tau1_p4", "tau2_p4", "MET_p4"});
+
+    Define(df_bb, "m_bb", GetMass, {"Hbb_p4"});
+    Define(df_bb, "pt_H_bb", GetPt, {"Hbb_p4"});
+    Define(df_bb_sv, "dphi_hbbhtautau", DeltaPhi, {"Hbb_p4", "SVfit_p4"});
+    Define(df_bb_sv, "deta_hbbhtautau", DeltaEta, {"Hbb_p4", "SVfit_p4"});
+    Define(df_bb, "costheta_METhbb", [](const LorentzVectorM& MET_p4, const LorentzVectorM& Hbb_p4)
+        { return four_bodies::Calculate_cosTheta_2bodies(MET_p4, Hbb_p4); }, {"MET_p4", "Hbb_p4"});
+    Define(df_bb, "dR_b1b2", DeltaR, {"b1_p4", "b2_p4"});
+    Define(df_bb, "p_zeta", [](const LorentzVectorM& b1_p4, const LorentzVectorM& b2_p4, const LorentzVectorM& Hbb_p4)
+        { return four_bodies::Calculate_dR_boosted(b1_p4, b2_p4, Hbb_p4); }, {"b1_p4", "b2_p4", "Hbb_p4"});
+    Define(df_bb, "dR_lj", [](const LorentzVectorM& tau1_p4, const LorentzVectorM& tau2_p4,
+                              const LorentzVectorM& b1_p4, const LorentzVectorM& b2_p4)
+        { return four_bodies::Calculate_min_dR_lj(tau1_p4, tau2_p4, b1_p4, b2_p4); },
+        { "tau1_p4", "tau2_p4", "b1_p4", "b2_p4"});
+
+    Define(df_bb, "mass_top_pair", [](const LorentzVectorM& tau1_p4, const LorentzVectorM& tau2_p4,
+                                      const LorentzVectorM& b1_p4, const LorentzVectorM& b2_p4,
+                                      const LorentzVectorM& MET_p4)
+        { return four_bodies::Calculate_topPairMasses(tau1_p4, tau2_p4, b1_p4, b2_p4, MET_p4); },
+        { "tau1_p4", "tau2_p4", "b1_p4", "b2_p4", "MET_p4"});
+
+    Define(df_bb, "mass_top1", [](const std::pair<double, double>& m_top) { return m_top.first; },
+        {"mass_top_pair"});
+    Define(df_bb, "mass_top2", [](const std::pair<double, double>& m_top) { return m_top.second; },
+        {"mass_top_pair"});
+    Define(df_bb, "hh_btag_b1b2", Sum, {"b1_HHbtag", "b2_HHbtag"});
+    Define(df_bb, "hh_btag_b1_minus_b2", Delta, {"b1_HHbtag", "b2_HHbtag"});
+    Define(df_vbf, "hh_btag_VBF1VBF2", Sum, {"VBF1_HHbtag", "VBF2_HHbtag"});
+
+    skimmed_df.push_back(df_bb);
+    skimmed_df.push_back(df_vbf);
+    skimmed_df.push_back(df_sv);
+    skimmed_df.push_back(df_bb_sv);
+}
+
 const AnaTupleReader::DataId& AnaTupleReader::GetDataIdByHash(Hash hash) const
 {
     const auto iter = known_data_ids.right.find(hash);
@@ -309,29 +387,9 @@ const AnaTupleReader::DataId& AnaTupleReader::GetDataIdByHash(Hash hash) const
     return iter->second;
 }
 
-const AnaTupleReader::DataId& AnaTupleReader::GetDataIdByIndex(size_t dataId_index) const
-{
-    if(dataId_index >= (*tuple)().dataIds.size())
-        throw exception("DataId index is out of range.");
-    return GetDataIdByHash((*tuple)().dataIds.at(dataId_index));
-}
-
-AnaTuple& AnaTupleReader::GetAnaTuple() { return *tuple; }
-
-void AnaTupleReader::UpdateSecondaryBranches(const DataId& dataId, size_t dataId_index)
-{
-    if(dataId_index >= (*tuple)().dataIds.size())
-        throw exception("DataId index is out of range.");
-    if(dataId_index >= (*tuple)().all_weights.size())
-        throw exception("Inconsistent AnaTuple entry.");
-    (*tuple)().weight = (*tuple)().all_weights.at(dataId_index);
-    if(dataId_index < (*tuple)().all_mva_scores.size()) {
-        const auto raw_score = (*tuple)().all_mva_scores.at(dataId_index);
-        (*tuple)().mva_score =  GetNormalizedMvaScore(dataId, raw_score);
-    } else {
-        (*tuple)().mva_score = 0;
-    }
-}
+size_t AnaTupleReader::GetNumberOfEntries() const { return static_cast<size_t>(tree->GetEntries()); }
+const AnaTupleReader::RDF& AnaTupleReader::GetDataFrame() const { return df; }
+const std::list<AnaTupleReader::RDF>& AnaTupleReader::GetSkimmedDataFrames() const { return skimmed_df; }
 
 void AnaTupleReader::ExtractDataIds(const AnaAux& aux)
 {

@@ -7,16 +7,17 @@ namespace analysis {
 
 
 EventAnalyzerDataCollection::EventAnalyzerDataCollection(std::shared_ptr<TFile> _file, Channel _channel,
-                                                         const Tuple* _tuple, const NameSet& _histNames,
-                                                         const DescSet& _histDescs, const NameSet& _backgrounds,
-                                                         MucPtr _unc_collection) :
-    file(_file), channel(_channel), tuple(_tuple), histNames(_histNames), histDescs(_histDescs),
+                                                         const NameSet& _histNames,
+                                                         const DescSet& _histDescs, bool _readMode,
+                                                         const NameSet& _backgrounds, MucPtr _unc_collection) :
+    file(_file), channel(_channel), histNames(_histNames), histDescs(_histDescs), readMode(_readMode),
     backgrounds(_backgrounds), unc_collection(_unc_collection)
 {
 }
 
 EventAnalyzerDataCollection::Data& EventAnalyzerDataCollection::Get(const DataId& id)
 {
+    std::lock_guard<Mutex> lock(mutex);
     auto& anaData = anaDataMap[id];
     if(!anaData)
         anaData = Make(id);
@@ -25,12 +26,7 @@ EventAnalyzerDataCollection::Data& EventAnalyzerDataCollection::Get(const DataId
 
 const EventAnalyzerDataCollection::DataMap& EventAnalyzerDataCollection::GetAll() const { return anaDataMap; }
 Channel EventAnalyzerDataCollection::ChannelId() const { return channel; }
-bool EventAnalyzerDataCollection::ReadMode() const { return tuple != nullptr; }
-
-void EventAnalyzerDataCollection::Fill(const DataId& id, double weight)
-{
-    Get(id).Fill(weight);
-}
+bool EventAnalyzerDataCollection::ReadMode() const { return readMode; }
 
 EventAnalyzerDataCollection::DataPtr EventAnalyzerDataCollection::Make(const DataId& id) const
 {
@@ -38,7 +34,7 @@ EventAnalyzerDataCollection::DataPtr EventAnalyzerDataCollection::Make(const Dat
         throw exception("EventAnalyzerDataId '%1%' is not complete.") % id;
     const std::string dir_name = id.GetName();
     const auto& sample_unc = GetModellingUncertainty(id);
-    return std::make_shared<Data>(file, dir_name, channel, id, tuple, histNames, histDescs, sample_unc);
+    return std::make_shared<Data>(file, dir_name, channel, id, histNames, histDescs, sample_unc, readMode);
 }
 
 EventAnalyzerDataCollection::SampleUnc EventAnalyzerDataCollection::GetModellingUncertainty(const DataId& id) const

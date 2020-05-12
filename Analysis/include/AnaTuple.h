@@ -6,6 +6,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include <boost/preprocessor/seq.hpp>
 #include <boost/preprocessor/variadic.hpp>
 #include <boost/bimap.hpp>
+#include <ROOT/RDataFrame.hxx>
 #include "AnalysisTools/Core/include/SmartTree.h"
 #include "AnalysisTools/Core/include/AnalysisMath.h"
 #include "AnalysisTools/Core/include/NumericPrimitives.h"
@@ -19,9 +20,6 @@ namespace analysis {
 #define CREATE_VAR(r, type, name) VAR(type, name)
 #define VAR_LIST(type, ...) BOOST_PP_SEQ_FOR_EACH(CREATE_VAR, type, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
 
-#define CREATE_SVAR(r, type, name) SVAR(type, name)
-#define SVAR_LIST(type, ...) BOOST_PP_SEQ_FOR_EACH(CREATE_SVAR, type, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
-
 #define P4_DATA(name) \
     VAR_LIST(float, name##_pt, name##_eta, name##_phi, name##_m) \
     /**/
@@ -30,7 +28,6 @@ namespace analysis {
     P4_DATA(name) \
     VAR_LIST(float, name##_iso, name##_DeepTauVSe, name##_DeepTauVSmu, name##_DeepTauVSjet) \
     VAR_LIST(int, name##_q, name##_gen_match) \
-    SVAR_LIST(float, name##_q_float, name##_gen_match_float) \
     /**/
 
 #define JET_DATA(name) \
@@ -38,7 +35,6 @@ namespace analysis {
     VAR_LIST(float, name##_CSV, name##_DeepCSV, name##_DeepFlavour, name##_DeepFlavour_CvsL, name##_DeepFlavour_CvsB, \
                     name##_HHbtag) \
     VAR_LIST(int, name##_valid, name##_hadronFlavour) \
-    SVAR_LIST(float, name##_hadronFlavour_float) \
 
 #define ANA_EVENT_DATA() \
     VAR(std::vector<size_t>, dataIds) /* EventAnalyzerDataId */ \
@@ -60,37 +56,26 @@ namespace analysis {
     JET_DATA(VBF2) \
     VAR_LIST(float, MET_pt, MET_phi) /* MET */ \
     VAR(int, SVfit_valid) \
-    SVAR(float, SVfit_valid_float) \
     P4_DATA(SVfit) \
     VAR_LIST(float, SVfit_pt_error, SVfit_eta_error, SVfit_phi_error, SVfit_m_error, SVfit_mt, SVfit_mt_error) \
     VAR(int, kinFit_convergence) \
-    SVAR(float, kinFit_convergence_float) \
     VAR_LIST(float, kinFit_m, kinFit_chi2) \
     VAR(float, MT2) \
     VAR_LIST(float, npv, HT_total, HT_otherjets, lhe_HT, n_jets, n_jets_eta24, n_jets_eta24_eta5, \
                     n_selected_gen_jets, n_selected_gen_bjets, genJets_nTotal, \
                     jets_nTotal_hadronFlavour_b, jets_nTotal_hadronFlavour_c) \
-    SVAR_LIST(float, m_tt_vis, pt_H_tt, eta_H_tt, phi_H_tt, pt_H_tt_MET, mt_1, mt_2, dR_l1l2, abs_dphi_l1MET, \
-                     dphi_htautauMET, dR_l1l2MET, dR_l1l2Pt_htautau, mass_l1l2MET, pt_l1l2MET, MT_htautau, p_zeta, \
-                     p_zetavisible, mt_tot) \
-    SVAR_LIST(float, m_bb, pt_H_bb, dphi_hbbhtautau, deta_hbbhtautau, costheta_METhbb, dR_b1b2, dR_b1b2_boosted, \
-                     dR_lj, mass_top1, mass_top2) \
-    SVAR_LIST(float, hh_btag_b1b2, hh_btag_b1_minus_b2, hh_btag_VBF1VBF2) \
     /**/
 
 namespace bbtautau {
 
 #define VAR(type, name) DECLARE_BRANCH_VARIABLE(type, name)
-#define SVAR(type, name) DECLARE_BRANCH_VARIABLE(type, name)
 struct AnaEvent : public root_ext::detail::BaseDataClass {
     ANA_EVENT_DATA()
-    void UpdateSecondaryVariables();
+    // void UpdateSecondaryVariables();
 };
 #undef VAR
-#undef SVAR
 
 #define VAR(type, name) AddBranch(#name, _data->name);
-#define SVAR(type, name) AddVarPointer(#name, &_data->name);
 
 class AnaTuple : public root_ext::detail::BaseSmartTree<AnaEvent> {
 public:
@@ -133,12 +118,9 @@ private:
 };
 
 #undef VAR
-#undef SVAR
 #undef ANA_EVENT_DATA
 #undef VAR_LIST
 #undef CREATE_VAR
-#undef SVAR_LIST
-#undef CREATE_SVAR
 #undef TAU_DATA
 #undef JET_DATA
 #undef P4_DATA
@@ -198,21 +180,28 @@ public:
     using NameSet = std::set<std::string>;
     using Range = ::analysis::Range<double>;
     using RangeMap = std::map<SelectionCut, Range>;
+    using RDF = ROOT::RDF::RNode;
+
+    static const NameSet BoolBranches, IntBranches;
 
     AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names);
+    size_t GetNumberOfEntries() const;
     const DataId& GetDataIdByHash(Hash hash) const;
-    const DataId& GetDataIdByIndex(size_t dataId_index) const;
-    AnaTuple& GetAnaTuple();
-    void UpdateSecondaryBranches(const DataId& dataId, size_t dataId_index);
-
-private:
-    void ExtractDataIds(const AnaAux& aux);
-    void ExtractMvaRanges(const AnaAux& aux);
+    const RDF& GetDataFrame() const;
+    const std::list<RDF>& GetSkimmedDataFrames() const;
     float GetNormalizedMvaScore(const DataId& dataId, float raw_score) const;
 
 private:
+    void DefineBranches(const NameSet& active_var_names, bool all);
+    void ExtractDataIds(const AnaAux& aux);
+    void ExtractMvaRanges(const AnaAux& aux);
+
+private:
     std::shared_ptr<TFile> file;
-    std::shared_ptr<AnaTuple> tuple;
+    std::shared_ptr<TTree> tree;
+    ROOT::RDataFrame dataFrame;
+    RDF df;
+    std::list<RDF> skimmed_df;
     DataIdBiMap known_data_ids;
     NameSet var_branch_names;
     RangeMap mva_ranges;

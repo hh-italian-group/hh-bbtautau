@@ -1,6 +1,7 @@
 /*! Post-processing of the analysis results.
 This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
+#include "AnalysisTools/Core/include/ProgressReporter.h"
 #include "hh-bbtautau/Analysis/include/AnaTuple.h"
 #include "hh-bbtautau/Analysis/include/EventAnalyzerCore.h"
 #include "hh-bbtautau/Analysis/include/EventAnalyzerDataCollection.h"
@@ -40,6 +41,11 @@ public:
             config_reader.AddEntryReader("UNC", unc_reader, true);
             config_reader.ReadConfig(FullPath(ana_setup.unc_cfg));
         }
+
+        for(const auto& limit_setup : ana_setup.limit_setup){
+            for(const auto& entry : limit_setup.second)
+                limitVariables.insert(entry.second);
+        }
     }
 
     void Run()
@@ -56,8 +62,8 @@ public:
                                                               sub_categories_to_process.end());
 
         for(size_t n = 0; n * args.n_parallel() < all_subCategories.size(); ++n) {
-            AnaDataCollection anaDataCollection(outputFile, channelId, &tupleReader.GetAnaTuple(), activeVariables,
-                                                histConfig.GetItems(), bkg_names, unc_collection);
+            AnaDataCollection anaDataCollection(outputFile, channelId, activeVariables, histConfig.GetItems(),
+                                                false, bkg_names, unc_collection);
             EventSubCategorySet subCategories;
             for(size_t k = 0; k < args.n_parallel() && n * args.n_parallel() + k < all_subCategories.size(); ++k) {
                 const auto& subCategory = all_subCategories.at(n * args.n_parallel() + k);
@@ -110,19 +116,138 @@ public:
 
 private:
 
-    void ProduceHistograms(AnaDataCollection& anaDataCollection, const EventSubCategorySet& subCategories)
-    {
-        auto& tuple = tupleReader.GetAnaTuple();
-        for(Long64_t entryIndex = 0; entryIndex < tuple.GetEntries(); ++entryIndex) {
-            tuple.GetEntry(entryIndex);
-            tuple().UpdateSecondaryVariables();
-            for(size_t n = 0; n < tuple().dataIds.size(); ++n) {
-                const auto& dataId = tupleReader.GetDataIdByIndex(n);
-                if(!subCategories.count(dataId.Get<EventSubCategory>())) continue;
-                tupleReader.UpdateSecondaryBranches(dataId, n);
-                anaDataCollection.Fill(dataId, tuple().weight);
+    struct AnaDataFiller : public TObject {
+        using Hist = EventAnalyzerData::Entry::Hist;
+        using Mutex = Hist::Mutex;
+        using HistMap = std::map<size_t, Hist*>;
+        // template <typename T> using VecType = std::vector<T>;
+
+        const bbtautau::AnaTupleReader* tupleReader;
+        AnaDataCollection* anaDataCollection;
+        const EventCategorySet* categories;
+        const EventSubCategorySet* subCategories;
+        const std::set<UncertaintySource>* unc_sources;
+        std::string hist_name;
+        bool is_mva_score, is_limit_var;
+        std::shared_ptr<HistMap> histograms;
+        std::shared_ptr<Mutex> mutex;
+
+        AnaDataFiller(const bbtautau::AnaTupleReader& _tupleReader, AnaDataCollection& _anaDataCollection,
+                      const EventCategorySet& _categories, const EventSubCategorySet& _subCategories,
+                      const std::set<UncertaintySource>& _unc_sources,
+                      const std::string& _hist_name, bool _is_limit_var) :
+                tupleReader(&_tupleReader), anaDataCollection(&_anaDataCollection), categories(&_categories),
+                subCategories(&_subCategories), unc_sources(&_unc_sources), hist_name(_hist_name),
+                is_mva_score(_hist_name == "mva_score"), is_limit_var(_is_limit_var),
+                histograms(std::make_shared<HistMap>()), mutex(std::make_shared<Mutex>()) {}
+        AnaDataFiller(AnaDataFiller&) = default;
+        AnaDataFiller(AnaDataFiller&&) = default;
+        //AnaDataFiller& operator=(const AnaDataFiller&) = default;
+        // virtual ~AnaDataFiller() {}
+
+
+        template<typename T>
+        void Fill(size_t dataId_hash, double weight, T&& value) const
+        {
+            Hist* hist = GetHistogram(dataId_hash);
+            if(hist) {
+                auto x = value;
+                if(is_mva_score) {
+                    const auto& dataId = tupleReader->GetDataIdByHash(dataId_hash);
+                    x = static_cast<T>(tupleReader->GetNormalizedMvaScore(dataId, static_cast<float>(x)));
+                }
+
+                std::lock_guard<Hist::Mutex> lock(hist->GetMutex());
+                hist->Fill(x, weight);
             }
         }
+
+        void Merge(TList*) {}
+
+    private:
+        Hist* GetHistogram(size_t dataId_hash) const
+        {
+            std::lock_guard<Mutex> lock(*mutex);
+            auto iter = histograms->find(dataId_hash);
+            if(iter != histograms->end())
+                return iter->second;
+            const auto& dataId = tupleReader->GetDataIdByHash(dataId_hash);
+            Hist* hist = nullptr;
+            if(categories->count(dataId.Get<EventCategory>())
+                    && subCategories->count(dataId.Get<EventSubCategory>())
+                    && unc_sources->count(dataId.Get<UncertaintySource>())
+                    && (is_limit_var || dataId.Get<UncertaintyScale>() == UncertaintyScale::Central)) {
+                 hist = &anaDataCollection->Get(dataId).GetHistogram(hist_name)();
+             }
+            (*histograms)[dataId_hash] = hist;
+            return hist;
+        }
+    };
+
+    template <typename T> using VecType = ROOT::VecOps::RVec<T>;
+
+    void ProduceHistograms(AnaDataCollection& anaDataCollection, const EventSubCategorySet& subCategories)
+    {
+        const auto has_column = [](bbtautau::AnaTupleReader::RDF& df, const std::string& column_name) {
+            auto columns = df.GetColumnNames();
+            auto iter = std::find(columns.begin(), columns.end(), column_name);
+            return iter != columns.end();
+        };
+
+        const auto is_defined_column = [](bbtautau::AnaTupleReader::RDF& df, const std::string& column_name) {
+            auto columns = df.GetDefinedColumnNames();
+            auto iter = std::find(columns.begin(), columns.end(), column_name);
+            return iter != columns.end();
+        };
+
+        const auto get_df = [&](const std::string& hist_name) {
+            auto main_df = tupleReader.GetDataFrame();
+            if(has_column(main_df, hist_name)) return main_df;
+            for(auto df : tupleReader.GetSkimmedDataFrames())
+                if(has_column(df, hist_name)) return df;
+            throw exception("ProduceHistograms: Column with name '%1%' not found.") % hist_name;
+        };
+
+        std::vector<ROOT::RDF::RResultPtr<AnaDataFiller>> results;
+        std::cout << "\t\tAdding: ";
+        for(const auto& hist_name : activeVariables) {
+            std::cout << hist_name << " ";
+            const std::string df_hist_name = hist_name == "mva_score" ? "all_mva_scores" : hist_name;
+            const std::vector<std::string> branches = {"dataIds", "all_weights", df_hist_name};
+            AnaDataFiller filter(tupleReader, anaDataCollection, ana_setup.categories, subCategories,
+                                 ana_setup.unc_sources, hist_name, limitVariables.count(hist_name));
+            auto df = get_df(hist_name);
+            ROOT::RDF::RResultPtr<AnaDataFiller> result;
+            if(filter.is_mva_score)
+                result = df.Fill<VecType<size_t>, VecType<double>, VecType<float>>(std::move(filter), branches);
+            else if(bbtautau::AnaTupleReader::BoolBranches.count(df_hist_name))
+                result = df.Fill<VecType<size_t>, VecType<double>, bool>(std::move(filter), branches);
+            else if(bbtautau::AnaTupleReader::IntBranches.count(df_hist_name))
+                result = df.Fill<VecType<size_t>, VecType<double>, int>(std::move(filter), branches);
+            else if(is_defined_column(df, hist_name))
+                result = df.Fill<VecType<size_t>, VecType<double>, double>(std::move(filter), branches);
+            else
+                result = df.Fill<VecType<size_t>, VecType<double>, float>(std::move(filter), branches);
+            results.push_back(result);
+        }
+        std::cout << std::endl;
+
+        analysis::tools::ProgressReporter progressReporter(10, std::cout, "Filling histograms...");
+        const size_t n_total = tupleReader.GetNumberOfEntries();
+        progressReporter.SetTotalNumberOfEvents(n_total);
+        static constexpr size_t counts_per_step = 1000;
+        size_t n_processed = 0;
+        AnaDataFiller::Mutex mutex;
+        results.front().OnPartialResultSlot(counts_per_step, [&](unsigned int, AnaDataFiller&) {
+            std::lock_guard<AnaDataFiller::Mutex> lock(mutex);
+            n_processed += counts_per_step;
+            progressReporter.Report(n_processed, false);
+        });
+
+        for(auto& result : results)
+            result.GetValue();
+        progressReporter.Report(n_total, true);
+        // std::cout << "number of event loops: " << df.GetNRuns() << std::endl;
     }
 
     void EstimateQCD(AnaDataCollection& anaDataCollection, const EventSubCategory& subCategory,
@@ -130,7 +255,7 @@ private:
     {
         static const EventRegionSet sidebandRegions = {
             EventRegion::OS_AntiIsolated(), EventRegion::SS_Isolated(), EventRegion::SS_AntiIsolated(),
-            EventRegion::SS_LooseIsolated()
+            // EventRegion::SS_LooseIsolated()
         };
         static const std::set<UncertaintySource> qcdUncSources = { UncertaintySource::None };
         static const std::set<UncertaintyScale> qcdUncScales = { UncertaintyScale::Central };
@@ -222,7 +347,7 @@ private:
 
 private:
     AnalyzerArguments args;
-    std::set<std::string> activeVariables;
+    std::set<std::string> activeVariables, limitVariables;
     bbtautau::AnaTupleReader tupleReader;
     std::shared_ptr<TFile> outputFile;
     PropertyConfigReader histConfig;

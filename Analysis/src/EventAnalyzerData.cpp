@@ -7,25 +7,26 @@ namespace analysis {
 
 EventAnalyzerData::EventAnalyzerData(std::shared_ptr<TFile> outputFile, const std::string& directoryName,
                                      Channel channel, const EventAnalyzerDataId& dataId,
-                                     const bbtautau::AnaTuple* anaTuple, const std::set<std::string>& histogram_names, const HistDescCollection& descriptors, const SampleUnc& sample_unc) :
-    AnalyzerData(outputFile, directoryName, anaTuple == nullptr)
+                                     const std::set<std::string>& histogram_names,
+                                     const HistDescCollection& descriptors, const SampleUnc& sample_unc,
+                                     bool readMode) :
+    AnalyzerData(outputFile, directoryName, readMode)
 {
     for(const auto& h_name : histogram_names) {
         const auto& desc = FindDescriptor(h_name, channel, dataId, descriptors);
         auto entry_ptr = std::make_shared<Entry>(h_name, this, desc);
-        const auto branch_ptr = anaTuple ? anaTuple->GetVarAddress(h_name) : nullptr;
         (*entry_ptr)().SetSystematicUncertainty(sample_unc.unc);
         (*entry_ptr)().SetPostfitScaleFactor(sample_unc.sf);
-        histograms[h_name] = EntrySource(entry_ptr, branch_ptr);
+        histograms[h_name] = entry_ptr;
     }
 }
 
-void EventAnalyzerData::Fill(double weight)
+EventAnalyzerData::Entry& EventAnalyzerData::GetHistogram(const std::string& hist_name) const
 {
-    if(ReadMode())
-        throw exception("Fill is not available in read mode.");
-    for(auto& entry : histograms)
-        (*entry.second.first)().Fill(*entry.second.second, weight);
+    const auto iter = histograms.find(hist_name);
+    if(iter == histograms.end())
+        throw exception("Histogram with name '%1%' not found.") % hist_name;
+    return *iter->second;
 }
 
 const EventAnalyzerData::HistDesc& EventAnalyzerData::FindDescriptor(const std::string& h_name, Channel channel,

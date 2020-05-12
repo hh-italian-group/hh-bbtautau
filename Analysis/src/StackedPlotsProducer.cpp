@@ -95,6 +95,7 @@ void StackedPlotsProducer::PrintStackedPlots(const std::string& outputFileNamePr
                 const auto& subCategory = *sub_category_iter;
                 const EventAnalyzerDataId anaDataMetaId(eventRegion, eventCategory, subCategory,
                                                         UncertaintySource::None, UncertaintyScale::Central);
+
                 std::ostringstream ss_title;
                 ss_title << eventCategory;
                 if(subCategory != EventSubCategory::NoCuts())

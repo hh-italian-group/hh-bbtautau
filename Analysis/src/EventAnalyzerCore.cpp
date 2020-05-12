@@ -153,19 +153,23 @@ void EventAnalyzerCore::AddSampleToCombined(AnaDataCollection& anaDataCollection
 
 void EventAnalyzerCore::CreateEventSubCategoriesToProcess()
 {
-    sub_categories_to_process.insert(ana_setup.sub_categories.begin(), ana_setup.sub_categories.end());
     if(mva_setup.is_initialized()) {
         for(const auto& base : ana_setup.sub_categories) {
             SelectionCut predefined_cut;
-            if(base.TryGetLastMvaCut(predefined_cut)) continue;
-            for(const auto& mva_sel : mva_setup->selections) {
-                auto param = mva_sel.second;
-                std::cout<<"Selection cut: "<<mva_sel.first<<" - name: "<<param.name
-                        <<" spin: "<<param.spin<<" mass: "<<param.mass<<" cut: "<<param.cut<<std::endl;
-                auto sub_category = EventSubCategory(base).SetCutResult(mva_sel.first, true);
-                sub_categories_to_process.insert(sub_category);
+            if(base.TryGetLastMvaCut(predefined_cut)) {
+                sub_categories_to_process.insert(base);
+            } else {
+                for(const auto& mva_sel : mva_setup->selections) {
+                    auto param = mva_sel.second;
+                    std::cout<<"Selection cut: "<<mva_sel.first<<" - name: "<<param.name
+                            <<" spin: "<<param.spin<<" mass: "<<param.mass<<" cut: "<<param.cut<<std::endl;
+                    auto sub_category = EventSubCategory(base).SetCutResult(mva_sel.first, true);
+                    sub_categories_to_process.insert(sub_category);
+                }
             }
         }
+    } else {
+        sub_categories_to_process.insert(ana_setup.sub_categories.begin(), ana_setup.sub_categories.end());
     }
 }
 
