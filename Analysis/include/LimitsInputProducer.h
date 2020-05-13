@@ -19,7 +19,7 @@ public:
     using HistPtr = std::shared_ptr<root_ext::SmartHistogram<Hist>>;
 
     static std::string FullDataCardName(const std::string& datacard_name, UncertaintySource unc_source,
-                                        UncertaintyScale unc_scale);
+                                        UncertaintyScale unc_scale, Period period);
     static std::string EventRegionSuffix(EventRegion region);
 
     template<typename ...Args>

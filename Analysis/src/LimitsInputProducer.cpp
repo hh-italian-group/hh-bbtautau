@@ -6,7 +6,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 namespace analysis {
 
 std::string LimitsInputProducer::FullDataCardName(const std::string& datacard_name, UncertaintySource unc_source,
-                                                  UncertaintyScale unc_scale)
+                                                  UncertaintyScale unc_scale, Period period)
 {
     if(unc_source == UncertaintySource::None)
         return datacard_name;
@@ -21,7 +21,7 @@ std::string LimitsInputProducer::FullDataCardName(const std::string& datacard_na
         full_name << "topPt";
     else
         throw exception("Unsupported uncertainty source %1%.") % unc_source;
-    full_name << "_13TeV" << unc_scale;
+    full_name << "_13TeV" << static_cast<int>(period) << unc_scale;
     return full_name.str();
 }
 
@@ -92,7 +92,7 @@ void LimitsInputProducer::Produce(const std::string& outputFileNamePrefix, const
         //     hist->SetBinError(central_bin, tiny_value_error);
         // }
         const auto datacard_name = FullDataCardName(sampleWP.datacard_name, metaId.Get<UncertaintySource>(),
-                                                    metaId.Get<UncertaintyScale>());
+                                                    metaId.Get<UncertaintyScale>(), period);
         root_ext::WriteObject(*hist, directory, datacard_name);
     }
 

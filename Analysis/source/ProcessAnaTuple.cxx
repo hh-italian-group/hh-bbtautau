@@ -42,9 +42,17 @@ public:
             config_reader.ReadConfig(FullPath(ana_setup.unc_cfg));
         }
 
-        for(const auto& limit_setup : ana_setup.limit_setup){
-            for(const auto& entry : limit_setup.second)
-                limitVariables.insert(entry.second);
+        if(args.shapes()) {
+            for(const auto& limit_setup : ana_setup.limit_setup){
+                for(const auto& [es, var] : limit_setup.second) {
+                    if(!limitVariables.count(var) && !activeVariables.count(var)) {
+                        throw exception("Variable '%1%' is used in the limit setup '%2%', but it is not enabled."
+                                        " Consider to enable it or run with option --shapes 0.")
+                                        % var % limit_setup.first;
+                    }
+                    limitVariables.insert(var);
+                }
+            }
         }
     }
 
