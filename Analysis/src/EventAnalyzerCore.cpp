@@ -64,6 +64,9 @@ EventAnalyzerCore::EventAnalyzerCore(const CoreAnalyzerArguments& args, Channel 
     bTagger = std::make_shared<BTagger>(ana_setup.period, ana_setup.jet_ordering);
 
     CreateEventSubCategoriesToProcess();
+
+    if(!ana_setup.xs_cfg.empty())
+        crossSectionProvider = std::make_shared<tuple_skimmer::CrossSectionProvider>(ana_setup.xs_cfg);
 }
 
 const std::string& EventAnalyzerCore::ChannelNameLatex() const { return __Channel_names_latex.EnumToString(channelId); }

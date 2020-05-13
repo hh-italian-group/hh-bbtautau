@@ -212,7 +212,9 @@ void BaseEventAnalyzer::ProcessSamples(const std::vector<std::string>& sample_na
             if(sample.sampleType == SampleType::ggHH_NonRes) {
                 std::cout << "\t\tpreparing NonResModel... ";
                 std::cout.flush();
-                nonResModel = std::make_shared<NonResModel>(ana_setup.period, sample, file);
+                if(!crossSectionProvider)
+                    throw exception("path to the cross section config should be specified.");
+                nonResModel = std::make_shared<NonResModel>(ana_setup.period, sample, file, *crossSectionProvider);
                 std::cout << "done." << std::endl;
             }
             ProcessDataSource(sample, sample_wp, tuple, prod_summary);
@@ -302,7 +304,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                 dataIds[anaDataId] = std::make_tuple(weight, mva_score);
                             } else
                                 ProcessSpecialEvent(sample, sample_wp, anaDataId, *event, weight,
-                                                    (*summary)->totalShapeWeight, dataIds);
+                                                    (*summary)->totalShapeWeight, dataIds, cross_section);
                         }
                     }
                 }
@@ -326,7 +328,8 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
 void BaseEventAnalyzer::ProcessSpecialEvent(const SampleDescriptor& sample,
                                             const SampleDescriptor::Point& /*sample_wp*/,
                                             const EventAnalyzerDataId& anaDataId, EventInfo& event, double weight,
-                                            double shape_weight, bbtautau::AnaTupleWriter::DataIdMap& dataIds)
+                                            double shape_weight, bbtautau::AnaTupleWriter::DataIdMap& dataIds,
+                                            double cross_section)
 {
     if(sample.sampleType == SampleType::DY){
         dymod.at(sample.name)->ProcessEvent(anaDataId,event,weight,dataIds);
@@ -343,7 +346,7 @@ void BaseEventAnalyzer::ProcessSpecialEvent(const SampleDescriptor& sample,
                     std::make_tuple(weight * event->weight_top_pt, event.GetMvaScore());
         }
     } else if(sample.sampleType == SampleType::ggHH_NonRes) {
-        nonResModel->ProcessEvent(anaDataId, event, weight, shape_weight, dataIds);
+        nonResModel->ProcessEvent(anaDataId, event, weight, shape_weight, dataIds, cross_section);
     } else
         throw exception("Unsupported special event type '%1%'.") % sample.sampleType;
 }

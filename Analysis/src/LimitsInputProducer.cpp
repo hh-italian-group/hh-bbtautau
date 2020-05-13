@@ -5,9 +5,10 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 namespace analysis {
 
-std::string LimitsInputProducer::FullDataCardName(const std::string& datacard_name, UncertaintySource unc_source,
+std::string LimitsInputProducer::FullDataCardName(std::string datacard_name, UncertaintySource unc_source,
                                                   UncertaintyScale unc_scale, Period period)
 {
+    boost::replace_all(datacard_name, ".", "p");
     if(unc_source == UncertaintySource::None)
         return datacard_name;
 

@@ -7,9 +7,6 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 namespace analysis {
 
-NonResModel::PointDesc::PointDesc(const Point& _point, double _total_shape_weight) :
-    point(_point), total_shape_weight(_total_shape_weight) {}
-
 NonResModel::ParamPositionDesc::ParamPositionDesc(const NameMap& names)
 {
     SetParamPosition(names, "kl", kl);
@@ -47,10 +44,12 @@ void NonResModel::ParamPositionDesc::SetValue(const ValueVec& values, const std:
     }
 }
 
-NonResModel::NonResModel(Period period, const SampleDescriptor& sample, std::shared_ptr<TFile> file) :
+NonResModel::NonResModel(Period period, const SampleDescriptor& sample, std::shared_ptr<TFile> file,
+                         tuple_skimmer::CrossSectionProvider& xs_provider) :
         weighting_mode(WeightType::PileUp, WeightType::BSM_to_SM, WeightType::GenEventWeight),
         weights(period, BTagger(period, BTaggerKind::DeepFlavour), weighting_mode),
-        eft_weights(weights.GetProviderT<NonResHH_EFT::WeightProvider>(WeightType::BSM_to_SM))
+        eft_weights(weights.GetProviderT<NonResHH_EFT::WeightProvider>(WeightType::BSM_to_SM)),
+        points_are_orthogonal(sample.create_orthogonal_points)
 {
     const ParamPositionDesc param_positions(sample.GetModelParameterNames());
     eft_weights->AddFile(*file);
@@ -62,22 +61,28 @@ NonResModel::NonResModel(Period period, const SampleDescriptor& sample, std::sha
     }
 
     for(const auto& sample_wp : sample.working_points) {
-        const Point point = param_positions.CreatePoint(sample_wp.param_values);
-        eft_weights->SetTargetPoint(point);
-        const auto summary = weights.GetSummaryWithWeights(file, weighting_mode);
-        points[sample_wp.full_name] = PointDesc(point, summary.totalShapeWeight);
+        point_names.push_back(sample_wp.full_name);
+        points.push_back(param_positions.CreatePoint(sample_wp.param_values));
+        double xs = -1;
+        if(!sample_wp.cross_section.empty())
+            xs = xs_provider.GetCrossSection(sample_wp.cross_section);
+        point_xs.push_back(xs);
     }
+    total_shape_weights = weights.GetTotalShapeWeights(file, weighting_mode, points, sample.create_orthogonal_points);
 }
 
 void NonResModel::ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfo& event, double weight,
-                               double shape_weight, bbtautau::AnaTupleWriter::DataIdMap& dataIds)
+                               double shape_weight, bbtautau::AnaTupleWriter::DataIdMap& dataIds, double cross_section)
 {
-    for(const auto& wp : points) {
-        const auto final_id = anaDataId.Set(wp.first);
-        eft_weights->SetTargetPoint(wp.second.point);
+    for(size_t n = 0; n < points.size(); ++n) {
+        if(points_are_orthogonal && (event->evt % points.size()) != n) continue;
+        const auto final_id = anaDataId.Set(point_names.at(n));
+        eft_weights->SetTargetPoint(points.at(n));
         const double eft_weight = eft_weights->Get(event);
-        const double final_weight = weight * (shape_weight / wp.second.total_shape_weight)
-                * (eft_weight / event->weight_bsm_to_sm);
+        const double shape_weight_correction = shape_weight / total_shape_weights.at(n);
+        const double eft_weight_correction = eft_weight / event->weight_bsm_to_sm;
+        const double xs_correction = point_xs.at(n) > 0 ? point_xs.at(n) / cross_section : 1.;
+        const double final_weight = weight * shape_weight_correction * eft_weight_correction * xs_correction;
         dataIds[final_id] = std::make_tuple(final_weight, event.GetMvaScore());
     }
 }

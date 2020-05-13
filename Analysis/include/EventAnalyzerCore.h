@@ -6,6 +6,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "AnalysisTools/Run/include/program_main.h"
 #include "hh-bbtautau/Analysis/include/EventAnalyzerDataCollection.h"
 #include "h-tautau/JetTools/include/BTagger.h"
+#include "hh-bbtautau/Instruments/include/SkimmerConfig.h"
 
 namespace analysis {
 
@@ -89,6 +90,7 @@ protected:
     std::string working_path;
     std::shared_ptr<BTagger> bTagger;
     SignalObjectSelector signalObjectSelector;
+    std::shared_ptr<tuple_skimmer::CrossSectionProvider> crossSectionProvider;
 };
 
 } // namespace analysis

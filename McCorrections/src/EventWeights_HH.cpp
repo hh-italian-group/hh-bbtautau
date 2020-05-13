@@ -49,7 +49,8 @@ EventWeights_HH::EventWeights_HH(Period period, const BTagger& bTagger, const We
 }
 
 ntuple::ProdSummary EventWeights_HH::GetSummaryWithWeights(const std::shared_ptr<TFile>& file,
-                                                           const WeightingMode& weighting_mode) const
+                                                           const WeightingMode& weighting_mode,
+                                                           bool control_duplicates) const
 {
     static const WeightingMode shape_weights(WeightType::PileUp, WeightType::BSM_to_SM, WeightType::DY,
                                              WeightType::TTbar, WeightType::Wjets, WeightType::GenEventWeight);
@@ -70,12 +71,15 @@ ntuple::ProdSummary EventWeights_HH::GetSummaryWithWeights(const std::shared_ptr
         using EventIdSet = std::set<EventIdentifier>;
         EventIdSet processed_events;
         for(const auto& event : *all_events) {
-            const EventIdentifier Id(event.run, event.lumi, event.evt);
-            if(processed_events.count(Id)) {
-//                    std::cout << "WARNING: duplicated express event " << Id << std::endl;
-                continue;
+            if(control_duplicates) {
+                const EventIdentifier Id(event.run, event.lumi, event.evt);
+                if(processed_events.count(Id)) {
+                    // std::cout << "WARNING: duplicated express event " << Id << std::endl;
+                    continue;
+                }
+                processed_events.insert(Id);
             }
-            processed_events.insert(Id);
+            
             summary.totalShapeWeight += GetTotalWeight(event, mode);
             if(calc_withTopPt)
                 summary.totalShapeWeight_withTopPt += GetTotalWeight(event, mode_withTopPt);
@@ -91,6 +95,34 @@ ntuple::ProdSummary EventWeights_HH::GetSummaryWithWeights(const std::shared_ptr
         } catch(std::exception& ) {}
     }
     return summary;
+}
+
+std::vector<double> EventWeights_HH::GetTotalShapeWeights(const std::shared_ptr<TFile>& file,
+                                                          const WeightingMode& weighting_mode,
+                                                          const std::vector<NonResHH_EFT::Point>& eft_points,
+                                                          bool orthogonal)
+{
+    static const WeightingMode shape_weights(WeightType::PileUp, WeightType::BSM_to_SM, WeightType::DY,
+                                             WeightType::TTbar, WeightType::Wjets, WeightType::GenEventWeight);
+
+    size_t N = eft_points.size();
+    std::vector<double> total_weights(N, 0);
+    const auto mode = shape_weights & weighting_mode;
+
+    if(mode.size()) {
+        auto eft_weights_provider = GetProviderT<NonResHH_EFT::WeightProvider>(WeightType::BSM_to_SM);
+        auto all_events = ntuple::CreateExpressTuple("all_events", file.get(), true, ntuple::TreeState::Full);
+
+        for(const auto& event : *all_events) {
+            for(size_t n = 0; n < N; ++n) {
+                if(orthogonal && (event.evt % N) != n) continue;
+                eft_weights_provider->SetTargetPoint(eft_points.at(n));
+                total_weights.at(n) += GetTotalWeight(event, mode);
+            }
+        }
+    }
+
+    return total_weights;
 }
 
 std::string EventWeights_HH::FullBSMtoSM_Name(const std::string& fileName)

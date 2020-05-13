@@ -21,6 +21,7 @@ struct AnalyzerSetup {
     SignalMode mode;
     QCDmethod qcd_method;
     std::string qcd_shape_str;
+    std::string xs_cfg;
     EventRegion qcd_shape;
     DiscriminatorWP tauID_wp;
     std::vector<double> pt_sel_bins;
@@ -104,6 +105,7 @@ struct SampleDescriptorBase {
         std::string name, full_name, title, file_path, datacard_name, trigger, trigger_vbf;
         SampleType sampleType;
         double norm_sf{1}, datacard_sf{1}, draw_sf{1};
+        std::string cross_section;
         bool draw{false};
         root_ext::Color color{kBlack};
         std::vector<std::string> param_values;
@@ -157,6 +159,8 @@ public:
     std::map<std::string, std::vector<std::string>> points; // mass for resonant, radion or graviton, nodes for non-resonant
     std::map<std::string, root_ext::Color> draw_ex;
     std::vector<double> norm_sf;
+    std::vector<std::string> point_xs;
+    bool create_orthogonal_points{false};
 
     virtual void CreateWorkingPoints() override;
     virtual std::map<std::string, size_t> GetModelParameterNames() const override;

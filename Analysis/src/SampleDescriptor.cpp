@@ -164,6 +164,8 @@ void SampleDescriptor::CreateWorkingPoints()
         }
         for(const auto& param_values : points)
             point.param_values.push_back(param_values.second.at(n));
+        if(n < point_xs.size())
+            point.cross_section = point_xs.at(n);
         working_points.push_back(point);
     }
 }

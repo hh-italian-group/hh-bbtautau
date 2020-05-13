@@ -10,6 +10,7 @@ void AnalyzerConfigEntryReader::EndEntry()
     CheckReadParamCounts("int_lumi", 1, Condition::less_equal);
     CheckReadParamCounts("period", 1, Condition::less_equal);
     CheckReadParamCounts("mode", 1, Condition::less_equal);
+    CheckReadParamCounts("xs_cfg", 1, Condition::less_equal);
     CheckReadParamCounts("qcd_method", 1, Condition::less_equal);
     CheckReadParamCounts("qcd_shape", 1, Condition::less_equal);
     CheckReadParamCounts("tauID_wp", 1, Condition::less_equal);
@@ -50,6 +51,7 @@ void AnalyzerConfigEntryReader::ReadParameter(const std::string& /*param_name*/,
     ParseEntry("int_lumi", current.int_lumi);
     ParseEntry("period", current.period);
     ParseEntry("mode", current.mode);
+    ParseEntry("xs_cfg", current.xs_cfg);
     ParseEntry("qcd_method", current.qcd_method);
     ParseEntry("qcd_shape", current.qcd_shape_str);
     ParseEntry("tauID_wp", current.tauID_wp);
@@ -120,7 +122,8 @@ void SampleDescriptorConfigEntryReader::EndEntry()
     CheckReadParamCounts("draw_ex", 0, Condition::greater_equal);
     CheckReadParamCounts("norm_sf", 1, Condition::less_equal);
     CheckReadParamCounts("reference_pu_sample", 1, Condition::less_equal);
-
+    CheckReadParamCounts("create_orthogonal_points", 1, Condition::less_equal);
+    CheckReadParamCounts("point_xs", 1, Condition::less_equal);
 
     Base::EndEntry();
 }
@@ -136,6 +139,8 @@ void SampleDescriptorConfigEntryReader::ReadParameter(const std::string& param_n
     ParseEntry("draw_ex", current.draw_ex);
     ParseEntryList("norm_sf", current.norm_sf, true);
     ParseEntry("reference_pu_sample", current.reference_pu_sample);
+    ParseEntry("create_orthogonal_points", current.create_orthogonal_points);
+    ParseEntryList("point_xs", current.point_xs, true);
 
     Base::ReadParameter(param_name,param_value,ss);
 }

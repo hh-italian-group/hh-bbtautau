@@ -6,6 +6,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Analysis/include/EventInfo.h"
 #include "hh-bbtautau/McCorrections/include/EventWeights_HH.h"
 #include "hh-bbtautau/McCorrections/include/HH_nonResonant_weight.h"
+#include "hh-bbtautau/Instruments/include/SkimmerConfig.h"
 
 #include "AnaTuple.h"
 #include "SampleDescriptor.h"
@@ -17,14 +18,6 @@ private:
     using WeightingMode = mc_corrections::WeightingMode;
     using WeightType = mc_corrections::WeightType;
     using Point = NonResHH_EFT::Point;
-
-    struct PointDesc {
-        Point point;
-        double total_shape_weight;
-
-        PointDesc() {}
-        PointDesc(const Point& _point, double _total_shape_weight);
-    };
 
     struct ParamPositionDesc {
         using NameMap = std::map<std::string, size_t>;
@@ -40,15 +33,20 @@ private:
     };
 
 public:
-    NonResModel(Period period, const SampleDescriptor& sample, std::shared_ptr<TFile> file);
+    NonResModel(Period period, const SampleDescriptor& sample, std::shared_ptr<TFile> file,
+                tuple_skimmer::CrossSectionProvider& xs_provider);
     void ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfo& event, double weight, double shape_weight,
-                      bbtautau::AnaTupleWriter::DataIdMap& dataIds);
+                      bbtautau::AnaTupleWriter::DataIdMap& dataIds, double cross_section);
 
 private:
     WeightingMode weighting_mode;
     mc_corrections::EventWeights_HH weights;
     std::shared_ptr<NonResHH_EFT::WeightProvider> eft_weights;
-    std::map<std::string, PointDesc> points;
+    std::vector<std::string> point_names;
+    std::vector<Point> points;
+    std::vector<double> total_shape_weights;
+    std::vector<double> point_xs;
+    bool points_are_orthogonal;
 };
 
 } // namespace analysis
