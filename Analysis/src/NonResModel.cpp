@@ -56,7 +56,7 @@ NonResModel::NonResModel(Period period, const SampleDescriptor& sample, std::sha
     eft_weights->AddFile(*file);
     eft_weights->CreatePdfs();
 
-    if(weighting_mode.count(WeightType::PileUp) && period == Period::Run2017){
+    if(weighting_mode.count(WeightType::PileUp)){
         auto pile_up_weight = weights.GetProviderT<mc_corrections::PileUpWeightEx>(mc_corrections::WeightType::PileUp);
         pile_up_weight->SetActiveDataset(sample.reference_pu_sample);
     }

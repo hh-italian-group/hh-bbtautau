@@ -12,8 +12,16 @@ parser.add_argument('--output', required=True, type=str, metavar='PATH', help="o
 parser.add_argument('--threshold', required=False, default=None, metavar='PATH', help="output table")
 args = parser.parse_args()
 
-energy_scales = [ 'CMS_scale_t_13TeVUp', 'CMS_scale_t_13TeVDown', 'CMS_scale_j_13TeVUp', 'CMS_scale_j_13TeVDown',
-                  'CMS_topPt_13TeVUp', 'CMS_topPt_13TeVDown' ]
+years = [2016, 2017, 2018]
+unc_scales = [ 'Up', 'Down' ]
+unc_sources = [ 'scale_t', 'scale_j' ]
+
+energy_scales = []
+for year in years:
+    for unc_source in unc_sources:
+        for unc_scale in unc_scales:
+            es = 'CMS_{}_13TeV{}{}'.format(unc_source, year, unc_scale)
+            energy_scales.append(es)
 
 ignore_processes = [ '^ggGraviton_hh_ttbb_M.*', '^ggRadion_hh_ttbb_M.*', '^ggh_hh_ttbb_kl([^1]|1.+)']
 ignore_categories = [ '.*[OS]S_(antiiso|iso|LooseIsolated)$', '.*res2lb$' ]
@@ -59,7 +67,7 @@ category_dirs = CollectItems(shape_file, 'TDirectory')
 
 
 with io.open(args.output, 'w', encoding='utf-8') as output:
-    output.write('\ufeff')
+    output.write(u'\ufeff')
 
     columns = [ 'central' ]
     columns.extend(energy_scales)
@@ -70,7 +78,7 @@ with io.open(args.output, 'w', encoding='utf-8') as output:
 
     for cat,dir in sorted(category_dirs.items()):
         if MatchesIgnore(cat, ignore_categories): continue
-        output.write('\n' + cat + '\n')
+        output.write(u'\n' + cat + u'\n')
         items = CollectItems(dir, 'TH1')
         processes = JoinByProcess(items)
         for process, p_dict in sorted(processes.items()):
@@ -87,4 +95,4 @@ with io.open(args.output, 'w', encoding='utf-8') as output:
                 else:
                     process_yield = ufloat(integral, err)
                     p_str += u'{:.2uP},'.format(process_yield)
-            output.write(p_str + '\n')
+            output.write(p_str + u'\n')
