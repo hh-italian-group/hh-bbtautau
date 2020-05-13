@@ -250,8 +250,8 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
     // };
 
     const auto Define = [&](RDF& target_df, const std::string& var, auto expr,
-                              const std::vector<std::string>& columns) {
-        if(all || active_var_names.count(var))
+                              const std::vector<std::string>& columns, bool force = false) {
+        if(force || all || active_var_names.count(var))
             target_df = target_df.Define(var, expr, columns);
     };
 
@@ -269,6 +269,11 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
     const auto ReturnP4 = [](float pt, float eta, float phi, float mass) {
         return LorentzVectorM(pt, eta, phi, mass);
     };
+
+    const auto ReturnMETP4 = [](float pt, float phi) {
+        return LorentzVectorM(pt, 0, phi, 0);
+    };
+
 
     const auto SumP4 = [](const LorentzVectorM& p4_1, const LorentzVectorM& p4_2) {
         return p4_1 + p4_2;
@@ -294,7 +299,7 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
 
     const auto DefineP4 = [&](RDF& target_df, const std::string& prefix) {
         Define(target_df, prefix + "_p4", ReturnP4,
-               { prefix + "_pt", prefix + "_eta", prefix + "_phi", prefix + "_m" });
+               { prefix + "_pt", prefix + "_eta", prefix + "_phi", prefix + "_m" }, true);
     };
 
     const auto _Calculate_MT = [](const LorentzVectorM& p4, const LorentzVectorM& MET_p4) {
@@ -303,14 +308,14 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
 
     DefineP4(df, "tau1");
     DefineP4(df, "tau2");
-    Define(df, "Htt_p4", SumP4, { "tau1_p4", "tau2_p4" });
-    Define(df, "MET_p4", [](float pt, float phi) { return LorentzVectorM(pt, 0, phi, 0); }, {"MET_pt", "MET_phi"});
-    Define(df, "HttMET_p4", SumP4, { "Htt_p4", "MET_p4" });
+    Define(df, "Htt_p4", SumP4, { "tau1_p4", "tau2_p4" }, true);
+    Define(df, "MET_p4", ReturnMETP4, {"MET_pt", "MET_phi"}, true);
+    Define(df, "HttMET_p4", SumP4, { "Htt_p4", "MET_p4" }, true);
 
     auto df_bb = Filter(df, "has_b_pair");
     DefineP4(df_bb, "b1");
     DefineP4(df_bb, "b2");
-    Define(df_bb, "Hbb_p4", SumP4, { "b1_p4", "b2_p4" });
+    Define(df_bb, "Hbb_p4", SumP4, { "b1_p4", "b2_p4" }, true);
 
     auto df_vbf = Filter(df_bb, "has_VBF_pair");
     DefineP4(df_vbf, "VBF1");
