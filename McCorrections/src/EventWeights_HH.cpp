@@ -14,7 +14,7 @@ EventWeights_HH::EventWeights_HH(Period period, const BTagger& bTagger, const We
         EventWeights(period, bTagger, mode)
 {
     if (period == Period::Run2016) {
-        std::string dy_weights = Full_Cfg_Name("2016/dyjets_weights.cfg");
+        std::string dy_weights = Full_Cfg_Name("2016/dyjets_weights_2016.cfg");
         if(mode.empty() || mode.count(WeightType::DY))
             providers[WeightType::DY] = std::make_shared<NJets_HT_weight>("DY", dy_weights);
         if(mode.empty() || mode.count(WeightType::TTbar))

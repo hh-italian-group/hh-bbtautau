@@ -134,10 +134,10 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const AnaTupleWriter::DataIdMap&
             }
             tuple().sample_id = known_sample_ids.left.at(*sample_id);
         }
-        if(*sample_id != data_id.Get<std::string>()) {
-            throw exception("Single event has two distinct sample ids: %1% and %2%") % (*sample_id)
-                    % data_id.Get<std::string>();
-        }
+        // if(*sample_id != data_id.Get<std::string>()) {
+        //     throw exception("Single event has two distinct sample ids: %1% and %2%") % (*sample_id)
+        //             % data_id.Get<std::string>();
+        // }
 
         if(!known_data_ids.left.count(data_id)) {
             const size_t hash = std::hash<std::string>{}(data_id.GetName());
