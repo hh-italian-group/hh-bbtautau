@@ -101,6 +101,7 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfo& event, b
     for(const auto& category : ana_setup.categories) {
         if(category.Contains(all_jets.size(), bjet_counts, is_VBF, is_boosted, vbf_tag))
             categories.insert(category);
+
     }
     return categories;
 }
