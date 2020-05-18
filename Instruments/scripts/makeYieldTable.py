@@ -9,7 +9,8 @@ from uncertainties import ufloat
 parser = argparse.ArgumentParser(description='Plot NLL as a function of nuissance parameter.')
 parser.add_argument('--input', required=True, type=str, metavar='PATH', help="input shapes")
 parser.add_argument('--output', required=True, type=str, metavar='PATH', help="output csv file with the yield table")
-parser.add_argument('--threshold', required=False, default=None, metavar='PATH', help="output table")
+parser.add_argument('--threshold', required=False, default=None, type=float, help="threshold")
+parser.add_argument('--bin', required=False, default=None, type=int, help="consider only a single bin")
 args = parser.parse_args()
 
 years = [2016, 2017, 2018]
@@ -65,7 +66,6 @@ def JoinByProcess(items):
 shape_file = ROOT.TFile(args.input)
 category_dirs = CollectItems(shape_file, 'TDirectory')
 
-
 with io.open(args.output, 'w', encoding='utf-8') as output:
     output.write(u'\ufeff')
 
@@ -73,7 +73,7 @@ with io.open(args.output, 'w', encoding='utf-8') as output:
     columns.extend(energy_scales)
     header_str = u'Process,'
     for c in columns:
-        header_str += u'{},'.format(c)
+        header_str += u'{},{} err,'.format(c, c)
     output.write(header_str + '\n')
 
     for cat,dir in sorted(category_dirs.items()):
@@ -86,13 +86,24 @@ with io.open(args.output, 'w', encoding='utf-8') as output:
             for col in columns:
                 hist = p_dict[col]
                 if hist == None:
-                    p_str += u'-,'
+                    p_str += u'-,-,'
                     continue
-                err = ROOT.Double(0)
-                integral = hist.IntegralAndError(1, hist.GetNbinsX(), err)
-                if args.threshold != None and integral < float(args.threshold):
-                    p_str += u'0,'
+
+                if args.bin is not None:
+                    if args.bin < 0:
+                        max_bin = hist.GetNbinsX() + 1 + args.bin
+                    else:
+                        max_bin = args.bin
+                    min_bin = max_bin
                 else:
-                    process_yield = ufloat(integral, err)
-                    p_str += u'{:.2uP},'.format(process_yield)
+                    min_bin, max_bin = 1, hist.GetNbinsX()
+
+                err = ROOT.Double(0)
+                integral = hist.IntegralAndError(min_bin, max_bin, err)
+                if args.threshold != None and integral < float(args.threshold):
+                    p_str += u'0,-,'
+                else:
+                    #process_yield = ufloat(integral, err)
+                    #p_str += u'{:.2uP},'.format(process_yield)
+                    p_str += u'{:.4f},{:.4f},'.format(integral, err)
             output.write(p_str + u'\n')

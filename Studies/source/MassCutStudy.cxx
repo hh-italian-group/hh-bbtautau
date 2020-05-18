@@ -183,7 +183,7 @@ public:
 //                    continue;
                 const auto& Hbb = eventbase->GetHiggsBB().GetMomentum();
 //                const auto& Htt_sv = eventbase.GetHiggsTTMomentum(true);
-                const auto& Htt = *eventbase->GetHiggsTTMomentum(false);
+                const auto Htt = *eventbase->GetHiggsTTMomentum(false);
 //                const auto& met = eventbase.GetMET().GetMomentum();
 //                element[sampleid].emplace_back(Hbb.M(), (Htt_sv).M(), eventbase->weight_total);
 //                element[sampleid].emplace_back(Hbb.M(), (Htt+met).M(), eventbase->weight_total);

@@ -114,8 +114,8 @@ void MvaVariables::AddEvent(analysis::EventInfo& eventbase, const SampleId& mass
     using namespace ROOT::Math::VectorUtil;
     static constexpr double default_value = -999.;
 
-    const auto& Htt = *eventbase.GetHiggsTTMomentum(false);
-    const auto& Htt_sv = eventbase.GetHiggsTTMomentum(true);
+    const auto Htt = *eventbase.GetHiggsTTMomentum(false);
+    const auto Htt_sv = eventbase.GetHiggsTTMomentum(true);
     const auto& t1 = eventbase.GetLeg(1).GetMomentum();
     const auto& t2 = eventbase.GetLeg(2).GetMomentum();
 

@@ -108,6 +108,7 @@ public:
             originalTuple->GetEntry(current_entry);
             ntuple::Event event = (*originalTuple).data();
             event.isData = args.isData();
+            event.period = static_cast<int>(run_period);
             if(static_cast<Channel>(event.channelId) != channel) continue;
 
             if(debug) {
@@ -221,7 +222,8 @@ private:
                 for(size_t leg_id = 1; leg_id <= 2; ++leg_id) {
                     const auto& leg = event_info->GetBJet(leg_id);
                     std::cout << "b jet " << leg_id << ":\n"
-                              << "\t" << LorentzVectorToString(leg.GetMomentum());
+                              << "\t" << LorentzVectorToString(leg.GetMomentum())
+                              << ", resolution = " << leg->resolution() * leg.GetMomentum().E();
                     if(!args.isData())
                         std::cout << ", uncorrected " << LorentzVectorToString(leg->p4());
                     std::cout << "\n";
@@ -290,8 +292,26 @@ private:
                               << ", pfRelIso04 = " << event.other_lepton_iso.at(n) << "\n";
                 }
             }
-            std::cout << "PassMETfilters = " << signalObjectSelector.PassMETfilters(event,run_period,args.isData())
-                      << "\n";
+            const bool pass_met_filters = signalObjectSelector.PassMETfilters(event,run_period,args.isData());
+            std::cout << "PassMETfilters = " << pass_met_filters << "\n";
+            if(!pass_met_filters){
+                using Filter = ntuple::MetFilters::Filter;
+                std::vector<std::pair<std::string, Filter>> filters = {
+                    { "PrimaryVertex", Filter::PrimaryVertex },
+                    { "BeamHalo", Filter::BeamHalo },
+                    { "HBHE_noise", Filter::HBHE_noise },
+                    { "HBHEiso_noise", Filter::HBHEiso_noise },
+                    { "ECAL_TP", Filter::ECAL_TP },
+                    { "badMuon", Filter::badMuon },
+                };
+                if(run_period == Period::Run2017 || run_period == Period::Run2018)
+                    filters.emplace_back(std::pair<std::string, Filter>("ecalBadCalib", Filter::ecalBadCalib));
+                if(args.isData())
+                    filters.emplace_back(std::pair<std::string, Filter>("ee_badSC_noise", Filter::ee_badSC_noise));
+                auto event_metFilters = ntuple::MetFilters(event.metFilters);
+                for(const auto& [filter_name, filter_flag] : filters)
+                    std::cout << "\t" << filter_name << ": " << event_metFilters.Pass(filter_flag) << "\n";
+            }
             std::cout << "MET " << LorentzVectorToString(event_info->GetMET().GetMomentum(), LVectorRepr::PxPyPtPhi);
             if(!args.isData())
                 std::cout << ", uncorrected " << LorentzVectorToString(event_info->GetMET()->p4(),

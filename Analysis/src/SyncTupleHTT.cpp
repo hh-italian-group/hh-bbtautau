@@ -271,11 +271,11 @@ void FillSyncTuple(analysis::EventInfo& event, htt_sync::SyncTuple& sync, analys
     //mva variables
     if(event.HasBjetPair()){
         using namespace ROOT::Math::VectorUtil;
-        const auto& Htt = *event.GetHiggsTTMomentum(false);
+        const auto Htt = *event.GetHiggsTTMomentum(false);
         const auto& t1 = event.GetLeg(1).GetMomentum();
         const auto& t2 = event.GetLeg(2).GetMomentum();
 
-        const auto& Hbb = event.GetHiggsBB().GetMomentum();
+        const auto Hbb = event.GetHiggsBB().GetMomentum();
         const auto& b1 = event.GetHiggsBB().GetFirstDaughter().GetMomentum();
         const auto& b2 = event.GetHiggsBB().GetSecondDaughter().GetMomentum();
 
@@ -283,7 +283,8 @@ void FillSyncTuple(analysis::EventInfo& event, htt_sync::SyncTuple& sync, analys
         const bool fill_sv = apply_svFit && event.GetSVFitResults().has_valid_momentum;
 
         sync().pt_hbb = Hbb.Pt();
-        sync().pt_l1l2 = (t1+t2).Pt();
+        //sync().pt_l1l2 = (t1+t2).Pt();
+        sync().pt_l1l2 = Htt.Pt();
         sync().pt_htautau = (Htt+met).Pt();
         sync().pt_htautau_sv = COND_VAL(fill_sv, event.GetHiggsTTMomentum(true)->Pt());
         sync().p_zeta = analysis::Calculate_Pzeta(t1, t2,  met);
