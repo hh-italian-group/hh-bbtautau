@@ -58,8 +58,8 @@ LegacyMvaVariables::LegacyMvaVariables(const std::string& _method_name, const st
 void LegacyMvaVariables::AddEvent(analysis::EventInfo& eventbase, const SampleId& /*mass*/ , int /* spin*/,
                                   double /*sample_weight*/, int /*which_test*/)
 {
-    const auto& Htt = eventbase.GetHiggsTTMomentum(false);
-    const auto& Htt_sv = eventbase.GetHiggsTTMomentum(true);
+    const auto Htt = eventbase.GetHiggsTTMomentum(false);
+    const auto Htt_sv = eventbase.GetHiggsTTMomentum(true);
     const auto& t1 = eventbase.GetLeg(1);
     const auto& t2 = eventbase.GetLeg(2);
 
