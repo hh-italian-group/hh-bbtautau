@@ -49,8 +49,9 @@ public:
                                                                    { analysis::EventCategory::Parse("2j1b+B_noVBF"), 2}};
 
         auto inputFile = root_ext::OpenRootFile(args.input());
-        AnaDataCollection anaDataCollection(outputFile, channelId, nullptr, activeVariables,
-                                            histConfig.GetItems(), all_samples, nullptr);
+        std::shared_ptr<ModellingUncertaintyCollection> unc_collection;
+        AnaDataCollection anaDataCollection(inputFile, channelId, activeVariables, histConfig.GetItems(),
+                                            true, bkg_names, unc_collection);
 
         for(const auto& category : ana_setup.categories){
             if(!categories_map.count(category))
