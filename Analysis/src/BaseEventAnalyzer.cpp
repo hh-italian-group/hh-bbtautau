@@ -299,7 +299,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                                          signalObjectSelector.GetTauVSmuDiscriminator(channelId).second,
                                                          signalObjectSelector.GetTauVSjetDiscriminator().second,
                                                          unc_source, unc_scale);
-                            double lepton_trigger = lepton_weight->GetTriggerWeight(*event, unc_source, unc_scale);
+                            double lepton_trigger = lepton_weight->GetTriggerWeight(*event, unc_scale);
 
                             auto btag_weight = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(
                                     mc_corrections::WeightType::BTag);
@@ -333,7 +333,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                                      signalObjectSelector.GetTauVSmuDiscriminator(channelId).second,
                                                      signalObjectSelector.GetTauVSjetDiscriminator().second,
                                                      unc_source, unc_scale);
-                        double lepton_trigger = lepton_weight->GetTriggerWeight(*event, unc_source, unc_scale);
+                        double lepton_trigger = lepton_weight->GetTriggerWeight(*event, unc_scale);
 
                         auto btag_weight = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(
                                 mc_corrections::WeightType::BTag);
