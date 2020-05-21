@@ -25,8 +25,10 @@ public:
         vars(ParseVarSet(args.vars()))
     {
         histConfig.Parse(ana_setup.hist_cfg);
-        anaDataCollection = std::make_shared<AnaDataCollection>(inputFile, args.channel(), nullptr, vars,
-                                                                histConfig.GetItems());
+        std::shared_ptr<ModellingUncertaintyCollection> unc_collection;
+        std::set<std::string> bkg_names;
+        anaDataCollection = std::make_shared<AnaDataCollection>(inputFile, args.channel(), vars, histConfig.GetItems(),
+                                                                true, bkg_names, unc_collection);
     }
 
     void Run()
