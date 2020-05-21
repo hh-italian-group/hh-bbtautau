@@ -4,6 +4,8 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include "hh-bbtautau/Analysis/include/BaseEventAnalyzer.h"
 #include "h-tautau/Core/include/AnalysisTypes.h"
+#include "h-tautau/McCorrections/include/GenEventWeight.h"
+
 #include "AnalysisTools/Run/include/MultiThread.h"
 
 namespace analysis {
@@ -64,6 +66,7 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfo& event, b
                                                                           {DiscriminatorWP::Tight, 0}};
     EventCategorySet categories;
     // const bool is_boosted =  false;
+
     auto fatJet = SignalObjectSelector::SelectFatJet(event.GetEventCandidate(), event.GetSelectedSignalJets());
     const bool is_boosted = fatJet != nullptr;
     bool is_VBF = false;
@@ -290,16 +293,22 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                         } else {
                             auto lepton_weight = eventWeights_HH->GetProviderT<mc_corrections::LeptonWeights>(
                                     mc_corrections::WeightType::LeptonTrigIdIso);
-                            double total_lepton_weight = lepton_weight->Get(*event);
+
+                            double lepton_id_iso = lepton_weight->GetIdIsoWeight(*event,
+                                                         signalObjectSelector.GetTauVSeDiscriminator(channelId).second,
+                                                         signalObjectSelector.GetTauVSmuDiscriminator(channelId).second,
+                                                         signalObjectSelector.GetTauVSjetDiscriminator().second,
+                                                         unc_source, unc_scale);
+                            double lepton_trigger = lepton_weight->GetTriggerWeight(*event, unc_source, unc_scale);
 
                             auto btag_weight = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(
                                     mc_corrections::WeightType::BTag);
-                            double total_btag_weight = btag_weight->Get(*event);
+                            // double total_btag_weight = btag_weight->Get(*event);
 
                             double cross_section = (*summary)->cross_section > 0 ? (*summary)->cross_section :
                                                                                     sample.cross_section;
-                            const double weight = (*event)->weight_total * cross_section
-                                * ana_setup.int_lumi * total_lepton_weight * total_btag_weight
+                            const double weight = (*event)->weight_total * cross_section * (*event)->l1_prefiring_weight
+                                * ana_setup.int_lumi * lepton_id_iso * lepton_trigger /* * total_btag_weight */
                                 / (*summary)->totalShapeWeight * mva_weight_scale;
                             if(sample.sampleType == SampleType::MC) {
                                 dataIds[anaDataId] = std::make_tuple(weight, mva_score);
@@ -316,8 +325,32 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                 const auto& regex_pattern = sync_descriptors.at(n).regex_pattern;
                 for(auto& dataId : dataIds){
                     if(boost::regex_match(dataId.first.GetName(), *regex_pattern)){
+
+                        auto lepton_weight = eventWeights_HH->GetProviderT<mc_corrections::LeptonWeights>(
+                                mc_corrections::WeightType::LeptonTrigIdIso);
+                        double lepton_id_iso = lepton_weight->GetIdIsoWeight(*event,
+                                                     signalObjectSelector.GetTauVSeDiscriminator(channelId).second,
+                                                     signalObjectSelector.GetTauVSmuDiscriminator(channelId).second,
+                                                     signalObjectSelector.GetTauVSjetDiscriminator().second,
+                                                     unc_source, unc_scale);
+                        double lepton_trigger = lepton_weight->GetTriggerWeight(*event, unc_source, unc_scale);
+
+                        auto btag_weight = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(
+                                mc_corrections::WeightType::BTag);
+                        double total_btag_weight = btag_weight->Get(*event);
+
+                        // auto DY_weight =  eventWeights_HH->GetProviderT<
+                        double cross_section = (*summary)->cross_section > 0 ? (*summary)->cross_section :
+                                                                                sample.cross_section;
+
+                        auto gen_weight = eventWeights_HH->GetProviderT<mc_corrections::GenEventWeight>(
+                            mc_corrections::WeightType::GenEventWeight);
+
+                        auto shape_weight = cross_section * gen_weight->Get(*event);
+
                         htt_sync::FillSyncTuple(*event, *sync_descriptors.at(n).sync_tree, ana_setup.period,
-                                                ana_setup.use_svFit,std::get<0>(dataId.second));
+                                                ana_setup.use_svFit,std::get<0>(dataId.second),lepton_id_iso, lepton_trigger,
+                                                total_btag_weight, shape_weight);
                         break;
                     }
                 }
