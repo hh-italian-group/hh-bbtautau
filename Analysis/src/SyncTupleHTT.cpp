@@ -9,8 +9,8 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 namespace htt_sync {
 
 void FillSyncTuple(analysis::EventInfo& event, htt_sync::SyncTuple& sync, analysis::Period /*run_period*/,
-                   bool apply_svFit,
-                   double weight, double lepton_id, double lepton_trigger, double btag_weight, double shape_weight,
+                   bool apply_svFit, double weight, double lepton_id, double lepton_trigger,
+                   double btag_weight, double shape_weight,
                    analysis::mva_study::MvaReader* mva_reader,
                    analysis::EventInfo* event_tau_up,
                    analysis::EventInfo* event_tau_down,
@@ -240,13 +240,13 @@ void FillSyncTuple(analysis::EventInfo& event, htt_sync::SyncTuple& sync, analys
     // sync().topWeight = static_cast<Float_t>(event->weight_top_pt);
     // sync().shapeWeight = static_cast<Float_t>(event->weight_pu * event->weight_bsm_to_sm * event->weight_dy
     //                    * event->weight_ttbar * event->weight_wjets * event->weight_xs);
-    sync().btagWeight = btag_weight;
+    sync().btagWeight = static_cast<Float_t>(btag_weight);
     sync().shape_weight = shape_weight;
     //static_cast<Float_t>(event->weight_btag);
     sync().puweight = static_cast<Float_t>(event->weight_pu * 0.01427658069);
-    sync().leptonidisoWeight = lepton_id;
+    sync().leptonidisoWeight = static_cast<Float_t>(lepton_id);
     // static_cast<Float_t>(event->weight_lepton_id_iso);
-    sync().leptontrigWeight = lepton_trigger;
+    sync().leptontrigWeight = static_cast<Float_t>(lepton_trigger);
     sync().final_weight = static_cast<Float_t>(weight);
     // sync().dy_weight = static_cast<Float_t>(dy_weight);
 
