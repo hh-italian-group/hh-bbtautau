@@ -194,7 +194,7 @@ void BaseEventAnalyzer::ProcessSamples(const std::vector<std::string>& sample_na
     for(size_t sample_index = 0; sample_index < sample_names.size(); ++sample_index) {
         const std::string& sample_name = sample_names.at(sample_index);
         if(!sample_descriptors.count(sample_name))
-            throw exception("Sample '%1%' not found.") % sample_name;
+            throw exception("Sample '%1%' not found while processing.") % sample_name;
         SampleDescriptor& sample = sample_descriptors.at(sample_name);
         if(sample.sampleType == SampleType::QCD || (sample.channels.size() && !sample.channels.count(channelId)))
             continue;
@@ -299,13 +299,19 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
 
                             auto btag_weight = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(
                                     mc_corrections::WeightType::BTag);
-                            // double total_btag_weight = btag_weight->Get(*event);
+
+                            double total_btag_weight = eventCategory.HasBtagConstraint() ? btag_weight->Get(*event) : 1;
+
+                            double l1_prefiring_weight = (ana_setup.period == Period::Run2016
+                                                          || ana_setup.period == Period::Run2017) ?
+                                                          (*event)->l1_prefiring_weight : 1;
 
                             double cross_section = (*summary)->cross_section > 0 ? (*summary)->cross_section :
                                                                                     sample.cross_section;
-                            const double weight = (*event)->weight_total * cross_section * (*event)->l1_prefiring_weight
-                                * ana_setup.int_lumi * lepton_id_iso * lepton_trigger
-                                / (*summary)->totalShapeWeight * mva_weight_scale;
+                            const double weight = (*event)->weight_total * cross_section *  ana_setup.int_lumi
+                                                   * lepton_id_iso * lepton_trigger
+                                                   * l1_prefiring_weight * total_btag_weight
+                                                   / (*summary)->totalShapeWeight * mva_weight_scale;
                             if(sample.sampleType == SampleType::MC) {
                                 dataIds[anaDataId] = std::make_tuple(weight, mva_score);
                             } else
