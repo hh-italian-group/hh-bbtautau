@@ -194,7 +194,7 @@ void BaseEventAnalyzer::ProcessSamples(const std::vector<std::string>& sample_na
     for(size_t sample_index = 0; sample_index < sample_names.size(); ++sample_index) {
         const std::string& sample_name = sample_names.at(sample_index);
         if(!sample_descriptors.count(sample_name))
-            throw exception("Sample '%1%' not found.") % sample_name;
+            throw exception("Sample '%1%' not found while processing.") % sample_name;
         SampleDescriptor& sample = sample_descriptors.at(sample_name);
         if(sample.sampleType == SampleType::QCD || (sample.channels.size() && !sample.channels.count(channelId)))
             continue;
@@ -289,17 +289,29 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                         } else {
                             auto lepton_weight = eventWeights_HH->GetProviderT<mc_corrections::LeptonWeights>(
                                     mc_corrections::WeightType::LeptonTrigIdIso);
-                            double total_lepton_weight = lepton_weight->Get(*event);
+
+                            double lepton_id_iso = lepton_weight->GetIdIsoWeight(*event,
+                                                         signalObjectSelector.GetTauVSeDiscriminator(channelId).second,
+                                                         signalObjectSelector.GetTauVSmuDiscriminator(channelId).second,
+                                                         signalObjectSelector.GetTauVSjetDiscriminator().second,
+                                                         unc_source, unc_scale);
+                            double lepton_trigger = lepton_weight->GetTriggerWeight(*event);
 
                             auto btag_weight = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(
                                     mc_corrections::WeightType::BTag);
-                            double total_btag_weight = btag_weight->Get(*event);
+
+                            double total_btag_weight = eventCategory.HasBtagConstraint() ? btag_weight->Get(*event) : 1;
+
+                            double l1_prefiring_weight = (ana_setup.period == Period::Run2016
+                                                          || ana_setup.period == Period::Run2017) ?
+                                                          (*event)->l1_prefiring_weight : 1;
 
                             double cross_section = (*summary)->cross_section > 0 ? (*summary)->cross_section :
                                                                                     sample.cross_section;
-                            const double weight = (*event)->weight_total * cross_section
-                                * ana_setup.int_lumi * total_lepton_weight * total_btag_weight
-                                / (*summary)->totalShapeWeight * mva_weight_scale;
+                            const double weight = (*event)->weight_total * cross_section *  ana_setup.int_lumi
+                                                   * lepton_id_iso * lepton_trigger
+                                                   * l1_prefiring_weight * total_btag_weight
+                                                   / (*summary)->totalShapeWeight * mva_weight_scale;
                             if(sample.sampleType == SampleType::MC) {
                                 dataIds[anaDataId] = std::make_tuple(weight, mva_score);
                             } else
@@ -315,8 +327,30 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                 const auto& regex_pattern = sync_descriptors.at(n).regex_pattern;
                 for(auto& dataId : dataIds){
                     if(boost::regex_match(dataId.first.GetName(), *regex_pattern)){
+
+                        auto lepton_weight = eventWeights_HH->GetProviderT<mc_corrections::LeptonWeights>(
+                                mc_corrections::WeightType::LeptonTrigIdIso);
+                        double lepton_id_iso = lepton_weight->GetIdIsoWeight(*event,
+                                                     signalObjectSelector.GetTauVSeDiscriminator(channelId).second,
+                                                     signalObjectSelector.GetTauVSmuDiscriminator(channelId).second,
+                                                     signalObjectSelector.GetTauVSjetDiscriminator().second,
+                                                     unc_source, unc_scale);
+                        double lepton_trigger = lepton_weight->GetTriggerWeight(*event);
+
+                        auto btag_weight = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(
+                                mc_corrections::WeightType::BTag);
+                        double total_btag_weight = btag_weight->Get(*event);
+                        double cross_section = (*summary)->cross_section > 0 ? (*summary)->cross_section :
+                                                                                sample.cross_section;
+
+                        auto gen_weight = eventWeights_HH->GetProviderT<mc_corrections::GenEventWeight>(
+                            mc_corrections::WeightType::GenEventWeight);
+
+                        auto shape_weight = cross_section * gen_weight->Get(*event);
+
                         htt_sync::FillSyncTuple(*event, *sync_descriptors.at(n).sync_tree, ana_setup.period,
-                                                ana_setup.use_svFit,std::get<0>(dataId.second));
+                                                ana_setup.use_svFit,std::get<0>(dataId.second),lepton_id_iso, lepton_trigger,
+                                                total_btag_weight, shape_weight);
                         break;
                     }
                 }

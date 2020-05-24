@@ -117,7 +117,7 @@ public:
                 std::cout << "Event: " << eventId << std::endl;
             }
 
-            FillSyncTuple(sync, event, summaryInfo, bTagger, debug);
+             FillSyncTuple(sync, event, summaryInfo, bTagger, debug);
         }
         sync.Write();
     }
@@ -360,8 +360,23 @@ private:
         if(syncMode == SyncMode::HH && !event_info->HasBjetPair()) return;
         if(syncMode == SyncMode::HH && !signalObjectSelector.PassLeptonVetoSelection(event)) return;
         if(syncMode == SyncMode::HH && !signalObjectSelector.PassMETfilters(event,run_period,args.isData())) return;
-        htt_sync::FillSyncTuple(*event_info, sync, run_period, args.use_svFit(), 1,
+        htt_sync::FillSyncTuple(*event_info, sync, run_period, args.use_svFit(), 1, 1, 1, 1, 1,
                                 mva_reader.get(), nullptr, nullptr, nullptr, nullptr);
+
+
+    // // htt_sync::FillSyncTuple(*event, *sync_descriptors.at(n).sync_tree, ana_setup.period,
+    // //                         ana_setup.use_svFit,std::get<0>(dataId.second),lepton_id_iso, lepton_trigger,
+    // //                         total_btag_weight, shape_weight);
+    //
+    //
+    // void FillSyncTuple(analysis::EventInfo& event, htt_sync::SyncTuple& sync, analysis::Period /*run_period*/,
+    //                    bool apply_svFit, double weight = 1, double lepton_id =1 , double lepton_trigger =1 ,
+    //                    double btag_weight = 1 , double shape_weight = 1 ,
+    //                    analysis::mva_study::MvaReader* mva_reader,
+    //                    analysis::EventInfo* event_tau_up,
+    //                    analysis::EventInfo* event_tau_down,
+    //                    analysis::EventInfo* event_jet_up,
+    //                    analysis::EventInfo* event_jet_down)
     }
 
 private:
