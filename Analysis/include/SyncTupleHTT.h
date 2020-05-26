@@ -249,6 +249,7 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
     VAR(double, prefiringweight) \
     VAR(double, prefiringweightup) \
     VAR(double, prefiringweightdown) \
+    VAR(double, shape_weight) \
     /**/
 
 #define VAR(type, name) DECLARE_BRANCH_VARIABLE(type, name)
@@ -269,8 +270,7 @@ namespace htt_sync {
 
 void FillSyncTuple(analysis::EventInfo& event, htt_sync::SyncTuple& sync, analysis::Period run_period,
                    bool apply_svFit,
-                   double weight,
-                   //double dy_weight,
+                   double weight, double lepton_id, double lepton_trigger, double btag_weight, double shape_weight,
                    analysis::mva_study::MvaReader* mva_reader = nullptr,
                    analysis::EventInfo* event_tau_up = nullptr,
                    analysis::EventInfo* event_tau_down = nullptr,
