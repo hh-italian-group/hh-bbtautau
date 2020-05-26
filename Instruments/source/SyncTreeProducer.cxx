@@ -31,6 +31,7 @@ struct Arguments {
     OPT_ARG(std::string, jet_unc_source, "");
     OPT_ARG(std::string, jet_uncertainty, "");
     OPT_ARG(std::string, event_id, "");
+    OPT_ARG(std::string, tree_state, "Full");
     OPT_ARG(bool, debug, false);
 };
 
@@ -90,11 +91,12 @@ public:
 
         auto originalFile = root_ext::OpenRootFile(args.input_file());
         auto outputFile = root_ext::CreateRootFile(args.output_file());
-        auto originalTuple = ntuple::CreateEventTuple(tree_name, originalFile.get(), true, ntuple::TreeState::Full);
+        const auto tree_state = Parse<ntuple::TreeState>(args.tree_state());
+        auto originalTuple = ntuple::CreateEventTuple(tree_name, originalFile.get(), true, tree_state);
         const Long64_t n_entries = originalTuple->GetEntries();
 
         SyncTuple sync(args.channel(), outputFile.get(), false);
-        auto summaryTuple = ntuple::CreateSummaryTuple("summary", originalFile.get(), true, ntuple::TreeState::Full);
+        auto summaryTuple = ntuple::CreateSummaryTuple("summary", originalFile.get(), true, tree_state);
         summaryTuple->GetEntry(0);
         auto summaryInfo = std::make_shared<SummaryInfo>(summaryTuple->data(), channel, args.trigger_cfg());
         std::cout << "n_entries " << n_entries << '\n';
@@ -340,6 +342,27 @@ private:
             const auto& kin_fit = event_info->GetKinFitResults(true, 1);
             std::cout << "KinFit: convergence=" << kin_fit.convergence << ", mass=" << kin_fit.mass
                       << ", chi2=" << kin_fit.chi2 << "\n";
+            std::cout << "All jets:\n";
+            for(const auto& jet : event_info->GetEventCandidate().GetJets()) {
+                const DiscriminatorIdResults jet_pu_id(jet->GetPuId());
+                const bool pass_pu_id = jet.GetMomentum().pt() >= 50 || jet_pu_id.Passed(DiscriminatorWP::Loose);
+                std::cout << '\t' << LorentzVectorToString(jet.GetMomentum()) << ", hadronFlavour = "
+                          << jet->hadronFlavour() << ", pass JetPuID = " << pass_pu_id
+                          << ", DeepFlavour = " << jet->deepFlavour() << ", HH-btag = " << jet->hh_btag() << '\n';
+            }
+            std::cout << "All taus\n";
+            for(const auto& tau : event_info->GetEventCandidate().GetLeptons()) {
+                if(tau->leg_type() != LegType::tau) continue;
+                std::cout << '\t' << LorentzVectorToString(tau.GetMomentum());
+                if(!args.isData())
+                    std::cout << ", gen_match=" << tau->gen_match();
+                std::cout << ", charge=" << tau->charge() << ", dz=" << tau->dz()
+                          << ", decayMode=" << tau->decayMode()
+                          << ", VSe=" << tau->GetRawValue(TauIdDiscriminator::byDeepTau2017v2p1VSe)
+                          << ", VSmu=" << tau->GetRawValue(TauIdDiscriminator::byDeepTau2017v2p1VSmu)
+                          << ", VSjet=" << tau->GetRawValue(TauIdDiscriminator::byDeepTau2017v2p1VSjet)
+                          << '\n';
+            }
         }
         bool pass_trigger = event_info->GetTriggerResults().AnyAcceptAndMatchEx(triggerPaths.at(trig_key),
                 event_info->GetFirstLeg().GetMomentum().pt(), event_info->GetSecondLeg().GetMomentum().pt());
