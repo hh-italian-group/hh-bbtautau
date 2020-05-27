@@ -228,7 +228,11 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                           std::shared_ptr<ntuple::EventTuple> tuple,
                                           const ntuple::ProdSummary& prod_summary)
 {
-    const auto summary = std::make_shared<SummaryInfo>(prod_summary,channelId, ana_setup.trigger_path);
+    std::vector<std::string> vbf_triggers;
+    if(ana_setup.trigger_vbf.count(channelId))
+        vbf_triggers = ana_setup.trigger_vbf.at(channelId);
+    const auto summary = std::make_shared<SummaryInfo>(prod_summary, channelId, ana_setup.trigger_path,
+                                                       trigger_patterns, vbf_triggers);
     std::set<UncertaintySource> unc_sources = { UncertaintySource::None };
     if(sample.sampleType != SampleType::Data)
         unc_sources = ana_setup.unc_sources;
@@ -243,23 +247,32 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                            summary, unc_source, unc_scale);
 
             if(!event) continue;
-            const bool pass_normal_trigger = event->GetTriggerResults().AnyAcceptAndMatchEx(trigger_patterns,
-                                                                                    event->GetLeg(1).GetMomentum().pt(),
-                                                                                    event->GetLeg(2).GetMomentum().pt());
-            bool pass_vbf_trigger = false;
-            if(event->HasVBFjetPair() && ana_setup.trigger_vbf.count(channelId)) {
-                const std::vector<boost::multiprecision::uint256_t> jet_trigger_match = {
-                    event->GetVBFJet(1)->triggerFilterMatch(),
-                    event->GetVBFJet(2)->triggerFilterMatch()
-                };
-
-                pass_vbf_trigger = event->GetTriggerResults().AnyAcceptAndMatchEx(ana_setup.trigger_vbf.at(channelId),
-                event->GetLeg(1).GetMomentum().pt(), event->GetLeg(2).GetMomentum().pt(), jet_trigger_match);
-            }
+            const bool pass_normal_trigger = event->PassNormalTriggers();
+            const bool pass_vbf_trigger = event->PassVbfTriggers();
             const bool pass_trigger = pass_normal_trigger || pass_vbf_trigger;
             if(!pass_trigger) continue;
 
             bbtautau::AnaTupleWriter::DataIdMap dataIds;
+            std::map<size_t, bool> sync_event_selected;
+
+            double lepton_id_iso_weight = 1., trigger_weight = 1., prescale_weight = 1., l1_prefiring_weight = 1.;
+
+            if(sample.sampleType != SampleType::Data) {
+                auto lepton_weight_provider = eventWeights_HH->GetProviderT<mc_corrections::LeptonWeights>(
+                        mc_corrections::WeightType::LeptonTrigIdIso);
+                lepton_id_iso_weight = lepton_weight_provider->GetIdIsoWeight(*event,
+                        signalObjectSelector.GetTauVSeDiscriminator(channelId).second,
+                        signalObjectSelector.GetTauVSmuDiscriminator(channelId).second,
+                        signalObjectSelector.GetTauVSjetDiscriminator().second,
+                        unc_source, unc_scale);
+                trigger_weight = lepton_weight_provider->GetTriggerWeight(*event,
+                        signalObjectSelector.GetTauVSjetDiscriminator().second, unc_source, unc_scale);
+                prescale_weight = lepton_weight_provider->GetTriggerPrescaleWeight(*event);
+
+                if(ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017)
+                    l1_prefiring_weight = (*event)->l1_prefiring_weight;
+            }
+
             const auto eventCategories = DetermineEventCategories(*event, pass_vbf_trigger);
             for(auto eventCategory : eventCategories) {
                 const EventRegion eventRegion = DetermineEventRegion(*event, eventCategory);
@@ -270,91 +283,58 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                     for(const auto& subCategory : sub_categories_to_process) {
                         if(!eventSubCategory.Implies(subCategory)) continue;
                         SelectionCut mva_cut;
-                        double mva_score = 0, mva_weight_scale = 1.;
-                        if(subCategory.TryGetLastMvaCut(mva_cut)) {
+                        double mva_score = 0;
+                        if(subCategory.TryGetLastMvaCut(mva_cut))
                             mva_score = mva_scores.at(mva_cut);
-                            const auto& mva_params = mva_setup->selections.at(mva_cut);
-                            if(mva_params.training_range.is_initialized()
-                                    && mva_params.samples.count(sample.name)) {
-                                if(mva_params.training_range->Contains((*event)->split_id)) continue;
-                                mva_weight_scale = double((*summary)->n_splits)
-                                        / ((*summary)->n_splits - mva_params.training_range->size());
-                            }
-                        }
                         event->SetMvaScore(mva_score);
                         const EventAnalyzerDataId anaDataId(eventCategory, subCategory, region,
                                                             unc_source, unc_scale, sample_wp.full_name);
+                        double btag_weight = 1., shape_weight = 1.;
                         if(sample.sampleType == SampleType::Data) {
                             dataIds[anaDataId] = std::make_tuple(1., mva_score);
                         } else {
-                            auto lepton_weight = eventWeights_HH->GetProviderT<mc_corrections::LeptonWeights>(
-                                    mc_corrections::WeightType::LeptonTrigIdIso);
 
-                            double lepton_id_iso = lepton_weight->GetIdIsoWeight(*event,
-                                                         signalObjectSelector.GetTauVSeDiscriminator(channelId).second,
-                                                         signalObjectSelector.GetTauVSmuDiscriminator(channelId).second,
-                                                         signalObjectSelector.GetTauVSjetDiscriminator().second,
-                                                         unc_source, unc_scale);
-                            double lepton_trigger = lepton_weight->GetTriggerWeight(*event);
-
-                            auto btag_weight = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(
-                                    mc_corrections::WeightType::BTag);
-
-                            double total_btag_weight = eventCategory.HasBtagConstraint() ? btag_weight->Get(*event) : 1;
-
-                            double l1_prefiring_weight = (ana_setup.period == Period::Run2016
-                                                          || ana_setup.period == Period::Run2017) ?
-                                                          (*event)->l1_prefiring_weight : 1;
+                            if(eventCategory.HasBtagConstraint()) {
+                                auto btag_weight_provider = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(
+                                        mc_corrections::WeightType::BTag);
+                                btag_weight = btag_weight_provider->Get(*event);
+                            }
 
                             double cross_section = (*summary)->cross_section > 0 ? (*summary)->cross_section :
                                                                                     sample.cross_section;
+
+                            auto gen_weight_provider = eventWeights_HH->GetProviderT<mc_corrections::GenEventWeight>(
+                                    mc_corrections::WeightType::GenEventWeight);
+                            shape_weight = cross_section * gen_weight_provider->Get(*event);
                             const double weight = (*event)->weight_total * cross_section *  ana_setup.int_lumi
-                                                   * lepton_id_iso * lepton_trigger
-                                                   * l1_prefiring_weight * total_btag_weight
-                                                   / (*summary)->totalShapeWeight * mva_weight_scale;
+                                                   * lepton_id_iso_weight * trigger_weight * prescale_weight
+                                                   * l1_prefiring_weight * btag_weight
+                                                   / (*summary)->totalShapeWeight;
                             if(sample.sampleType == SampleType::MC) {
                                 dataIds[anaDataId] = std::make_tuple(weight, mva_score);
                             } else
                                 ProcessSpecialEvent(sample, sample_wp, anaDataId, *event, weight,
                                                     (*summary)->totalShapeWeight, dataIds, cross_section);
                         }
+
+                        for(size_t n = 0; n < sync_descriptors.size(); ++n) {
+                            if(sync_event_selected[n]) continue;
+                            const auto& regex_pattern = sync_descriptors.at(n).regex_pattern;
+                            for(auto& dataId : dataIds) {
+                                if(!boost::regex_match(dataId.first.GetName(), *regex_pattern)) continue;
+                                htt_sync::FillSyncTuple(*event, *sync_descriptors.at(n).sync_tree, ana_setup.period,
+                                                        ana_setup.use_svFit, std::get<0>(dataId.second),
+                                                        lepton_id_iso_weight, trigger_weight, btag_weight,
+                                                        shape_weight);
+                                sync_event_selected[n] = true;
+                                break;
+                            }
+                        }
                     }
                 }
             }
             //dataId
             anaTupleWriter.AddEvent(*event, dataIds, pass_vbf_trigger);
-            for (size_t n = 0; n < sync_descriptors.size(); ++n) {
-                const auto& regex_pattern = sync_descriptors.at(n).regex_pattern;
-                for(auto& dataId : dataIds){
-                    if(boost::regex_match(dataId.first.GetName(), *regex_pattern)){
-
-                        auto lepton_weight = eventWeights_HH->GetProviderT<mc_corrections::LeptonWeights>(
-                                mc_corrections::WeightType::LeptonTrigIdIso);
-                        double lepton_id_iso = lepton_weight->GetIdIsoWeight(*event,
-                                                     signalObjectSelector.GetTauVSeDiscriminator(channelId).second,
-                                                     signalObjectSelector.GetTauVSmuDiscriminator(channelId).second,
-                                                     signalObjectSelector.GetTauVSjetDiscriminator().second,
-                                                     unc_source, unc_scale);
-                        double lepton_trigger = lepton_weight->GetTriggerWeight(*event);
-
-                        auto btag_weight = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(
-                                mc_corrections::WeightType::BTag);
-                        double total_btag_weight = btag_weight->Get(*event);
-                        double cross_section = (*summary)->cross_section > 0 ? (*summary)->cross_section :
-                                                                                sample.cross_section;
-
-                        auto gen_weight = eventWeights_HH->GetProviderT<mc_corrections::GenEventWeight>(
-                            mc_corrections::WeightType::GenEventWeight);
-
-                        auto shape_weight = cross_section * gen_weight->Get(*event);
-
-                        htt_sync::FillSyncTuple(*event, *sync_descriptors.at(n).sync_tree, ana_setup.period,
-                                                ana_setup.use_svFit,std::get<0>(dataId.second),lepton_id_iso, lepton_trigger,
-                                                total_btag_weight, shape_weight);
-                        break;
-                    }
-                }
-            }
         }
     }
 }
