@@ -297,7 +297,10 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                                          unc_source, unc_scale);
                             double lepton_trigger = lepton_weight->GetTriggerWeight(*event);
 
-                            auto btag_weight = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(
+                            auto btag_weight = eventWeights_HH->GetProviderT<mc_corrections::JetPuIdWeights>(
+                                    mc_corrections::WeightType::JetPuIdWeights);
+
+                            auto jet_pu_id_weight = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(
                                     mc_corrections::WeightType::BTag);
 
                             double total_btag_weight = eventCategory.HasBtagConstraint() ? btag_weight->Get(*event) : 1;
