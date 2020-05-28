@@ -8,7 +8,6 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "hh-bbtautau/McCorrections/include/EventWeights_HH.h"
 #include "h-tautau/Analysis/include/SignalObjectSelector.h"
 #include "h-tautau/McCorrections/include/GenEventWeight.h"
-#include "h-tautau/McCorrections/include/JetPuIdWeights.h"
 #include "DYModel.h"
 #include "EventAnalyzerCore.h"
 #include "MvaReader.h"

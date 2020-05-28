@@ -5,6 +5,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "hh-bbtautau/Analysis/include/BaseEventAnalyzer.h"
 #include "h-tautau/Core/include/AnalysisTypes.h"
 #include "AnalysisTools/Run/include/MultiThread.h"
+#include "h-tautau/McCorrections/include/JetPuIdWeights.h"
 
 namespace analysis {
 
@@ -268,6 +269,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                         unc_source, unc_scale);
                 trigger_weight = lepton_weight_provider->GetTriggerWeight(*event,
                         signalObjectSelector.GetTauVSjetDiscriminator().second, unc_source, unc_scale);
+
                 prescale_weight = lepton_weight_provider->GetTriggerPrescaleWeight(*event);
 
                 if(ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017)
@@ -313,7 +315,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                             shape_weight = cross_section * gen_weight_provider->Get(*event);
                             const double weight = (*event)->weight_total * cross_section *  ana_setup.int_lumi
                                                    * lepton_id_iso_weight * trigger_weight * prescale_weight
-                                                   * l1_prefiring_weight * btag_weight
+                                                   * l1_prefiring_weight * btag_weight * jet_pu_id_weight
                                                    / (*summary)->totalShapeWeight;
                             if(sample.sampleType == SampleType::MC) {
                                 dataIds[anaDataId] = std::make_tuple(weight, mva_score);
