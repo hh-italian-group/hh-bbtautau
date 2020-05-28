@@ -10,7 +10,7 @@ namespace htt_sync {
 
 void FillSyncTuple(analysis::EventInfo& event, htt_sync::SyncTuple& sync, analysis::Period /*run_period*/,
                    bool apply_svFit, double weight, double lepton_id, double lepton_trigger,
-                   double btag_weight, double shape_weight,
+                   double btag_weight, double shape_weight, double jet_pu_id_weight,
                    analysis::mva_study::MvaReader* mva_reader,
                    analysis::EventInfo* event_tau_up,
                    analysis::EventInfo* event_tau_down,
