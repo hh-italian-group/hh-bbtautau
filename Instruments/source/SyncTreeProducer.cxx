@@ -383,7 +383,7 @@ private:
         if(syncMode == SyncMode::HH && !event_info->HasBjetPair()) return;
         if(syncMode == SyncMode::HH && !signalObjectSelector.PassLeptonVetoSelection(event)) return;
         if(syncMode == SyncMode::HH && !signalObjectSelector.PassMETfilters(event,run_period,args.isData())) return;
-        htt_sync::FillSyncTuple(*event_info, sync, run_period, args.use_svFit(), 1, 1, 1, 1, 1,
+        htt_sync::FillSyncTuple(*event_info, sync, run_period, args.use_svFit(), 1, 1, 1, 1, 1, 1,
                                 mva_reader.get(), nullptr, nullptr, nullptr, nullptr);
 
 

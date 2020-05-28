@@ -5,6 +5,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "hh-bbtautau/Analysis/include/BaseEventAnalyzer.h"
 #include "h-tautau/Core/include/AnalysisTypes.h"
 #include "AnalysisTools/Run/include/MultiThread.h"
+#include "h-tautau/McCorrections/include/JetPuIdWeights.h"
 
 namespace analysis {
 
@@ -255,7 +256,8 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
             bbtautau::AnaTupleWriter::DataIdMap dataIds;
             std::map<size_t, bool> sync_event_selected;
 
-            double lepton_id_iso_weight = 1., trigger_weight = 1., prescale_weight = 1., l1_prefiring_weight = 1.;
+            double lepton_id_iso_weight = 1., trigger_weight = 1., prescale_weight = 1., l1_prefiring_weight = 1.,
+                   jet_pu_id_weight = 1;
 
             if(sample.sampleType != SampleType::Data) {
                 auto lepton_weight_provider = eventWeights_HH->GetProviderT<mc_corrections::LeptonWeights>(
@@ -267,12 +269,17 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                         unc_source, unc_scale);
                 trigger_weight = lepton_weight_provider->GetTriggerWeight(*event,
                         signalObjectSelector.GetTauVSjetDiscriminator().second, unc_source, unc_scale);
+
                 prescale_weight = lepton_weight_provider->GetTriggerPrescaleWeight(*event);
 
                 if(ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017)
                     l1_prefiring_weight = (*event)->l1_prefiring_weight;
-            }
 
+                auto jet_pu_id_weight_provided = eventWeights_HH->GetProviderT<mc_corrections::JetPuIdWeights>(
+                        mc_corrections::WeightType::JetPuIdWeights);
+                jet_pu_id_weight = jet_pu_id_weight_provided->Get(*event);
+
+            }
             const auto eventCategories = DetermineEventCategories(*event, pass_vbf_trigger);
             for(auto eventCategory : eventCategories) {
                 const EventRegion eventRegion = DetermineEventRegion(*event, eventCategory);
@@ -308,7 +315,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                             shape_weight = cross_section * gen_weight_provider->Get(*event);
                             const double weight = (*event)->weight_total * cross_section *  ana_setup.int_lumi
                                                    * lepton_id_iso_weight * trigger_weight * prescale_weight
-                                                   * l1_prefiring_weight * btag_weight
+                                                   * l1_prefiring_weight * btag_weight * jet_pu_id_weight
                                                    / (*summary)->totalShapeWeight;
                             if(sample.sampleType == SampleType::MC) {
                                 dataIds[anaDataId] = std::make_tuple(weight, mva_score);
@@ -325,7 +332,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                 htt_sync::FillSyncTuple(*event, *sync_descriptors.at(n).sync_tree, ana_setup.period,
                                                         ana_setup.use_svFit, std::get<0>(dataId.second),
                                                         lepton_id_iso_weight, trigger_weight, btag_weight,
-                                                        shape_weight);
+                                                        jet_pu_id_weight, shape_weight);
                                 sync_event_selected[n] = true;
                                 break;
                             }
