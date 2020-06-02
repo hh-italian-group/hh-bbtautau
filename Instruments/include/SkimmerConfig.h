@@ -75,6 +75,7 @@ struct SkimJob {
     bool isData{false};
     mc_corrections::WeightingMode weights;
     std::string cross_section;
+    boost::optional<double> max_gen_weight;
 
     bool ProduceMergedOutput() const;
     double GetCrossSection(const CrossSectionProvider& xs_provider) const;

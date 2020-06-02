@@ -228,8 +228,8 @@ private:
                 }
                 std::cout << "\n\t\textracting summary" << std::endl;
                 double weight_xs, weight_xs_withTopPt;
-                const ProdSummary desc_summary = GetCombinedSummary(*desc_iter, inputFiles, weight_xs,
-                                                                    weight_xs_withTopPt);
+                const ProdSummary desc_summary = GetCombinedSummary(*desc_iter, inputFiles, job.max_gen_weight,
+                                                                    weight_xs, weight_xs_withTopPt);
                 if(summary)
                     ntuple::MergeProdSummaries(*summary, desc_summary);
                 else
@@ -278,6 +278,7 @@ private:
                                 continue;
                             }
                             processed_events.insert(fullId);
+                            if(job.max_gen_weight && std::abs(event.genEventWeight) > *job.max_gen_weight) continue;
 
                             auto event_ptr = std::make_shared<Event>(event);
                             event_ptr->weight_xs = weight_xs;
@@ -362,7 +363,7 @@ private:
 
 
     ntuple::ProdSummary GetSummaryWithWeights(const FileDescriptor& desc, const std::shared_ptr<TFile>& file,
-                                              size_t file_index)
+                                              size_t file_index, const boost::optional<double>& max_gen_weight)
     {
         if(weighting_mode.count(mc_corrections::WeightType::PileUp)) {
             auto pile_up_weight = eventWeights_HH->GetProviderT<mc_corrections::PileUpWeightEx>(
@@ -370,22 +371,23 @@ private:
             auto dataset_name = RemoveFileExtension(desc.inputs.at(file_index));
             pile_up_weight->SetActiveDataset(dataset_name);
         }
-        return eventWeights_HH->GetSummaryWithWeights(file, weighting_mode);
+        return eventWeights_HH->GetSummaryWithWeights(file, weighting_mode, max_gen_weight);
     }
 
     ProdSummary GetCombinedSummary(const FileDescriptor& desc, const std::vector<std::shared_ptr<TFile>>& input_files,
-                                   double& weight_xs, double& weight_xs_withTopPt)
+                                   const boost::optional<double>& max_gen_weight, double& weight_xs,
+                                   double& weight_xs_withTopPt)
     {
         if(!input_files.size())
             throw exception("Input files list is empty.");
         auto file_iter = input_files.begin();
-        auto summary = GetSummaryWithWeights(desc, *file_iter++, 0);
+        auto summary = GetSummaryWithWeights(desc, *file_iter++, 0, max_gen_weight);
         if(!desc.first_input_is_ref) {
             unsigned n=1;
             for(; file_iter != input_files.end(); ++file_iter, ++n) {
                 if (desc.input_is_partial.size() && desc.input_is_partial.at(n) == true)
                     continue;
-                auto other_summary = GetSummaryWithWeights(desc, *file_iter, n);
+                auto other_summary = GetSummaryWithWeights(desc, *file_iter, n, max_gen_weight);
                 ntuple::MergeProdSummaries(summary, other_summary);
             }
         }

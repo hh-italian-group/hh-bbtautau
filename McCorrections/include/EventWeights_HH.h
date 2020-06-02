@@ -14,6 +14,7 @@ public:
     EventWeights_HH(Period period, const BTagger& bTagger, const WeightingMode& mode = {});
 
     ntuple::ProdSummary GetSummaryWithWeights(const std::shared_ptr<TFile>& file, const WeightingMode& weighting_mode,
+                                              const boost::optional<double>& max_gen_weight,
                                               bool control_duplicates = true) const;
 
     std::vector<double> GetTotalShapeWeights(const std::shared_ptr<TFile>& file, const WeightingMode& weighting_mode,

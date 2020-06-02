@@ -50,6 +50,7 @@ EventWeights_HH::EventWeights_HH(Period period, const BTagger& bTagger, const We
 
 ntuple::ProdSummary EventWeights_HH::GetSummaryWithWeights(const std::shared_ptr<TFile>& file,
                                                            const WeightingMode& weighting_mode,
+                                                           const boost::optional<double>& max_gen_weight,
                                                            bool control_duplicates) const
 {
     static const WeightingMode shape_weights(WeightType::PileUp, WeightType::BSM_to_SM, WeightType::DY,
@@ -71,6 +72,7 @@ ntuple::ProdSummary EventWeights_HH::GetSummaryWithWeights(const std::shared_ptr
         using EventIdSet = std::set<EventIdentifier>;
         EventIdSet processed_events;
         for(const auto& event : *all_events) {
+            if(max_gen_weight && std::abs(event.genEventWeight) > *max_gen_weight) continue;
             if(control_duplicates) {
                 const EventIdentifier Id(event.run, event.lumi, event.evt);
                 if(processed_events.count(Id)) {
@@ -79,7 +81,7 @@ ntuple::ProdSummary EventWeights_HH::GetSummaryWithWeights(const std::shared_ptr
                 }
                 processed_events.insert(Id);
             }
-            
+
             summary.totalShapeWeight += GetTotalWeight(event, mode);
             if(calc_withTopPt)
                 summary.totalShapeWeight_withTopPt += GetTotalWeight(event, mode_withTopPt);

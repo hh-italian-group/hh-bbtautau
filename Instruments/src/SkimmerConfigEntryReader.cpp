@@ -70,6 +70,7 @@ void SkimJobEntryReader::EndEntry()
     CheckReadParamCounts("weights", 1, Condition::less_equal);
     CheckReadParamCounts("isData", 1, Condition::less_equal);
     CheckReadParamCounts("cross_section", 1, Condition::less_equal);
+    CheckReadParamCounts("max_gen_weight", 1, Condition::less_equal);
 
     const size_t n_files = GetReadParamCounts("file");
     const size_t n_files_ex = GetReadParamCounts("file_ex");
@@ -93,6 +94,7 @@ void SkimJobEntryReader::ReadParameter(const std::string& param_name, const std:
     ParseEntryList("weights", current.weights);
     ParseEntry("isData", current.isData);
     ParseEntry("cross_section", current.cross_section);
+    ParseEntry<boost::optional<double>, double>("max_gen_weight", current.max_gen_weight);
 }
 
 void SkimJobEntryReader::ParseFileDescriptor(const std::string& param_name, const std::string& param_value)
