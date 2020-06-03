@@ -332,7 +332,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                 htt_sync::FillSyncTuple(*event, *sync_descriptors.at(n).sync_tree, ana_setup.period,
                                                         ana_setup.use_svFit, std::get<0>(dataId.second),
                                                         lepton_id_iso_weight, trigger_weight, btag_weight,
-                                                        jet_pu_id_weight, shape_weight);
+                                                        shape_weight, jet_pu_id_weight);
                                 sync_event_selected[n] = true;
                                 break;
                             }
