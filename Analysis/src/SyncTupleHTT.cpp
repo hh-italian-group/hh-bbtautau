@@ -257,7 +257,7 @@ void FillSyncTuple(analysis::EventInfo& event, htt_sync::SyncTuple& sync, analys
     sync().final_weight = static_cast<Float_t>(weight);
 
     sync().jet_pu_id_weight = static_cast<Float_t>(jet_pu_id_weight);
-    // sync().dy_weight = static_cast<Float_t>(dy_weight);
+     // sync().dy_weight = static_cast<Float_t>(dy_weight);
 
     sync().lhe_n_b_partons = static_cast<int>(event->lhe_n_b_partons);
     sync().lhe_n_partons = static_cast<int>(event->lhe_n_partons);
@@ -335,7 +335,7 @@ void FillSyncTuple(analysis::EventInfo& event, htt_sync::SyncTuple& sync, analys
         sync().costheta_b1hbb = analysis::four_bodies::Calculate_cosTheta_2bodies(b1, Hbb);
         sync().costheta_htautau_svhhMET = COND_VAL(fill_sv, analysis::four_bodies::Calculate_cosTheta_2bodies(*event.GetHiggsTTMomentum(true),
                                          *event.GetResonanceMomentum(false,true)));
-}
+    }
 
     select_jets(event_tau_up);
     sync().jpt_tau_ES_up_1 = COND_VAL(jets_pt20.size() >= 1, jets_pt20.at(0)->GetMomentum().Pt());
