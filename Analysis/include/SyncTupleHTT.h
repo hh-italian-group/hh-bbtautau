@@ -250,6 +250,11 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
     VAR(double, prefiringweightup) \
     VAR(double, prefiringweightdown) \
     VAR(double, shape_weight) \
+    VAR(double, jet_pu_id_weight) \
+    VAR(double, bjet_hh_btag_1) \
+    VAR(double, bjet_hh_btag_2) \
+    VAR(double, VBFjet_hh_btag_1) \
+    VAR(double, VBFjet_hh_btag_2) \
     /**/
 
 #define VAR(type, name) DECLARE_BRANCH_VARIABLE(type, name)

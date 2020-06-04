@@ -8,7 +8,7 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 
 namespace htt_sync {
 
-void FillSyncTuple(analysis::EventInfo& event, htt_sync::SyncTuple& sync, analysis::Period /*run_period*/,
+void FillSyncTuple(analysis::EventInfo& event, htt_sync::SyncTuple& sync, analysis::Period run_period,
                    bool apply_svFit, double weight, double lepton_id, double lepton_trigger,
                    double btag_weight, double shape_weight, double jet_pu_id_weight,
                    analysis::mva_study::MvaReader* mva_reader,
@@ -168,6 +168,8 @@ void FillSyncTuple(analysis::EventInfo& event, htt_sync::SyncTuple& sync, analys
     sync().jpt_vbf_2 = COND_VAL(event.HasVBFjetPair(), event.GetVBFJet(2).GetMomentum().Pt());
     sync().jeta_vbf_2 = COND_VAL(event.HasVBFjetPair(), event.GetVBFJet(2).GetMomentum().Eta());
     sync().jphi_vbf_2 = COND_VAL(event.HasVBFjetPair(), event.GetVBFJet(2).GetMomentum().Phi());
+    sync().VBFjet_hh_btag_1 = COND_VAL(event.HasVBFjetPair(), event.GetVBFJet(1)->hh_btag());
+    sync().VBFjet_hh_btag_2 = COND_VAL(event.HasVBFjetPair(), event.GetVBFJet(2)->hh_btag());
 
 
     sync().extramuon_veto = event->extramuon_veto;
@@ -178,6 +180,7 @@ void FillSyncTuple(analysis::EventInfo& event, htt_sync::SyncTuple& sync, analys
     sync().bjet_phi_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1).GetMomentum().Phi());
     sync().bjet_rawf_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1)->rawf());
     sync().bjet_deepflavour_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1)->deepFlavour());
+
     sync().bjet_pu_id_raw_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1)->GetPuIdRaw());
     sync().bjet_pu_id_raw_2 = COND_VAL(event.HasBjetPair(), event.GetBJet(2)->GetPuIdRaw());
     //sync().bjet_csv_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1)->csv());
@@ -196,7 +199,8 @@ void FillSyncTuple(analysis::EventInfo& event, htt_sync::SyncTuple& sync, analys
     sync().bjet_resolution_2 = COND_VAL(event.HasBjetPair(),
                                         event.GetBJet(2)->resolution() * event.GetBJet(2).GetMomentum().E());
     sync().ht_other_jets = event.GetHT(false, true);
-
+    sync().bjet_hh_btag_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1)->hh_btag());
+    sync().bjet_hh_btag_2 = COND_VAL(event.HasBjetPair(), event.GetBJet(2)->hh_btag());
 
     sync().kinfit_convergence = COND_VAL_INT(event.HasBjetPair() , event.GetKinFitResults(true).convergence);
     sync().m_kinfit = COND_VAL(event.HasBjetPair() && event.GetKinFitResults(true).HasValidMass(),
@@ -242,13 +246,18 @@ void FillSyncTuple(analysis::EventInfo& event, htt_sync::SyncTuple& sync, analys
     //                    * event->weight_ttbar * event->weight_wjets * event->weight_xs);
     sync().btagWeight = static_cast<Float_t>(btag_weight);
     sync().shape_weight = shape_weight;
-    //static_cast<Float_t>(event->weight_btag);
-    sync().puweight = static_cast<Float_t>(event->weight_pu * 0.01427658069);
+
+    std::map<analysis::Period,float> pu_norm = { {analysis::Period::Run2016, 0.02507382333},
+                                                 {analysis::Period::Run2017, 0.01427658069},
+                                                 {analysis::Period::Run2018, 0.005481793015} };
+
+    sync().puweight = static_cast<Float_t>(event->weight_pu * pu_norm.at(run_period));
     sync().leptonidisoWeight = static_cast<Float_t>(lepton_id);
-    // static_cast<Float_t>(event->weight_lepton_id_iso);
     sync().leptontrigWeight = static_cast<Float_t>(lepton_trigger);
     sync().final_weight = static_cast<Float_t>(weight);
-    // sync().dy_weight = static_cast<Float_t>(dy_weight);
+
+    sync().jet_pu_id_weight = static_cast<Float_t>(jet_pu_id_weight);
+     // sync().dy_weight = static_cast<Float_t>(dy_weight);
 
     sync().lhe_n_b_partons = static_cast<int>(event->lhe_n_b_partons);
     sync().lhe_n_partons = static_cast<int>(event->lhe_n_partons);
@@ -339,6 +348,7 @@ void FillSyncTuple(analysis::EventInfo& event, htt_sync::SyncTuple& sync, analys
                                           event_tau_up->GetVBFJet(1).GetMomentum().Pt());
     sync().jpt_tau_ES_up_vbf_2 = COND_VAL(event_tau_up && event_tau_up->HasVBFjetPair(),
                                           event_tau_up->GetVBFJet(2).GetMomentum().Pt());
+
     sync().mva_score_nonRes_kl1_tau_ES_up = COND_VAL(event_tau_up && mva_reader, mva_reader->Evaluate(analysis::mva_study::MvaReader::MvaKey{"mva_smANkin_BSMklscan", 125, 1}, event_tau_up));
     sync().mva_score_lm_320_tau_ES_up = COND_VAL(event_tau_up && mva_reader, mva_reader->Evaluate(analysis::mva_study::MvaReader::MvaKey{"mva_lmANkin", 320, 0}, event_tau_up));
     sync().mva_score_mm_400_tau_ES_up = COND_VAL(event_tau_up && mva_reader, mva_reader->Evaluate(analysis::mva_study::MvaReader::MvaKey{"mva_mmANkin", 400, 0}, event_tau_up));
