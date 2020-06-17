@@ -94,7 +94,8 @@ class CalcMulticlassDNN {
     TTree* outTree = new TTree(channelName.c_str(), channelName.c_str());
 
     // load models and define output branches
-    std::vector<std::pair<std::string, std::string>> modelSpecs = { { "v0", "kl1_c2v1_c31" } };
+    std::vector<std::pair<std::string, std::string>> modelSpecs
+        = { { "v0", "kl1_c2v1_c31" }, { "v0", "kl1_c2v1_c31_vbfbsm" } };
     std::vector<hmc::Model*> models;
     for (const auto& modelSpec : modelSpecs) {
       const std::string& version = modelSpec.first;
@@ -208,10 +209,10 @@ void FeatureProvider::calculate() {
 
   // define vectors for objects
   TLorentzVector b1, b2, vbfj1, vbfj2, lep1, lep2, bH, tauH, vbfjj;
-  b1.SetPtEtaPhiM(floatInputs_.at("b1_pt"), floatInputs_.at("b1_eta"),
-      floatInputs_.at("b1_phi"), floatInputs_.at("b1_m"));
-  b2.SetPtEtaPhiM(floatInputs_.at("b2_pt"), floatInputs_.at("b2_eta"),
-      floatInputs_.at("b2_phi"), floatInputs_.at("b2_m"));
+  b1.SetPtEtaPhiM(floatInputs_.at("b1_pt"), floatInputs_.at("b1_eta"), floatInputs_.at("b1_phi"),
+      floatInputs_.at("b1_m"));
+  b2.SetPtEtaPhiM(floatInputs_.at("b2_pt"), floatInputs_.at("b2_eta"), floatInputs_.at("b2_phi"),
+      floatInputs_.at("b2_m"));
   vbfj1.SetPtEtaPhiM(floatInputs_.at("VBF1_pt"), floatInputs_.at("VBF1_eta"),
       floatInputs_.at("VBF1_phi"), floatInputs_.at("VBF1_m"));
   vbfj2.SetPtEtaPhiM(floatInputs_.at("VBF2_pt"), floatInputs_.at("VBF2_eta"),
