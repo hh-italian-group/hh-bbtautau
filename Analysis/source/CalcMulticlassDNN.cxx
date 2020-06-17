@@ -110,7 +110,7 @@ class CalcMulticlassDNN {
       }
 
       // define branches per output node
-      for (const auto& nodeName : model->getNodeNames()) {
+      for (const auto& nodeName : model->getAllNodeNames()) {
         auto branchName = "mdnn__" + version + "__" + tag + "__" + nodeName;
         outTree->Branch(branchName.c_str(), model->output.getOutputAddress(nodeName),
             (branchName + "/F").c_str());
