@@ -6,6 +6,8 @@
 
 #include "MulticlassInference/MulticlassInference/interface/hmc.h"
 
+#define CHECK(COND, EXPR) ((COND) ? (EXPR) : (hmc::features::EMPTY))
+
 namespace analysis {
 
 struct CalcMulticlassDNNArguments {
@@ -18,7 +20,6 @@ struct CalcMulticlassDNNArguments {
 };
 
 class FeatureProvider {
-
   public:
   FeatureProvider(Period period, Channel channel, TTree* inTree);
 
@@ -34,6 +35,10 @@ class FeatureProvider {
     features_.emplace(featureName, 0.);
   }
 
+  inline bool has(const std::string& featureName) {
+    return features_.count(featureName) == 1;
+  }
+
   inline float get(const std::string& featureName) const {
     const auto& it = features_.find(featureName);
     if (it == features_.end()) {
@@ -45,10 +50,16 @@ class FeatureProvider {
   private:
   Period period_;
   Channel channel_;
-  std::map<std::string, float> floatInputs_;
   std::map<std::string, bool> boolInputs_;
+  std::map<std::string, int> intInputs_;
   std::map<std::string, ULong64_t> ulong64Inputs_;
+  std::map<std::string, float> floatInputs_;
   std::map<std::string, float> features_;
+
+  // currently not needed
+  // bool passBaseline_() const;
+  // bool passEllipseMassCut_(const TLorentzVector& bH, const TLorentzVector& tauH) const;
+  // bool passRectMassCut_(const TLorentzVector& bH, const TLorentzVector& tauH) const;
 };
 
 class CalcMulticlassDNN {
@@ -91,7 +102,7 @@ class CalcMulticlassDNN {
 
       // load the model
       models.push_back(hmc::loadModel(int(args_.period()), version, tag));
-      hmc::Model* model = models.back();
+      hmc::Model*& model = models.back();
 
       // register required features with the feature provider
       for (const auto& featureName : model->getFeatureNames()) {
@@ -152,12 +163,27 @@ FeatureProvider::FeatureProvider(Period period, Channel channel, TTree* inTree)
     : period_(period)
     , channel_(channel) {
   // define names of variables to read
-  // TODO
+  std::vector<std::string> boolNames = { "pass_VBF_trigger" };
+  std::vector<std::string> intNames = { "b1_valid", "b2_valid", "VBF1_valid", "VBF2_valid" };
   std::vector<std::string> ulong64Names = { "evt" };
-  std::vector<std::string> floatNames = { "tau1_pt" };
-  std::vector<std::string> boolNames = {};
+  std::vector<std::string> floatNames = { "b1_pt", "b1_eta", "b1_phi", "b1_m", "b1_DeepFlavour",
+    "b1_DeepFlavour_CvsB", "b1_DeepFlavour_CvsL", "b1_HHbtag", "b2_pt", "b2_eta", "b2_phi", "b2_m",
+    "b2_DeepFlavour", "b2_DeepFlavour_CvsB", "b2_DeepFlavour_CvsL", "b2_HHbtag", "VBF1_pt",
+    "VBF1_eta", "VBF1_phi", "VBF1_m", "VBF1_DeepFlavour", "VBF1_DeepFlavour_CvsB",
+    "VBF1_DeepFlavour_CvsL", "VBF1_HHbtag", "VBF2_pt", "VBF2_eta", "VBF2_phi", "VBF2_m",
+    "VBF2_DeepFlavour", "VBF2_DeepFlavour_CvsB", "VBF2_DeepFlavour_CvsL", "VBF2_HHbtag", "tau1_pt",
+    "tau1_eta", "tau1_phi", "tau1_m", "tau2_pt", "tau2_eta", "tau2_phi", "tau2_m", "MET_pt",
+    "MET_phi" };
 
-  // register them in inputs and set branch addresses
+  // register them in input maps and set branch addresses
+  for (const auto& name : boolNames) {
+    boolInputs_.emplace(name, 0.);
+    inTree->SetBranchAddress(name.c_str(), &boolInputs_.at(name));
+  }
+  for (const auto& name : intNames) {
+    intInputs_.emplace(name, 0.);
+    inTree->SetBranchAddress(name.c_str(), &intInputs_.at(name));
+  }
   for (const auto& name : ulong64Names) {
     ulong64Inputs_.emplace(name, 0);
     inTree->SetBranchAddress(name.c_str(), &ulong64Inputs_.at(name));
@@ -166,13 +192,39 @@ FeatureProvider::FeatureProvider(Period period, Channel channel, TTree* inTree)
     floatInputs_.emplace(name, 0.);
     inTree->SetBranchAddress(name.c_str(), &floatInputs_.at(name));
   }
-  for (const auto& name : boolNames) {
-    boolInputs_.emplace(name, 0.);
-    inTree->SetBranchAddress(name.c_str(), &boolInputs_.at(name));
-  }
 }
 
 void FeatureProvider::calculate() {
+  // check if objects are set
+  bool b1Set = intInputs_.at("b1_valid") == 1;
+  bool b2Set = intInputs_.at("b2_valid") == 1;
+  bool vbfj1Set = intInputs_.at("VBF1_valid") == 1;
+  bool vbfj2Set = intInputs_.at("VBF2_valid") == 1;
+  bool lep1Set = floatInputs_.at("tau1_pt") > 0;
+  bool lep2Set = floatInputs_.at("tau2_pt") > 0;
+  bool bHSet = b1Set && b2Set;
+  bool tauHSet = lep1Set && lep2Set;
+  bool vbfjjSet = vbfj1Set && vbfj2Set;
+
+  // define vectors for objects
+  TLorentzVector b1, b2, vbfj1, vbfj2, lep1, lep2, bH, tauH, vbfjj;
+  b1.SetPtEtaPhiM(floatInputs_.at("b1_pt"), floatInputs_.at("b1_eta"),
+      floatInputs_.at("b1_phi"), floatInputs_.at("b1_m"));
+  b2.SetPtEtaPhiM(floatInputs_.at("b2_pt"), floatInputs_.at("b2_eta"),
+      floatInputs_.at("b2_phi"), floatInputs_.at("b2_m"));
+  vbfj1.SetPtEtaPhiM(floatInputs_.at("VBF1_pt"), floatInputs_.at("VBF1_eta"),
+      floatInputs_.at("VBF1_phi"), floatInputs_.at("VBF1_m"));
+  vbfj2.SetPtEtaPhiM(floatInputs_.at("VBF2_pt"), floatInputs_.at("VBF2_eta"),
+      floatInputs_.at("VBF2_phi"), floatInputs_.at("VBF2_m"));
+  lep1.SetPtEtaPhiM(floatInputs_.at("tau1_pt"), floatInputs_.at("tau1_eta"),
+      floatInputs_.at("tau1_phi"), floatInputs_.at("tau1_m"));
+  lep2.SetPtEtaPhiM(floatInputs_.at("tau2_pt"), floatInputs_.at("tau2_eta"),
+      floatInputs_.at("tau2_phi"), floatInputs_.at("tau2_m"));
+  bH = b1 + b2;
+  tauH = lep1 + lep2;
+  vbfjj = vbfj1 + vbfj2;
+
+  // loop through features and set values
   for (auto& it : features_) {
     if (it.first == "is_mutau") {
       it.second = float(channel_ == Channel::MuTau);
@@ -180,145 +232,143 @@ void FeatureProvider::calculate() {
       it.second = float(channel_ == Channel::ETau);
     } else if (it.first == "is_tautau") {
       it.second = float(channel_ == Channel::TauTau);
-    } else if (it.first == "n_jets_20") {
-      it.second = 0.5;
-    } else if (it.first == "n_bjets_20") {
-      it.second = 0.5;
-    } else if (it.first == "is_vbf_loose_cat") {
-      it.second = 0.5;
-    } else if (it.first == "is_vbf_tight_cat") {
-      it.second = 0.5;
-    } else if (it.first == "is_resolved_1b_cat") {
-      it.second = 0.5;
-    } else if (it.first == "is_resolved_2b_cat") {
-      it.second = 0.5;
-    } else if (it.first == "is_boosted_cat") {
-      it.second = 0.5;
     } else if (it.first == "bjet1_pt") {
-      it.second = 0.5;
+      it.second = CHECK(b1Set, b1.Pt());
     } else if (it.first == "bjet1_eta") {
-      it.second = 0.5;
+      it.second = CHECK(b1Set, b1.Eta());
     } else if (it.first == "bjet1_phi") {
-      it.second = 0.5;
+      it.second = CHECK(b1Set, b1.Phi());
     } else if (it.first == "bjet1_e") {
-      it.second = 0.5;
+      it.second = CHECK(b1Set, b1.E());
     } else if (it.first == "bjet1_deepflavor_b") {
-      it.second = 0.5;
-    } else if (it.first == "bjet1_deepflavor_c") {
-      it.second = 0.5;
+      it.second = CHECK(b1Set, floatInputs_.at("b1_DeepFlavour"));
+    } else if (it.first == "bjet1_deepflavor_cvsb") {
+      it.second = CHECK(b1Set, floatInputs_.at("b1_DeepFlavour_CvsB"));
+    } else if (it.first == "bjet1_deepflavor_cvsl") {
+      it.second = CHECK(b1Set, floatInputs_.at("b1_DeepFlavour_CvsL"));
+    } else if (it.first == "bjet1_hhbtag") {
+      it.second = CHECK(b1Set, floatInputs_.at("b1_HHbtag"));
     } else if (it.first == "bjet2_pt") {
-      it.second = 0.5;
+      it.second = CHECK(b2Set, b2.Pt());
     } else if (it.first == "bjet2_eta") {
-      it.second = 0.5;
+      it.second = CHECK(b2Set, b2.Eta());
     } else if (it.first == "bjet2_phi") {
-      it.second = 0.5;
+      it.second = CHECK(b2Set, b2.Phi());
     } else if (it.first == "bjet2_e") {
-      it.second = 0.5;
+      it.second = CHECK(b2Set, b2.E());
     } else if (it.first == "bjet2_deepflavor_b") {
-      it.second = 0.5;
-    } else if (it.first == "bjet2_deepflavor_c") {
-      it.second = 0.5;
-    } else if (it.first == "jet3_pt") {
-      it.second = 0.5;
-    } else if (it.first == "jet3_eta") {
-      it.second = 0.5;
-    } else if (it.first == "jet3_phi") {
-      it.second = 0.5;
-    } else if (it.first == "jet3_e") {
-      it.second = 0.5;
-    } else if (it.first == "jet3_deepflavor_b") {
-      it.second = 0.5;
-    } else if (it.first == "jet3_deepflavor_c") {
-      it.second = 0.5;
-    } else if (it.first == "jet4_pt") {
-      it.second = 0.5;
-    } else if (it.first == "jet4_eta") {
-      it.second = 0.5;
-    } else if (it.first == "jet4_phi") {
-      it.second = 0.5;
-    } else if (it.first == "jet4_e") {
-      it.second = 0.5;
-    } else if (it.first == "jet4_deepflavor_b") {
-      it.second = 0.5;
-    } else if (it.first == "jet4_deepflavor_c") {
-      it.second = 0.5;
-    } else if (it.first == "jet5_pt") {
-      it.second = 0.5;
-    } else if (it.first == "jet5_eta") {
-      it.second = 0.5;
-    } else if (it.first == "jet5_phi") {
-      it.second = 0.5;
-    } else if (it.first == "jet5_e") {
-      it.second = 0.5;
-    } else if (it.first == "jet5_deepflavor_b") {
-      it.second = 0.5;
-    } else if (it.first == "jet5_deepflavor_c") {
-      it.second = 0.5;
+      it.second = CHECK(b2Set, floatInputs_.at("b2_DeepFlavour"));
+    } else if (it.first == "bjet2_deepflavor_cvsb") {
+      it.second = CHECK(b2Set, floatInputs_.at("b2_DeepFlavour_CvsB"));
+    } else if (it.first == "bjet2_deepflavor_cvsl") {
+      it.second = CHECK(b2Set, floatInputs_.at("b2_DeepFlavour_CvsL"));
+    } else if (it.first == "bjet2_hhbtag") {
+      it.second = CHECK(b2Set, floatInputs_.at("b2_HHbtag"));
     } else if (it.first == "vbfjet1_pt") {
-      it.second = 0.5;
+      it.second = CHECK(vbfj1Set, vbfj1.Pt());
     } else if (it.first == "vbfjet1_eta") {
-      it.second = 0.5;
+      it.second = CHECK(vbfj1Set, vbfj1.Eta());
     } else if (it.first == "vbfjet1_phi") {
-      it.second = 0.5;
+      it.second = CHECK(vbfj1Set, vbfj1.Phi());
     } else if (it.first == "vbfjet1_e") {
-      it.second = 0.5;
+      it.second = CHECK(vbfj1Set, vbfj1.E());
     } else if (it.first == "vbfjet1_deepflavor_b") {
-      it.second = 0.5;
-    } else if (it.first == "vbfjet1_deepflavor_c") {
-      it.second = 0.5;
+      it.second = CHECK(vbfj1Set, floatInputs_.at("VBF1_DeepFlavour"));
+    } else if (it.first == "vbfjet1_deepflavor_cvsb") {
+      it.second = CHECK(vbfj1Set, floatInputs_.at("VBF1_DeepFlavour_CvsB"));
+    } else if (it.first == "vbfjet1_deepflavor_cvsl") {
+      it.second = CHECK(vbfj1Set, floatInputs_.at("VBF1_DeepFlavour_CvsL"));
+    } else if (it.first == "vbfjet1_hhbtag") {
+      it.second = CHECK(vbfj1Set, floatInputs_.at("VBF1_HHbtag"));
     } else if (it.first == "vbfjet2_pt") {
-      it.second = 0.5;
+      it.second = CHECK(vbfj2Set, vbfj2.Pt());
     } else if (it.first == "vbfjet2_eta") {
-      it.second = 0.5;
+      it.second = CHECK(vbfj2Set, vbfj2.Eta());
     } else if (it.first == "vbfjet2_phi") {
-      it.second = 0.5;
+      it.second = CHECK(vbfj2Set, vbfj2.Phi());
     } else if (it.first == "vbfjet2_e") {
-      it.second = 0.5;
+      it.second = CHECK(vbfj2Set, vbfj2.E());
     } else if (it.first == "vbfjet2_deepflavor_b") {
-      it.second = 0.5;
-    } else if (it.first == "vbfjet2_deepflavor_c") {
-      it.second = 0.5;
+      it.second = CHECK(vbfj2Set, floatInputs_.at("VBF2_DeepFlavour"));
+    } else if (it.first == "vbfjet2_deepflavor_cvsb") {
+      it.second = CHECK(vbfj2Set, floatInputs_.at("VBF2_DeepFlavour_CvsB"));
+    } else if (it.first == "vbfjet2_deepflavor_cvsl") {
+      it.second = CHECK(vbfj2Set, floatInputs_.at("VBF2_DeepFlavour_CvsL"));
+    } else if (it.first == "vbfjet2_hhbtag") {
+      it.second = CHECK(vbfj1Set, floatInputs_.at("VBF2_HHbtag"));
     } else if (it.first == "lep1_pt") {
-      it.second = 0.5;
+      it.second = CHECK(lep1Set, lep1.Pt());
     } else if (it.first == "lep1_eta") {
-      it.second = 0.5;
+      it.second = CHECK(lep1Set, lep1.Eta());
     } else if (it.first == "lep1_phi") {
-      it.second = 0.5;
+      it.second = CHECK(lep1Set, lep1.Phi());
     } else if (it.first == "lep1_e") {
-      it.second = 0.5;
+      it.second = CHECK(lep1Set, lep1.E());
     } else if (it.first == "lep2_pt") {
-      it.second = 0.5;
+      it.second = CHECK(lep2Set, lep2.Pt());
     } else if (it.first == "lep2_eta") {
-      it.second = 0.5;
+      it.second = CHECK(lep2Set, lep2.Eta());
     } else if (it.first == "lep2_phi") {
-      it.second = 0.5;
+      it.second = CHECK(lep2Set, lep2.Phi());
     } else if (it.first == "lep2_e") {
-      it.second = 0.5;
+      it.second = CHECK(lep2Set, lep2.E());
     } else if (it.first == "met_pt") {
-      it.second = 0.5;
+      it.second = floatInputs_.at("MET_pt");
     } else if (it.first == "met_phi") {
-      it.second = 0.5;
+      it.second = floatInputs_.at("MET_phi");
     } else if (it.first == "bh_pt") {
-      it.second = 0.5;
+      it.second = CHECK(bHSet, bH.Pt());
     } else if (it.first == "bh_eta") {
-      it.second = 0.5;
+      it.second = CHECK(bHSet, bH.Eta());
     } else if (it.first == "bh_phi") {
-      it.second = 0.5;
+      it.second = CHECK(bHSet, bH.Phi());
     } else if (it.first == "bh_e") {
-      it.second = 0.5;
+      it.second = CHECK(bHSet, bH.E());
     } else if (it.first == "tauh_sv_pt") {
-      it.second = 0.5;
+      it.second = CHECK(tauHSet, tauH.Pt());
     } else if (it.first == "tauh_sv_eta") {
-      it.second = 0.5;
+      it.second = CHECK(tauHSet, tauH.Eta());
     } else if (it.first == "tauh_sv_phi") {
-      it.second = 0.5;
+      it.second = CHECK(tauHSet, tauH.Phi());
     } else if (it.first == "tauh_sv_e") {
-      it.second = 0.5;
+      it.second = CHECK(tauHSet, tauH.E());
     } else {
-      throw exception("MulticlassInference: undhandled feature '" + it.first + "'");
+      throw exception("MulticlassInference: unhandled feature '" + it.first + "'");
     }
   }
 }
+
+// bool FeatureProvider::passBaseline_() const {
+//   // currently no distinction between years
+//   if (channel_ == Channel::MuTau) {
+//     return floatInputs_.at("tau1_pt") > 20. && fabs(floatInputs_.at("tau1_eta")) < 2.1
+//         && floatInputs_.at("tau2_pt") > 20. && fabs(floatInputs_.at("tau1_eta")) < 2.3
+//         && boolInputs_.at("pass_VBF_trigger");
+//   } else if (channel_ == Channel::ETau) {
+//     return floatInputs_.at("tau1_pt") > 20. && fabs(floatInputs_.at("tau1_eta")) < 2.1
+//         && floatInputs_.at("tau2_pt") > 20. && fabs(floatInputs_.at("tau1_eta")) < 2.3
+//         && boolInputs_.at("pass_VBF_trigger");
+//   } else if (channel_ == Channel::TauTau) {
+//     return floatInputs_.at("tau1_pt") > 40. && fabs(floatInputs_.at("tau1_eta")) < 2.1
+//         && floatInputs_.at("tau2_pt") > 40. && fabs(floatInputs_.at("tau1_eta")) < 2.1
+//         && boolInputs_.at("pass_VBF_trigger");
+//   } else {
+//     throw exception("unknown channel " + std::to_string(channel_));
+//   }
+// }
+
+// bool FeatureProvider::passEllipseMassCut_(
+//     const TLorentzVector& bH, const TLorentzVector& tauH) const {
+//   auto bHPull = (bH.M() - 111.) / 45.;
+//   auto tauHPull = (tauH.M() - 116.) / 35.;
+//   return (bHPull * bHPull + tauHPull * tauHPull) < 1.;
+// }
+
+// bool FeatureProvider::passRectMassCut_(const TLorentzVector& bH, const TLorentzVector& tauH)
+// const {
+//   // TODO: use fatjet softdrop mass instead of bH mass?
+//   return bH.M() > 90. && bH.M() < 160. && tauH.M() > 79.5 && tauH.M() < 152.5;
+// }
 
 } // namespace analysis
 
