@@ -6,7 +6,7 @@
 
 #include "MulticlassInference/MulticlassInference/interface/hmc.h"
 
-#define CHECK(COND, EXPR) ((COND) ? (EXPR) : (hmc::features::EMPTY))
+#define CHECK_EMPTY(COND, EXPR) ((COND) ? (EXPR) : (hmc::features::EMPTY))
 
 namespace analysis {
 
@@ -233,105 +233,105 @@ void FeatureProvider::calculate() {
     } else if (it.first == "is_tautau") {
       it.second = float(channel_ == Channel::TauTau);
     } else if (it.first == "bjet1_pt") {
-      it.second = CHECK(b1Set, b1.Pt());
+      it.second = CHECK_EMPTY(b1Set, b1.Pt());
     } else if (it.first == "bjet1_eta") {
-      it.second = CHECK(b1Set, b1.Eta());
+      it.second = CHECK_EMPTY(b1Set, b1.Eta());
     } else if (it.first == "bjet1_phi") {
-      it.second = CHECK(b1Set, b1.Phi());
+      it.second = CHECK_EMPTY(b1Set, b1.Phi());
     } else if (it.first == "bjet1_e") {
-      it.second = CHECK(b1Set, b1.E());
+      it.second = CHECK_EMPTY(b1Set, b1.E());
     } else if (it.first == "bjet1_deepflavor_b") {
-      it.second = CHECK(b1Set, floatInputs_.at("b1_DeepFlavour"));
+      it.second = CHECK_EMPTY(b1Set, floatInputs_.at("b1_DeepFlavour"));
     } else if (it.first == "bjet1_deepflavor_cvsb") {
-      it.second = CHECK(b1Set, floatInputs_.at("b1_DeepFlavour_CvsB"));
+      it.second = CHECK_EMPTY(b1Set, floatInputs_.at("b1_DeepFlavour_CvsB"));
     } else if (it.first == "bjet1_deepflavor_cvsl") {
-      it.second = CHECK(b1Set, floatInputs_.at("b1_DeepFlavour_CvsL"));
+      it.second = CHECK_EMPTY(b1Set, floatInputs_.at("b1_DeepFlavour_CvsL"));
     } else if (it.first == "bjet1_hhbtag") {
-      it.second = CHECK(b1Set, floatInputs_.at("b1_HHbtag"));
+      it.second = CHECK_EMPTY(b1Set, floatInputs_.at("b1_HHbtag"));
     } else if (it.first == "bjet2_pt") {
-      it.second = CHECK(b2Set, b2.Pt());
+      it.second = CHECK_EMPTY(b2Set, b2.Pt());
     } else if (it.first == "bjet2_eta") {
-      it.second = CHECK(b2Set, b2.Eta());
+      it.second = CHECK_EMPTY(b2Set, b2.Eta());
     } else if (it.first == "bjet2_phi") {
-      it.second = CHECK(b2Set, b2.Phi());
+      it.second = CHECK_EMPTY(b2Set, b2.Phi());
     } else if (it.first == "bjet2_e") {
-      it.second = CHECK(b2Set, b2.E());
+      it.second = CHECK_EMPTY(b2Set, b2.E());
     } else if (it.first == "bjet2_deepflavor_b") {
-      it.second = CHECK(b2Set, floatInputs_.at("b2_DeepFlavour"));
+      it.second = CHECK_EMPTY(b2Set, floatInputs_.at("b2_DeepFlavour"));
     } else if (it.first == "bjet2_deepflavor_cvsb") {
-      it.second = CHECK(b2Set, floatInputs_.at("b2_DeepFlavour_CvsB"));
+      it.second = CHECK_EMPTY(b2Set, floatInputs_.at("b2_DeepFlavour_CvsB"));
     } else if (it.first == "bjet2_deepflavor_cvsl") {
-      it.second = CHECK(b2Set, floatInputs_.at("b2_DeepFlavour_CvsL"));
+      it.second = CHECK_EMPTY(b2Set, floatInputs_.at("b2_DeepFlavour_CvsL"));
     } else if (it.first == "bjet2_hhbtag") {
-      it.second = CHECK(b2Set, floatInputs_.at("b2_HHbtag"));
+      it.second = CHECK_EMPTY(b2Set, floatInputs_.at("b2_HHbtag"));
     } else if (it.first == "vbfjet1_pt") {
-      it.second = CHECK(vbfj1Set, vbfj1.Pt());
+      it.second = CHECK_EMPTY(vbfj1Set, vbfj1.Pt());
     } else if (it.first == "vbfjet1_eta") {
-      it.second = CHECK(vbfj1Set, vbfj1.Eta());
+      it.second = CHECK_EMPTY(vbfj1Set, vbfj1.Eta());
     } else if (it.first == "vbfjet1_phi") {
-      it.second = CHECK(vbfj1Set, vbfj1.Phi());
+      it.second = CHECK_EMPTY(vbfj1Set, vbfj1.Phi());
     } else if (it.first == "vbfjet1_e") {
-      it.second = CHECK(vbfj1Set, vbfj1.E());
+      it.second = CHECK_EMPTY(vbfj1Set, vbfj1.E());
     } else if (it.first == "vbfjet1_deepflavor_b") {
-      it.second = CHECK(vbfj1Set, floatInputs_.at("VBF1_DeepFlavour"));
+      it.second = CHECK_EMPTY(vbfj1Set, floatInputs_.at("VBF1_DeepFlavour"));
     } else if (it.first == "vbfjet1_deepflavor_cvsb") {
-      it.second = CHECK(vbfj1Set, floatInputs_.at("VBF1_DeepFlavour_CvsB"));
+      it.second = CHECK_EMPTY(vbfj1Set, floatInputs_.at("VBF1_DeepFlavour_CvsB"));
     } else if (it.first == "vbfjet1_deepflavor_cvsl") {
-      it.second = CHECK(vbfj1Set, floatInputs_.at("VBF1_DeepFlavour_CvsL"));
+      it.second = CHECK_EMPTY(vbfj1Set, floatInputs_.at("VBF1_DeepFlavour_CvsL"));
     } else if (it.first == "vbfjet1_hhbtag") {
-      it.second = CHECK(vbfj1Set, floatInputs_.at("VBF1_HHbtag"));
+      it.second = CHECK_EMPTY(vbfj1Set, floatInputs_.at("VBF1_HHbtag"));
     } else if (it.first == "vbfjet2_pt") {
-      it.second = CHECK(vbfj2Set, vbfj2.Pt());
+      it.second = CHECK_EMPTY(vbfj2Set, vbfj2.Pt());
     } else if (it.first == "vbfjet2_eta") {
-      it.second = CHECK(vbfj2Set, vbfj2.Eta());
+      it.second = CHECK_EMPTY(vbfj2Set, vbfj2.Eta());
     } else if (it.first == "vbfjet2_phi") {
-      it.second = CHECK(vbfj2Set, vbfj2.Phi());
+      it.second = CHECK_EMPTY(vbfj2Set, vbfj2.Phi());
     } else if (it.first == "vbfjet2_e") {
-      it.second = CHECK(vbfj2Set, vbfj2.E());
+      it.second = CHECK_EMPTY(vbfj2Set, vbfj2.E());
     } else if (it.first == "vbfjet2_deepflavor_b") {
-      it.second = CHECK(vbfj2Set, floatInputs_.at("VBF2_DeepFlavour"));
+      it.second = CHECK_EMPTY(vbfj2Set, floatInputs_.at("VBF2_DeepFlavour"));
     } else if (it.first == "vbfjet2_deepflavor_cvsb") {
-      it.second = CHECK(vbfj2Set, floatInputs_.at("VBF2_DeepFlavour_CvsB"));
+      it.second = CHECK_EMPTY(vbfj2Set, floatInputs_.at("VBF2_DeepFlavour_CvsB"));
     } else if (it.first == "vbfjet2_deepflavor_cvsl") {
-      it.second = CHECK(vbfj2Set, floatInputs_.at("VBF2_DeepFlavour_CvsL"));
+      it.second = CHECK_EMPTY(vbfj2Set, floatInputs_.at("VBF2_DeepFlavour_CvsL"));
     } else if (it.first == "vbfjet2_hhbtag") {
-      it.second = CHECK(vbfj1Set, floatInputs_.at("VBF2_HHbtag"));
+      it.second = CHECK_EMPTY(vbfj1Set, floatInputs_.at("VBF2_HHbtag"));
     } else if (it.first == "lep1_pt") {
-      it.second = CHECK(lep1Set, lep1.Pt());
+      it.second = CHECK_EMPTY(lep1Set, lep1.Pt());
     } else if (it.first == "lep1_eta") {
-      it.second = CHECK(lep1Set, lep1.Eta());
+      it.second = CHECK_EMPTY(lep1Set, lep1.Eta());
     } else if (it.first == "lep1_phi") {
-      it.second = CHECK(lep1Set, lep1.Phi());
+      it.second = CHECK_EMPTY(lep1Set, lep1.Phi());
     } else if (it.first == "lep1_e") {
-      it.second = CHECK(lep1Set, lep1.E());
+      it.second = CHECK_EMPTY(lep1Set, lep1.E());
     } else if (it.first == "lep2_pt") {
-      it.second = CHECK(lep2Set, lep2.Pt());
+      it.second = CHECK_EMPTY(lep2Set, lep2.Pt());
     } else if (it.first == "lep2_eta") {
-      it.second = CHECK(lep2Set, lep2.Eta());
+      it.second = CHECK_EMPTY(lep2Set, lep2.Eta());
     } else if (it.first == "lep2_phi") {
-      it.second = CHECK(lep2Set, lep2.Phi());
+      it.second = CHECK_EMPTY(lep2Set, lep2.Phi());
     } else if (it.first == "lep2_e") {
-      it.second = CHECK(lep2Set, lep2.E());
+      it.second = CHECK_EMPTY(lep2Set, lep2.E());
     } else if (it.first == "met_pt") {
       it.second = floatInputs_.at("MET_pt");
     } else if (it.first == "met_phi") {
       it.second = floatInputs_.at("MET_phi");
     } else if (it.first == "bh_pt") {
-      it.second = CHECK(bHSet, bH.Pt());
+      it.second = CHECK_EMPTY(bHSet, bH.Pt());
     } else if (it.first == "bh_eta") {
-      it.second = CHECK(bHSet, bH.Eta());
+      it.second = CHECK_EMPTY(bHSet, bH.Eta());
     } else if (it.first == "bh_phi") {
-      it.second = CHECK(bHSet, bH.Phi());
+      it.second = CHECK_EMPTY(bHSet, bH.Phi());
     } else if (it.first == "bh_e") {
-      it.second = CHECK(bHSet, bH.E());
+      it.second = CHECK_EMPTY(bHSet, bH.E());
     } else if (it.first == "tauh_sv_pt") {
-      it.second = CHECK(tauHSet, tauH.Pt());
+      it.second = CHECK_EMPTY(tauHSet, tauH.Pt());
     } else if (it.first == "tauh_sv_eta") {
-      it.second = CHECK(tauHSet, tauH.Eta());
+      it.second = CHECK_EMPTY(tauHSet, tauH.Eta());
     } else if (it.first == "tauh_sv_phi") {
-      it.second = CHECK(tauHSet, tauH.Phi());
+      it.second = CHECK_EMPTY(tauHSet, tauH.Phi());
     } else if (it.first == "tauh_sv_e") {
-      it.second = CHECK(tauHSet, tauH.E());
+      it.second = CHECK_EMPTY(tauHSet, tauH.E());
     } else {
       throw exception("MulticlassInference: unhandled feature '" + it.first + "'");
     }
