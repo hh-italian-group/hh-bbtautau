@@ -3,10 +3,9 @@
 #include "AnalysisTools/Core/include/RootExt.h"
 #include "AnalysisTools/Run/include/program_main.h"
 #include "h-tautau/Analysis/include/EventInfo.h"
+#include "hh-bbtautau/Analysis/include/AnaTuple.h"
 
 #include "MulticlassInference/MulticlassInference/interface/hmc.h"
-
-#define CHECK_EMPTY(COND, EXPR) ((COND) ? (EXPR) : (hmc::features::EMPTY))
 
 namespace analysis {
 
@@ -21,14 +20,18 @@ struct CalcMulticlassDNNArguments {
 
 class FeatureProvider {
   public:
-  FeatureProvider(Period period, Channel channel, TTree* inTree);
+  FeatureProvider(Period period, Channel channel, bbtautau::AnaTuple& anaTuple)
+      : period_(period)
+      , channel_(channel)
+      , anaTuple_(anaTuple) {
+  }
 
   FeatureProvider(const FeatureProvider&) = delete;
 
-  void calculate();
+  void calculate(Long64_t i);
 
   inline hmc::EventId getEventId() const {
-    return hmc::EventId(ulong64Inputs_.at("evt"));
+    return hmc::EventId(anaTuple_().evt);
   }
 
   inline void add(const std::string& featureName) {
@@ -50,10 +53,7 @@ class FeatureProvider {
   private:
   Period period_;
   Channel channel_;
-  std::map<std::string, bool> boolInputs_;
-  std::map<std::string, int> intInputs_;
-  std::map<std::string, ULong64_t> ulong64Inputs_;
-  std::map<std::string, float> floatInputs_;
+  bbtautau::AnaTuple& anaTuple_;
   std::map<std::string, float> features_;
 
   // currently not needed
@@ -82,16 +82,16 @@ class CalcMulticlassDNN {
     // disable potential multi-threading to preserve the order of entries
     ROOT::DisableImplicitMT();
 
-    // read the input tree
+    // read the input tree as an AnaTuple
     std::string channelName = EnumNameMap<Channel>::GetDefault().EnumToString(args_.channel());
-    TTree* inTree = (TTree*)inputFile_->Get(channelName.c_str());
+    bbtautau::AnaTuple anaTuple(channelName, inputFile_.get(), true);
 
     // create the input feature provider
-    FeatureProvider features(args_.period(), args_.channel(), inTree);
+    FeatureProvider features(args_.period(), args_.channel(), anaTuple);
 
     // create the output tree
     outputFile_->cd();
-    TTree* outTree = new TTree(channelName.c_str(), channelName.c_str());
+    auto outTree = std::make_unique<TTree>(channelName.c_str(), channelName.c_str());
 
     // load models and define output branches
     std::vector<std::pair<std::string, std::string>> modelSpecs
@@ -119,11 +119,10 @@ class CalcMulticlassDNN {
     }
 
     // start iterating
-    int nEntries = args_.end() > 0 ? args_.end() : inTree->GetEntries();
-    for (int i = 0; i < nEntries; i++) {
-      // load the entry and calculate features
-      inTree->GetEntry(i);
-      features.calculate();
+    const Long64_t nEntries = args_.end() > 0 ? args_.end() : anaTuple.GetEntries();
+    for (Long64_t i = 0; i < nEntries; i++) {
+      // calculate features
+      features.calculate(i);
 
       // fill features of all models and run them
       for (hmc::Model*& model : models) {
@@ -151,6 +150,7 @@ class CalcMulticlassDNN {
     // close files and finish
     outputFile_->Close();
     inputFile_->Close();
+    outTree.release();
     std::cout << "done" << std::endl;
   }
 
@@ -160,199 +160,114 @@ class CalcMulticlassDNN {
   std::shared_ptr<TFile> outputFile_;
 };
 
-FeatureProvider::FeatureProvider(Period period, Channel channel, TTree* inTree)
-    : period_(period)
-    , channel_(channel) {
-  // define names of variables to read
-  std::vector<std::string> boolNames = { "pass_VBF_trigger" };
-  std::vector<std::string> intNames = { "b1_valid", "b2_valid", "VBF1_valid", "VBF2_valid" };
-  std::vector<std::string> ulong64Names = { "evt" };
-  std::vector<std::string> floatNames = { "b1_pt", "b1_eta", "b1_phi", "b1_m", "b1_DeepFlavour",
-    "b1_DeepFlavour_CvsB", "b1_DeepFlavour_CvsL", "b1_HHbtag", "b2_pt", "b2_eta", "b2_phi", "b2_m",
-    "b2_DeepFlavour", "b2_DeepFlavour_CvsB", "b2_DeepFlavour_CvsL", "b2_HHbtag", "VBF1_pt",
-    "VBF1_eta", "VBF1_phi", "VBF1_m", "VBF1_DeepFlavour", "VBF1_DeepFlavour_CvsB",
-    "VBF1_DeepFlavour_CvsL", "VBF1_HHbtag", "VBF2_pt", "VBF2_eta", "VBF2_phi", "VBF2_m",
-    "VBF2_DeepFlavour", "VBF2_DeepFlavour_CvsB", "VBF2_DeepFlavour_CvsL", "VBF2_HHbtag", "tau1_pt",
-    "tau1_eta", "tau1_phi", "tau1_m", "tau2_pt", "tau2_eta", "tau2_phi", "tau2_m", "MET_pt",
-    "MET_phi" };
+void FeatureProvider::calculate(Long64_t i) {
+  anaTuple_.GetEntry(i);
+  const bbtautau::AnaEvent& event = anaTuple_.data();
 
-  // register them in input maps and set branch addresses
-  for (const auto& name : boolNames) {
-    boolInputs_.emplace(name, 0.);
-    inTree->SetBranchAddress(name.c_str(), &boolInputs_.at(name));
-  }
-  for (const auto& name : intNames) {
-    intInputs_.emplace(name, 0.);
-    inTree->SetBranchAddress(name.c_str(), &intInputs_.at(name));
-  }
-  for (const auto& name : ulong64Names) {
-    ulong64Inputs_.emplace(name, 0);
-    inTree->SetBranchAddress(name.c_str(), &ulong64Inputs_.at(name));
-  }
-  for (const auto& name : floatNames) {
-    floatInputs_.emplace(name, 0.);
-    inTree->SetBranchAddress(name.c_str(), &floatInputs_.at(name));
-  }
-}
-
-void FeatureProvider::calculate() {
   // check if objects are set
-  bool b1Set = intInputs_.at("b1_valid") == 1;
-  bool b2Set = intInputs_.at("b2_valid") == 1;
-  bool vbfj1Set = intInputs_.at("VBF1_valid") == 1;
-  bool vbfj2Set = intInputs_.at("VBF2_valid") == 1;
-  bool lep1Set = floatInputs_.at("tau1_pt") > 0;
-  bool lep2Set = floatInputs_.at("tau2_pt") > 0;
+  bool b1Set = event.b1_valid == 1;
+  bool b2Set = event.b2_valid == 1;
+  bool vbfj1Set = event.VBF1_valid == 1;
+  bool vbfj2Set = event.VBF2_valid == 1;
   bool bHSet = b1Set && b2Set;
-  bool tauHSet = lep1Set && lep2Set;
   bool vbfjjSet = vbfj1Set && vbfj2Set;
 
   // define vectors for objects
   TLorentzVector b1, b2, vbfj1, vbfj2, lep1, lep2, bH, tauH, vbfjj;
-  b1.SetPtEtaPhiM(floatInputs_.at("b1_pt"), floatInputs_.at("b1_eta"), floatInputs_.at("b1_phi"),
-      floatInputs_.at("b1_m"));
-  b2.SetPtEtaPhiM(floatInputs_.at("b2_pt"), floatInputs_.at("b2_eta"), floatInputs_.at("b2_phi"),
-      floatInputs_.at("b2_m"));
-  vbfj1.SetPtEtaPhiM(floatInputs_.at("VBF1_pt"), floatInputs_.at("VBF1_eta"),
-      floatInputs_.at("VBF1_phi"), floatInputs_.at("VBF1_m"));
-  vbfj2.SetPtEtaPhiM(floatInputs_.at("VBF2_pt"), floatInputs_.at("VBF2_eta"),
-      floatInputs_.at("VBF2_phi"), floatInputs_.at("VBF2_m"));
-  lep1.SetPtEtaPhiM(floatInputs_.at("tau1_pt"), floatInputs_.at("tau1_eta"),
-      floatInputs_.at("tau1_phi"), floatInputs_.at("tau1_m"));
-  lep2.SetPtEtaPhiM(floatInputs_.at("tau2_pt"), floatInputs_.at("tau2_eta"),
-      floatInputs_.at("tau2_phi"), floatInputs_.at("tau2_m"));
+  b1.SetPtEtaPhiM(event.b1_pt, event.b1_eta, event.b1_phi, event.b1_m);
+  b2.SetPtEtaPhiM(event.b2_pt, event.b2_eta, event.b2_phi, event.b2_m);
+  vbfj1.SetPtEtaPhiM(event.VBF1_pt, event.VBF1_eta, event.VBF1_phi, event.VBF1_m);
+  vbfj2.SetPtEtaPhiM(event.VBF2_pt, event.VBF2_eta, event.VBF2_phi, event.VBF2_m);
+  lep1.SetPtEtaPhiM(event.tau1_pt, event.tau1_eta, event.tau1_phi, event.tau1_m);
+  lep2.SetPtEtaPhiM(event.tau2_pt, event.tau2_eta, event.tau2_phi, event.tau2_m);
   bH = b1 + b2;
   tauH = lep1 + lep2;
   vbfjj = vbfj1 + vbfj2;
 
-  // loop through features and set values
-  for (auto& it : features_) {
-    if (it.first == "is_mutau") {
-      it.second = float(channel_ == Channel::MuTau);
-    } else if (it.first == "is_etau") {
-      it.second = float(channel_ == Channel::ETau);
-    } else if (it.first == "is_tautau") {
-      it.second = float(channel_ == Channel::TauTau);
-    } else if (it.first == "bjet1_pt") {
-      it.second = CHECK_EMPTY(b1Set, b1.Pt());
-    } else if (it.first == "bjet1_eta") {
-      it.second = CHECK_EMPTY(b1Set, b1.Eta());
-    } else if (it.first == "bjet1_phi") {
-      it.second = CHECK_EMPTY(b1Set, b1.Phi());
-    } else if (it.first == "bjet1_e") {
-      it.second = CHECK_EMPTY(b1Set, b1.E());
-    } else if (it.first == "bjet1_deepflavor_b") {
-      it.second = CHECK_EMPTY(b1Set, floatInputs_.at("b1_DeepFlavour"));
-    } else if (it.first == "bjet1_deepflavor_cvsb") {
-      it.second = CHECK_EMPTY(b1Set, floatInputs_.at("b1_DeepFlavour_CvsB"));
-    } else if (it.first == "bjet1_deepflavor_cvsl") {
-      it.second = CHECK_EMPTY(b1Set, floatInputs_.at("b1_DeepFlavour_CvsL"));
-    } else if (it.first == "bjet1_hhbtag") {
-      it.second = CHECK_EMPTY(b1Set, floatInputs_.at("b1_HHbtag"));
-    } else if (it.first == "bjet2_pt") {
-      it.second = CHECK_EMPTY(b2Set, b2.Pt());
-    } else if (it.first == "bjet2_eta") {
-      it.second = CHECK_EMPTY(b2Set, b2.Eta());
-    } else if (it.first == "bjet2_phi") {
-      it.second = CHECK_EMPTY(b2Set, b2.Phi());
-    } else if (it.first == "bjet2_e") {
-      it.second = CHECK_EMPTY(b2Set, b2.E());
-    } else if (it.first == "bjet2_deepflavor_b") {
-      it.second = CHECK_EMPTY(b2Set, floatInputs_.at("b2_DeepFlavour"));
-    } else if (it.first == "bjet2_deepflavor_cvsb") {
-      it.second = CHECK_EMPTY(b2Set, floatInputs_.at("b2_DeepFlavour_CvsB"));
-    } else if (it.first == "bjet2_deepflavor_cvsl") {
-      it.second = CHECK_EMPTY(b2Set, floatInputs_.at("b2_DeepFlavour_CvsL"));
-    } else if (it.first == "bjet2_hhbtag") {
-      it.second = CHECK_EMPTY(b2Set, floatInputs_.at("b2_HHbtag"));
-    } else if (it.first == "vbfjet1_pt") {
-      it.second = CHECK_EMPTY(vbfj1Set, vbfj1.Pt());
-    } else if (it.first == "vbfjet1_eta") {
-      it.second = CHECK_EMPTY(vbfj1Set, vbfj1.Eta());
-    } else if (it.first == "vbfjet1_phi") {
-      it.second = CHECK_EMPTY(vbfj1Set, vbfj1.Phi());
-    } else if (it.first == "vbfjet1_e") {
-      it.second = CHECK_EMPTY(vbfj1Set, vbfj1.E());
-    } else if (it.first == "vbfjet1_deepflavor_b") {
-      it.second = CHECK_EMPTY(vbfj1Set, floatInputs_.at("VBF1_DeepFlavour"));
-    } else if (it.first == "vbfjet1_deepflavor_cvsb") {
-      it.second = CHECK_EMPTY(vbfj1Set, floatInputs_.at("VBF1_DeepFlavour_CvsB"));
-    } else if (it.first == "vbfjet1_deepflavor_cvsl") {
-      it.second = CHECK_EMPTY(vbfj1Set, floatInputs_.at("VBF1_DeepFlavour_CvsL"));
-    } else if (it.first == "vbfjet1_hhbtag") {
-      it.second = CHECK_EMPTY(vbfj1Set, floatInputs_.at("VBF1_HHbtag"));
-    } else if (it.first == "vbfjet2_pt") {
-      it.second = CHECK_EMPTY(vbfj2Set, vbfj2.Pt());
-    } else if (it.first == "vbfjet2_eta") {
-      it.second = CHECK_EMPTY(vbfj2Set, vbfj2.Eta());
-    } else if (it.first == "vbfjet2_phi") {
-      it.second = CHECK_EMPTY(vbfj2Set, vbfj2.Phi());
-    } else if (it.first == "vbfjet2_e") {
-      it.second = CHECK_EMPTY(vbfj2Set, vbfj2.E());
-    } else if (it.first == "vbfjet2_deepflavor_b") {
-      it.second = CHECK_EMPTY(vbfj2Set, floatInputs_.at("VBF2_DeepFlavour"));
-    } else if (it.first == "vbfjet2_deepflavor_cvsb") {
-      it.second = CHECK_EMPTY(vbfj2Set, floatInputs_.at("VBF2_DeepFlavour_CvsB"));
-    } else if (it.first == "vbfjet2_deepflavor_cvsl") {
-      it.second = CHECK_EMPTY(vbfj2Set, floatInputs_.at("VBF2_DeepFlavour_CvsL"));
-    } else if (it.first == "vbfjet2_hhbtag") {
-      it.second = CHECK_EMPTY(vbfj1Set, floatInputs_.at("VBF2_HHbtag"));
-    } else if (it.first == "lep1_pt") {
-      it.second = CHECK_EMPTY(lep1Set, lep1.Pt());
-    } else if (it.first == "lep1_eta") {
-      it.second = CHECK_EMPTY(lep1Set, lep1.Eta());
-    } else if (it.first == "lep1_phi") {
-      it.second = CHECK_EMPTY(lep1Set, lep1.Phi());
-    } else if (it.first == "lep1_e") {
-      it.second = CHECK_EMPTY(lep1Set, lep1.E());
-    } else if (it.first == "lep2_pt") {
-      it.second = CHECK_EMPTY(lep2Set, lep2.Pt());
-    } else if (it.first == "lep2_eta") {
-      it.second = CHECK_EMPTY(lep2Set, lep2.Eta());
-    } else if (it.first == "lep2_phi") {
-      it.second = CHECK_EMPTY(lep2Set, lep2.Phi());
-    } else if (it.first == "lep2_e") {
-      it.second = CHECK_EMPTY(lep2Set, lep2.E());
-    } else if (it.first == "met_pt") {
-      it.second = floatInputs_.at("MET_pt");
-    } else if (it.first == "met_phi") {
-      it.second = floatInputs_.at("MET_phi");
-    } else if (it.first == "bh_pt") {
-      it.second = CHECK_EMPTY(bHSet, bH.Pt());
-    } else if (it.first == "bh_eta") {
-      it.second = CHECK_EMPTY(bHSet, bH.Eta());
-    } else if (it.first == "bh_phi") {
-      it.second = CHECK_EMPTY(bHSet, bH.Phi());
-    } else if (it.first == "bh_e") {
-      it.second = CHECK_EMPTY(bHSet, bH.E());
-    } else if (it.first == "tauh_sv_pt") {
-      it.second = CHECK_EMPTY(tauHSet, tauH.Pt());
-    } else if (it.first == "tauh_sv_eta") {
-      it.second = CHECK_EMPTY(tauHSet, tauH.Eta());
-    } else if (it.first == "tauh_sv_phi") {
-      it.second = CHECK_EMPTY(tauHSet, tauH.Phi());
-    } else if (it.first == "tauh_sv_e") {
-      it.second = CHECK_EMPTY(tauHSet, tauH.E());
-    } else {
-      throw exception("MulticlassInference: unhandled feature '" + it.first + "'");
+  // set features
+  size_t setCounter = 0;
+  const auto setFeature = [&](const std::string& name, float value, bool condition) {
+    auto iter = features_.find(name);
+    if (iter != features_.end()) {
+      iter->second = condition ? value : hmc::features::EMPTY;
+      ++setCounter;
     }
+  };
+
+  setFeature("is_mutau", float(channel_ == Channel::MuTau), true);
+  setFeature("is_etau", float(channel_ == Channel::ETau), true);
+  setFeature("is_tautau", float(channel_ == Channel::TauTau), true);
+  setFeature("bjet1_pt", b1.Pt(), b1Set);
+  setFeature("bjet1_eta", b1.Eta(), b1Set);
+  setFeature("bjet1_phi", b1.Phi(), b1Set);
+  setFeature("bjet1_e", b1.E(), b1Set);
+  setFeature("bjet1_deepflavor_b", event.b1_DeepFlavour, b1Set);
+  setFeature("bjet1_deepflavor_cvsb", event.b1_DeepFlavour_CvsB, b1Set);
+  setFeature("bjet1_deepflavor_cvsl", event.b1_DeepFlavour_CvsL, b1Set);
+  setFeature("bjet1_hhbtag", event.b1_HHbtag, b1Set);
+  setFeature("bjet2_pt", b2.Pt(), b2Set);
+  setFeature("bjet2_eta", b2.Eta(), b2Set);
+  setFeature("bjet2_phi", b2.Phi(), b2Set);
+  setFeature("bjet2_e", b2.E(), b2Set);
+  setFeature("bjet2_deepflavor_b", event.b2_DeepFlavour, b2Set);
+  setFeature("bjet2_deepflavor_cvsb", event.b2_DeepFlavour_CvsB, b2Set);
+  setFeature("bjet2_deepflavor_cvsl", event.b2_DeepFlavour_CvsL, b2Set);
+  setFeature("bjet2_hhbtag", event.b2_HHbtag, b2Set);
+  setFeature("vbfjet1_pt", vbfj1.Pt(), vbfj1Set);
+  setFeature("vbfjet1_eta", vbfj1.Eta(), vbfj1Set);
+  setFeature("vbfjet1_phi", vbfj1.Phi(), vbfj1Set);
+  setFeature("vbfjet1_e", vbfj1.E(), vbfj1Set);
+  setFeature("vbfjet1_deepflavor_b", event.VBF1_DeepFlavour, vbfj1Set);
+  setFeature("vbfjet1_deepflavor_cvsb", event.VBF1_DeepFlavour_CvsB, vbfj1Set);
+  setFeature("vbfjet1_deepflavor_cvsl", event.VBF1_DeepFlavour_CvsL, vbfj1Set);
+  setFeature("vbfjet1_hhbtag", event.VBF1_HHbtag, vbfj1Set);
+  setFeature("vbfjet2_pt", vbfj2.Pt(), vbfj2Set);
+  setFeature("vbfjet2_eta", vbfj2.Eta(), vbfj2Set);
+  setFeature("vbfjet2_phi", vbfj2.Phi(), vbfj2Set);
+  setFeature("vbfjet2_e", vbfj2.E(), vbfj2Set);
+  setFeature("vbfjet2_deepflavor_b", event.VBF2_DeepFlavour, vbfj2Set);
+  setFeature("vbfjet2_deepflavor_cvsb", event.VBF2_DeepFlavour_CvsB, vbfj2Set);
+  setFeature("vbfjet2_deepflavor_cvsl", event.VBF2_DeepFlavour_CvsL, vbfj2Set);
+  setFeature("vbfjet2_hhbtag", event.VBF2_HHbtag, vbfj1Set);
+  setFeature("lep1_pt", lep1.Pt(), true);
+  setFeature("lep1_eta", lep1.Eta(), true);
+  setFeature("lep1_phi", lep1.Phi(), true);
+  setFeature("lep1_e", lep1.E(), true);
+  setFeature("lep2_pt", lep2.Pt(), true);
+  setFeature("lep2_eta", lep2.Eta(), true);
+  setFeature("lep2_phi", lep2.Phi(), true);
+  setFeature("lep2_e", lep2.E(), true);
+  setFeature("met_pt", event.MET_pt, true);
+  setFeature("met_phi", event.MET_phi, true);
+  setFeature("bh_pt", bH.Pt(), bHSet);
+  setFeature("bh_eta", bH.Eta(), bHSet);
+  setFeature("bh_phi", bH.Phi(), bHSet);
+  setFeature("bh_e", bH.E(), bHSet);
+  setFeature("tauh_sv_pt", tauH.Pt(), true);
+  setFeature("tauh_sv_eta", tauH.Eta(), true);
+  setFeature("tauh_sv_phi", tauH.Phi(), true);
+  setFeature("tauh_sv_e", tauH.E(), true);
+
+  if (setCounter != features_.size()) {
+    throw exception("only calculated " + std::to_string(setCounter) + " out of "
+        + std::to_string(features_.size()) + " features");
   }
 }
 
 // bool FeatureProvider::passBaseline_() const {
 //   // currently no distinction between years
 //   if (channel_ == Channel::MuTau) {
-//     return floatInputs_.at("tau1_pt") > 20. && fabs(floatInputs_.at("tau1_eta")) < 2.1
-//         && floatInputs_.at("tau2_pt") > 20. && fabs(floatInputs_.at("tau1_eta")) < 2.3
-//         && boolInputs_.at("pass_VBF_trigger");
+//     return event.tau1_pt > 20. && fabs(event.tau1_eta) < 2.1
+//         && event.tau2_pt > 20. && fabs(event.tau1_eta) < 2.3
+//         && event.pass_VBF_trigger;
 //   } else if (channel_ == Channel::ETau) {
-//     return floatInputs_.at("tau1_pt") > 20. && fabs(floatInputs_.at("tau1_eta")) < 2.1
-//         && floatInputs_.at("tau2_pt") > 20. && fabs(floatInputs_.at("tau1_eta")) < 2.3
-//         && boolInputs_.at("pass_VBF_trigger");
+//     return event.tau1_pt > 20. && fabs(event.tau1_eta) < 2.1
+//         && event.tau2_pt > 20. && fabs(event.tau1_eta) < 2.3
+//         && event.pass_VBF_trigger;
 //   } else if (channel_ == Channel::TauTau) {
-//     return floatInputs_.at("tau1_pt") > 40. && fabs(floatInputs_.at("tau1_eta")) < 2.1
-//         && floatInputs_.at("tau2_pt") > 40. && fabs(floatInputs_.at("tau1_eta")) < 2.1
-//         && boolInputs_.at("pass_VBF_trigger");
+//     return event.tau1_pt > 40. && fabs(event.tau1_eta) < 2.1
+//         && event.tau2_pt > 40. && fabs(event.tau1_eta) < 2.1
+//         && event.pass_VBF_trigger;
 //   } else {
 //     throw exception("unknown channel " + std::to_string(channel_));
 //   }

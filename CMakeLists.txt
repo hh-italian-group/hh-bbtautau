@@ -40,7 +40,7 @@ target_link_libraries(MulticlassInference ${TF_LIBRARIES})
 target_include_directories(MulticlassInference PRIVATE ${TF_INCLUDES})
 set_source_files_properties(${MulticlassInference_SRC} PROPERTIES COMPILE_FLAGS "-w")
 
-target_link_libraries(CalcMulticlassDNN ${TF_LIBRARIES})
+target_link_libraries(CalcMulticlassDNN MulticlassInference ${TF_LIBRARIES})
 target_include_directories(CalcMulticlassDNN PRIVATE ${TF_INCLUDES})
 set_source_files_properties("${CMSSW_BASE_SRC}/hh-bbtautau/Analysis/source/CalcMulticlassDNN.cxx" PROPERTIES COMPILE_FLAGS "-w")
 
@@ -65,7 +65,7 @@ add_library("hh-bbtautau" STATIC ${SOURCE_LIST})
 #set_target_properties("hh-bbtautau" PROPERTIES EXCLUDE_FROM_ALL 1)
 
 foreach(exe_name ${EXE_LIST})
-    target_link_libraries("${exe_name}" hh-bbtautau h-tautau AnalysisTools HTT-utilities SVfit HHKinFit2 TauAnalysisTools TauPOG MulticlassInference)
+    target_link_libraries("${exe_name}" hh-bbtautau h-tautau AnalysisTools HTT-utilities SVfit HHKinFit2 TauAnalysisTools TauPOG)
 #    add_dependencies("${exe_name}" GeneratePch)
 #    target_compile_options("${exe_name}" BEFORE PRIVATE "-include;${PrecompHeader}")
 endforeach()
