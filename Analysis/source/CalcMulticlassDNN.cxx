@@ -1,5 +1,6 @@
 /*! Writes multiclass outputs to a new tree that can be used as a friend. */
 
+#include "AnalysisTools/Core/include/ProgressReporter.h"
 #include "AnalysisTools/Core/include/RootExt.h"
 #include "AnalysisTools/Run/include/program_main.h"
 #include "h-tautau/Analysis/include/EventInfo.h"
@@ -120,6 +121,8 @@ class CalcMulticlassDNN {
 
     // start iterating
     const Long64_t nEntries = args_.end() > 0 ? args_.end() : anaTuple.GetEntries();
+    tools::ProgressReporter progressReporter(10, std::cout);
+    progressReporter.SetTotalNumberOfEvents(nEntries);
     for (Long64_t i = 0; i < nEntries; i++) {
       // calculate features
       features.calculate(i);
@@ -138,10 +141,11 @@ class CalcMulticlassDNN {
       outTree->Fill();
 
       // print progress
-      if (i == 0 || (i + 1) % args_.progress() == 0 || i == nEntries - 1) {
-        std::cout << "processed entry " << (i + 1) << std::endl;
+      if (i % args_.progress() == 0) {
+        progressReporter.Report(i + 1, false);
       }
     }
+    progressReporter.Report(nEntries, true);
 
     // write the output file
     std::cout << "writing output tree" << std::endl;
