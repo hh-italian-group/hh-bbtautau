@@ -33,6 +33,17 @@ add_library(SVfit STATIC ${SVFIT_SRC})
 target_compile_definitions(SVfit PRIVATE USE_SVFITTF=1)
 set_source_files_properties(${SVFIT_SRC} PROPERTIES COMPILE_FLAGS "-w")
 
+include("${AnalysisTools_DIR}/cmake/include/tensorflow.cmake")
+file(GLOB_RECURSE MulticlassInference_SRC "${CMSSW_BASE_SRC}/MulticlassInference/MulticlassInference/src/*.cc")
+add_library(MulticlassInference STATIC ${MulticlassInference_SRC})
+target_link_libraries(MulticlassInference ${TF_LIBRARIES})
+target_include_directories(MulticlassInference PRIVATE ${TF_INCLUDES})
+set_source_files_properties(${MulticlassInference_SRC} PROPERTIES COMPILE_FLAGS "-w")
+
+target_link_libraries(CalcMulticlassDNN MulticlassInference ${TF_LIBRARIES})
+target_include_directories(CalcMulticlassDNN PRIVATE ${TF_INCLUDES})
+set_source_files_properties("${CMSSW_BASE_SRC}/hh-bbtautau/Analysis/source/CalcMulticlassDNN.cxx" PROPERTIES COMPILE_FLAGS "-w")
+
 #[[
 set(PrecompHeader "${PROJECT_SOURCE_DIR}/Run/include/Precompiled.h")
 set(PrecompHeaderOut "${PROJECT_SOURCE_DIR}/Run/include/Precompiled.h.pch")
