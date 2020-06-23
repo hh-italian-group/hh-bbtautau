@@ -442,5 +442,23 @@ float AnaTupleReader::GetNormalizedMvaScore(const DataId& dataId, float raw_scor
     return static_cast<float>(result);
 }
 
+std::string HyperPoint::ToString()
+{
+    std::vector<std::string> points;
+    if(spin)
+        points.push_back("s" + ::analysis::ToString(*spin));
+    if(mass)
+        points.push_back("m" + ::analysis::ToString(*mass));
+    if(kl)
+        points.push_back("kl" + ::analysis::ToString(*kl));
+    std::ostringstream ss;
+    if(!points.size())
+        throw exception("Empty hyperparameter.");
+    ss << points.at(0);
+    for(size_t n = 1; n < points.size(); ++n)
+        ss << "_" << points.at(n);
+    return ss.str();
+}
+
 } // namespace bbtautau
 } // namespace analysis

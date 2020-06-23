@@ -40,9 +40,23 @@ target_link_libraries(MulticlassInference ${TF_LIBRARIES})
 target_include_directories(MulticlassInference PRIVATE ${TF_INCLUDES})
 set_source_files_properties(${MulticlassInference_SRC} PROPERTIES COMPILE_FLAGS "-w")
 
+file(GLOB_RECURSE cms_hh_tf_inference_SRC "${CMSSW_BASE_SRC}/cms_hh_tf_inference/inference/src/*.cc")
+add_library(cms_hh_tf_inference STATIC ${cms_hh_tf_inference_SRC})
+target_link_libraries(cms_hh_tf_inference ${TF_LIBRARIES})
+target_include_directories(cms_hh_tf_inference PRIVATE ${TF_INCLUDES})
+set_source_files_properties(${cms_hh_tf_inference_SRC} PROPERTIES COMPILE_FLAGS "-w")
+
+file(GLOB_RECURSE cms_hh_proc_interface_SRC "${CMSSW_BASE_SRC}/cms_hh_proc_interface/processing/src/*.cc")
+add_library(cms_hh_proc_interface STATIC ${cms_hh_proc_interface_SRC})
+set_source_files_properties(${cms_hh_proc_interface_SRC} PROPERTIES COMPILE_FLAGS "-w")
+
 target_link_libraries(CalcMulticlassDNN MulticlassInference ${TF_LIBRARIES})
 target_include_directories(CalcMulticlassDNN PRIVATE ${TF_INCLUDES})
 set_source_files_properties("${CMSSW_BASE_SRC}/hh-bbtautau/Analysis/source/CalcMulticlassDNN.cxx" PROPERTIES COMPILE_FLAGS "-w")
+
+target_link_libraries(CalcDNN cms_hh_tf_inference cms_hh_proc_interface ${TF_LIBRARIES})
+target_include_directories(CalcDNN PRIVATE ${TF_INCLUDES})
+set_source_files_properties("${CMSSW_BASE_SRC}/hh-bbtautau/Analysis/source/CalcDNN.cxx" PROPERTIES COMPILE_FLAGS "-Wno-implicit-float-conversion")
 
 #[[
 set(PrecompHeader "${PROJECT_SOURCE_DIR}/Run/include/Precompiled.h")

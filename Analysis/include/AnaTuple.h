@@ -207,5 +207,14 @@ private:
     RangeMap mva_ranges;
     Range mva_target_range{0., 0.99999};
 };
+
+struct HyperPoint {
+    boost::optional<int> spin;
+    boost::optional<double> mass;
+    boost::optional<double> kl;
+
+    std::string ToString();
+};
+
 } // namespace bbtautau
 } // namespace analysis
