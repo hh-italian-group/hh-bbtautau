@@ -27,7 +27,7 @@ namespace analysis {
 #define TAU_DATA(name) \
     P4_DATA(name) \
     VAR_LIST(float, name##_iso, name##_DeepTauVSe, name##_DeepTauVSmu, name##_DeepTauVSjet) \
-    VAR_LIST(int, name##_q, name##_gen_match) \
+    VAR_LIST(int, name##_q, name##_gen_match, name##_decay_mode) \
     /**/
 
 #define JET_DATA(name) \
@@ -45,8 +45,10 @@ namespace analysis {
     VAR(bool, is_central_es) \
     VAR(ULong64_t, sample_id) \
     VAR(double, weight) /* weight */ \
+    VAR(double, btag_weight) /* btag_weight */ \
     VAR(float, mva_score) /* mva score */ \
     VAR(ULong64_t, evt)  /* event */ \
+    VAR(Int_t, channelId) /* Channel: eTau, muTau or tauTau */ \
     VAR_LIST(UInt_t, run, lumi) \
     TAU_DATA(tau1) \
     TAU_DATA(tau2) \
@@ -157,7 +159,7 @@ public:
 
     AnaTupleWriter(const std::string& file_name, Channel channel, bool _runKinFit, bool _runSVfit, bool _allow_calc_svFit);
     ~AnaTupleWriter();
-    void AddEvent(EventInfo& event, const DataIdMap& dataIds, const bool pass_VBF_trigger);
+    void AddEvent(EventInfo& event, const DataIdMap& dataIds, const bool pass_VBF_trigger, const double btag_weight);
 
 private:
     std::shared_ptr<TFile> file;

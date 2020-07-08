@@ -33,7 +33,8 @@ AnaTupleWriter::~AnaTupleWriter()
     tuple.Write();
 }
 
-void AnaTupleWriter::AddEvent(EventInfo& event, const AnaTupleWriter::DataIdMap& dataIds, const bool pass_VBF_trigger)
+void AnaTupleWriter::AddEvent(EventInfo& event, const AnaTupleWriter::DataIdMap& dataIds, const bool pass_VBF_trigger,
+                              const double btag_weight)
 {
     static constexpr float def_val = std::numeric_limits<float>::lowest();
     static constexpr int def_val_int = std::numeric_limits<int>::lowest();
@@ -93,9 +94,11 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const AnaTupleWriter::DataIdMap&
     tuple().has_b_pair = event.HasBjetPair();
     tuple().has_VBF_pair = event.HasVBFjetPair();
     tuple().pass_VBF_trigger = pass_VBF_trigger;
+    tuple().btag_weight = btag_weight;
     tuple().run = event->run;
     tuple().lumi = event->lumi;
     tuple().evt = event->evt;
+    tuple().channelId = event->channelId;
 
     #define TAU_DATA(name, obj) \
         tuple().name##_pt = static_cast<float>(obj.GetMomentum().pt()); \
@@ -111,6 +114,7 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const AnaTupleWriter::DataIdMap&
                                     ? obj->GetRawValue(TauIdDiscriminator::byDeepTau2017v2p1VSjet) : def_val; \
         tuple().name##_q = obj->charge(); \
         tuple().name##_gen_match = static_cast<int>(obj->gen_match()); \
+        tuple().name##_decay_mode = obj->decayMode();
         /**/
 
     const auto& t1 = event.GetLeg(1);
@@ -205,7 +209,7 @@ const AnaTupleReader::NameSet AnaTupleReader::BoolBranches = {
 };
 
 const AnaTupleReader::NameSet AnaTupleReader::IntBranches = {
-    "tau1_q", "tau1_gen_match", "tau2_q", "tau2_gen_match",
+    "tau1_q", "tau1_gen_match", "tau1_decay_mode","tau2_q", "tau2_gen_match", "tau2_decay_mode",
     "b1_valid", "b1_hadronFlavour", "b2_valid", "b2_hadronFlavour",
     "VBF1_valid", "VBF1_hadronFlavour", "VBF2_valid", "VBF2_hadronFlavour",
     "SVfit_valid", "kinFit_convergence"

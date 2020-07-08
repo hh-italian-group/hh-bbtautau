@@ -18,6 +18,11 @@ SyncDescriptor::SyncDescriptor(const std::string& desc_str, std::shared_ptr<TFil
     regex_pattern = std::make_shared<boost::regex>(tree_regexes.at(1));
 }
 
+CategoryInfo::CategoryInfo(size_t num_jets, const std::map<DiscriminatorWP, size_t>& num_btag, bool is_vbf,
+                           bool is_boosted, const boost::optional<DiscriminatorWP>& vbf_tag)//, FatJetCandidate* fat_jet_cand)
+{
+}
+
 BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel channel) :
     EventAnalyzerCore(_args, channel), args(_args), anaTupleWriter(args.output(), channel, ana_setup.use_kinFit,
                       ana_setup.use_svFit,ana_setup.allow_calc_svFit), trigger_patterns(ana_setup.trigger.at(channel))
@@ -98,10 +103,10 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfo& event, b
             }
         }
     }
-
     for(const auto& category : ana_setup.categories) {
         if(category.Contains(all_jets.size(), bjet_counts, is_VBF, is_boosted, vbf_tag))
             categories.insert(category);
+            category_info.emplace_back(all_jets.size(), bjet_counts, is_VBF, is_boosted, vbf_tag);//, fatJet);
     }
     return categories;
 }
@@ -257,7 +262,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
             std::map<size_t, bool> sync_event_selected;
 
             double lepton_id_iso_weight = 1., trigger_weight = 1., prescale_weight = 1., l1_prefiring_weight = 1.,
-                   jet_pu_id_weight = 1;
+                   jet_pu_id_weight = 1,  btag_weight = 1.;
 
             if(sample.sampleType != SampleType::Data) {
                 auto lepton_weight_provider = eventWeights_HH->GetProviderT<mc_corrections::LeptonWeights>(
@@ -296,7 +301,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                         event->SetMvaScore(mva_score);
                         const EventAnalyzerDataId anaDataId(eventCategory, subCategory, region,
                                                             unc_source, unc_scale, sample_wp.full_name);
-                        double btag_weight = 1., shape_weight = 1.;
+                        double shape_weight = 1.;
                         if(sample.sampleType == SampleType::Data) {
                             dataIds[anaDataId] = std::make_tuple(1., mva_score);
                         } else {
@@ -341,7 +346,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                 }
             }
             //dataId
-            anaTupleWriter.AddEvent(*event, dataIds, pass_vbf_trigger);
+            anaTupleWriter.AddEvent(*event, dataIds, pass_vbf_trigger, btag_weight);
         }
     }
 }

@@ -31,6 +31,20 @@ struct SyncDescriptor {
 
 };
 
+struct CategoryInfo {
+    size_t num_jets;
+    std::map<DiscriminatorWP, size_t> num_btag;
+    bool is_vbf;
+    bool is_boosted;
+    boost::optional<DiscriminatorWP> vbf_tag;
+    // FatJetCandidate* fat_jet_cand;
+
+    CategoryInfo(size_t num_jets, const std::map<DiscriminatorWP, size_t>& num_btag, bool is_vbf,
+                 bool is_boosted, const boost::optional<DiscriminatorWP>& vbf_tag);//, FatJetCandidate* fat_jet_cand);
+
+};
+
+
 class BaseEventAnalyzer : public EventAnalyzerCore {
 public:
     using Event = ntuple::Event;
@@ -64,6 +78,7 @@ protected:
     mva_study::MvaReader mva_reader;
     std::shared_ptr<TFile> outputFile_sync;
     std::vector<SyncDescriptor> sync_descriptors;
+    std::vector<CategoryInfo> category_info;
     std::map<std::string,std::shared_ptr<DYModelBase>> dymod;
     std::shared_ptr<NonResModel> nonResModel;
     const std::vector<std::string> trigger_patterns;
