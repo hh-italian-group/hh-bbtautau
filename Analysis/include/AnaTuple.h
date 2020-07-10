@@ -50,9 +50,9 @@ namespace analysis {
     VAR(ULong64_t, evt)  /* event */ \
     VAR(Int_t, channelId) /* Channel: eTau, muTau or tauTau */ \
     VAR(Int_t, num_jets) /* num jets */ \
-    VAR(Int_t, num_btag_loose) /* num btag jets */ \
-    VAR(Int_t, num_btag_medium) /* num btag jets */ \
-    VAR(Int_t, num_btag_tight) /* num btag jets */ \
+    VAR(Int_t, num_btag_loose)  \
+    VAR(Int_t, num_btag_medium) \
+    VAR(Int_t, num_btag_tight)   \
     VAR(bool, is_vbf) \
     VAR(bool, is_boosted) \
     VAR(boost::optional<DiscriminatorWP>, vbf_tag) \
