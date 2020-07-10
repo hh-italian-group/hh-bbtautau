@@ -31,19 +31,16 @@ struct SyncDescriptor {
 
 };
 
-struct CategoryInfo {
+struct CategoriesFlags {
     size_t num_jets;
-    std::map<DiscriminatorWP, size_t> num_btag;
+    size_t num_btag_loose;
+    size_t num_btag_medium;
+    size_t num_btag_tight;
     bool is_vbf;
     bool is_boosted;
     boost::optional<DiscriminatorWP> vbf_tag;
-    // FatJetCandidate* fat_jet_cand;
-
-    CategoryInfo(size_t num_jets, const std::map<DiscriminatorWP, size_t>& num_btag, bool is_vbf,
-                 bool is_boosted, const boost::optional<DiscriminatorWP>& vbf_tag);//, FatJetCandidate* fat_jet_cand);
-
+    const FatJetCandidate* fat_jet_cand;
 };
-
 
 class BaseEventAnalyzer : public EventAnalyzerCore {
 public:
@@ -53,7 +50,7 @@ public:
     void Run();
 
 protected:
-    EventCategorySet DetermineEventCategories(EventInfo& event, bool pass_vbf_trigger);
+    std::pair<EventCategorySet, CategoriesFlags> DetermineEventCategories(EventInfo& event, bool pass_vbf_trigger);
     virtual EventRegion DetermineEventRegion(EventInfo& event, EventCategory eventCategory) = 0;
 
 
@@ -78,7 +75,6 @@ protected:
     mva_study::MvaReader mva_reader;
     std::shared_ptr<TFile> outputFile_sync;
     std::vector<SyncDescriptor> sync_descriptors;
-    std::vector<CategoryInfo> category_info;
     std::map<std::string,std::shared_ptr<DYModelBase>> dymod;
     std::shared_ptr<NonResModel> nonResModel;
     const std::vector<std::string> trigger_patterns;

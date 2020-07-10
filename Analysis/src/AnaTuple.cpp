@@ -34,7 +34,10 @@ AnaTupleWriter::~AnaTupleWriter()
 }
 
 void AnaTupleWriter::AddEvent(EventInfo& event, const AnaTupleWriter::DataIdMap& dataIds, const bool pass_VBF_trigger,
-                              const double btag_weight)
+                              const double btag_weight, size_t num_jets, size_t num_btag_loose,
+                              size_t num_btag_medium, size_t num_btag_tight, bool is_vbf,
+                              bool is_boosted, const boost::optional<DiscriminatorWP>& vbf_tag,
+                              const FatJetCandidate* fat_jet)
 {
     static constexpr float def_val = std::numeric_limits<float>::lowest();
     static constexpr int def_val_int = std::numeric_limits<int>::lowest();
@@ -99,6 +102,13 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const AnaTupleWriter::DataIdMap&
     tuple().lumi = event->lumi;
     tuple().evt = event->evt;
     tuple().channelId = event->channelId;
+    tuple().num_jets =  static_cast<Int_t>(num_jets);
+    tuple().num_btag_loose = static_cast<Int_t>(num_btag_loose);
+    tuple().num_btag_medium = static_cast<Int_t>(num_btag_medium);
+    tuple().num_btag_tight = static_cast<Int_t>(num_btag_tight);
+    tuple().is_vbf = is_vbf;
+    tuple().is_boosted = is_boosted;
+    tuple().vbf_tag = vbf_tag;
 
     #define TAU_DATA(name, obj) \
         tuple().name##_pt = static_cast<float>(obj.GetMomentum().pt()); \
@@ -223,6 +233,7 @@ AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, Na
         "dataIds", "all_weights", "is_central_es", "sample_id", "all_mva_scores",
         "weight", "evt", "run", "lumi", "tau1_p4", "tau2_p4", "b1_valid", "b1_p4", "b2_valid", "b2_p4", "MET_p4",
         "Hbb_p4", "Htt_p4", "HttMET_p4", "VBF1_valid", "VBF1_p4", "VBF2_valid", "VBF2_p4", "SVfit_p4", "mass_top_pair",
+        "num_jets", "num_btag_loose", "num_btag_medium", "num_btag_tight", "is_vbf", "is_boosted"
     };
 
     DefineBranches(active_var_names, active_var_names.empty());

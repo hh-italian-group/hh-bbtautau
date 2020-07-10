@@ -49,6 +49,13 @@ namespace analysis {
     VAR(float, mva_score) /* mva score */ \
     VAR(ULong64_t, evt)  /* event */ \
     VAR(Int_t, channelId) /* Channel: eTau, muTau or tauTau */ \
+    VAR(Int_t, num_jets) /* num jets */ \
+    VAR(Int_t, num_btag_loose) /* num btag jets */ \
+    VAR(Int_t, num_btag_medium) /* num btag jets */ \
+    VAR(Int_t, num_btag_tight) /* num btag jets */ \
+    VAR(bool, is_vbf) \
+    VAR(bool, is_boosted) \
+    VAR(boost::optional<DiscriminatorWP>, vbf_tag) \
     VAR_LIST(UInt_t, run, lumi) \
     TAU_DATA(tau1) \
     TAU_DATA(tau2) \
@@ -159,7 +166,9 @@ public:
 
     AnaTupleWriter(const std::string& file_name, Channel channel, bool _runKinFit, bool _runSVfit, bool _allow_calc_svFit);
     ~AnaTupleWriter();
-    void AddEvent(EventInfo& event, const DataIdMap& dataIds, const bool pass_VBF_trigger, const double btag_weight);
+    void AddEvent(EventInfo& event, const DataIdMap& dataIds, const bool pass_VBF_trigger, const double btag_weight,
+                  size_t num_jets , size_t num_btag_loose, size_t num_btag_medium, size_t num_btag_tight, bool is_vbf,
+                  bool is_boosted, const boost::optional<DiscriminatorWP>& vbf_tag, const FatJetCandidate* fat_jet);
 
 private:
     std::shared_ptr<TFile> file;
