@@ -33,9 +33,6 @@ public:
         tupleReader(args.input(), args.channel(), activeVariables),
         outputFile(root_ext::CreateRootFile(args.output() + "_full.root"))
     {
-        if(args.n_threads() > 1)
-            ROOT::EnableImplicitMT(args.n_threads());
-
         histConfig.Parse(FullPath(ana_setup.hist_cfg));
         if(!ana_setup.unc_cfg.empty()) {
             ConfigReader config_reader;
@@ -57,7 +54,6 @@ public:
                 }
             }
         }
-        auto categories = DetermineEventCategories();
     }
 
     void Run()
@@ -241,9 +237,6 @@ private:
             else
                 result = df.Fill<VecType<size_t>, VecType<double>, float>(std::move(filter), branches);
             results.push_back(result);
-            auto df_num_jets = get_df("num_jets");
-            // auto num_jets = df.Fill<VecType<size_t>, VecType<double>, int>(std::move(filter), {"num_jets"});
-            // std::cout << "num_jets = " << num_jets.GetValue() << "\n";
         }
         std::cout << std::endl;
 
@@ -360,32 +353,6 @@ private:
         return std::set<std::string>(list.begin(), list.end());
     }
 
-    EventCategorySet DetermineEventCategories()
-    {
-        EventCategorySet categories;
-        std::cout << "Nutella" << "\n";
-        auto df_main = tupleReader.GetDataFrame();
-        int njets;
-        auto df_new = df_main.Fill<double>(std::move(njets), {"num_jets"});
-        // auto df_new = df_main.Fill(VecType<size_t>( {"num_jets"});
-        // auto h = df_main.Histo1D("num_jets");
-        // auto d2 = df_main.Display("num_jets");
-        // d2->Print();
-        // auto num_jets = df_main.Define("num_jets", "");
-
-        // std::string px1Name = "num_jets";
-        // auto px1 = df_main.Take<Int_t>("px1Name");
-        // std::cout << px1.GetValue() << "\n";
-        // auto df = MakeLazyDataFrame(std::make_pair(px1Name, px1));
-
-        // auto result = df_main.Fill<VecType<size_t>, VecType<double>, int>(std::move("num_jets"),{"num_jets"});
-
-        // for(const auto& category : ana_setup.categories) {
-        //     if(category.Contains(all_jets.size(), bjet_counts, is_VBF, is_boosted, vbf_tag))
-        //         categories.insert(category);
-        // }
-        return categories;
-    }
 private:
     AnalyzerArguments args;
     std::set<std::string> activeVariables, limitVariables;

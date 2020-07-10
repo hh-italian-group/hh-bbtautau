@@ -230,8 +230,8 @@ AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, Na
     dataFrame(*tree), df(dataFrame)
 {
     static const NameSet support_branches = {
-        "dataIds", "all_weights", "is_central_es", "sample_id", "all_mva_scores",
-        "weight", "evt", "run", "lumi", "tau1_p4", "tau2_p4", "b1_valid", "b1_p4", "b2_valid", "b2_p4", "MET_p4",
+        "dataIds", "all_weights", "is_central_es", "sample_id", "all_mva_scores", "weight", "btag_weight",
+        "evt", "run", "lumi", "tau1_p4", "tau2_p4", "b1_valid", "b1_p4", "b2_valid", "b2_p4", "MET_p4",
         "Hbb_p4", "Htt_p4", "HttMET_p4", "VBF1_valid", "VBF1_p4", "VBF2_valid", "VBF2_p4", "SVfit_p4", "mass_top_pair",
         "num_jets", "num_btag_loose", "num_btag_medium", "num_btag_tight", "is_vbf", "is_boosted", "tau1_decay_mode",
         "tau1_decay_mode", "channelId"
