@@ -33,11 +33,9 @@ AnaTupleWriter::~AnaTupleWriter()
     tuple.Write();
 }
 
-void AnaTupleWriter::AddEvent(EventInfo& event, const AnaTupleWriter::DataIdMap& dataIds, const bool pass_VBF_trigger,
-                              const double btag_weight, size_t num_jets, size_t num_btag_loose,
-                              size_t num_btag_medium, size_t num_btag_tight, bool is_vbf,
-                              bool is_boosted, const boost::optional<DiscriminatorWP>& vbf_tag,
-                              const FatJetCandidate* fat_jet)
+void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const bool pass_VBF_trigger,
+                              CategoriesFlags categories_flags,
+                              std::map<DiscriminatorWP, std::map<UncertaintyScale, float>> btag_weights)
 {
     static constexpr float def_val = std::numeric_limits<float>::lowest();
     static constexpr int def_val_int = std::numeric_limits<int>::lowest();
@@ -93,22 +91,28 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const AnaTupleWriter::DataIdMap&
         tuple().all_weights.push_back(weight);
         tuple().all_mva_scores.push_back(static_cast<float>(mva_score));
     }
-
+    tuple().btag_weight_loose = { btag_weights[DiscriminatorWP::Loose][UncertaintyScale::Up],
+                                  btag_weights[DiscriminatorWP::Loose][UncertaintyScale::Central],
+                                  btag_weights[DiscriminatorWP::Loose][UncertaintyScale::Down]};
+    tuple().btag_weight_medium = { btag_weights[DiscriminatorWP::Medium][UncertaintyScale::Up],
+                                  btag_weights[DiscriminatorWP::Medium][UncertaintyScale::Central],
+                                  btag_weights[DiscriminatorWP::Medium][UncertaintyScale::Down],};
+    tuple().btag_weight_tight = { btag_weights[DiscriminatorWP::Tight][UncertaintyScale::Up],
+                                  btag_weights[DiscriminatorWP::Tight][UncertaintyScale::Central],
+                                  btag_weights[DiscriminatorWP::Tight][UncertaintyScale::Down],};
     tuple().has_b_pair = event.HasBjetPair();
     tuple().has_VBF_pair = event.HasVBFjetPair();
     tuple().pass_VBF_trigger = pass_VBF_trigger;
-    tuple().btag_weight = btag_weight;
     tuple().run = event->run;
     tuple().lumi = event->lumi;
     tuple().evt = event->evt;
     tuple().channelId = event->channelId;
-    tuple().num_jets =  static_cast<Int_t>(num_jets);
-    tuple().num_btag_loose = static_cast<Int_t>(num_btag_loose);
-    tuple().num_btag_medium = static_cast<Int_t>(num_btag_medium);
-    tuple().num_btag_tight = static_cast<Int_t>(num_btag_tight);
-    tuple().is_vbf = is_vbf;
-    tuple().is_boosted = is_boosted;
-    tuple().vbf_tag = vbf_tag;
+    tuple().num_central_jets =  static_cast<Int_t>(categories_flags.num_jets);
+    tuple().num_btag_loose = static_cast<Int_t>(categories_flags.num_btag_loose);
+    tuple().num_btag_medium = static_cast<Int_t>(categories_flags.num_btag_medium);
+    tuple().num_btag_tight = static_cast<Int_t>(categories_flags.num_btag_tight);
+    tuple().is_vbf = categories_flags.is_vbf;
+    tuple().is_boosted = categories_flags.is_boosted;
 
     #define TAU_DATA(name, obj) \
         tuple().name##_pt = static_cast<float>(obj.GetMomentum().pt()); \
@@ -138,8 +142,6 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const AnaTupleWriter::DataIdMap&
         tuple().name##_eta = obj ? static_cast<float>(obj->GetMomentum().eta()) : def_val; \
         tuple().name##_phi = obj ? static_cast<float>(obj->GetMomentum().phi()) : def_val; \
         tuple().name##_m = obj ? static_cast<float>(obj->GetMomentum().M()) : def_val; \
-        tuple().name##_CSV = obj ? (*obj)->csv() : def_val; \
-        tuple().name##_DeepCSV = obj ? (*obj)->deepcsv() : def_val; \
         tuple().name##_DeepFlavour = obj ? (*obj)->deepFlavour() : def_val; \
         tuple().name##_DeepFlavour_CvsL = obj ? (*obj)->deepFlavour_CvsL() : def_val; \
         tuple().name##_DeepFlavour_CvsB = obj ? (*obj)->deepFlavour_CvsB() : def_val; \
@@ -163,6 +165,37 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const AnaTupleWriter::DataIdMap&
     JET_DATA(VBF2, vbf2)
 
     #undef JET_DATA
+
+    #define ALL_JET_DATA(name, obj, jet_pos, n_jets) \
+        tuple().name##_pt = jet_pos < n_jets ? static_cast<float>(obj.at(jet_pos)->GetMomentum().pt()) : def_val; \
+        tuple().name##_eta = jet_pos < n_jets ? static_cast<float>(obj.at(jet_pos)->GetMomentum().eta()) : def_val; \
+        tuple().name##_phi = jet_pos < n_jets ? static_cast<float>(obj.at(jet_pos)->GetMomentum().phi()) : def_val; \
+        tuple().name##_m = jet_pos < n_jets ? static_cast<float>(obj.at(jet_pos)->GetMomentum().M()) : def_val; \
+        tuple().name##_DeepFlavour = jet_pos < n_jets ? (*obj.at(jet_pos))->deepFlavour() : def_val; \
+        tuple().name##_DeepFlavour_CvsL = jet_pos < n_jets ? (*obj.at(jet_pos))->deepFlavour_CvsL() : def_val; \
+        tuple().name##_DeepFlavour_CvsB = jet_pos < n_jets ?  (*obj.at(jet_pos))->deepFlavour_CvsB() : def_val; \
+        tuple().name##_HHbtag = jet_pos < n_jets ?  (*obj.at(jet_pos))->hh_btag() : def_val; \
+        tuple().name##_hadronFlavour = jet_pos < n_jets ? (*obj.at(jet_pos))->hadronFlavour() : def_val_int; \
+        /**/
+
+    ALL_JET_DATA(centralJet1, categories_flags.all_jets, 0, categories_flags.all_jets.size())
+    ALL_JET_DATA(centralJet2, categories_flags.all_jets, 1, categories_flags.all_jets.size())
+    ALL_JET_DATA(centralJet3, categories_flags.all_jets, 2, categories_flags.all_jets.size())
+    ALL_JET_DATA(centralJet4, categories_flags.all_jets, 3, categories_flags.all_jets.size())
+    ALL_JET_DATA(centralJet5, categories_flags.all_jets, 4, categories_flags.all_jets.size())
+
+    #undef ALL_JET_DATA
+
+    #define FAT_JET_DATA(name, obj) \
+        tuple().name##_pt = obj ? static_cast<float>(obj->GetMomentum().pt()) : def_val; \
+        tuple().name##_eta = obj ? static_cast<float>(obj->GetMomentum().eta()) : def_val; \
+        tuple().name##_phi = obj ? static_cast<float>(obj->GetMomentum().phi()) : def_val; \
+        tuple().name##_m_softDrop = obj ? static_cast<float>((*obj)->m(ntuple::TupleFatJet::MassType::SoftDrop)) : def_val; \
+        /**/
+
+    FAT_JET_DATA(fat_jet, categories_flags.fat_jet_cand)
+
+    #undef FAT_JET_DATA
 
     tuple().MET_pt = static_cast<float>(event.GetMET().GetMomentum().pt());
     tuple().MET_phi = static_cast<float>(event.GetMET().GetMomentum().phi());
@@ -233,8 +266,7 @@ AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, Na
         "dataIds", "all_weights", "is_central_es", "sample_id", "all_mva_scores", "weight", "btag_weight",
         "evt", "run", "lumi", "tau1_p4", "tau2_p4", "b1_valid", "b1_p4", "b2_valid", "b2_p4", "MET_p4",
         "Hbb_p4", "Htt_p4", "HttMET_p4", "VBF1_valid", "VBF1_p4", "VBF2_valid", "VBF2_p4", "SVfit_p4", "mass_top_pair",
-        "num_jets", "num_btag_loose", "num_btag_medium", "num_btag_tight", "is_vbf", "is_boosted", "tau1_decay_mode",
-        "tau1_decay_mode", "channelId"
+        "is_boosted", "channelId"
     };
 
     DefineBranches(active_var_names, active_var_names.empty());

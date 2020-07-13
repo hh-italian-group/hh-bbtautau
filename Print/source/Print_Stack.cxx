@@ -21,7 +21,7 @@ public:
     using PlotsProducer = ::analysis::StackedPlotsProducer;
 
     PrintStack(const Arguments& _args) :
-        EventAnalyzerCore(_args, _args.channel()), args(_args), inputFile(root_ext::OpenRootFile(args.input())),
+        EventAnalyzerCore(_args, _args.channel(),false), args(_args), inputFile(root_ext::OpenRootFile(args.input())),
         vars(ParseVarSet(args.vars()))
     {
         histConfig.Parse(ana_setup.hist_cfg);

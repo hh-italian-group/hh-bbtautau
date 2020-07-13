@@ -31,17 +31,6 @@ struct SyncDescriptor {
 
 };
 
-struct CategoriesFlags {
-    size_t num_jets;
-    size_t num_btag_loose;
-    size_t num_btag_medium;
-    size_t num_btag_tight;
-    bool is_vbf;
-    bool is_boosted;
-    boost::optional<DiscriminatorWP> vbf_tag;
-    const FatJetCandidate* fat_jet_cand;
-};
-
 class BaseEventAnalyzer : public EventAnalyzerCore {
 public:
     using Event = ntuple::Event;
@@ -50,7 +39,7 @@ public:
     void Run();
 
 protected:
-    std::pair<EventCategorySet, CategoriesFlags> DetermineEventCategories(EventInfo& event, bool pass_vbf_trigger);
+    std::pair<EventCategorySet, bbtautau::AnaTupleWriter::CategoriesFlags> DetermineEventCategories(EventInfo& event, bool pass_vbf_trigger);
     virtual EventRegion DetermineEventRegion(EventInfo& event, EventCategory eventCategory) = 0;
 
 

@@ -19,7 +19,7 @@ SyncDescriptor::SyncDescriptor(const std::string& desc_str, std::shared_ptr<TFil
 }
 
 BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel channel) :
-    EventAnalyzerCore(_args, channel), args(_args), anaTupleWriter(args.output(), channel, ana_setup.use_kinFit,
+    EventAnalyzerCore(_args, channel, true), args(_args), anaTupleWriter(args.output(), channel, ana_setup.use_kinFit,
                       ana_setup.use_svFit,ana_setup.allow_calc_svFit), trigger_patterns(ana_setup.trigger.at(channel))
 
 {
@@ -58,14 +58,16 @@ void BaseEventAnalyzer::Run()
     }
 }
 
-std::pair<EventCategorySet, CategoriesFlags> BaseEventAnalyzer::DetermineEventCategories(EventInfo& event, bool pass_vbf_trigger)
+std::pair<EventCategorySet,
+          bbtautau::AnaTupleWriter::CategoriesFlags> BaseEventAnalyzer::DetermineEventCategories(EventInfo& event,
+                                                                                                 bool pass_vbf_trigger)
 {
 
     static const std::map<DiscriminatorWP, size_t> btag_working_points = {{DiscriminatorWP::Loose, 0},
                                                                           {DiscriminatorWP::Medium, 0},
                                                                           {DiscriminatorWP::Tight, 0}};
     EventCategorySet categories;
-    CategoriesFlags categories_flags;
+    bbtautau::AnaTupleWriter::CategoriesFlags categories_flags;
 
     // const bool is_boosted =  false;
     auto fatJet = SignalObjectSelector::SelectFatJet(event.GetEventCandidate(), event.GetSelectedSignalJets());
@@ -102,13 +104,14 @@ std::pair<EventCategorySet, CategoriesFlags> BaseEventAnalyzer::DetermineEventCa
         }
     }
     categories_flags.num_jets = all_jets.size();
+    categories_flags.num_jets = all_jets.size();
     categories_flags.num_btag_loose = bjet_counts.at(DiscriminatorWP::Loose);
     categories_flags.num_btag_medium = bjet_counts.at(DiscriminatorWP::Medium);
     categories_flags.num_btag_tight = bjet_counts.at(DiscriminatorWP::Tight);
     categories_flags.is_vbf = is_VBF;
     categories_flags.is_boosted = is_boosted;
-    categories_flags.vbf_tag = vbf_tag;
     categories_flags.fat_jet_cand = fatJet;
+    categories_flags.all_jets = all_jets;
 
     for(const auto& category : ana_setup.categories_base) {
         if(category.Contains(all_jets.size(), bjet_counts, is_VBF, is_boosted, vbf_tag))
@@ -241,6 +244,11 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                           const ntuple::ProdSummary& prod_summary)
 {
     std::vector<std::string> vbf_triggers;
+
+    std::vector<DiscriminatorWP> wps = { DiscriminatorWP::Loose, DiscriminatorWP::Medium,
+                                         DiscriminatorWP::Tight };
+    std::map<DiscriminatorWP, std::map<UncertaintyScale, float>> btag_weights;
+
     if(ana_setup.trigger_vbf.count(channelId))
         vbf_triggers = ana_setup.trigger_vbf.at(channelId);
     const auto summary = std::make_shared<SummaryInfo>(prod_summary, channelId, ana_setup.trigger_path,
@@ -291,7 +299,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                 jet_pu_id_weight = jet_pu_id_weight_provided->Get(*event);
 
             }
-            const auto eventCategories = DetermineEventCategories(*event, pass_vbf_trigger).first;
+            const auto [eventCategories, categories_flags] = DetermineEventCategories(*event, pass_vbf_trigger);
             for(auto eventCategory : eventCategories) {
                 const EventRegion eventRegion = DetermineEventRegion(*event, eventCategory);
                 for(const auto& region : ana_setup.regions){
@@ -316,8 +324,14 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                 auto btag_weight_provider = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(
                                         mc_corrections::WeightType::BTag);
                                 btag_weight = btag_weight_provider->Get(*event);
-                            }
 
+                                for(const auto wp : wps)
+                                    btag_weights[wp][unc_scale] = static_cast<float>(btag_weight_provider->Get(*event, wp));
+                            }
+                            else{
+                                for(const auto wp : wps)
+                                    btag_weights[wp][unc_scale] = 1;
+                            }
                             double cross_section = (*summary)->cross_section > 0 ? (*summary)->cross_section :
                                                                                     sample.cross_section;
 
@@ -351,12 +365,8 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                     }
                 }
             }
-            const auto categories_flags = DetermineEventCategories(*event, pass_vbf_trigger).second;
             //dataId
-            anaTupleWriter.AddEvent(*event, dataIds, pass_vbf_trigger, btag_weight, categories_flags.num_jets,
-                                    categories_flags.num_btag_loose, categories_flags.num_btag_medium,
-                                    categories_flags.num_btag_tight, categories_flags.is_vbf,
-                                    categories_flags.is_boosted, categories_flags.vbf_tag, categories_flags.fat_jet_cand);
+            anaTupleWriter.AddEvent(*event, dataIds, pass_vbf_trigger, categories_flags, btag_weights);
         }
     }
 }

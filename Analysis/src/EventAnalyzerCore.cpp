@@ -7,7 +7,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 namespace analysis {
 
-EventAnalyzerCore::EventAnalyzerCore(const CoreAnalyzerArguments& args, Channel _channel) :
+EventAnalyzerCore::EventAnalyzerCore(const CoreAnalyzerArguments& args, Channel _channel, bool use_base_categories) :
     channelId(_channel), working_path(args.working_path()), signalObjectSelector(SignalMode::HH)
 
 {
@@ -63,7 +63,7 @@ EventAnalyzerCore::EventAnalyzerCore(const CoreAnalyzerArguments& args, Channel 
 
     bTagger = std::make_shared<BTagger>(ana_setup.period, ana_setup.jet_ordering);
 
-    CreateEventSubCategoriesToProcess();
+    CreateEventSubCategoriesToProcess(use_base_categories);
 
     if(!ana_setup.xs_cfg.empty())
         crossSectionProvider = std::make_shared<tuple_skimmer::CrossSectionProvider>(ana_setup.xs_cfg);
@@ -154,10 +154,11 @@ void EventAnalyzerCore::AddSampleToCombined(AnaDataCollection& anaDataCollection
     }
 }
 
-void EventAnalyzerCore::CreateEventSubCategoriesToProcess()
+void EventAnalyzerCore::CreateEventSubCategoriesToProcess(bool use_base_categories)
 {
+    auto sub_categories = use_base_categories ? ana_setup.sub_categories_base : ana_setup.sub_categories;
     if(mva_setup.is_initialized()) {
-        for(const auto& base : ana_setup.sub_categories) {
+        for(const auto& base : sub_categories) {
             SelectionCut predefined_cut;
             if(base.TryGetLastMvaCut(predefined_cut)) {
                 sub_categories_to_process.insert(base);
@@ -172,7 +173,7 @@ void EventAnalyzerCore::CreateEventSubCategoriesToProcess()
             }
         }
     } else {
-        sub_categories_to_process.insert(ana_setup.sub_categories.begin(), ana_setup.sub_categories.end());
+        sub_categories_to_process.insert(sub_categories.begin(), sub_categories.end());
     }
 }
 

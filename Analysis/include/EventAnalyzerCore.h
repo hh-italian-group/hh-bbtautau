@@ -27,7 +27,7 @@ class EventAnalyzerCore {
 public:
     using AnaDataCollection = ::analysis::EventAnalyzerDataCollection;
 
-    EventAnalyzerCore(const CoreAnalyzerArguments& args, Channel _channel);
+    EventAnalyzerCore(const CoreAnalyzerArguments& args, Channel _channel, bool use_base_categories);
 
     EventAnalyzerCore(const EventAnalyzerCore&) = delete;
     EventAnalyzerCore& operator=(const EventAnalyzerCore&) = delete;
@@ -42,7 +42,7 @@ public:
                              CombinedSampleDescriptor& sample, SampleDescriptor& sub_sample);
 
 private:
-    void CreateEventSubCategoriesToProcess();
+    void CreateEventSubCategoriesToProcess(bool use_base_categories);
     void CreateMvaSelectionAliases();
 
     template<typename SampleCollection>

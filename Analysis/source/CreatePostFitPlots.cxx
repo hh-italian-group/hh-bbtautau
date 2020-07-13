@@ -24,7 +24,7 @@ public:
     using PlotsProducer = ::analysis::StackedPlotsProducer;
 
     CreatePostFitPlots(const AnalyzerArguments& _args) :
-        EventAnalyzerCore(_args, _args.channel()), args(_args), activeVariables({args.var()}),
+        EventAnalyzerCore(_args, _args.channel(), false), args(_args), activeVariables({args.var()}),
         outputFile(root_ext::CreateRootFile(args.output() + "_postfit.root"))
     {
         histConfig.Parse(FullPath(ana_setup.hist_cfg));
