@@ -36,12 +36,6 @@ namespace analysis {
                     name##_HHbtag) \
     VAR_LIST(int, name##_valid, name##_hadronFlavour) \
 
-#define ALL_JET_DATA(name) \
-    P4_DATA(name) \
-    VAR_LIST(float, name##_DeepFlavour, name##_DeepFlavour_CvsL, name##_DeepFlavour_CvsB, \
-                    name##_HHbtag) \
-    VAR_LIST(int, name##_valid, name##_hadronFlavour) \
-
 #define FAT_JET_DATA(name) \
     P4_DATA(name) \
     VAR(float, name##_m_softDrop) \
@@ -74,11 +68,11 @@ namespace analysis {
     JET_DATA(b2) \
     JET_DATA(VBF1) \
     JET_DATA(VBF2) \
-    JET_DATA(centralJet1) \
-    JET_DATA(centralJet2) \
-    JET_DATA(centralJet3) \
-    JET_DATA(centralJet4) \
-    JET_DATA(centralJet5) \
+    JET_DATA(central_jet1) \
+    JET_DATA(central_jet2) \
+    JET_DATA(central_jet3) \
+    JET_DATA(central_jet4) \
+    JET_DATA(central_jet5) \
     FAT_JET_DATA(fat_jet) \
     VAR_LIST(float, MET_pt, MET_phi) /* MET */ \
     VAR(int, SVfit_valid) \
@@ -149,7 +143,6 @@ private:
 #undef CREATE_VAR
 #undef TAU_DATA
 #undef JET_DATA
-#undef ALL_JET_DATA
 #undef FAT_JET_DATA
 #undef P4_DATA
 }

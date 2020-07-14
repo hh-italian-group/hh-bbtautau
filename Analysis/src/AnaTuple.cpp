@@ -164,27 +164,20 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
     JET_DATA(VBF1, vbf1)
     JET_DATA(VBF2, vbf2)
 
+    const auto& centralJets = event.GetCentralJets();
+    // const JetCandidate*> = *central_jet1 = nullptr, *central_jet2 = nullptr, *central_jet3 = nullptr, *central_jet4 = nullptr, *central_jet5 = nullptr;
+    // std::vector<const JetCandidate*> = {nullptr, nullptr, nullptr, nullptr, nullptr};
+
+    // std::map<std::string, const JetCandidate*> central_jets;
+    for (size_t n_pos = 0; n_pos < centralJets.size(); ++n_pos){
+        std::ostringstream central_jets;
+        central_jets << "central_jet" << n_pos;
+        std::cout << " central_jets = " << central_jets.str() << "\n";
+        std::cout << "*** p4 = " << centralJets.at(0)->GetMomentum().M()<< "\n";
+        // JET_DATA(central_jets.str(), centralJets.at(n_pos))
+    }
+
     #undef JET_DATA
-
-    #define ALL_JET_DATA(name, obj, jet_pos, n_jets) \
-        tuple().name##_pt = jet_pos < n_jets ? static_cast<float>(obj.at(jet_pos)->GetMomentum().pt()) : def_val; \
-        tuple().name##_eta = jet_pos < n_jets ? static_cast<float>(obj.at(jet_pos)->GetMomentum().eta()) : def_val; \
-        tuple().name##_phi = jet_pos < n_jets ? static_cast<float>(obj.at(jet_pos)->GetMomentum().phi()) : def_val; \
-        tuple().name##_m = jet_pos < n_jets ? static_cast<float>(obj.at(jet_pos)->GetMomentum().M()) : def_val; \
-        tuple().name##_DeepFlavour = jet_pos < n_jets ? (*obj.at(jet_pos))->deepFlavour() : def_val; \
-        tuple().name##_DeepFlavour_CvsL = jet_pos < n_jets ? (*obj.at(jet_pos))->deepFlavour_CvsL() : def_val; \
-        tuple().name##_DeepFlavour_CvsB = jet_pos < n_jets ?  (*obj.at(jet_pos))->deepFlavour_CvsB() : def_val; \
-        tuple().name##_HHbtag = jet_pos < n_jets ?  (*obj.at(jet_pos))->hh_btag() : def_val; \
-        tuple().name##_hadronFlavour = jet_pos < n_jets ? (*obj.at(jet_pos))->hadronFlavour() : def_val_int; \
-        /**/
-
-    ALL_JET_DATA(centralJet1, categories_flags.all_jets, 0, categories_flags.all_jets.size())
-    ALL_JET_DATA(centralJet2, categories_flags.all_jets, 1, categories_flags.all_jets.size())
-    ALL_JET_DATA(centralJet3, categories_flags.all_jets, 2, categories_flags.all_jets.size())
-    ALL_JET_DATA(centralJet4, categories_flags.all_jets, 3, categories_flags.all_jets.size())
-    ALL_JET_DATA(centralJet5, categories_flags.all_jets, 4, categories_flags.all_jets.size())
-
-    #undef ALL_JET_DATA
 
     #define FAT_JET_DATA(name, obj) \
         tuple().name##_pt = obj ? static_cast<float>(obj->GetMomentum().pt()) : def_val; \
