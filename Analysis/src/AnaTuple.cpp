@@ -99,7 +99,7 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
                                   btag_weights.at(DiscriminatorWP::Medium).at(UncertaintyScale::Down) };
     tuple().btag_weight_tight = { btag_weights.at(DiscriminatorWP::Tight).at(UncertaintyScale::Up),
                                   btag_weights.at(DiscriminatorWP::Tight).at(UncertaintyScale::Central),
-                                  btag_weights.at(DiscriminatorWP::Medium).at(UncertaintyScale::Down) };
+                                  btag_weights.at(DiscriminatorWP::Tight).at(UncertaintyScale::Down) };
     tuple().has_b_pair = event.HasBjetPair();
     tuple().has_VBF_pair = event.HasVBFjetPair();
     tuple().pass_VBF_trigger = pass_VBF_trigger;
