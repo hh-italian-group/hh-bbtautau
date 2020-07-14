@@ -245,7 +245,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
 {
     std::vector<std::string> vbf_triggers;
 
-    std::vector<DiscriminatorWP> wps = { DiscriminatorWP::Loose, DiscriminatorWP::Medium,
+    std::vector<DiscriminatorWP> btag_wps = { DiscriminatorWP::Loose, DiscriminatorWP::Medium,
                                          DiscriminatorWP::Tight };
     std::map<DiscriminatorWP, std::map<UncertaintyScale, float>> btag_weights;
 
@@ -298,6 +298,14 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                         mc_corrections::WeightType::JetPuIdWeights);
                 jet_pu_id_weight = jet_pu_id_weight_provided->Get(*event);
 
+                auto btag_weight_provider = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(
+                        mc_corrections::WeightType::BTag);
+
+                for(const auto wp : btag_wps){
+                    btag_weights[wp][UncertaintyScale::Central] = static_cast<float>(btag_weight_provider->Get(*event, wp));
+                    btag_weights[wp][UncertaintyScale::Up] = 1;
+                    btag_weights[wp][UncertaintyScale::Down] = 1;
+                }
             }
             const auto [eventCategories, categories_flags] = DetermineEventCategories(*event, pass_vbf_trigger);
             for(auto eventCategory : eventCategories) {
@@ -324,13 +332,6 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                 auto btag_weight_provider = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(
                                         mc_corrections::WeightType::BTag);
                                 btag_weight = btag_weight_provider->Get(*event);
-
-                                for(const auto wp : wps)
-                                    btag_weights[wp][unc_scale] = static_cast<float>(btag_weight_provider->Get(*event, wp));
-                            }
-                            else{
-                                for(const auto wp : wps)
-                                    btag_weights[wp][unc_scale] = 1;
                             }
                             double cross_section = (*summary)->cross_section > 0 ? (*summary)->cross_section :
                                                                                     sample.cross_section;

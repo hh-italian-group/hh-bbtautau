@@ -34,8 +34,8 @@ AnaTupleWriter::~AnaTupleWriter()
 }
 
 void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const bool pass_VBF_trigger,
-                              CategoriesFlags categories_flags,
-                              std::map<DiscriminatorWP, std::map<UncertaintyScale, float>> btag_weights)
+                              const CategoriesFlags& categories_flags,
+                              const std::map<DiscriminatorWP, std::map<UncertaintyScale, float>>& btag_weights)
 {
     static constexpr float def_val = std::numeric_limits<float>::lowest();
     static constexpr int def_val_int = std::numeric_limits<int>::lowest();
@@ -91,15 +91,15 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
         tuple().all_weights.push_back(weight);
         tuple().all_mva_scores.push_back(static_cast<float>(mva_score));
     }
-    tuple().btag_weight_loose = { btag_weights[DiscriminatorWP::Loose][UncertaintyScale::Up],
-                                  btag_weights[DiscriminatorWP::Loose][UncertaintyScale::Central],
-                                  btag_weights[DiscriminatorWP::Loose][UncertaintyScale::Down]};
-    tuple().btag_weight_medium = { btag_weights[DiscriminatorWP::Medium][UncertaintyScale::Up],
-                                  btag_weights[DiscriminatorWP::Medium][UncertaintyScale::Central],
-                                  btag_weights[DiscriminatorWP::Medium][UncertaintyScale::Down],};
-    tuple().btag_weight_tight = { btag_weights[DiscriminatorWP::Tight][UncertaintyScale::Up],
-                                  btag_weights[DiscriminatorWP::Tight][UncertaintyScale::Central],
-                                  btag_weights[DiscriminatorWP::Tight][UncertaintyScale::Down],};
+    tuple().btag_weight_loose = { btag_weights.at(DiscriminatorWP::Loose).at(UncertaintyScale::Up),
+                                  btag_weights.at(DiscriminatorWP::Loose).at(UncertaintyScale::Central),
+                                  btag_weights.at(DiscriminatorWP::Loose).at(UncertaintyScale::Down) };
+    tuple().btag_weight_medium = { btag_weights.at(DiscriminatorWP::Medium).at(UncertaintyScale::Up),
+                                  btag_weights.at(DiscriminatorWP::Medium).at(UncertaintyScale::Central),
+                                  btag_weights.at(DiscriminatorWP::Medium).at(UncertaintyScale::Down) };
+    tuple().btag_weight_tight = { btag_weights.at(DiscriminatorWP::Tight).at(UncertaintyScale::Up),
+                                  btag_weights.at(DiscriminatorWP::Tight).at(UncertaintyScale::Central),
+                                  btag_weights.at(DiscriminatorWP::Medium).at(UncertaintyScale::Down) };
     tuple().has_b_pair = event.HasBjetPair();
     tuple().has_VBF_pair = event.HasVBFjetPair();
     tuple().pass_VBF_trigger = pass_VBF_trigger;
@@ -165,17 +165,18 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
     JET_DATA(VBF2, vbf2)
 
     const auto& centralJets = event.GetCentralJets();
-    // const JetCandidate*> = *central_jet1 = nullptr, *central_jet2 = nullptr, *central_jet3 = nullptr, *central_jet4 = nullptr, *central_jet5 = nullptr;
-    // std::vector<const JetCandidate*> = {nullptr, nullptr, nullptr, nullptr, nullptr};
 
-    // std::map<std::string, const JetCandidate*> central_jets;
-    for (size_t n_pos = 0; n_pos < centralJets.size(); ++n_pos){
-        std::ostringstream central_jets;
-        central_jets << "central_jet" << n_pos;
-        std::cout << " central_jets = " << central_jets.str() << "\n";
-        std::cout << "*** p4 = " << centralJets.at(0)->GetMomentum().M()<< "\n";
-        // JET_DATA(central_jets.str(), centralJets.at(n_pos))
-    }
+    const JetCandidate *centralJet1 = centralJets.size() > 0 ? centralJets.at(0) : nullptr;
+    const JetCandidate *centralJet2 = centralJets.size() > 1 ? centralJets.at(1) : nullptr;
+    const JetCandidate *centralJet3 = centralJets.size() > 2 ? centralJets.at(2) : nullptr;
+    const JetCandidate *centralJet4 = centralJets.size() > 3 ? centralJets.at(3) : nullptr;
+    const JetCandidate *centralJet5 = centralJets.size() > 4 ? centralJets.at(4) : nullptr;
+
+    JET_DATA(central_jet1, centralJet1)
+    JET_DATA(central_jet2, centralJet2)
+    JET_DATA(central_jet3, centralJet3)
+    JET_DATA(central_jet4, centralJet4)
+    JET_DATA(central_jet5, centralJet5)
 
     #undef JET_DATA
 
@@ -183,6 +184,8 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
         tuple().name##_pt = obj ? static_cast<float>(obj->GetMomentum().pt()) : def_val; \
         tuple().name##_eta = obj ? static_cast<float>(obj->GetMomentum().eta()) : def_val; \
         tuple().name##_phi = obj ? static_cast<float>(obj->GetMomentum().phi()) : def_val; \
+        tuple().name##_m = obj ? static_cast<float>(obj->GetMomentum().M()) : def_val; \
+        tuple().name##_valid = obj != nullptr; \
         tuple().name##_m_softDrop = obj ? static_cast<float>((*obj)->m(ntuple::TupleFatJet::MassType::SoftDrop)) : def_val; \
         /**/
 
@@ -248,7 +251,9 @@ const AnaTupleReader::NameSet AnaTupleReader::IntBranches = {
     "tau1_q", "tau1_gen_match", "tau1_decay_mode","tau2_q", "tau2_gen_match", "tau2_decay_mode",
     "b1_valid", "b1_hadronFlavour", "b2_valid", "b2_hadronFlavour",
     "VBF1_valid", "VBF1_hadronFlavour", "VBF2_valid", "VBF2_hadronFlavour",
-    "SVfit_valid", "kinFit_convergence"
+    "SVfit_valid", "kinFit_convergence", "central_jet1_valid", "central_jet1_hadronFlavour", "central_jet2_valid",
+    "central_jet2_hadronFlavour", "central_jet3_valid", "central_jet3_hadronFlavour", "central_jet4_valid",
+    "central_jet4_hadronFlavour", "central_jet5_valid", "central_jet5_hadronFlavour"
 };
 
 AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names) :
@@ -259,7 +264,9 @@ AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, Na
         "dataIds", "all_weights", "is_central_es", "sample_id", "all_mva_scores", "weight", "btag_weight",
         "evt", "run", "lumi", "tau1_p4", "tau2_p4", "b1_valid", "b1_p4", "b2_valid", "b2_p4", "MET_p4",
         "Hbb_p4", "Htt_p4", "HttMET_p4", "VBF1_valid", "VBF1_p4", "VBF2_valid", "VBF2_p4", "SVfit_p4", "mass_top_pair",
-        "is_boosted", "channelId"
+        "is_boosted", "channelId", "central_jet1_valid", "central_jet1_p4", "central_jet2_valid", "central_jet2_p4",
+        "central_jet3_valid", "central_jet3_p4", "central_jet4_valid", "central_jet4_p4", "central_jet5_valid",
+         "central_jet5_p4"
     };
 
     DefineBranches(active_var_names, active_var_names.empty());
@@ -361,6 +368,12 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
     auto df_vbf = Filter(df_bb, "has_VBF_pair");
     DefineP4(df_vbf, "VBF1");
     DefineP4(df_vbf, "VBF2");
+
+    DefineP4(df, "central_jet1");
+    DefineP4(df, "central_jet2");
+    DefineP4(df, "central_jet3");
+    DefineP4(df, "central_jet4");
+    DefineP4(df, "central_jet5");
 
     auto df_sv = FilterInt(df, "SVfit_valid");
     DefineP4(df_sv, "SVfit");

@@ -39,6 +39,7 @@ namespace analysis {
 #define FAT_JET_DATA(name) \
     P4_DATA(name) \
     VAR(float, name##_m_softDrop) \
+    VAR(int, name##_valid) \
 
 #define ANA_EVENT_DATA() \
     VAR(std::vector<size_t>, dataIds) /* EventAnalyzerDataId */ \
@@ -190,8 +191,8 @@ public:
     AnaTupleWriter(const std::string& file_name, Channel channel, bool _runKinFit, bool _runSVfit, bool _allow_calc_svFit);
     ~AnaTupleWriter();
     void AddEvent(EventInfo& event, const DataIdMap& dataIds, const bool pass_VBF_trigger,
-                  CategoriesFlags categories_flags,
-                  std::map<DiscriminatorWP, std::map<UncertaintyScale, float>> btag_weights);
+                  const CategoriesFlags& categories_flags,
+                  const std::map<DiscriminatorWP, std::map<UncertaintyScale, float>>& btag_weights);
 
 private:
     std::shared_ptr<TFile> file;

@@ -156,7 +156,7 @@ void EventAnalyzerCore::AddSampleToCombined(AnaDataCollection& anaDataCollection
 
 void EventAnalyzerCore::CreateEventSubCategoriesToProcess(bool use_base_categories)
 {
-    auto sub_categories = use_base_categories ? ana_setup.sub_categories_base : ana_setup.sub_categories;
+    const auto& sub_categories = use_base_categories ? ana_setup.sub_categories_base : ana_setup.sub_categories;
     if(mva_setup.is_initialized()) {
         for(const auto& base : sub_categories) {
             SelectionCut predefined_cut;
