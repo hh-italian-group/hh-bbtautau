@@ -298,13 +298,18 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                         mc_corrections::WeightType::JetPuIdWeights);
                 jet_pu_id_weight = jet_pu_id_weight_provided->Get(*event);
 
-                auto btag_weight_provider = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(
-                        mc_corrections::WeightType::BTag);
+                if(unc_source == UncertaintySource::None){
+                    auto btag_weight_provider = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(
+                            mc_corrections::WeightType::BTag);
 
-                for(const auto wp : btag_wps){
-                    btag_weights[wp][UncertaintyScale::Central] = static_cast<float>(btag_weight_provider->Get(*event, wp));
-                    btag_weights[wp][UncertaintyScale::Up] = 1;
-                    btag_weights[wp][UncertaintyScale::Down] = 1;
+                    for(const auto wp : btag_wps){
+                        btag_weights[wp][UncertaintyScale::Central] = static_cast<float>(btag_weight_provider->Get(*event,
+                            wp,  UncertaintySource::Eff_b, UncertaintyScale::Central));
+                        btag_weights[wp][UncertaintyScale::Up] = static_cast<float>(btag_weight_provider->Get(*event,
+                            wp, UncertaintySource::Eff_b, UncertaintyScale::Up));
+                        btag_weights[wp][UncertaintyScale::Down] = static_cast<float>(btag_weight_provider->Get(*event,
+                            wp, UncertaintySource::Eff_b, UncertaintyScale::Down));
+                    }
                 }
             }
             const auto [eventCategories, categories_flags] = DetermineEventCategories(*event, pass_vbf_trigger);

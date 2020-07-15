@@ -91,15 +91,17 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
         tuple().all_weights.push_back(weight);
         tuple().all_mva_scores.push_back(static_cast<float>(mva_score));
     }
-    tuple().btag_weight_loose = { btag_weights.at(DiscriminatorWP::Loose).at(UncertaintyScale::Up),
-                                  btag_weights.at(DiscriminatorWP::Loose).at(UncertaintyScale::Central),
-                                  btag_weights.at(DiscriminatorWP::Loose).at(UncertaintyScale::Down) };
-    tuple().btag_weight_medium = { btag_weights.at(DiscriminatorWP::Medium).at(UncertaintyScale::Up),
-                                  btag_weights.at(DiscriminatorWP::Medium).at(UncertaintyScale::Central),
-                                  btag_weights.at(DiscriminatorWP::Medium).at(UncertaintyScale::Down) };
-    tuple().btag_weight_tight = { btag_weights.at(DiscriminatorWP::Tight).at(UncertaintyScale::Up),
-                                  btag_weights.at(DiscriminatorWP::Tight).at(UncertaintyScale::Central),
-                                  btag_weights.at(DiscriminatorWP::Tight).at(UncertaintyScale::Down) };
+    if(!event->isData){
+        tuple().btag_weight_loose = { btag_weights.at(DiscriminatorWP::Loose).at(UncertaintyScale::Up),
+                                      btag_weights.at(DiscriminatorWP::Loose).at(UncertaintyScale::Central),
+                                      btag_weights.at(DiscriminatorWP::Loose).at(UncertaintyScale::Down) };
+        tuple().btag_weight_medium = { btag_weights.at(DiscriminatorWP::Medium).at(UncertaintyScale::Up),
+                                      btag_weights.at(DiscriminatorWP::Medium).at(UncertaintyScale::Central),
+                                      btag_weights.at(DiscriminatorWP::Medium).at(UncertaintyScale::Down) };
+        tuple().btag_weight_tight = { btag_weights.at(DiscriminatorWP::Tight).at(UncertaintyScale::Up),
+                                      btag_weights.at(DiscriminatorWP::Tight).at(UncertaintyScale::Central),
+                                      btag_weights.at(DiscriminatorWP::Tight).at(UncertaintyScale::Down) };
+    }
     tuple().has_b_pair = event.HasBjetPair();
     tuple().has_VBF_pair = event.HasVBFjetPair();
     tuple().pass_VBF_trigger = pass_VBF_trigger;
@@ -164,19 +166,26 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
     JET_DATA(VBF1, vbf1)
     JET_DATA(VBF2, vbf2)
 
-    const auto& centralJets = event.GetCentralJets();
+    auto centralJets = event.GetCentralJets();
+    std::sort(centralJets.begin(), centralJets.end(), [](auto jet1, auto jet2) { return jet1->GetMomentum().pt() > jet2->GetMomentum().pt(); });
+    centralJets.resize(5, nullptr);
 
-    const JetCandidate *centralJet1 = centralJets.size() > 0 ? centralJets.at(0) : nullptr;
-    const JetCandidate *centralJet2 = centralJets.size() > 1 ? centralJets.at(1) : nullptr;
-    const JetCandidate *centralJet3 = centralJets.size() > 2 ? centralJets.at(2) : nullptr;
-    const JetCandidate *centralJet4 = centralJets.size() > 3 ? centralJets.at(3) : nullptr;
-    const JetCandidate *centralJet5 = centralJets.size() > 4 ? centralJets.at(4) : nullptr;
+    JET_DATA(central_jet1, centralJets.at(0))
+    JET_DATA(central_jet2, centralJets.at(1))
+    JET_DATA(central_jet3, centralJets.at(2))
+    JET_DATA(central_jet4, centralJets.at(3))
+    JET_DATA(central_jet5, centralJets.at(4))
 
-    JET_DATA(central_jet1, centralJet1)
-    JET_DATA(central_jet2, centralJet2)
-    JET_DATA(central_jet3, centralJet3)
-    JET_DATA(central_jet4, centralJet4)
-    JET_DATA(central_jet5, centralJet5)
+    auto forwardJets = event.GetForwardJets();
+    std::sort(forwardJets.begin(), forwardJets.end(), [](auto jet1, auto jet2) { return jet1->GetMomentum().pt() > jet2->GetMomentum().pt(); });
+    forwardJets.resize(5, nullptr);
+
+    JET_DATA(forward_jet1, forwardJets.at(0))
+    JET_DATA(forward_jet2, forwardJets.at(1))
+    JET_DATA(forward_jet3, forwardJets.at(2))
+    JET_DATA(forward_jet4, forwardJets.at(3))
+    JET_DATA(forward_jet5, forwardJets.at(4))
+
 
     #undef JET_DATA
 

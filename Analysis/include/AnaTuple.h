@@ -74,6 +74,11 @@ namespace analysis {
     JET_DATA(central_jet3) \
     JET_DATA(central_jet4) \
     JET_DATA(central_jet5) \
+    JET_DATA(forward_jet1) \
+    JET_DATA(forward_jet2) \
+    JET_DATA(forward_jet3) \
+    JET_DATA(forward_jet4) \
+    JET_DATA(forward_jet5) \
     FAT_JET_DATA(fat_jet) \
     VAR_LIST(float, MET_pt, MET_phi) /* MET */ \
     VAR(int, SVfit_valid) \
