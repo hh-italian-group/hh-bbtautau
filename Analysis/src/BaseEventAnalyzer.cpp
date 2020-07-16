@@ -104,14 +104,12 @@ std::pair<EventCategorySet,
         }
     }
     categories_flags.num_jets = all_jets.size();
-    categories_flags.num_jets = all_jets.size();
     categories_flags.num_btag_loose = bjet_counts.at(DiscriminatorWP::Loose);
     categories_flags.num_btag_medium = bjet_counts.at(DiscriminatorWP::Medium);
     categories_flags.num_btag_tight = bjet_counts.at(DiscriminatorWP::Tight);
     categories_flags.is_vbf = is_VBF;
     categories_flags.is_boosted = is_boosted;
     categories_flags.fat_jet_cand = fatJet;
-    categories_flags.all_jets = all_jets;
 
     for(const auto& category : ana_setup.categories_base) {
         if(category.Contains(all_jets.size(), bjet_counts, is_VBF, is_boosted, vbf_tag))
@@ -247,7 +245,6 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
 
     std::vector<DiscriminatorWP> btag_wps = { DiscriminatorWP::Loose, DiscriminatorWP::Medium,
                                          DiscriminatorWP::Tight };
-    std::map<DiscriminatorWP, std::map<UncertaintyScale, float>> btag_weights;
 
     if(ana_setup.trigger_vbf.count(channelId))
         vbf_triggers = ana_setup.trigger_vbf.at(channelId);
@@ -272,6 +269,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
             const bool pass_trigger = pass_normal_trigger || pass_vbf_trigger;
             if(!pass_trigger) continue;
 
+            std::map<DiscriminatorWP, std::map<UncertaintyScale, float>> btag_weights;
             bbtautau::AnaTupleWriter::DataIdMap dataIds;
             std::map<size_t, bool> sync_event_selected;
 
@@ -294,21 +292,17 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                 if(ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017)
                     l1_prefiring_weight = (*event)->l1_prefiring_weight;
 
-                auto jet_pu_id_weight_provided = eventWeights_HH->GetProviderT<mc_corrections::JetPuIdWeights>(
-                        mc_corrections::WeightType::JetPuIdWeights);
-                jet_pu_id_weight = jet_pu_id_weight_provided->Get(*event);
+                auto btag_weight_provider = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(
+                    mc_corrections::WeightType::BTag);
 
-                if(unc_source == UncertaintySource::None){
-                    auto btag_weight_provider = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(
-                            mc_corrections::WeightType::BTag);
-
-                    for(const auto wp : btag_wps){
-                        btag_weights[wp][UncertaintyScale::Central] = static_cast<float>(btag_weight_provider->Get(*event,
-                            wp,  UncertaintySource::Eff_b, UncertaintyScale::Central));
-                        btag_weights[wp][UncertaintyScale::Up] = static_cast<float>(btag_weight_provider->Get(*event,
-                            wp, UncertaintySource::Eff_b, UncertaintyScale::Up));
-                        btag_weights[wp][UncertaintyScale::Down] = static_cast<float>(btag_weight_provider->Get(*event,
-                            wp, UncertaintySource::Eff_b, UncertaintyScale::Down));
+                for(const auto wp : btag_wps){
+                    btag_weights[wp][UncertaintyScale::Central] = static_cast<float>(btag_weight_provider->Get(*event,
+                                                                                     wp, unc_source, unc_scale));
+                    if(unc_source == UncertaintySource::None) {
+                        btag_weights[wp][UncertaintyScale::Up] = static_cast<float>(btag_weight_provider->Get(*event, wp,
+                                UncertaintySource::Eff_b, UncertaintyScale::Up));
+                        btag_weights[wp][UncertaintyScale::Down] = static_cast<float>(btag_weight_provider->Get(*event, wp,
+                                UncertaintySource::Eff_b, UncertaintyScale::Down));
                     }
                 }
             }
@@ -333,11 +327,9 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                             dataIds[anaDataId] = std::make_tuple(1., mva_score);
                         } else {
 
-                            if(eventCategory.HasBtagConstraint()) {
-                                auto btag_weight_provider = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(
-                                        mc_corrections::WeightType::BTag);
-                                btag_weight = btag_weight_provider->Get(*event);
-                            }
+                            if(eventCategory.HasBtagConstraint())
+                                btag_weight = btag_weights.at(DiscriminatorWP::Medium).at(UncertaintyScale::Central);
+
                             double cross_section = (*summary)->cross_section > 0 ? (*summary)->cross_section :
                                                                                     sample.cross_section;
 

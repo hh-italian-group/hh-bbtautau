@@ -190,7 +190,6 @@ public:
         bool is_vbf;
         bool is_boosted;
         const FatJetCandidate* fat_jet_cand;
-        std::vector<const JetCandidate*> all_jets;
     };
 
     AnaTupleWriter(const std::string& file_name, Channel channel, bool _runKinFit, bool _runSVfit, bool _allow_calc_svFit);

@@ -91,16 +91,20 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
         tuple().all_weights.push_back(weight);
         tuple().all_mva_scores.push_back(static_cast<float>(mva_score));
     }
+
+    auto fill_unc_weight_vec = [](const std::map<UncertaintyScale, float>& weights_in, std::vector<float>& weights_out) {
+        weights_out.clear();
+        weights_out.push_back(weights_in.at(UncertaintyScale::Central));
+        if(weights_in.count(UncertaintyScale::Up))
+            weights_out.push_back(weights_in.at(UncertaintyScale::Up));
+        if(weights_in.count(UncertaintyScale::Down))
+            weights_out.push_back(weights_in.at(UncertaintyScale::Down));
+    };
+
     if(!event->isData){
-        tuple().btag_weight_loose = { btag_weights.at(DiscriminatorWP::Loose).at(UncertaintyScale::Up),
-                                      btag_weights.at(DiscriminatorWP::Loose).at(UncertaintyScale::Central),
-                                      btag_weights.at(DiscriminatorWP::Loose).at(UncertaintyScale::Down) };
-        tuple().btag_weight_medium = { btag_weights.at(DiscriminatorWP::Medium).at(UncertaintyScale::Up),
-                                      btag_weights.at(DiscriminatorWP::Medium).at(UncertaintyScale::Central),
-                                      btag_weights.at(DiscriminatorWP::Medium).at(UncertaintyScale::Down) };
-        tuple().btag_weight_tight = { btag_weights.at(DiscriminatorWP::Tight).at(UncertaintyScale::Up),
-                                      btag_weights.at(DiscriminatorWP::Tight).at(UncertaintyScale::Central),
-                                      btag_weights.at(DiscriminatorWP::Tight).at(UncertaintyScale::Down) };
+        fill_unc_weight_vec(btag_weights.at(DiscriminatorWP::Loose), tuple().btag_weight_loose);
+        fill_unc_weight_vec(btag_weights.at(DiscriminatorWP::Medium), tuple().btag_weight_medium);
+        fill_unc_weight_vec(btag_weights.at(DiscriminatorWP::Tight), tuple().btag_weight_tight);
     }
     tuple().has_b_pair = event.HasBjetPair();
     tuple().has_VBF_pair = event.HasVBFjetPair();
