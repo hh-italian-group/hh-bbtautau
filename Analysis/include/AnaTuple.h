@@ -45,9 +45,9 @@ namespace analysis {
     VAR(std::vector<size_t>, dataIds) /* EventAnalyzerDataId */ \
     VAR(std::vector<double>, all_weights) /* all weight */ \
     VAR(std::vector<float>, all_mva_scores) /* all mva scores */ \
-    VAR(std::vector<float>, btag_weight_loose) /* btag weight Loose wp: up,central,down */ \
-    VAR(std::vector<float>, btag_weight_medium) /* btag weight Medium wp: up,central,down */ \
-    VAR(std::vector<float>, btag_weight_tight) /* btag weight Tight wp: up,central,down */ \
+    VAR(std::vector<float>, btag_weight_Loose) /* btag weight Loose wp: central,up,down */ \
+    VAR(std::vector<float>, btag_weight_Medium) /* btag weight Medium wp: central,up,down */ \
+    VAR(std::vector<float>, btag_weight_Tight) /* btag weight Tight wp: central,up,down */ \
     VAR_LIST(bool, has_b_pair, has_VBF_pair) /* has 2 jets */ \
     VAR(bool, pass_VBF_trigger) \
     VAR(bool, is_central_es) \

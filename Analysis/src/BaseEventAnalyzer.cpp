@@ -292,6 +292,10 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                 if(ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017)
                     l1_prefiring_weight = (*event)->l1_prefiring_weight;
 
+                auto jet_pu_id_weight_provided = eventWeights_HH->GetProviderT<mc_corrections::JetPuIdWeights>(
+                        mc_corrections::WeightType::JetPuIdWeights);
+                jet_pu_id_weight = jet_pu_id_weight_provided->Get(*event);
+
                 auto btag_weight_provider = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(
                     mc_corrections::WeightType::BTag);
 
@@ -328,7 +332,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                         } else {
 
                             if(eventCategory.HasBtagConstraint())
-                                btag_weight = btag_weights.at(DiscriminatorWP::Medium).at(UncertaintyScale::Central);
+                                btag_weight = btag_weights.at(signalObjectSelector.GetTauVSjetDiscriminator().second).at(UncertaintyScale::Central);
 
                             double cross_section = (*summary)->cross_section > 0 ? (*summary)->cross_section :
                                                                                     sample.cross_section;
