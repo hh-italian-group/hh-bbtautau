@@ -332,7 +332,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                         } else {
 
                             if(eventCategory.HasBtagConstraint())
-                                btag_weight = btag_weights.at(signalObjectSelector.GetTauVSjetDiscriminator().second).at(UncertaintyScale::Central);
+                                btag_weight = btag_weights.at(eventCategory.BtagWP()).at(UncertaintyScale::Central);
 
                             double cross_section = (*summary)->cross_section > 0 ? (*summary)->cross_section :
                                                                                     sample.cross_section;
