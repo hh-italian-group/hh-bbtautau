@@ -39,7 +39,7 @@ public:
     void Run();
 
 protected:
-    EventCategorySet DetermineEventCategories(EventInfo& event, bool pass_vbf_trigger);
+    std::pair<EventCategorySet, bbtautau::AnaTupleWriter::CategoriesFlags> DetermineEventCategories(EventInfo& event, bool pass_vbf_trigger);
     virtual EventRegion DetermineEventRegion(EventInfo& event, EventCategory eventCategory) = 0;
 
 

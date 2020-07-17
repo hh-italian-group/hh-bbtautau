@@ -27,19 +27,27 @@ namespace analysis {
 #define TAU_DATA(name) \
     P4_DATA(name) \
     VAR_LIST(float, name##_iso, name##_DeepTauVSe, name##_DeepTauVSmu, name##_DeepTauVSjet) \
-    VAR_LIST(int, name##_q, name##_gen_match) \
+    VAR_LIST(int, name##_q, name##_gen_match, name##_decay_mode) \
     /**/
 
 #define JET_DATA(name) \
     P4_DATA(name) \
-    VAR_LIST(float, name##_CSV, name##_DeepCSV, name##_DeepFlavour, name##_DeepFlavour_CvsL, name##_DeepFlavour_CvsB, \
+    VAR_LIST(float, name##_DeepFlavour, name##_DeepFlavour_CvsL, name##_DeepFlavour_CvsB, \
                     name##_HHbtag) \
     VAR_LIST(int, name##_valid, name##_hadronFlavour) \
+
+#define FAT_JET_DATA(name) \
+    P4_DATA(name) \
+    VAR(float, name##_m_softDrop) \
+    VAR(int, name##_valid) \
 
 #define ANA_EVENT_DATA() \
     VAR(std::vector<size_t>, dataIds) /* EventAnalyzerDataId */ \
     VAR(std::vector<double>, all_weights) /* all weight */ \
     VAR(std::vector<float>, all_mva_scores) /* all mva scores */ \
+    VAR(std::vector<float>, btag_weight_Loose) /* btag weight Loose wp: central,up,down */ \
+    VAR(std::vector<float>, btag_weight_Medium) /* btag weight Medium wp: central,up,down */ \
+    VAR(std::vector<float>, btag_weight_Tight) /* btag weight Tight wp: central,up,down */ \
     VAR_LIST(bool, has_b_pair, has_VBF_pair) /* has 2 jets */ \
     VAR(bool, pass_VBF_trigger) \
     VAR(bool, is_central_es) \
@@ -47,6 +55,13 @@ namespace analysis {
     VAR(double, weight) /* weight */ \
     VAR(float, mva_score) /* mva score */ \
     VAR(ULong64_t, evt)  /* event */ \
+    VAR(Int_t, channelId) /* Channel: eTau, muTau or tauTau */ \
+    VAR(Int_t, num_central_jets) /* num jets */ \
+    VAR(Int_t, num_btag_loose)  \
+    VAR(Int_t, num_btag_medium) \
+    VAR(Int_t, num_btag_tight)   \
+    VAR(bool, is_vbf) \
+    VAR(bool, is_boosted) \
     VAR_LIST(UInt_t, run, lumi) \
     TAU_DATA(tau1) \
     TAU_DATA(tau2) \
@@ -54,6 +69,17 @@ namespace analysis {
     JET_DATA(b2) \
     JET_DATA(VBF1) \
     JET_DATA(VBF2) \
+    JET_DATA(central_jet1) \
+    JET_DATA(central_jet2) \
+    JET_DATA(central_jet3) \
+    JET_DATA(central_jet4) \
+    JET_DATA(central_jet5) \
+    JET_DATA(forward_jet1) \
+    JET_DATA(forward_jet2) \
+    JET_DATA(forward_jet3) \
+    JET_DATA(forward_jet4) \
+    JET_DATA(forward_jet5) \
+    FAT_JET_DATA(fat_jet) \
     VAR_LIST(float, MET_pt, MET_phi) /* MET */ \
     VAR(int, SVfit_valid) \
     P4_DATA(SVfit) \
@@ -123,6 +149,7 @@ private:
 #undef CREATE_VAR
 #undef TAU_DATA
 #undef JET_DATA
+#undef FAT_JET_DATA
 #undef P4_DATA
 }
 
@@ -155,9 +182,21 @@ public:
     using Range = ::analysis::Range<double>;
     using RangeMap = std::map<SelectionCut, Range>;
 
+    struct CategoriesFlags {
+        size_t num_jets;
+        size_t num_btag_loose;
+        size_t num_btag_medium;
+        size_t num_btag_tight;
+        bool is_vbf;
+        bool is_boosted;
+        const FatJetCandidate* fat_jet_cand;
+    };
+
     AnaTupleWriter(const std::string& file_name, Channel channel, bool _runKinFit, bool _runSVfit, bool _allow_calc_svFit);
     ~AnaTupleWriter();
-    void AddEvent(EventInfo& event, const DataIdMap& dataIds, const bool pass_VBF_trigger);
+    void AddEvent(EventInfo& event, const DataIdMap& dataIds, const bool pass_VBF_trigger,
+                  const CategoriesFlags& categories_flags,
+                  const std::map<DiscriminatorWP, std::map<UncertaintyScale, float>>& btag_weights);
 
 private:
     std::shared_ptr<TFile> file;
