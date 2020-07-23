@@ -115,7 +115,8 @@ public:
 
     void Run()
     {
-        static std::string dy_contrib_prefix;
+        EventRegion::Initialize(DiscriminatorWP::Medium,DiscriminatorWP::VVLoose,DiscriminatorWP::Medium); 
+	static std::string dy_contrib_prefix;
         if(args.sample_order() == "LO") dy_contrib_prefix= "DY_lo";
         else if(args.sample_order() == "NLO") dy_contrib_prefix = "DY_nlo";
         EventSubCategory base_sub_category;
@@ -232,7 +233,9 @@ public:
                 EventAnalyzerDataId catId{cat, subCategory, EventRegion::SignalRegion(), UncertaintySource::None,
                                           UncertaintyScale::Central};
                 std::string category = GetCategoryName(cat);
+                std::cout<<category<<std::endl;
                 std::string subcategory= ToString(catId.Get<EventSubCategory>());
+                std::cout<<subcategory<<std::endl;
                 categories[category+subcategory] = std::make_shared<CategoryModel>(input_file,catId,contribution_names,
                                                                                    args.histo_name(),x,scale_factor_map);
                 EventAnalyzerDataId dataId = catId.Set(data_folder);
