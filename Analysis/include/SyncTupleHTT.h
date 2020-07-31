@@ -7,6 +7,7 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 #include "h-tautau/Analysis/include/EventInfo.h"
 #include "h-tautau/Core/include/TauIdResults.h"
 #include "hh-bbtautau/Analysis/include/MvaReader.h"
+#include "h-tautau/Cuts/include/hh_bbtautau_Run2.h"
 
 #define LVAR(type, name, pref) VAR(type, name##_##pref)
 #define JVAR(type, name, suff, pref) VAR(type, suff##name##_##pref)

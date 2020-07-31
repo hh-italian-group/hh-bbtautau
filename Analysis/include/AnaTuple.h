@@ -14,6 +14,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Analysis/include/EventInfo.h"
 #include "EventAnalyzerDataId.h"
 #include "h-tautau/Core/include/TauIdResults.h"
+#include "h-tautau/Cuts/include/hh_bbtautau_Run2.h"
 
 namespace analysis {
 
@@ -96,7 +97,7 @@ namespace analysis {
                                  unc_TauVSjetSF_pt30to35, unc_TauVSjetSF_pt35to40, unc_TauVSjetSF_ptgt40, \
                                  unc_TauVSeSF_barrel, unc_TauVSeSF_endcap, unc_TauVSmuSF_etaLt0p4, \
                                  unc_TauVSmuSF_eta0p4to0p8, unc_TauVSmuSF_eta0p8to1p2, unc_TauVSmuSF_eta1p2to1p7, \
-                                 unc_TauVSmuSF_etaGt1p7, unc_EleIdIsoUnc, unc_MuonIdIsoUnc, unc_TopPt) 
+                                 unc_TauVSmuSF_etaGt1p7, unc_EleIdIsoUnc, unc_MuonIdIsoUnc, unc_TopPt)
     /**/
 
 namespace bbtautau {

@@ -206,13 +206,13 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
     auto forwardJets = event.GetForwardJets();
     std::sort(forwardJets.begin(), forwardJets.end(), [](auto jet1, auto jet2) {return jet1->GetMomentum().pt() > jet2->GetMomentum().pt(); });
 
-    std::set<size_t> n_jets_l30;
+    std::set<size_t> n_jets_pt30;
     for (size_t i = 0; i < forwardJets.size(); ++i){
-        if(forwardJets.at(i)->GetMomentum().Pt() < 30)
-            n_jets_l30.insert(i);
+        if(forwardJets.at(i)->GetMomentum().Pt() < cuts::hh_bbtautau_Run2::jetID::vbf_pt)
+            n_jets_pt30.insert(i);
     }
     //remove forward jets with pt < 30
-    for (size_t i = 0; i < n_jets_l30.size(); ++i)
+    for (size_t i = 0; i < n_jets_pt30.size(); ++i)
         forwardJets.pop_back();
 
     //remove from forward and central signal jets
