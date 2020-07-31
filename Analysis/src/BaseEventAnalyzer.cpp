@@ -92,7 +92,6 @@ std::pair<EventCategorySet,
     }
 
     const auto& all_jets = event.GetCentralJets();
-
     auto bjet_counts = btag_working_points;
     if(event.HasBjetPair()) {
         for(size_t bjet_index = 1; bjet_index <= 2; ++bjet_index) {
@@ -114,7 +113,7 @@ std::pair<EventCategorySet,
     for(const auto& category : ana_setup.categories_base) {
         if(category.Contains(all_jets.size(), bjet_counts, is_VBF, is_boosted, vbf_tag))
             categories.insert(category);
-    }
+}
     return std::make_pair(categories, categories_flags);
 }
 
@@ -243,6 +242,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
 {
     std::vector<std::string> vbf_triggers;
 
+    std::map<UncertaintySource, std::map<UncertaintyScale, float>>  uncs_weight_map;
     std::vector<DiscriminatorWP> btag_wps = { DiscriminatorWP::Loose, DiscriminatorWP::Medium,
                                          DiscriminatorWP::Tight };
 
@@ -268,7 +268,6 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
             const bool pass_vbf_trigger = event->PassVbfTriggers();
             const bool pass_trigger = pass_normal_trigger || pass_vbf_trigger;
             if(!pass_trigger) continue;
-
             std::map<DiscriminatorWP, std::map<UncertaintyScale, float>> btag_weights;
             bbtautau::AnaTupleWriter::DataIdMap dataIds;
             std::map<size_t, bool> sync_event_selected;
@@ -305,11 +304,68 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                     if(unc_source == UncertaintySource::None) {
                         btag_weights[wp][UncertaintyScale::Up] = static_cast<float>(btag_weight_provider->Get(*event, wp,
                                 UncertaintySource::Eff_b, UncertaintyScale::Up));
-                        btag_weights[wp][UncertaintyScale::Down] = static_cast<float>(btag_weight_provider->Get(*event, wp,
-                                UncertaintySource::Eff_b, UncertaintyScale::Down));
+                        btag_weights[wp][UncertaintyScale::Down] = static_cast<float>(btag_weight_provider->Get(*event,
+                                wp, UncertaintySource::Eff_b, UncertaintyScale::Down));
                     }
                 }
+
+                std::vector<UncertaintySource> uncs_trigger_weight = { UncertaintySource::EleTriggerUnc,
+                    UncertaintySource::MuonTriggerUnc, UncertaintySource::TauTriggerUnc_DM0,
+                    UncertaintySource::TauTriggerUnc_DM1, UncertaintySource::TauTriggerUnc_DM10,
+                    UncertaintySource::TauTriggerUnc_DM11 };
+
+                std::vector<UncertaintySource> uncs_tau_weight = { UncertaintySource::TauVSjetSF_DM0,
+                    UncertaintySource::TauVSjetSF_DM1, UncertaintySource::TauVSjetSF_3prong,
+                    UncertaintySource::TauVSjetSF_pt20to25, UncertaintySource::TauVSjetSF_pt25to30,
+                    UncertaintySource::TauVSjetSF_pt30to35, UncertaintySource::TauVSjetSF_pt35to40,
+                    UncertaintySource::TauVSjetSF_ptgt40, UncertaintySource::TauVSeSF_barrel,
+                    UncertaintySource::TauVSeSF_endcap, UncertaintySource::TauVSmuSF_etaLt0p4,
+                    UncertaintySource::TauVSmuSF_eta0p4to0p8, UncertaintySource::TauVSmuSF_eta0p8to1p2,
+                    UncertaintySource::TauVSmuSF_eta1p2to1p7, UncertaintySource::TauVSmuSF_etaGt1p7,
+                    UncertaintySource::EleIdIsoUnc, UncertaintySource::MuonIdIsoUnc };
+
+                for (size_t unc = 0; unc < uncs_trigger_weight.size(); ++unc){
+                    uncs_weight_map[uncs_trigger_weight.at(unc)][UncertaintyScale::Central] =
+                        static_cast<float>(lepton_weight_provider->GetTriggerWeight(*event,
+                            signalObjectSelector.GetTauVSjetDiscriminator().second, unc_source, unc_scale));
+
+                    if(unc_source == UncertaintySource::None) {
+                        uncs_weight_map[uncs_trigger_weight.at(unc)][UncertaintyScale::Up] =
+                            static_cast<float>(lepton_weight_provider->GetTriggerWeight(*event,
+                                signalObjectSelector.GetTauVSjetDiscriminator().second, uncs_trigger_weight.at(unc),
+                                UncertaintyScale::Up));
+                        uncs_weight_map[uncs_trigger_weight.at(unc)][UncertaintyScale::Down] =
+                            static_cast<float>(lepton_weight_provider->GetTriggerWeight(*event,
+                                signalObjectSelector.GetTauVSjetDiscriminator().second, uncs_trigger_weight.at(unc),
+                                UncertaintyScale::Down));
+                    }
+                }
+
+                for (size_t unc = 0; unc < uncs_tau_weight.size(); ++unc){
+                    uncs_weight_map[uncs_tau_weight.at(unc)][UncertaintyScale::Central] =
+                        static_cast<float>(lepton_weight_provider->GetIdIsoWeight(*event,
+                                signalObjectSelector.GetTauVSeDiscriminator(channelId).second,
+                                signalObjectSelector.GetTauVSmuDiscriminator(channelId).second,
+                                signalObjectSelector.GetTauVSjetDiscriminator().second, unc_source, unc_scale));
+
+                    if(unc_source == UncertaintySource::None) {
+                        uncs_weight_map[uncs_tau_weight.at(unc)][UncertaintyScale::Up] =
+                            static_cast<float>(lepton_weight_provider->GetIdIsoWeight(*event,
+                                    signalObjectSelector.GetTauVSeDiscriminator(channelId).second,
+                                    signalObjectSelector.GetTauVSmuDiscriminator(channelId).second,
+                                    signalObjectSelector.GetTauVSjetDiscriminator().second, uncs_tau_weight.at(unc),
+                                UncertaintyScale::Up));
+                        uncs_weight_map[uncs_tau_weight.at(unc)][UncertaintyScale::Down] =
+                            static_cast<float>(lepton_weight_provider->GetIdIsoWeight(*event,
+                                    signalObjectSelector.GetTauVSeDiscriminator(channelId).second,
+                                    signalObjectSelector.GetTauVSmuDiscriminator(channelId).second,
+                                    signalObjectSelector.GetTauVSjetDiscriminator().second, uncs_tau_weight.at(unc),
+                                UncertaintyScale::Down));
+                    }
+                }
+                uncs_weight_map[UncertaintySource::TopPt][UncertaintyScale::Up] = static_cast<float>((*event)->weight_top_pt);
             }
+
             const auto [eventCategories, categories_flags] = DetermineEventCategories(*event, pass_vbf_trigger);
             for(auto eventCategory : eventCategories) {
                 const EventRegion eventRegion = DetermineEventRegion(*event, eventCategory);
@@ -356,10 +412,11 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                             const auto& regex_pattern = sync_descriptors.at(n).regex_pattern;
                             for(auto& dataId : dataIds) {
                                 if(!boost::regex_match(dataId.first.GetName(), *regex_pattern)) continue;
+
                                 htt_sync::FillSyncTuple(*event, *sync_descriptors.at(n).sync_tree, ana_setup.period,
                                                         ana_setup.use_svFit, std::get<0>(dataId.second),
                                                         lepton_id_iso_weight, trigger_weight, btag_weight,
-                                                        shape_weight, jet_pu_id_weight);
+                                                        shape_weight, jet_pu_id_weight, prescale_weight);
                                 sync_event_selected[n] = true;
                                 break;
                             }
@@ -368,7 +425,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                 }
             }
             //dataId
-            anaTupleWriter.AddEvent(*event, dataIds, pass_vbf_trigger, categories_flags, btag_weights);
+            anaTupleWriter.AddEvent(*event, dataIds, pass_vbf_trigger, categories_flags, btag_weights, uncs_weight_map);
         }
     }
 }

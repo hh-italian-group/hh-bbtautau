@@ -10,7 +10,7 @@ namespace htt_sync {
 
 void FillSyncTuple(analysis::EventInfo& event, htt_sync::SyncTuple& sync, analysis::Period run_period,
                    bool apply_svFit, double weight, double lepton_id, double lepton_trigger,
-                   double btag_weight, double shape_weight, double jet_pu_id_weight,
+                   double btag_weight, double shape_weight, double jet_pu_id_weight, double prescale_weight,
                    analysis::mva_study::MvaReader* mva_reader,
                    analysis::EventInfo* event_tau_up,
                    analysis::EventInfo* event_tau_down,
@@ -20,6 +20,7 @@ void FillSyncTuple(analysis::EventInfo& event, htt_sync::SyncTuple& sync, analys
 
     static constexpr float default_value = std::numeric_limits<float>::lowest();
     static constexpr int default_int_value = std::numeric_limits<int>::lowest();
+    using JetCandidate = analysis::Candidate<ntuple::TupleJet>;
     using TauIdDiscriminator = analysis::TauIdDiscriminator;
     using DiscriminatorWP = analysis::DiscriminatorWP;
     using LegType = analysis::LegType;
@@ -181,6 +182,7 @@ void FillSyncTuple(analysis::EventInfo& event, htt_sync::SyncTuple& sync, analys
     sync().bjet_rawf_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1)->rawf());
     sync().bjet_deepflavour_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1)->deepFlavour());
 
+
     sync().bjet_pu_id_raw_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1)->GetPuIdRaw());
     sync().bjet_pu_id_raw_2 = COND_VAL(event.HasBjetPair(), event.GetBJet(2)->GetPuIdRaw());
     //sync().bjet_csv_1 = COND_VAL(event.HasBjetPair(), event.GetBJet(1)->csv());
@@ -257,6 +259,7 @@ void FillSyncTuple(analysis::EventInfo& event, htt_sync::SyncTuple& sync, analys
     sync().final_weight = static_cast<Float_t>(weight);
 
     sync().jet_pu_id_weight = static_cast<Float_t>(jet_pu_id_weight);
+    sync().prescale_weight = static_cast<Float_t>(prescale_weight);
      // sync().dy_weight = static_cast<Float_t>(dy_weight);
 
     sync().lhe_n_b_partons = static_cast<int>(event->lhe_n_b_partons);
@@ -348,6 +351,79 @@ void FillSyncTuple(analysis::EventInfo& event, htt_sync::SyncTuple& sync, analys
                                           event_tau_up->GetVBFJet(1).GetMomentum().Pt());
     sync().jpt_tau_ES_up_vbf_2 = COND_VAL(event_tau_up && event_tau_up->HasVBFjetPair(),
                                           event_tau_up->GetVBFJet(2).GetMomentum().Pt());
+
+    const JetCandidate *b1 = nullptr, *b2 = nullptr, *vbf1 = nullptr, *vbf2 = nullptr;
+    if(event.HasBjetPair()) {
+          b1 = &event.GetBJet(1);
+          b2 = &event.GetBJet(2);
+    }
+    if(event.HasVBFjetPair()) {
+        vbf1 = &event.GetVBFJet(1);
+        vbf2 = &event.GetVBFJet(2);
+    }
+
+    auto centralJets = event.GetCentralJets();
+    std::sort(centralJets.begin(), centralJets.end(), [](auto jet1, auto jet2) {
+        return jet1->GetMomentum().pt() > jet2->GetMomentum().pt();
+    });
+
+    auto forwardJets = event.GetForwardJets();
+    std::sort(forwardJets.begin(), forwardJets.end(), [](auto jet1, auto jet2) {return jet1->GetMomentum().pt() > jet2->GetMomentum().pt(); });
+
+    std::set<size_t> n_jets_l30;
+    for (size_t i = 0; i < forwardJets.size(); ++i){
+        if(forwardJets.at(i)->GetMomentum().Pt() < 30)
+            n_jets_l30.insert(i);
+    }
+    //remove forward jets with pt < 30
+    for (size_t i = 0; i < n_jets_l30.size(); ++i)
+        forwardJets.pop_back();
+
+    //remove from forward and central signal jets
+    const std::vector<const JetCandidate*>& signal_jets = {b1, b2, vbf1, vbf2};
+    for (size_t i = 0; i < signal_jets.size(); ++i){
+        centralJets.erase(std::remove(centralJets.begin(), centralJets.end(), signal_jets.at(i)), centralJets.end());
+        forwardJets.erase(std::remove(forwardJets.begin(), forwardJets.end(), signal_jets.at(i)), forwardJets.end());
+    }
+
+    centralJets.resize(5, nullptr);
+    forwardJets.resize(5, nullptr);
+
+    sync().central_jet_pt_1 = centralJets.at(0) ? static_cast<float>(centralJets.at(0)->GetMomentum().pt()) : -999;
+    sync().central_jet_pt_2 = centralJets.at(1) ? static_cast<float>(centralJets.at(1)->GetMomentum().pt()) : -999;
+    sync().central_jet_pt_3 = centralJets.at(2) ? static_cast<float>(centralJets.at(2)->GetMomentum().pt()) : -999;
+    sync().central_jet_pt_4 = centralJets.at(3) ? static_cast<float>(centralJets.at(3)->GetMomentum().pt()) : -999;
+    sync().central_jet_pt_5 = centralJets.at(4) ? static_cast<float>(centralJets.at(4)->GetMomentum().pt()) : -999;
+
+    sync().central_jet_eta_1 = centralJets.at(0) ? static_cast<float>(centralJets.at(0)->GetMomentum().eta()) : -999;
+    sync().central_jet_eta_2 = centralJets.at(1) ? static_cast<float>(centralJets.at(1)->GetMomentum().eta()) : -999;
+    sync().central_jet_eta_3 = centralJets.at(2) ? static_cast<float>(centralJets.at(2)->GetMomentum().eta()) : -999;
+    sync().central_jet_eta_4 = centralJets.at(3) ? static_cast<float>(centralJets.at(3)->GetMomentum().eta()) : -999;
+    sync().central_jet_eta_5 = centralJets.at(4) ? static_cast<float>(centralJets.at(4)->GetMomentum().eta()) : -999;
+
+    sync().central_jet_phi_1 = centralJets.at(0) ? static_cast<float>(centralJets.at(0)->GetMomentum().phi()) : -999;
+    sync().central_jet_phi_2 = centralJets.at(1) ? static_cast<float>(centralJets.at(1)->GetMomentum().phi()) : -999;
+    sync().central_jet_phi_3 = centralJets.at(2) ? static_cast<float>(centralJets.at(2)->GetMomentum().phi()) : -999;
+    sync().central_jet_phi_4 = centralJets.at(3) ? static_cast<float>(centralJets.at(3)->GetMomentum().phi()) : -999;
+    sync().central_jet_phi_5 = centralJets.at(4) ? static_cast<float>(centralJets.at(4)->GetMomentum().phi()) : -999;
+
+    sync().forward_jet_pt_1 = forwardJets.at(0) ? static_cast<float>(forwardJets.at(0)->GetMomentum().pt()) : -999;
+    sync().forward_jet_pt_2 = forwardJets.at(1) ? static_cast<float>(forwardJets.at(1)->GetMomentum().pt()) : -999;
+    sync().forward_jet_pt_3 = forwardJets.at(2) ? static_cast<float>(forwardJets.at(2)->GetMomentum().pt()) : -999;
+    sync().forward_jet_pt_4 = forwardJets.at(3) ? static_cast<float>(forwardJets.at(3)->GetMomentum().pt()) : -999;
+    sync().forward_jet_pt_5 = forwardJets.at(4) ? static_cast<float>(forwardJets.at(4)->GetMomentum().pt()) : -999;
+
+    sync().forward_jet_eta_1 = forwardJets.at(0) ? static_cast<float>(forwardJets.at(0)->GetMomentum().eta()) : -999;
+    sync().forward_jet_eta_2 = forwardJets.at(1) ? static_cast<float>(forwardJets.at(1)->GetMomentum().eta()) : -999;
+    sync().forward_jet_eta_3 = forwardJets.at(2) ? static_cast<float>(forwardJets.at(2)->GetMomentum().eta()) : -999;
+    sync().forward_jet_eta_4 = forwardJets.at(3) ? static_cast<float>(forwardJets.at(3)->GetMomentum().eta()) : -999;
+    sync().forward_jet_eta_5 = forwardJets.at(4) ? static_cast<float>(forwardJets.at(4)->GetMomentum().eta()) : -999;
+
+    sync().forward_jet_phi_1 = forwardJets.at(0) ? static_cast<float>(forwardJets.at(0)->GetMomentum().phi()) : -999;
+    sync().forward_jet_phi_2 = forwardJets.at(1) ? static_cast<float>(forwardJets.at(1)->GetMomentum().phi()) : -999;
+    sync().forward_jet_phi_3 = forwardJets.at(2) ? static_cast<float>(forwardJets.at(2)->GetMomentum().phi()) : -999;
+    sync().forward_jet_phi_4 = forwardJets.at(3) ? static_cast<float>(forwardJets.at(3)->GetMomentum().phi()) : -999;
+    sync().forward_jet_phi_5 = forwardJets.at(4) ? static_cast<float>(forwardJets.at(4)->GetMomentum().phi()) : -999;
 
     sync().mva_score_nonRes_kl1_tau_ES_up = COND_VAL(event_tau_up && mva_reader, mva_reader->Evaluate(analysis::mva_study::MvaReader::MvaKey{"mva_smANkin_BSMklscan", 125, 1}, event_tau_up));
     sync().mva_score_lm_320_tau_ES_up = COND_VAL(event_tau_up && mva_reader, mva_reader->Evaluate(analysis::mva_study::MvaReader::MvaKey{"mva_lmANkin", 320, 0}, event_tau_up));
