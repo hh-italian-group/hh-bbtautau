@@ -313,12 +313,12 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                     }
                 }
                 if(unc_source == UncertaintySource::None) {
-                    std::vector<UncertaintySource> uncs_trigger_weight = { UncertaintySource::EleTriggerUnc,
+                    static const std::vector<UncertaintySource> uncs_trigger_weight = { UncertaintySource::EleTriggerUnc,
                         UncertaintySource::MuonTriggerUnc, UncertaintySource::TauTriggerUnc_DM0,
                         UncertaintySource::TauTriggerUnc_DM1, UncertaintySource::TauTriggerUnc_DM10,
                         UncertaintySource::TauTriggerUnc_DM11 };
 
-                    std::vector<UncertaintySource> uncs_tau_weight = { UncertaintySource::TauVSjetSF_DM0,
+                    static const std::vector<UncertaintySource> uncs_tau_weight = { UncertaintySource::TauVSjetSF_DM0,
                         UncertaintySource::TauVSjetSF_DM1, UncertaintySource::TauVSjetSF_3prong,
                         UncertaintySource::TauVSjetSF_pt20to25, UncertaintySource::TauVSjetSF_pt25to30,
                         UncertaintySource::TauVSjetSF_pt30to35, UncertaintySource::TauVSjetSF_pt35to40,
@@ -328,47 +328,30 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                         UncertaintySource::TauVSmuSF_eta1p2to1p7, UncertaintySource::TauVSmuSF_etaGt1p7,
                         UncertaintySource::EleIdIsoUnc, UncertaintySource::MuonIdIsoUnc };
 
-                    for (size_t unc = 0; unc < uncs_trigger_weight.size(); ++unc){
-                        uncs_weight_map[uncs_trigger_weight.at(unc)][UncertaintyScale::Central] =
-                            static_cast<float>(lepton_weight_provider->GetTriggerWeight(*event,
-                                signalObjectSelector.GetTauVSjetDiscriminator().second, unc_source, unc_scale));
-
-                        uncs_weight_map[uncs_trigger_weight.at(unc)][UncertaintyScale::Up] =
-                            static_cast<float>(lepton_weight_provider->GetTriggerWeight(*event,
-                                signalObjectSelector.GetTauVSjetDiscriminator().second, uncs_trigger_weight.at(unc),
-                                UncertaintyScale::Up));
-                        uncs_weight_map[uncs_trigger_weight.at(unc)][UncertaintyScale::Down] =
-                            static_cast<float>(lepton_weight_provider->GetTriggerWeight(*event,
-                                signalObjectSelector.GetTauVSjetDiscriminator().second, uncs_trigger_weight.at(unc),
-                                UncertaintyScale::Down));
+                    for (UncertaintySource unc : uncs_trigger_weight) {
+                        for(UncertaintyScale unc_scale_eval : GetAllUncertaintyScales()) {
+                            const UncertaintySource unc_eval = unc_scale_eval == UncertaintyScale::Central ?
+                                                               UncertaintySource::None : unc;
+                            uncs_weight_map[unc][unc_scale_eval] = static_cast<float>(
+                                lepton_weight_provider->GetTriggerWeight(*event,
+                                    signalObjectSelector.GetTauVSjetDiscriminator().second, unc_eval, unc_scale_eval));
+                        }
                     }
 
-                    for (size_t unc = 0; unc < uncs_tau_weight.size(); ++unc){
-                        uncs_weight_map[uncs_tau_weight.at(unc)][UncertaintyScale::Central] =
-                            static_cast<float>(lepton_weight_provider->GetIdIsoWeight(*event,
-                                    signalObjectSelector.GetTauVSeDiscriminator(channelId).second,
-                                    signalObjectSelector.GetTauVSmuDiscriminator(channelId).second,
-                                    signalObjectSelector.GetTauVSjetDiscriminator().second, unc_source, unc_scale));
-
-                        uncs_weight_map[uncs_tau_weight.at(unc)][UncertaintyScale::Up] =
-                            static_cast<float>(lepton_weight_provider->GetIdIsoWeight(*event,
-                                    signalObjectSelector.GetTauVSeDiscriminator(channelId).second,
-                                    signalObjectSelector.GetTauVSmuDiscriminator(channelId).second,
-                                    signalObjectSelector.GetTauVSjetDiscriminator().second, uncs_tau_weight.at(unc),
-                                UncertaintyScale::Up));
-                        uncs_weight_map[uncs_tau_weight.at(unc)][UncertaintyScale::Down] =
-                            static_cast<float>(lepton_weight_provider->GetIdIsoWeight(*event,
-                                    signalObjectSelector.GetTauVSeDiscriminator(channelId).second,
-                                    signalObjectSelector.GetTauVSmuDiscriminator(channelId).second,
-                                    signalObjectSelector.GetTauVSjetDiscriminator().second, uncs_tau_weight.at(unc),
-                                UncertaintyScale::Down));
-
+                    for (UncertaintySource unc : uncs_tau_weight) {
+                        for(UncertaintyScale unc_scale_eval : GetAllUncertaintyScales()) {
+                            const UncertaintySource unc_eval = unc_scale_eval == UncertaintyScale::Central ?
+                                                               UncertaintySource::None : unc;
+                            uncs_weight_map[unc][unc_scale_eval] = static_cast<float>(
+                                lepton_weight_provider->GetIdIsoWeight(*event,
+                                signalObjectSelector.GetTauVSeDiscriminator(channelId).second,
+                                signalObjectSelector.GetTauVSmuDiscriminator(channelId).second,
+                                signalObjectSelector.GetTauVSjetDiscriminator().second, unc_eval, unc_scale_eval));
+                        }
                     }
                     if(sample.apply_top_pt_unc){
                         uncs_weight_map[UncertaintySource::TopPt][UncertaintyScale::Up] =
                             static_cast<float>(top_pt_weight_provided->Get(*event));
-                        uncs_weight_map[UncertaintySource::TopPt][UncertaintyScale::Down] =
-                            static_cast<float>(top_pt_weight_provided->Get(*event))
                         uncs_weight_map[UncertaintySource::TopPt][UncertaintyScale::Central] = 1;
                     }
                 }

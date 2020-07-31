@@ -370,21 +370,16 @@ void FillSyncTuple(analysis::EventInfo& event, htt_sync::SyncTuple& sync, analys
     auto forwardJets = event.GetForwardJets();
     std::sort(forwardJets.begin(), forwardJets.end(), [](auto jet1, auto jet2) {return jet1->GetMomentum().pt() > jet2->GetMomentum().pt(); });
 
-    std::set<size_t> n_jets_pt30;
-    for (size_t i = 0; i < forwardJets.size(); ++i){
-        if(forwardJets.at(i)->GetMomentum().Pt() < cuts::hh_bbtautau_Run2::jetID::vbf_pt)
-            n_jets_pt30.insert(i);
-    }
     //remove forward jets with pt < 30
-    for (size_t i = 0; i < n_jets_pt30.size(); ++i)
-        forwardJets.pop_back();
+    auto low_pt_iter = std::find_if(forwardJets.begin(), forwardJets.end(), [](auto jet) {
+        return jet->GetMomentum().Pt() <= cuts::hh_bbtautau_Run2::jetID::vbf_pt; });
+    forwardJets.erase(low_pt_iter, forwardJets.end());
 
     //remove from forward and central signal jets
-    const std::vector<const JetCandidate*>& signal_jets = {b1, b2, vbf1, vbf2};
-    for (size_t i = 0; i < signal_jets.size(); ++i){
-        centralJets.erase(std::remove(centralJets.begin(), centralJets.end(), signal_jets.at(i)), centralJets.end());
-        forwardJets.erase(std::remove(forwardJets.begin(), forwardJets.end(), signal_jets.at(i)), forwardJets.end());
-    }
+    const std::set<const JetCandidate*> signal_jets = { b1, b2, vbf1, vbf2 };
+    auto is_signal = [&signal_jets](const JetCandidate* jet) -> bool { return signal_jets.count(jet); };
+    centralJets.erase(std::remove_if(centralJets.begin(), centralJets.end(), is_signal), centralJets.end());
+    forwardJets.erase(std::remove_if(forwardJets.begin(), forwardJets.end(), is_signal), forwardJets.end());
 
     centralJets.resize(5, nullptr);
     forwardJets.resize(5, nullptr);

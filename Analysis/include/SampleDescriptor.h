@@ -108,7 +108,7 @@ struct SampleDescriptorBase {
         SampleType sampleType;
         double norm_sf{1}, datacard_sf{1}, draw_sf{1};
         std::string cross_section;
-        bool draw{false}, apply_top_pt_unc{false};
+        bool draw{false};
         root_ext::Color color{kBlack};
         std::vector<std::string> param_values;
     };
