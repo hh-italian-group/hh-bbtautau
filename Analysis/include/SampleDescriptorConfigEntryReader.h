@@ -47,6 +47,7 @@ public:
         CheckReadParamCounts("NLO_weight_file", 1, Condition::less_equal);
         CheckReadParamCounts("fit_method", 1, Condition::less_equal);
         CheckReadParamCounts("sample_order", 1, Condition::less_equal);
+        CheckReadParamCounts("apply_top_pt_unc", 1, Condition::less_equal);
 
         this->current.CreateWorkingPoints();
         ConfigEntryReaderT<Descriptor>::EndEntry();
@@ -68,6 +69,7 @@ public:
         ParseEntry("NLO_weight_file", this->current.NLO_weight_file);
         ParseEntry("fit_method", this->current.fit_method);
         ParseEntry("sample_order", this->current.sampleOrder);
+        ParseEntry("apply_top_pt_unc", this->current.apply_top_pt_unc);
     }
 };
 

@@ -35,7 +35,8 @@ AnaTupleWriter::~AnaTupleWriter()
 
 void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const bool pass_VBF_trigger,
                               const CategoriesFlags& categories_flags,
-                              const std::map<DiscriminatorWP, std::map<UncertaintyScale, float>>& btag_weights)
+                              const std::map<DiscriminatorWP, std::map<UncertaintyScale, float>>& btag_weights,
+                              const std::map<UncertaintySource, std::map<UncertaintyScale, float>>& uncs_weight_map)
 {
     static constexpr float def_val = std::numeric_limits<float>::lowest();
     static constexpr int def_val_int = std::numeric_limits<int>::lowest();
@@ -92,20 +93,54 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
         tuple().all_mva_scores.push_back(static_cast<float>(mva_score));
     }
 
-    auto fill_unc_weight_vec = [](const std::map<UncertaintyScale, float>& weights_in, std::vector<float>& weights_out) {
+    auto fill_unc_weight_vec = [](const std::map<UncertaintyScale, float>& weights_in, std::vector<float>& weights_out,
+                                  bool store_relative = true) {
+        static const std::vector<UncertaintyScale> scales = { UncertaintyScale::Up, UncertaintyScale::Down };
+
         weights_out.clear();
-        weights_out.push_back(weights_in.at(UncertaintyScale::Central));
-        if(weights_in.count(UncertaintyScale::Up))
-            weights_out.push_back(weights_in.at(UncertaintyScale::Up));
-        if(weights_in.count(UncertaintyScale::Down))
-            weights_out.push_back(weights_in.at(UncertaintyScale::Down));
+        const float central_w = weights_in.at(UncertaintyScale::Central);
+        if(!store_relative)
+            weights_out.push_back(central_w);
+        for(auto scale : scales) {
+            if(!weights_in.count(scale)) break;
+            float w = weights_in.at(scale);
+            if(store_relative)
+                w /= central_w;
+            weights_out.push_back(w);
+        }
     };
 
     if(!event->isData){
-        fill_unc_weight_vec(btag_weights.at(DiscriminatorWP::Loose), tuple().btag_weight_Loose);
-        fill_unc_weight_vec(btag_weights.at(DiscriminatorWP::Medium), tuple().btag_weight_Medium);
-        fill_unc_weight_vec(btag_weights.at(DiscriminatorWP::Tight), tuple().btag_weight_Tight);
+        fill_unc_weight_vec(btag_weights.at(DiscriminatorWP::Loose), tuple().btag_weight_Loose, false);
+        fill_unc_weight_vec(btag_weights.at(DiscriminatorWP::Medium), tuple().btag_weight_Medium, false);
+        fill_unc_weight_vec(btag_weights.at(DiscriminatorWP::Tight), tuple().btag_weight_Tight, false);
+        if(event.GetEventCandidate().GetUncSource() == UncertaintySource::None){
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::EleTriggerUnc), tuple().unc_EleTriggerUnc, true);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::MuonTriggerUnc), tuple().unc_MuonTriggerUnc, true);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauTriggerUnc_DM0), tuple().unc_TauTriggerUnc_DM0, true);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauTriggerUnc_DM1), tuple().unc_TauTriggerUnc_DM1, true);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauTriggerUnc_DM10), tuple().unc_TauTriggerUnc_DM10, true);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauTriggerUnc_DM11), tuple().unc_TauTriggerUnc_DM11, true);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSjetSF_DM0), tuple().unc_TauVSjetSF_DM0, true);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSjetSF_DM1), tuple().unc_TauVSjetSF_DM1, true);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSjetSF_3prong), tuple().unc_TauVSjetSF_3prong, true);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSjetSF_pt20to25), tuple().unc_TauVSjetSF_pt20to25, true);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSjetSF_pt25to30), tuple().unc_TauVSjetSF_pt25to30, true);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSjetSF_pt30to35), tuple().unc_TauVSjetSF_pt30to35, true);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSjetSF_pt35to40), tuple().unc_TauVSjetSF_pt35to40, true);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSjetSF_ptgt40), tuple().unc_TauVSjetSF_ptgt40, true);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSeSF_endcap), tuple().unc_TauVSeSF_endcap, true);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSmuSF_etaLt0p4), tuple().unc_TauVSmuSF_etaLt0p4, true);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSmuSF_eta0p4to0p8), tuple().unc_TauVSmuSF_eta0p4to0p8, true);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSmuSF_eta1p2to1p7), tuple().unc_TauVSmuSF_eta1p2to1p7, true);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSmuSF_eta1p2to1p7), tuple().unc_TauVSmuSF_eta1p2to1p7, true);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSmuSF_etaGt1p7), tuple().unc_TauVSmuSF_etaGt1p7, true);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::EleIdIsoUnc), tuple().unc_EleIdIsoUnc, true);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::MuonIdIsoUnc), tuple().unc_MuonIdIsoUnc, true);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TopPt), tuple().unc_TopPt, true);
+        }
     }
+
     tuple().has_b_pair = event.HasBjetPair();
     tuple().has_VBF_pair = event.HasVBFjetPair();
     tuple().pass_VBF_trigger = pass_VBF_trigger;
@@ -171,8 +206,26 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
     JET_DATA(VBF2, vbf2)
 
     auto centralJets = event.GetCentralJets();
-    std::sort(centralJets.begin(), centralJets.end(), [](auto jet1, auto jet2) { return jet1->GetMomentum().pt() > jet2->GetMomentum().pt(); });
+    std::sort(centralJets.begin(), centralJets.end(), [](auto jet1, auto jet2) {
+        return jet1->GetMomentum().pt() > jet2->GetMomentum().pt();
+    });
+
+    auto forwardJets = event.GetForwardJets();
+    std::sort(forwardJets.begin(), forwardJets.end(), [](auto jet1, auto jet2) {return jet1->GetMomentum().pt() > jet2->GetMomentum().pt(); });
+
+    //remove forward jets with pt < 30
+    auto low_pt_iter = std::find_if(forwardJets.begin(), forwardJets.end(), [](auto jet) {
+        return jet->GetMomentum().Pt() <= cuts::hh_bbtautau_Run2::jetID::vbf_pt; });
+    forwardJets.erase(low_pt_iter, forwardJets.end());
+
+    //remove from forward and central signal jets
+    const std::set<const JetCandidate*> signal_jets = { b1, b2, vbf1, vbf2 };
+    auto is_signal = [&signal_jets](const JetCandidate* jet) -> bool { return signal_jets.count(jet); };
+    centralJets.erase(std::remove_if(centralJets.begin(), centralJets.end(), is_signal), centralJets.end());
+    forwardJets.erase(std::remove_if(forwardJets.begin(), forwardJets.end(), is_signal), forwardJets.end());
+
     centralJets.resize(5, nullptr);
+    forwardJets.resize(5, nullptr);
 
     JET_DATA(central_jet1, centralJets.at(0))
     JET_DATA(central_jet2, centralJets.at(1))
@@ -180,16 +233,12 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
     JET_DATA(central_jet4, centralJets.at(3))
     JET_DATA(central_jet5, centralJets.at(4))
 
-    auto forwardJets = event.GetForwardJets();
-    std::sort(forwardJets.begin(), forwardJets.end(), [](auto jet1, auto jet2) { return jet1->GetMomentum().pt() > jet2->GetMomentum().pt(); });
-    forwardJets.resize(5, nullptr);
 
     JET_DATA(forward_jet1, forwardJets.at(0))
     JET_DATA(forward_jet2, forwardJets.at(1))
     JET_DATA(forward_jet3, forwardJets.at(2))
     JET_DATA(forward_jet4, forwardJets.at(3))
     JET_DATA(forward_jet5, forwardJets.at(4))
-
 
     #undef JET_DATA
 

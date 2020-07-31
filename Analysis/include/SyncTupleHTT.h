@@ -7,6 +7,7 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 #include "h-tautau/Analysis/include/EventInfo.h"
 #include "h-tautau/Core/include/TauIdResults.h"
 #include "hh-bbtautau/Analysis/include/MvaReader.h"
+#include "h-tautau/Cuts/include/hh_bbtautau_Run2.h"
 
 #define LVAR(type, name, pref) VAR(type, name##_##pref)
 #define JVAR(type, name, suff, pref) VAR(type, suff##name##_##pref)
@@ -152,6 +153,16 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
     VAR(Int_t, nbjets) /* pt>30 and abs(eta)<2.4 */ \
     JET_DATA(bjet_, 1) /* leading b-jet sorted by csv (Fill only if corrected b-jet pt>20 GeV) */ \
     JET_DATA(bjet_, 2) /* leading b-jet sorted by csv (Fill only if corrected b-jet pt>20 GeV) */ \
+    JET_DATA(central_jet_, 1)  \
+    JET_DATA(central_jet_, 2)  \
+    JET_DATA(central_jet_, 3)  \
+    JET_DATA(central_jet_, 4)  \
+    JET_DATA(central_jet_, 5)  \
+    JET_DATA(forward_jet_, 1)  \
+    JET_DATA(forward_jet_, 2)  \
+    JET_DATA(forward_jet_, 3)  \
+    JET_DATA(forward_jet_, 4)  \
+    JET_DATA(forward_jet_, 5)  \
     VAR(Double_t, ht_other_jets) /* Ht of all jets in the event except the first 2 jets */\
     /* mva_score */ \
     VAR(Double_t, mva_score_nonRes_kl1) /* mva_score */\
@@ -255,6 +266,7 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
     VAR(double, bjet_hh_btag_2) \
     VAR(double, VBFjet_hh_btag_1) \
     VAR(double, VBFjet_hh_btag_2) \
+    VAR(double, prescale_weight) \
     /**/
 
 #define VAR(type, name) DECLARE_BRANCH_VARIABLE(type, name)
@@ -275,7 +287,7 @@ namespace htt_sync {
 
 void FillSyncTuple(analysis::EventInfo& event, htt_sync::SyncTuple& sync, analysis::Period run_period,
                    bool apply_svFit, double weight, double lepton_id, double lepton_trigger,
-                   double btag_weight, double shape_weight, double jet_pu_id_weight,
+                   double btag_weight, double shape_weight, double jet_pu_id_weight, double prescale_weight,
                    analysis::mva_study::MvaReader* mva_reader = nullptr,
                    analysis::EventInfo* event_tau_up = nullptr,
                    analysis::EventInfo* event_tau_down = nullptr,

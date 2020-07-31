@@ -126,6 +126,7 @@ struct SampleDescriptorBase {
     std::string NLO_weight_file;
     std::string sampleOrder{"LO"};
     DYFitModel fit_method{DYFitModel::None};
+    bool apply_top_pt_unc{false};
 
     PointCollection working_points;
 

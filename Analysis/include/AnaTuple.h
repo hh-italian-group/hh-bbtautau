@@ -14,6 +14,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Analysis/include/EventInfo.h"
 #include "EventAnalyzerDataId.h"
 #include "h-tautau/Core/include/TauIdResults.h"
+#include "h-tautau/Cuts/include/hh_bbtautau_Run2.h"
 
 namespace analysis {
 
@@ -90,6 +91,13 @@ namespace analysis {
     VAR_LIST(float, npv, HT_total, HT_otherjets, lhe_HT, n_jets, n_jets_eta24, n_jets_eta24_eta5, \
                     n_selected_gen_jets, n_selected_gen_bjets, genJets_nTotal, \
                     jets_nTotal_hadronFlavour_b, jets_nTotal_hadronFlavour_c) \
+    VAR_LIST(std::vector<float>, unc_EleTriggerUnc, unc_MuonTriggerUnc, unc_TauTriggerUnc_DM0, unc_TauTriggerUnc_DM1, \
+                                 unc_TauTriggerUnc_DM10, unc_TauTriggerUnc_DM11, unc_TauVSjetSF_DM0, unc_TauVSjetSF_DM1, \
+                                 unc_TauVSjetSF_3prong, unc_TauVSjetSF_pt20to25, unc_TauVSjetSF_pt25to30, \
+                                 unc_TauVSjetSF_pt30to35, unc_TauVSjetSF_pt35to40, unc_TauVSjetSF_ptgt40, \
+                                 unc_TauVSeSF_barrel, unc_TauVSeSF_endcap, unc_TauVSmuSF_etaLt0p4, \
+                                 unc_TauVSmuSF_eta0p4to0p8, unc_TauVSmuSF_eta0p8to1p2, unc_TauVSmuSF_eta1p2to1p7, \
+                                 unc_TauVSmuSF_etaGt1p7, unc_EleIdIsoUnc, unc_MuonIdIsoUnc, unc_TopPt)
     /**/
 
 namespace bbtautau {
@@ -196,7 +204,8 @@ public:
     ~AnaTupleWriter();
     void AddEvent(EventInfo& event, const DataIdMap& dataIds, const bool pass_VBF_trigger,
                   const CategoriesFlags& categories_flags,
-                  const std::map<DiscriminatorWP, std::map<UncertaintyScale, float>>& btag_weights);
+                  const std::map<DiscriminatorWP, std::map<UncertaintyScale, float>>& btag_weights,
+                  const std::map<UncertaintySource, std::map<UncertaintyScale, float>>& uncs_weight_map);
 
 private:
     std::shared_ptr<TFile> file;
