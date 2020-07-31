@@ -108,7 +108,7 @@ struct SampleDescriptorBase {
         SampleType sampleType;
         double norm_sf{1}, datacard_sf{1}, draw_sf{1};
         std::string cross_section;
-        bool draw{false};
+        bool draw{false}, apply_top_pt_unc{false};
         root_ext::Color color{kBlack};
         std::vector<std::string> param_values;
     };
@@ -126,6 +126,7 @@ struct SampleDescriptorBase {
     std::string NLO_weight_file;
     std::string sampleOrder{"LO"};
     DYFitModel fit_method{DYFitModel::None};
+    bool apply_top_pt_unc{false};
 
     PointCollection working_points;
 
