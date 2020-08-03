@@ -19,7 +19,7 @@ EventWeights_HH::EventWeights_HH(Period period, const BTagger& bTagger, const We
             providers[WeightType::DY] = std::make_shared<NJets_HT_weight>("DY", dy_weights);
         if(mode.empty() || mode.count(WeightType::TTbar))
             providers[WeightType::TTbar] = std::make_shared<TTbar_weight>(Full_Cfg_Name("2016/ttbar_weights_full.cfg"));
-        std::string wjet_weights = Full_Cfg_Name("2016/wjets_weights.cfg");
+        std::string wjet_weights = Full_Cfg_Name("2016/wjets_weights_2016.cfg");
         if(mode.empty() || mode.count(WeightType::Wjets))
             providers[WeightType::Wjets] = std::make_shared<NJets_HT_weight>("Wjets", wjet_weights);
     }
