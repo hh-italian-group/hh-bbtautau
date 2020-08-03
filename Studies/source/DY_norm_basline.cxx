@@ -128,7 +128,8 @@ public:
         const std::vector<int> nJet_points = {args.low_nJet(), args.high_nJet() };
         std::vector<int> pt_points;
         if(args.sample_order() == "NLO") pt_points = {args.vlowPt(), args.lowPt(), args.medPt(), args.highPt()};
-        else if(args.sample_order() == "LO") pt_points = {args.vlowPt(), args.lowPt(), args.medPt1(), args.medPt2(), args.highPt(),
+        else if(args.sample_order() == "LO") pt_points = {args.vlowPt(), args.lowPt(), 
+args.medPt1(), args.medPt2(), args.highPt(),
                                                           args.vhighPt()};
         static const size_t max_n_b = 2;
         if(fit_model == DYFitModel::NbjetBins) {
@@ -179,7 +180,7 @@ public:
             }
         }
         contribution_names.push_back("other_bkg_muMu");
-        contribution_names.push_back("QCD");
+        //contribution_names.push_back("QCD");
         /*contribution_names.push_back("WW");
         contribution_names.push_back("WZ");
         contribution_names.push_back("Wjets");
