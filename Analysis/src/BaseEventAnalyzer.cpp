@@ -242,7 +242,6 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                           const ntuple::ProdSummary& prod_summary)
 {
     std::vector<std::string> vbf_triggers;
-
     std::map<UncertaintySource, std::map<UncertaintyScale, float>>  uncs_weight_map;
     std::vector<DiscriminatorWP> btag_wps = { DiscriminatorWP::Loose, DiscriminatorWP::Medium,
                                          DiscriminatorWP::Tight };
@@ -349,11 +348,10 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                 signalObjectSelector.GetTauVSjetDiscriminator().second, unc_eval, unc_scale_eval));
                         }
                     }
-                    if(sample.apply_top_pt_unc){
+                    uncs_weight_map[UncertaintySource::TopPt][UncertaintyScale::Central] = 1;
+                    if(sample.apply_top_pt_unc)
                         uncs_weight_map[UncertaintySource::TopPt][UncertaintyScale::Up] =
                             static_cast<float>(top_pt_weight_provided->Get(*event));
-                        uncs_weight_map[UncertaintySource::TopPt][UncertaintyScale::Central] = 1;
-                    }
                 }
             }
 
