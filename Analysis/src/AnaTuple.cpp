@@ -129,6 +129,7 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
             fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSjetSF_pt30to35), tuple().unc_TauVSjetSF_pt30to35, true);
             fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSjetSF_pt35to40), tuple().unc_TauVSjetSF_pt35to40, true);
             fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSjetSF_ptgt40), tuple().unc_TauVSjetSF_ptgt40, true);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSeSF_barrel), tuple().unc_TauVSeSF_barrel, true);
             fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSeSF_endcap), tuple().unc_TauVSeSF_endcap, true);
             fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSmuSF_etaLt0p4), tuple().unc_TauVSmuSF_etaLt0p4, true);
             fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSmuSF_eta0p4to0p8), tuple().unc_TauVSmuSF_eta0p4to0p8, true);
