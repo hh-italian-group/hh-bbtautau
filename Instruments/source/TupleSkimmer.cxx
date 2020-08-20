@@ -484,8 +484,6 @@ private:
                      event.weight_pu_down = weighting_mode.count(WeightType::PileUp)
                                       ? eventWeights_HH->GetWeight(*eventInfo, WeightType::PileUp) : 1;
         }
-        event.weight_pu = weighting_mode.count(WeightType::PileUp)
-                        ? eventWeights_HH->GetWeight(*eventInfo, WeightType::PileUp) : 1;
         event.weight_dy = weighting_mode.count(WeightType::DY)
                 ? eventWeights_HH->GetWeight(*eventInfo, WeightType::DY) : 1;
         event.weight_ttbar = weighting_mode.count(WeightType::TTbar)
