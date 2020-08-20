@@ -97,7 +97,7 @@ namespace analysis {
                                  unc_TauVSjetSF_pt30to35, unc_TauVSjetSF_pt35to40, unc_TauVSjetSF_ptgt40, \
                                  unc_TauVSeSF_barrel, unc_TauVSeSF_endcap, unc_TauVSmuSF_etaLt0p4, \
                                  unc_TauVSmuSF_eta0p4to0p8, unc_TauVSmuSF_eta0p8to1p2, unc_TauVSmuSF_eta1p2to1p7, \
-                                 unc_TauVSmuSF_etaGt1p7, unc_EleIdIsoUnc, unc_MuonIdIsoUnc, unc_TopPt)
+                                 unc_TauVSmuSF_etaGt1p7, unc_EleIdIsoUnc, unc_MuonIdIsoUnc, unc_TopPt, unc_l1_prefiring_weight)
     /**/
 
 namespace bbtautau {
@@ -205,7 +205,8 @@ public:
     void AddEvent(EventInfo& event, const DataIdMap& dataIds, const bool pass_VBF_trigger,
                   const CategoriesFlags& categories_flags,
                   const std::map<DiscriminatorWP, std::map<UncertaintyScale, float>>& btag_weights,
-                  const std::map<UncertaintySource, std::map<UncertaintyScale, float>>& uncs_weight_map);
+                  const std::map<UncertaintySource, std::map<UncertaintyScale, float>>& uncs_weight_map,
+                  const std::map<UncertaintyScale, float>& l1_prefiring_weights);
 
 private:
     std::shared_ptr<TFile> file;

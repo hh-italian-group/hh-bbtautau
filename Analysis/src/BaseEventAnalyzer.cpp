@@ -262,13 +262,13 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
         for(const auto& [unc_source, unc_scale] : unc_variations) {
             auto event = EventInfo::Create(tupleEvent, signalObjectSelector, *bTagger, DiscriminatorWP::Medium,
                                            summary, unc_source, unc_scale);
-
             if(!event) continue;
             const bool pass_normal_trigger = event->PassNormalTriggers();
             const bool pass_vbf_trigger = event->PassVbfTriggers();
             const bool pass_trigger = pass_normal_trigger || pass_vbf_trigger;
             if(!pass_trigger) continue;
             std::map<DiscriminatorWP, std::map<UncertaintyScale, float>> btag_weights;
+            std::map<UncertaintyScale, float> l1_prefiring_weights;
             bbtautau::AnaTupleWriter::DataIdMap dataIds;
             std::map<size_t, bool> sync_event_selected;
 
@@ -288,9 +288,15 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
 
                 prescale_weight = lepton_weight_provider->GetTriggerPrescaleWeight(*event);
 
-                if(ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017)
+                if(ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017){
                     l1_prefiring_weight = (*event)->l1_prefiring_weight;
-
+                    for(UncertaintyScale unc_scale_eval : GetAllUncertaintyScales())
+                        l1_prefiring_weights[unc_scale_eval] = static_cast<float>((*event)->l1_prefiring_weight);
+                }
+                else{
+                    for(UncertaintyScale unc_scale_eval : GetAllUncertaintyScales())
+                        l1_prefiring_weights[unc_scale_eval] = 1.;
+                }
                 auto jet_pu_id_weight_provided = eventWeights_HH->GetProviderT<mc_corrections::JetPuIdWeights>(
                         mc_corrections::WeightType::JetPuIdWeights);
                 jet_pu_id_weight = jet_pu_id_weight_provided->Get(*event);
@@ -414,7 +420,8 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                 }
             }
             //dataId
-            anaTupleWriter.AddEvent(*event, dataIds, pass_vbf_trigger, categories_flags, btag_weights, uncs_weight_map);
+            anaTupleWriter.AddEvent(*event, dataIds, pass_vbf_trigger, categories_flags, btag_weights, uncs_weight_map,
+                                    l1_prefiring_weights);
         }
     }
 }

@@ -341,14 +341,15 @@ private:
         try {
             std::map<Channel, std::shared_ptr<EventTuple>> outputTuples;
 
+            for (Channel channel : setup.channels) {
+                const std::string treeName = ToString(channel);
+                outputTuples[channel] = ntuple::CreateEventTuple(treeName, outputFile.get(), false,
+                                                                 ntuple::TreeState::Skimmed);
+            }
+
             EventPtr event;
             while(writeQueue.Pop(event)) {
                 const Channel channel = static_cast<Channel>(event->channelId);
-                if(!outputTuples.count(channel)) {
-                    const std::string treeName = ToString(channel);
-                    outputTuples[channel] = ntuple::CreateEventTuple(treeName, outputFile.get(), false,
-                                                                     ntuple::TreeState::Skimmed);
-                }
                 (*outputTuples[channel])() = *event;
                 outputTuples[channel]->Fill();
             }
@@ -471,6 +472,18 @@ private:
         const auto eventInfo = CreateAnyEventInfo(event);
         if(!eventInfo) return false;
 
+
+        for(const auto& [unc_source, unc_scale] : unc_variations) {
+            if(unc_scale == UncertaintyScale::Central)
+                event.weight_pu = weighting_mode.count(WeightType::PileUp)
+                                  ? eventWeights_HH->GetWeight(*eventInfo, WeightType::PileUp) : 1;
+            else if(unc_scale == UncertaintyScale::Up)
+                event.weight_pu_up = weighting_mode.count(WeightType::PileUp)
+                                 ? eventWeights_HH->GetWeight(*eventInfo, WeightType::PileUp) : 1;
+            else if(unc_scale == UncertaintyScale::Down)
+                     event.weight_pu_down = weighting_mode.count(WeightType::PileUp)
+                                      ? eventWeights_HH->GetWeight(*eventInfo, WeightType::PileUp) : 1;
+        }
         event.weight_pu = weighting_mode.count(WeightType::PileUp)
                         ? eventWeights_HH->GetWeight(*eventInfo, WeightType::PileUp) : 1;
         event.weight_dy = weighting_mode.count(WeightType::DY)
