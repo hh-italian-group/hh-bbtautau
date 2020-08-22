@@ -397,8 +397,8 @@ private:
             summary.totalShapeWeight = desc.GetCrossSection(*crossSectionProvider);
             weight_xs_withTopPt = desc.GetCrossSection(*crossSectionProvider) / summary.totalShapeWeight_withTopPt;
             summary.totalShapeWeight_withTopPt = desc.GetCrossSection(*crossSectionProvider);
-            summary.totalShapeWeight_withPileUp_Up = 1;
-            summary.totalShapeWeight_withPileUp_Down = 1;
+            summary.totalShapeWeight_withPileUp_Up = desc.GetCrossSection(*crossSectionProvider);
+            summary.totalShapeWeight_withPileUp_Down = desc.GetCrossSection(*crossSectionProvider);
         } else {
             weight_xs = 1;
             weight_xs_withTopPt = 1;
