@@ -397,6 +397,8 @@ private:
             summary.totalShapeWeight = desc.GetCrossSection(*crossSectionProvider);
             weight_xs_withTopPt = desc.GetCrossSection(*crossSectionProvider) / summary.totalShapeWeight_withTopPt;
             summary.totalShapeWeight_withTopPt = desc.GetCrossSection(*crossSectionProvider);
+            summary.totalShapeWeight_withPileUp_Up = 1;
+            summary.totalShapeWeight_withPileUp_Down = 1;
         } else {
             weight_xs = 1;
             weight_xs_withTopPt = 1;
@@ -472,18 +474,13 @@ private:
         const auto eventInfo = CreateAnyEventInfo(event);
         if(!eventInfo) return false;
 
-
         for(const auto& [unc_source, unc_scale] : unc_variations) {
-            if(unc_scale == UncertaintyScale::Central)
-                event.weight_pu = weighting_mode.count(WeightType::PileUp)
-                                  ? eventWeights_HH->GetWeight(*eventInfo, WeightType::PileUp) : 1;
-            else if(unc_scale == UncertaintyScale::Up)
-                event.weight_pu_up = weighting_mode.count(WeightType::PileUp)
-                                 ? eventWeights_HH->GetWeight(*eventInfo, WeightType::PileUp) : 1;
-            else if(unc_scale == UncertaintyScale::Down)
-                     event.weight_pu_down = weighting_mode.count(WeightType::PileUp)
-                                      ? eventWeights_HH->GetWeight(*eventInfo, WeightType::PileUp) : 1;
+            auto pile_up_weight_provider = eventWeights_HH->GetProviderT<mc_corrections::PileUpWeightEx>(
+                                        mc_corrections::WeightType::PileUp);
+            event.weight_pu_up = weighting_mode.count(WeightType::PileUp)
+                                 ? pile_up_weight_provider->Get(*eventInfo, unc_scale) : 1;
         }
+
         event.weight_dy = weighting_mode.count(WeightType::DY)
                 ? eventWeights_HH->GetWeight(*eventInfo, WeightType::DY) : 1;
         event.weight_ttbar = weighting_mode.count(WeightType::TTbar)

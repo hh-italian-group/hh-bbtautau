@@ -4,6 +4,7 @@ This file is part of https://github.com/hh-italian-group/h-tautau. */
 #pragma once
 
 #include "h-tautau/McCorrections/include/EventWeights.h"
+#include "h-tautau/McCorrections/include/PileUpWeight.h"
 #include "hh-bbtautau/McCorrections/include/NonResHH_EFT.h"
 
 namespace analysis {
@@ -17,7 +18,8 @@ public:
                                               const boost::optional<double>& max_gen_weight,
                                               bool control_duplicates = true) const;
 
-    std::vector<double> GetTotalShapeWeights(const std::shared_ptr<TFile>& file, const WeightingMode& weighting_mode,
+
+    std::map<UncertaintyScale, std::vector<double>> GetTotalShapeWeights(const std::shared_ptr<TFile>& file, const WeightingMode& weighting_mode,
                                              const std::vector<NonResHH_EFT::Point>& eft_points, bool orthogonal);
 
 private:

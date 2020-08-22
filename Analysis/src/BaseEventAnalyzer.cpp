@@ -399,7 +399,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                 dataIds[anaDataId] = std::make_tuple(weight, mva_score);
                             } else
                                 ProcessSpecialEvent(sample, sample_wp, anaDataId, *event, weight,
-                                                    (*summary)->totalShapeWeight, dataIds, cross_section);
+                                                    (*summary)->totalShapeWeight, dataIds, cross_section, unc_scale);
                         }
 
                         for(size_t n = 0; n < sync_descriptors.size(); ++n) {
@@ -430,12 +430,12 @@ void BaseEventAnalyzer::ProcessSpecialEvent(const SampleDescriptor& sample,
                                             const SampleDescriptor::Point& /*sample_wp*/,
                                             const EventAnalyzerDataId& anaDataId, EventInfo& event, double weight,
                                             double shape_weight, bbtautau::AnaTupleWriter::DataIdMap& dataIds,
-                                            double cross_section)
+                                            double cross_section, UncertaintyScale unc_scale)
 {
     if(sample.sampleType == SampleType::DY){
         dymod.at(sample.name)->ProcessEvent(anaDataId,event,weight,dataIds);
     } else if(sample.sampleType == SampleType::ggHH_NonRes) {
-        nonResModel->ProcessEvent(anaDataId, event, weight, shape_weight, dataIds, cross_section);
+        nonResModel->ProcessEvent(anaDataId, event, weight, shape_weight, dataIds, cross_section, unc_scale);
     } else
         throw exception("Unsupported special event type '%1%'.") % sample.sampleType;
 }

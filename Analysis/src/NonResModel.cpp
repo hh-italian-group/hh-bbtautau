@@ -72,14 +72,15 @@ NonResModel::NonResModel(Period period, const SampleDescriptor& sample, std::sha
 }
 
 void NonResModel::ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfo& event, double weight,
-                               double shape_weight, bbtautau::AnaTupleWriter::DataIdMap& dataIds, double cross_section)
+                               double shape_weight, bbtautau::AnaTupleWriter::DataIdMap& dataIds, double cross_section,
+                               UncertaintyScale unc_scale)
 {
     for(size_t n = 0; n < points.size(); ++n) {
         if(points_are_orthogonal && (event->evt % points.size()) != n) continue;
         const auto final_id = anaDataId.Set(point_names.at(n));
         eft_weights->SetTargetPoint(points.at(n));
         const double eft_weight = eft_weights->Get(event);
-        const double shape_weight_correction = shape_weight / total_shape_weights.at(n);
+        const double shape_weight_correction = shape_weight / total_shape_weights.at(unc_scale).at(n);
         const double eft_weight_correction = eft_weight / event->weight_bsm_to_sm;
         const double xs_correction = point_xs.at(n) > 0 ? point_xs.at(n) / cross_section : 1.;
         const double final_weight = weight * shape_weight_correction * eft_weight_correction * xs_correction;
