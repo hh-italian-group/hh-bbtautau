@@ -36,8 +36,7 @@ AnaTupleWriter::~AnaTupleWriter()
 void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const bool pass_VBF_trigger,
                               const CategoriesFlags& categories_flags,
                               const std::map<DiscriminatorWP, std::map<UncertaintyScale, float>>& btag_weights,
-                              const std::map<UncertaintySource, std::map<UncertaintyScale, float>>& uncs_weight_map,
-                              const std::map<UncertaintyScale, float>& l1_prefiring_weights)
+                              const std::map<UncertaintySource, std::map<UncertaintyScale, float>>& uncs_weight_map)
 {
     static constexpr float def_val = std::numeric_limits<float>::lowest();
     static constexpr int def_val_int = std::numeric_limits<int>::lowest();
@@ -115,7 +114,6 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
         fill_unc_weight_vec(btag_weights.at(DiscriminatorWP::Loose), tuple().btag_weight_Loose, false);
         fill_unc_weight_vec(btag_weights.at(DiscriminatorWP::Medium), tuple().btag_weight_Medium, false);
         fill_unc_weight_vec(btag_weights.at(DiscriminatorWP::Tight), tuple().btag_weight_Tight, false);
-        fill_unc_weight_vec(l1_prefiring_weights, tuple().l1_prefiring_weight, false);
         if(event.GetEventCandidate().GetUncSource() == UncertaintySource::None){
             fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::EleTriggerUnc), tuple().unc_EleTriggerUnc);
             fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::MuonTriggerUnc), tuple().unc_MuonTriggerUnc);
@@ -140,10 +138,11 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
             fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSmuSF_etaGt1p7), tuple().unc_TauVSmuSF_etaGt1p7);
             fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::EleIdIsoUnc), tuple().unc_EleIdIsoUnc);
             fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::MuonIdIsoUnc), tuple().unc_MuonIdIsoUnc);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TopPt), tuple().unc_TopPt);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TopPt), tuple().unc_TopPt, false);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::L1_prefiring), tuple().unc_L1_prefiring, false);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::PileUp), tuple().unc_PileUp, false);
         }
     }
-
     tuple().has_b_pair = event.HasBjetPair();
     tuple().has_VBF_pair = event.HasVBFjetPair();
     tuple().pass_VBF_trigger = pass_VBF_trigger;

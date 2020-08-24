@@ -69,6 +69,7 @@ ntuple::ProdSummary EventWeights_HH::GetSummaryWithWeights(const std::shared_ptr
     const bool calc_withTopPt = mode_withTopPt.count(WeightType::TopPt);
     //PileUp
     const auto mode_withPileUp = shape_weights_withPileUp & weighting_mode;
+    const auto mode_withoutPileUp = weighting_mode;
     const bool calc_withPileUp = mode_withPileUp.count(WeightType::PileUp);
 
     if(mode.size() || mode_withTopPt.size() || mode_withPileUp.size()) {
@@ -92,9 +93,9 @@ ntuple::ProdSummary EventWeights_HH::GetSummaryWithWeights(const std::shared_ptr
                 summary.totalShapeWeight_withTopPt += GetTotalWeight(event, mode_withTopPt);
             if(calc_withPileUp){
                 auto pu_weight_provider = GetProviderT<mc_corrections::PileUpWeightEx>(mc_corrections::WeightType::PileUp);
-                summary.totalShapeWeight_withPileUp_Up += GetTotalWeight(event, mode_withPileUp)
+                summary.totalShapeWeight_withPileUp_Up += GetTotalWeight(event, mode_withoutPileUp)
                                                           * pu_weight_provider->Get(event, UncertaintyScale::Up);
-                summary.totalShapeWeight_withPileUp_Down += GetTotalWeight(event, mode_withPileUp)
+                summary.totalShapeWeight_withPileUp_Down += GetTotalWeight(event, mode_withoutPileUp)
                                                             * pu_weight_provider->Get(event, UncertaintyScale::Down);
             }
         }
@@ -129,17 +130,16 @@ std::map<UncertaintyScale, std::vector<double>> EventWeights_HH::GetTotalShapeWe
     std::map<UncertaintyScale, std::vector<double>> total_weights_scale;
     const auto mode = shape_weights & weighting_mode;
 
-    for(const auto& scale : unc_scales){
-        if(mode.size()) {
-            auto eft_weights_provider = GetProviderT<NonResHH_EFT::WeightProvider>(WeightType::BSM_to_SM);
-            auto all_events = ntuple::CreateExpressTuple("all_events", file.get(), true, ntuple::TreeState::Full);
-
+    if(mode.size()) {
+        auto eft_weights_provider = GetProviderT<NonResHH_EFT::WeightProvider>(WeightType::BSM_to_SM);
+        auto all_events = ntuple::CreateExpressTuple("all_events", file.get(), true, ntuple::TreeState::Full);
+        for(const auto& event : *all_events) {
             auto pu_weight_provider = GetProviderT<mc_corrections::PileUpWeightEx>(mc_corrections::WeightType::PileUp);
             double pu_weight_up = 1.;
             double pu_weight_down = 1.;
             std::map<UncertaintyScale, double> pu_weights;
 
-            for(const auto& event : *all_events) {
+            for(const auto& scale : unc_scales){
                 if(weighting_mode.count(WeightType::PileUp)){
                     pu_weight_up = pu_weight_provider->Get(event, UncertaintyScale::Up);
                     pu_weight_down = pu_weight_provider->Get(event, UncertaintyScale::Down);
@@ -153,10 +153,10 @@ std::map<UncertaintyScale, std::vector<double>> EventWeights_HH::GetTotalShapeWe
                     eft_weights_provider->SetTargetPoint(eft_points.at(n));
                     total_weights.at(n) += GetTotalWeight(event, mode) * pu_weights.at(scale);
                 }
+                total_weights_scale.at(scale) = total_weights;
             }
         }
-        total_weights_scale.at(scale) = total_weights;
-    }        
+    }
     return total_weights_scale;
 }
 

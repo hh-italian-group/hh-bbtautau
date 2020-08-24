@@ -268,7 +268,6 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
             const bool pass_trigger = pass_normal_trigger || pass_vbf_trigger;
             if(!pass_trigger) continue;
             std::map<DiscriminatorWP, std::map<UncertaintyScale, float>> btag_weights;
-            std::map<UncertaintyScale, float> l1_prefiring_weights;
             bbtautau::AnaTupleWriter::DataIdMap dataIds;
             std::map<size_t, bool> sync_event_selected;
 
@@ -291,11 +290,8 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                 if(ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017){
                     l1_prefiring_weight = (*event)->l1_prefiring_weight;
                     for(UncertaintyScale unc_scale_eval : GetAllUncertaintyScales())
-                        l1_prefiring_weights[unc_scale_eval] = static_cast<float>((*event)->l1_prefiring_weight);
-                }
-                else{
-                    for(UncertaintyScale unc_scale_eval : GetAllUncertaintyScales())
-                        l1_prefiring_weights[unc_scale_eval] = 1.;
+                        uncs_weight_map[UncertaintySource::L1_prefiring][unc_scale_eval] = static_cast<float>(
+                                (*event)->l1_prefiring_weight);
                 }
                 auto jet_pu_id_weight_provided = eventWeights_HH->GetProviderT<mc_corrections::JetPuIdWeights>(
                         mc_corrections::WeightType::JetPuIdWeights);
@@ -357,7 +353,13 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                     uncs_weight_map[UncertaintySource::TopPt][UncertaintyScale::Central] = 1;
                     if(sample.apply_top_pt_unc)
                         uncs_weight_map[UncertaintySource::TopPt][UncertaintyScale::Up] =
-                            static_cast<float>(top_pt_weight_provided->Get(*event));
+                            static_cast<float>(top_pt_weight_provided->Get(*event) / (*summary)->totalShapeWeight);
+
+                    if(sample.sampleType != SampleType::ggHH_NonRes){
+                        uncs_weight_map[UncertaintySource::PileUp][UncertaintyScale::Central] = 1;
+                        uncs_weight_map[UncertaintySource::PileUp][UncertaintyScale::Up] = 1;
+                        uncs_weight_map[UncertaintySource::PileUp][UncertaintyScale::Down] = 1;
+                    }
                 }
             }
 
@@ -399,7 +401,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                 dataIds[anaDataId] = std::make_tuple(weight, mva_score);
                             } else
                                 ProcessSpecialEvent(sample, sample_wp, anaDataId, *event, weight,
-                                                    (*summary)->totalShapeWeight, dataIds, cross_section, unc_scale);
+                                                    (*summary)->totalShapeWeight, dataIds, cross_section, uncs_weight_map);
                         }
 
                         for(size_t n = 0; n < sync_descriptors.size(); ++n) {
@@ -420,8 +422,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                 }
             }
             //dataId
-            anaTupleWriter.AddEvent(*event, dataIds, pass_vbf_trigger, categories_flags, btag_weights, uncs_weight_map,
-                                    l1_prefiring_weights);
+            anaTupleWriter.AddEvent(*event, dataIds, pass_vbf_trigger, categories_flags, btag_weights, uncs_weight_map);
         }
     }
 }
@@ -430,12 +431,13 @@ void BaseEventAnalyzer::ProcessSpecialEvent(const SampleDescriptor& sample,
                                             const SampleDescriptor::Point& /*sample_wp*/,
                                             const EventAnalyzerDataId& anaDataId, EventInfo& event, double weight,
                                             double shape_weight, bbtautau::AnaTupleWriter::DataIdMap& dataIds,
-                                            double cross_section, UncertaintyScale unc_scale)
+                                            double cross_section,
+                                            std::map<UncertaintySource,std::map<UncertaintyScale,float>>& uncs_weight_map)
 {
     if(sample.sampleType == SampleType::DY){
         dymod.at(sample.name)->ProcessEvent(anaDataId,event,weight,dataIds);
     } else if(sample.sampleType == SampleType::ggHH_NonRes) {
-        nonResModel->ProcessEvent(anaDataId, event, weight, shape_weight, dataIds, cross_section, unc_scale);
+        nonResModel->ProcessEvent(anaDataId, event, weight, shape_weight, dataIds, cross_section, uncs_weight_map);
     } else
         throw exception("Unsupported special event type '%1%'.") % sample.sampleType;
 }

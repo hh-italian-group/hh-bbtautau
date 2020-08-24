@@ -397,8 +397,8 @@ private:
             summary.totalShapeWeight = desc.GetCrossSection(*crossSectionProvider);
             weight_xs_withTopPt = desc.GetCrossSection(*crossSectionProvider) / summary.totalShapeWeight_withTopPt;
             summary.totalShapeWeight_withTopPt = desc.GetCrossSection(*crossSectionProvider);
-            summary.totalShapeWeight_withPileUp_Up = desc.GetCrossSection(*crossSectionProvider);
-            summary.totalShapeWeight_withPileUp_Down = desc.GetCrossSection(*crossSectionProvider);
+            summary.totalShapeWeight_withPileUp_Up = summary.totalShapeWeight_withPileUp_Up;
+            summary.totalShapeWeight_withPileUp_Down = summary.totalShapeWeight_withPileUp_Down;
         } else {
             weight_xs = 1;
             weight_xs_withTopPt = 1;
@@ -474,11 +474,21 @@ private:
         const auto eventInfo = CreateAnyEventInfo(event);
         if(!eventInfo) return false;
 
-        for(const auto& [unc_source, unc_scale] : unc_variations) {
-            auto pile_up_weight_provider = eventWeights_HH->GetProviderT<mc_corrections::PileUpWeightEx>(
-                                        mc_corrections::WeightType::PileUp);
-            event.weight_pu_up = weighting_mode.count(WeightType::PileUp)
-                                 ? pile_up_weight_provider->Get(*eventInfo, unc_scale) : 1;
+        auto pile_up_weight_provider = eventWeights_HH->GetProviderT<mc_corrections::PileUpWeightEx>(
+                                       mc_corrections::WeightType::PileUp);
+
+       for(const auto& [unc_source, unc_scale] : unc_variations){
+            if(unc_scale == UncertaintyScale::Central){
+                event.weight_pu = weighting_mode.count(WeightType::PileUp)
+                                     ?  pile_up_weight_provider->Get(*eventInfo, UncertaintyScale::Central) : 1;
+                event.weight_pu_up = weighting_mode.count(WeightType::PileUp)
+                                     ?  pile_up_weight_provider->Get(*eventInfo, UncertaintyScale::Up) : 1;
+                event.weight_pu_down = weighting_mode.count(WeightType::PileUp)
+                                      ?  pile_up_weight_provider->Get(*eventInfo, UncertaintyScale::Down) : 1;
+            } else {
+                event.weight_pu_up = 1;
+                event.weight_pu_down = 1;
+            }
         }
 
         event.weight_dy = weighting_mode.count(WeightType::DY)
