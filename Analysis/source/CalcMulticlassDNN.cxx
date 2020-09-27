@@ -93,9 +93,8 @@ class CalcMulticlassDNN {
     std::vector<std::pair<std::string, std::string>> modelSpecs = {
       { "v3", "kl1_c2v1_c31_vbf" },
       { "v3", "kl1_c2v1_c31_vr" },
-      // to be enabled when v4 models become available
-      // { "v4", "kl1_c2v1_c31_vbf" },
-      // { "v4", "kl1_c2v1_c31_vr" },
+      { "v4", "kl1_c2v1_c31_vbf" },
+      { "v4", "kl1_c2v1_c31_vr" },
     };
     std::vector<hmc::Model*> models;
     for (const auto& modelSpec : modelSpecs) {
