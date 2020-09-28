@@ -56,11 +56,6 @@ class FeatureProvider {
   Channel channel_;
   bbtautau::AnaTuple& anaTuple_;
   std::map<std::string, float> features_;
-
-  // currently not needed
-  // bool passBaseline_() const;
-  // bool passEllipseMassCut_(const TLorentzVector& bH, const TLorentzVector& tauH) const;
-  // bool passRectMassCut_(const TLorentzVector& bH, const TLorentzVector& tauH) const;
 };
 
 class CalcMulticlassDNN {
@@ -95,8 +90,12 @@ class CalcMulticlassDNN {
     auto outTree = std::make_unique<TTree>(channelName.c_str(), channelName.c_str());
 
     // load models and define output branches
-    std::vector<std::pair<std::string, std::string>> modelSpecs
-        = { { "v0", "kl1_c2v1_c31" }, { "v0", "kl1_c2v1_c31_vbfbsm" } };
+    std::vector<std::pair<std::string, std::string>> modelSpecs = {
+      { "v3", "kl1_c2v1_c31_vbf" },
+      { "v3", "kl1_c2v1_c31_vr" },
+      { "v4", "kl1_c2v1_c31_vbf" },
+      { "v4", "kl1_c2v1_c31_vr" },
+    };
     std::vector<hmc::Model*> models;
     for (const auto& modelSpec : modelSpecs) {
       const std::string& version = modelSpec.first;
@@ -175,15 +174,25 @@ void FeatureProvider::calculate(Long64_t i) {
   bool vbfj2Set = event.VBF2_valid == 1;
   bool bHSet = b1Set && b2Set;
   bool vbfjjSet = vbfj1Set && vbfj2Set;
+  bool ct1Set = event.central_jet1_valid;
+  bool ct2Set = event.central_jet2_valid;
+  bool ct3Set = event.central_jet3_valid;
+  bool fw1Set = event.forward_jet1_valid;
+  bool fw2Set = event.forward_jet2_valid;
 
   // define vectors for objects
-  TLorentzVector b1, b2, vbfj1, vbfj2, lep1, lep2, bH, tauH, vbfjj;
+  TLorentzVector b1, b2, vbfj1, vbfj2, lep1, lep2, bH, tauH, vbfjj, ct1, ct2, ct3, fw1, fw2;
   b1.SetPtEtaPhiM(event.b1_pt, event.b1_eta, event.b1_phi, event.b1_m);
   b2.SetPtEtaPhiM(event.b2_pt, event.b2_eta, event.b2_phi, event.b2_m);
   vbfj1.SetPtEtaPhiM(event.VBF1_pt, event.VBF1_eta, event.VBF1_phi, event.VBF1_m);
   vbfj2.SetPtEtaPhiM(event.VBF2_pt, event.VBF2_eta, event.VBF2_phi, event.VBF2_m);
   lep1.SetPtEtaPhiM(event.tau1_pt, event.tau1_eta, event.tau1_phi, event.tau1_m);
   lep2.SetPtEtaPhiM(event.tau2_pt, event.tau2_eta, event.tau2_phi, event.tau2_m);
+  ct1.SetPtEtaPhiM(event.central_jet1_pt, event.central_jet1_eta, event.central_jet1_phi, event.central_jet1_m);
+  ct2.SetPtEtaPhiM(event.central_jet2_pt, event.central_jet2_eta, event.central_jet2_phi, event.central_jet2_m);
+  ct3.SetPtEtaPhiM(event.central_jet3_pt, event.central_jet3_eta, event.central_jet3_phi, event.central_jet3_m);
+  fw1.SetPtEtaPhiM(event.forward_jet1_pt, event.forward_jet1_eta, event.forward_jet1_phi, event.forward_jet1_m);
+  fw2.SetPtEtaPhiM(event.forward_jet2_pt, event.forward_jet2_eta, event.forward_jet2_phi, event.forward_jet2_m);
   bH = b1 + b2;
   tauH = lep1 + lep2;
   vbfjj = vbfj1 + vbfj2;
@@ -201,6 +210,9 @@ void FeatureProvider::calculate(Long64_t i) {
   setFeature("is_mutau", float(channel_ == Channel::MuTau), true);
   setFeature("is_etau", float(channel_ == Channel::ETau), true);
   setFeature("is_tautau", float(channel_ == Channel::TauTau), true);
+  setFeature("is_2016", float(period_ == Period::Run2016), true);
+  setFeature("is_2017", float(period_ == Period::Run2017), true);
+  setFeature("is_2018", float(period_ == Period::Run2018), true);
   setFeature("bjet1_pt", b1.Pt(), b1Set);
   setFeature("bjet1_eta", b1.Eta(), b1Set);
   setFeature("bjet1_phi", b1.Phi(), b1Set);
@@ -233,6 +245,32 @@ void FeatureProvider::calculate(Long64_t i) {
   setFeature("vbfjet2_deepflavor_cvsb", event.VBF2_DeepFlavour_CvsB, vbfj2Set);
   setFeature("vbfjet2_deepflavor_cvsl", event.VBF2_DeepFlavour_CvsL, vbfj2Set);
   setFeature("vbfjet2_hhbtag", event.VBF2_HHbtag, vbfj1Set);
+  setFeature("ctjet1_pt", ct1.Pt(), ct1Set);
+  setFeature("ctjet1_eta", ct1.Eta(), ct1Set);
+  setFeature("ctjet1_phi", ct1.Phi(), ct1Set);
+  setFeature("ctjet1_e", ct1.E(), ct1Set);
+  setFeature("ctjet1_deepflavor_b", event.central_jet1_DeepFlavour, ct1Set);
+  setFeature("ctjet1_hhbtag", event.central_jet1_HHbtag, ct1Set);
+  setFeature("ctjet2_pt", ct2.Pt(), ct2Set);
+  setFeature("ctjet2_eta", ct2.Eta(), ct2Set);
+  setFeature("ctjet2_phi", ct2.Phi(), ct2Set);
+  setFeature("ctjet2_e", ct2.E(), ct2Set);
+  setFeature("ctjet2_deepflavor_b", event.central_jet2_DeepFlavour, ct2Set);
+  setFeature("ctjet2_hhbtag", event.central_jet2_HHbtag, ct2Set);
+  setFeature("ctjet3_pt", ct3.Pt(), ct3Set);
+  setFeature("ctjet3_eta", ct3.Eta(), ct3Set);
+  setFeature("ctjet3_phi", ct3.Phi(), ct3Set);
+  setFeature("ctjet3_e", ct3.E(), ct3Set);
+  setFeature("ctjet3_deepflavor_b", event.central_jet3_DeepFlavour, ct3Set);
+  setFeature("ctjet3_hhbtag", event.central_jet3_HHbtag, ct3Set);
+  setFeature("fwjet1_pt", fw1.Pt(), fw1Set);
+  setFeature("fwjet1_eta", fw1.Eta(), fw1Set);
+  setFeature("fwjet1_phi", fw1.Phi(), fw1Set);
+  setFeature("fwjet1_e", fw1.E(), fw1Set);
+  setFeature("fwjet2_pt", fw2.Pt(), fw2Set);
+  setFeature("fwjet2_eta", fw2.Eta(), fw2Set);
+  setFeature("fwjet2_phi", fw2.Phi(), fw2Set);
+  setFeature("fwjet2_e", fw2.E(), fw2Set);
   setFeature("lep1_pt", lep1.Pt(), true);
   setFeature("lep1_eta", lep1.Eta(), true);
   setFeature("lep1_phi", lep1.Phi(), true);
@@ -251,44 +289,13 @@ void FeatureProvider::calculate(Long64_t i) {
   setFeature("tauh_sv_eta", tauH.Eta(), true);
   setFeature("tauh_sv_phi", tauH.Phi(), true);
   setFeature("tauh_sv_e", tauH.E(), true);
+  setFeature("tauh_sv_ez", pow(pow(tauH.Pz(), 2) + pow(tauH.M(), 2), 0.5), true);
 
   if (setCounter != features_.size()) {
     throw exception("only calculated " + std::to_string(setCounter) + " out of "
         + std::to_string(features_.size()) + " features");
   }
 }
-
-// bool FeatureProvider::passBaseline_() const {
-//   // currently no distinction between years
-//   if (channel_ == Channel::MuTau) {
-//     return event.tau1_pt > 20. && fabs(event.tau1_eta) < 2.1
-//         && event.tau2_pt > 20. && fabs(event.tau1_eta) < 2.3
-//         && event.pass_VBF_trigger;
-//   } else if (channel_ == Channel::ETau) {
-//     return event.tau1_pt > 20. && fabs(event.tau1_eta) < 2.1
-//         && event.tau2_pt > 20. && fabs(event.tau1_eta) < 2.3
-//         && event.pass_VBF_trigger;
-//   } else if (channel_ == Channel::TauTau) {
-//     return event.tau1_pt > 40. && fabs(event.tau1_eta) < 2.1
-//         && event.tau2_pt > 40. && fabs(event.tau1_eta) < 2.1
-//         && event.pass_VBF_trigger;
-//   } else {
-//     throw exception("unknown channel " + std::to_string(channel_));
-//   }
-// }
-
-// bool FeatureProvider::passEllipseMassCut_(
-//     const TLorentzVector& bH, const TLorentzVector& tauH) const {
-//   auto bHPull = (bH.M() - 111.) / 45.;
-//   auto tauHPull = (tauH.M() - 116.) / 35.;
-//   return (bHPull * bHPull + tauHPull * tauHPull) < 1.;
-// }
-
-// bool FeatureProvider::passRectMassCut_(const TLorentzVector& bH, const TLorentzVector& tauH)
-// const {
-//   // TODO: use fatjet softdrop mass instead of bH mass?
-//   return bH.M() > 90. && bH.M() < 160. && tauH.M() > 79.5 && tauH.M() < 152.5;
-// }
 
 } // namespace analysis
 
