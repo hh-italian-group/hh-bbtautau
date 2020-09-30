@@ -56,7 +56,6 @@ ntuple::ProdSummary EventWeights_HH::GetSummaryWithWeights(const std::shared_ptr
     static const WeightingMode shape_weights(WeightType::PileUp, WeightType::BSM_to_SM, WeightType::DY,
                                              WeightType::TTbar, WeightType::Wjets, WeightType::GenEventWeight);
     static const WeightingMode shape_weights_withTopPt = shape_weights | WeightingMode(WeightType::TopPt);
-    static const WeightingMode shape_weights_withPileUp = shape_weights | WeightingMode(WeightType::PileUp);
 
     auto summary_tuple = ntuple::CreateSummaryTuple("summary", file.get(), true, ntuple::TreeState::Full);
     auto summary = ntuple::MergeSummaryTuple(*summary_tuple);
@@ -68,16 +67,18 @@ ntuple::ProdSummary EventWeights_HH::GetSummaryWithWeights(const std::shared_ptr
     const auto mode_withTopPt = shape_weights_withTopPt & weighting_mode;
     const bool calc_withTopPt = mode_withTopPt.count(WeightType::TopPt);
     //PileUp
-    const auto mode_withPileUp = shape_weights_withPileUp & weighting_mode;
-    const auto mode_withoutPileUp = weighting_mode;
-    const bool calc_withPileUp = mode_withPileUp.count(WeightType::PileUp);
+    auto mode_withoutPileUp = mode;
+    mode_withoutPileUp.erase(WeightType::PileUp);
+    const bool calc_withPileUp = mode.count(WeightType::PileUp);
 
-    if(mode.size() || mode_withTopPt.size() || mode_withPileUp.size()) {
+    if(mode.size() || mode_withTopPt.size()) {
         auto all_events = ntuple::CreateExpressTuple("all_events", file.get(), true, ntuple::TreeState::Full);
 
         using EventIdSet = std::set<EventIdentifier>;
         EventIdSet processed_events;
-        for(const auto& event : *all_events) {
+        auto pu_weight_provider = GetProviderT<mc_corrections::PileUpWeightEx>(mc_corrections::WeightType::PileUp);
+
+	for(const auto& event : *all_events) {
             if(max_gen_weight && std::abs(event.genEventWeight) > *max_gen_weight) continue;
             if(control_duplicates) {
                 const EventIdentifier Id(event.run, event.lumi, event.evt);
@@ -92,10 +93,9 @@ ntuple::ProdSummary EventWeights_HH::GetSummaryWithWeights(const std::shared_ptr
             if(calc_withTopPt)
                 summary.totalShapeWeight_withTopPt += GetTotalWeight(event, mode_withTopPt);
             if(calc_withPileUp){
-                auto pu_weight_provider = GetProviderT<mc_corrections::PileUpWeightEx>(mc_corrections::WeightType::PileUp);
                 summary.totalShapeWeight_withPileUp_Up += GetTotalWeight(event, mode_withoutPileUp)
                                                           * pu_weight_provider->Get(event, UncertaintyScale::Up);
-                summary.totalShapeWeight_withPileUp_Down += GetTotalWeight(event, mode_withoutPileUp)
+		summary.totalShapeWeight_withPileUp_Down += GetTotalWeight(event, mode_withoutPileUp)
                                                             * pu_weight_provider->Get(event, UncertaintyScale::Down);
             }
         }
@@ -123,8 +123,6 @@ std::map<UncertaintyScale, std::vector<double>> EventWeights_HH::GetTotalShapeWe
 {
     static const WeightingMode shape_weights(WeightType::PileUp, WeightType::BSM_to_SM, WeightType::DY,
                                              WeightType::TTbar, WeightType::Wjets, WeightType::GenEventWeight);
-    std::vector<UncertaintyScale> unc_scales = {UncertaintyScale::Up, UncertaintyScale::Central, UncertaintyScale::Down};
-
     size_t N = eft_points.size();
     std::vector<double> total_weights(N, 0);
     std::map<UncertaintyScale, std::vector<double>> total_weights_scale;
@@ -137,25 +135,27 @@ std::map<UncertaintyScale, std::vector<double>> EventWeights_HH::GetTotalShapeWe
             auto pu_weight_provider = GetProviderT<mc_corrections::PileUpWeightEx>(mc_corrections::WeightType::PileUp);
             double pu_weight_up = 1.;
             double pu_weight_down = 1.;
+            double pu_weight = 1.;
             std::map<UncertaintyScale, double> pu_weights;
 
-            for(const auto& scale : unc_scales){
-                if(weighting_mode.count(WeightType::PileUp)){
-                    pu_weight_up = pu_weight_provider->Get(event, UncertaintyScale::Up);
-                    pu_weight_down = pu_weight_provider->Get(event, UncertaintyScale::Down);
-                }
-                pu_weights.at(UncertaintyScale::Up) = pu_weight_up;
-                pu_weights.at(UncertaintyScale::Down) = pu_weight_down;
-                pu_weights.at(UncertaintyScale::Central) = 1.;
+            if(weighting_mode.count(WeightType::PileUp)){
+            	pu_weight_up = pu_weight_provider->Get(event, UncertaintyScale::Up);
+                pu_weight_down = pu_weight_provider->Get(event, UncertaintyScale::Down);
+		pu_weight = pu_weight_provider->Get(event, UncertaintyScale::Central);
+            }
+            pu_weights.at(UncertaintyScale::Up) = pu_weight_up;
+            pu_weights.at(UncertaintyScale::Down) = pu_weight_down;
+            pu_weights.at(UncertaintyScale::Central) = pu_weight;
 
-                for(size_t n = 0; n < N; ++n) {
-                    if(orthogonal && (event.evt % N) != n) continue;
-                    eft_weights_provider->SetTargetPoint(eft_points.at(n));
-                    total_weights.at(n) += GetTotalWeight(event, mode) * pu_weights.at(scale);
-                }
+	    for(const auto& scale : GetAllUncertaintyScales()){
+            	for(size_t n = 0; n < N; ++n) {
+			if(orthogonal && (event.evt % N) != n) continue;
+             	  	eft_weights_provider->SetTargetPoint(eft_points.at(n));
+             	  	total_weights.at(n) += GetTotalWeight(event, mode) * pu_weights.at(scale);
+           	}
                 total_weights_scale.at(scale) = total_weights;
             }
-        }
+	}		
     }
     return total_weights_scale;
 }

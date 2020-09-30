@@ -477,19 +477,12 @@ private:
         auto pile_up_weight_provider = eventWeights_HH->GetProviderT<mc_corrections::PileUpWeightEx>(
                                        mc_corrections::WeightType::PileUp);
 
-       for(const auto& [unc_source, unc_scale] : unc_variations){
-            if(unc_scale == UncertaintyScale::Central){
-                event.weight_pu = weighting_mode.count(WeightType::PileUp)
-                                     ?  pile_up_weight_provider->Get(*eventInfo, UncertaintyScale::Central) : 1;
-                event.weight_pu_up = weighting_mode.count(WeightType::PileUp)
-                                     ?  pile_up_weight_provider->Get(*eventInfo, UncertaintyScale::Up) : 1;
-                event.weight_pu_down = weighting_mode.count(WeightType::PileUp)
-                                      ?  pile_up_weight_provider->Get(*eventInfo, UncertaintyScale::Down) : 1;
-            } else {
-                event.weight_pu_up = 1;
-                event.weight_pu_down = 1;
-            }
-        }
+        event.weight_pu = weightng_mode.count(WeightType::PileUp)
+        	?  pile_up_weight_provider->Get(*eventInfo, UncertaintyScale::Central) : 1;
+        event.weight_pu_up = weighting_mode.count(WeightType::PileUp)
+                ?  pile_up_weight_provider->Get(*eventInfo, UncertaintyScale::Up) : 1;
+        event.weight_pu_down = weighting_mode.count(WeightType::PileUp)
+                ?  pile_up_weight_provider->Get(*eventInfo, UncertaintyScale::Down) : 1;
 
         event.weight_dy = weighting_mode.count(WeightType::DY)
                 ? eventWeights_HH->GetWeight(*eventInfo, WeightType::DY) : 1;
