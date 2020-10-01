@@ -54,7 +54,8 @@ protected:
     virtual void ProcessSpecialEvent(const SampleDescriptor& sample, const SampleDescriptor::Point& /*sample_wp*/,
                                      const EventAnalyzerDataId& anaDataId, EventInfo& event, double weight,
                                      double shape_weight, bbtautau::AnaTupleWriter::DataIdMap& dataIds,
-                                     double cross_section);
+                                     double cross_section,
+                                     std::map<UncertaintySource,std::map<UncertaintyScale,float>>& uncs_weight_map);
 
     bool SetRegionIsoRange(const LepCandidate& cand, EventRegion& region) const;
 
