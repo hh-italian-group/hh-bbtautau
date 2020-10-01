@@ -125,8 +125,12 @@ std::map<UncertaintyScale, std::vector<double>> EventWeights_HH::GetTotalShapeWe
                                              WeightType::TTbar, WeightType::Wjets, WeightType::GenEventWeight);
     size_t N = eft_points.size();
     std::map<UncertaintyScale, std::vector<double>> total_weights_scale;
+    for(const auto& scale : GetAllUncertaintyScales())
+        total_weights_scale.at(scale).resize(N, 0);
+
     const auto mode = shape_weights & weighting_mode;
-    std::map<UncertaintyScale, double> pu_weights;
+    auto mode_withoutPileUp = mode;
+    mode_withoutPileUp.erase(WeightType::PileUp);
 
     if(mode.size()) {
         auto eft_weights_provider = GetProviderT<NonResHH_EFT::WeightProvider>(WeightType::BSM_to_SM);
@@ -134,6 +138,7 @@ std::map<UncertaintyScale, std::vector<double>> EventWeights_HH::GetTotalShapeWe
         auto pu_weight_provider = GetProviderT<mc_corrections::PileUpWeightEx>(mc_corrections::WeightType::PileUp);
 
         for(const auto& event : *all_events) {
+            std::map<UncertaintyScale, double> pu_weights; 
             pu_weights.at(UncertaintyScale::Up) = weighting_mode.count(WeightType::PileUp) ?
                 pu_weight_provider->Get(event, UncertaintyScale::Up) : 1.;
             pu_weights.at(UncertaintyScale::Down) = weighting_mode.count(WeightType::PileUp) ?
@@ -142,11 +147,10 @@ std::map<UncertaintyScale, std::vector<double>> EventWeights_HH::GetTotalShapeWe
                 pu_weight_provider->Get(event, UncertaintyScale::Central) : 1.;
 
         for(const auto& scale : GetAllUncertaintyScales()){
-            total_weights_scale.at(scale).resize(N, 0);
             for(size_t n = 0; n < N; ++n) {
                 if(orthogonal && (event.evt % N) != n) continue;
                 eft_weights_provider->SetTargetPoint(eft_points.at(n));
-                total_weights_scale.at(scale).at(n) += GetTotalWeight(event, mode) * pu_weights.at(scale);
+                total_weights_scale.at(scale).at(n) += GetTotalWeight(event, mode_withoutPileUp) * pu_weights.at(scale);
                 }
             }
         }		
