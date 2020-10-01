@@ -291,7 +291,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                     l1_prefiring_weight = (*event)->l1_prefiring_weight;
 	       
                 uncs_weight_map[UncertaintySource::L1_prefiring][UncertaintyScale::Central] = 
-			ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017 
+		        ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017 
 			? static_cast<float>((*event)->l1_prefiring_weight) : 1;
                 uncs_weight_map[UncertaintySource::L1_prefiring][UncertaintyScale::Up] = 
 			ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017 
