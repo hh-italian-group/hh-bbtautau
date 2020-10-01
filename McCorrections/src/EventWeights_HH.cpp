@@ -61,6 +61,9 @@ ntuple::ProdSummary EventWeights_HH::GetSummaryWithWeights(const std::shared_ptr
     auto summary = ntuple::MergeSummaryTuple(*summary_tuple);
     summary.totalShapeWeight = 0;
     summary.totalShapeWeight_withTopPt = 0;
+    summary.totalShapeWeight_withPileUp_Up = 0;
+    summary.totalShapeWeight_withPileUp_Down = 0;
+    
 
     const auto mode = shape_weights & weighting_mode;
     //TopPt
@@ -138,19 +141,13 @@ std::map<UncertaintyScale, std::vector<double>> EventWeights_HH::GetTotalShapeWe
         auto pu_weight_provider = GetProviderT<mc_corrections::PileUpWeightEx>(mc_corrections::WeightType::PileUp);
 
         for(const auto& event : *all_events) {
-            std::map<UncertaintyScale, double> pu_weights; 
-            pu_weights.at(UncertaintyScale::Up) = weighting_mode.count(WeightType::PileUp) ?
-                pu_weight_provider->Get(event, UncertaintyScale::Up) : 1.;
-            pu_weights.at(UncertaintyScale::Down) = weighting_mode.count(WeightType::PileUp) ?
-                pu_weight_provider->Get(event, UncertaintyScale::Down) : 1.;
-            pu_weights.at(UncertaintyScale::Central) = weighting_mode.count(WeightType::PileUp) ?
-                pu_weight_provider->Get(event, UncertaintyScale::Central) : 1.;
-
-        for(const auto& scale : GetAllUncertaintyScales()){
-            for(size_t n = 0; n < N; ++n) {
-                if(orthogonal && (event.evt % N) != n) continue;
-                eft_weights_provider->SetTargetPoint(eft_points.at(n));
-                total_weights_scale.at(scale).at(n) += GetTotalWeight(event, mode_withoutPileUp) * pu_weights.at(scale);
+            for(const auto& scale : GetAllUncertaintyScales()){
+                for(size_t n = 0; n < N; ++n) {
+                    if(orthogonal && (event.evt % N) != n) continue;
+                    eft_weights_provider->SetTargetPoint(eft_points.at(n));
+                    const double pu_weight = weighting_mode.count(WeightType::PileUp) ? 
+                                             pu_weight_provider->Get(event, scale) : 1.;
+                    total_weights_scale.at(scale).at(n) += GetTotalWeight(event, mode_withoutPileUp) * pu_weight;
                 }
             }
         }		
