@@ -291,14 +291,14 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                     l1_prefiring_weight = (*event)->l1_prefiring_weight;
 	       
                 uncs_weight_map[UncertaintySource::L1_prefiring][UncertaintyScale::Central] = 
-		        ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017 
-		        ? static_cast<float>((*event)->l1_prefiring_weight) : 1;
+                        ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017 
+                        ? static_cast<float>((*event)->l1_prefiring_weight) : 1;
                 uncs_weight_map[UncertaintySource::L1_prefiring][UncertaintyScale::Up] = 
-		        ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017 
-		        ? static_cast<float>((*event)->l1_prefiring_weight_up) : 1;
+                        ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017 
+                        ? static_cast<float>((*event)->l1_prefiring_weight_up) : 1;
                 uncs_weight_map[UncertaintySource::L1_prefiring][UncertaintyScale::Down] =
                         ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017 
-		        ? static_cast<float>((*event)->l1_prefiring_weight_down) : 1;
+                        ? static_cast<float>((*event)->l1_prefiring_weight_down) : 1;
 
                 auto jet_pu_id_weight_provided = eventWeights_HH->GetProviderT<mc_corrections::JetPuIdWeights>(
                         mc_corrections::WeightType::JetPuIdWeights);

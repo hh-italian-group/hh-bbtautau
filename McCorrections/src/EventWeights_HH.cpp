@@ -95,7 +95,7 @@ ntuple::ProdSummary EventWeights_HH::GetSummaryWithWeights(const std::shared_ptr
             if(calc_withPileUp){
                 summary.totalShapeWeight_withPileUp_Up += GetTotalWeight(event, mode_withoutPileUp)
                                                           * pu_weight_provider->Get(event, UncertaintyScale::Up);
-	   	summary.totalShapeWeight_withPileUp_Down += GetTotalWeight(event, mode_withoutPileUp)
+                summary.totalShapeWeight_withPileUp_Down += GetTotalWeight(event, mode_withoutPileUp)
                                                           * pu_weight_provider->Get(event, UncertaintyScale::Down);
             }
         }
@@ -135,21 +135,21 @@ std::map<UncertaintyScale, std::vector<double>> EventWeights_HH::GetTotalShapeWe
 
         for(const auto& event : *all_events) {
             pu_weights.at(UncertaintyScale::Up) = weighting_mode.count(WeightType::PileUp) ?
-		 pu_weight_provider->Get(event, UncertaintyScale::Up) : 1.;
-	    pu_weights.at(UncertaintyScale::Down) = weighting_mode.count(WeightType::PileUp) ?
-		 pu_weight_provider->Get(event, UncertaintyScale::Down) : 1.;
-	    pu_weights.at(UncertaintyScale::Central) = weighting_mode.count(WeightType::PileUp) ?
-		 pu_weight_provider->Get(event, UncertaintyScale::Central) : 1.;
+                pu_weight_provider->Get(event, UncertaintyScale::Up) : 1.;
+            pu_weights.at(UncertaintyScale::Down) = weighting_mode.count(WeightType::PileUp) ?
+                pu_weight_provider->Get(event, UncertaintyScale::Down) : 1.;
+            pu_weights.at(UncertaintyScale::Central) = weighting_mode.count(WeightType::PileUp) ?
+                pu_weight_provider->Get(event, UncertaintyScale::Central) : 1.;
 
-	    for(const auto& scale : GetAllUncertaintyScales()){
-		total_weights_scale.at(scale).resize(N, 0);
-            	for(size_t n = 0; n < N; ++n) {
-		        if(orthogonal && (event.evt % N) != n) continue;
-             	  	eft_weights_provider->SetTargetPoint(eft_points.at(n));
-			total_weights_scale.at(scale).at(n) += GetTotalWeight(event, mode) * pu_weights.at(scale);
-           	}
+        for(const auto& scale : GetAllUncertaintyScales()){
+            total_weights_scale.at(scale).resize(N, 0);
+            for(size_t n = 0; n < N; ++n) {
+                if(orthogonal && (event.evt % N) != n) continue;
+                eft_weights_provider->SetTargetPoint(eft_points.at(n));
+                total_weights_scale.at(scale).at(n) += GetTotalWeight(event, mode) * pu_weights.at(scale);
+                }
             }
-	}		
+        }		
     }
     return total_weights_scale;
 }
