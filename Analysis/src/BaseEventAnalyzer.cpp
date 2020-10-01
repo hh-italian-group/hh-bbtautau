@@ -292,10 +292,10 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
 	       
                 uncs_weight_map[UncertaintySource::L1_prefiring][UncertaintyScale::Central] = 
 		        ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017 
-			? static_cast<float>((*event)->l1_prefiring_weight) : 1;
+		        ? static_cast<float>((*event)->l1_prefiring_weight) : 1;
                 uncs_weight_map[UncertaintySource::L1_prefiring][UncertaintyScale::Up] = 
-			ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017 
-			? static_cast<float>((*event)->l1_prefiring_weight_up) : 1;
+		        ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017 
+		        ? static_cast<float>((*event)->l1_prefiring_weight_up) : 1;
                 uncs_weight_map[UncertaintySource::L1_prefiring][UncertaintyScale::Down] =
                         ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017 
 		        ? static_cast<float>((*event)->l1_prefiring_weight_down) : 1;
@@ -358,19 +358,18 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                         }
                     }
                     uncs_weight_map[UncertaintySource::TopPt][UncertaintyScale::Central] = 
-			   static_cast<float>( 1. / (*summary)->totalShapeWeight);
+                            static_cast<float>(1. / (*summary)->totalShapeWeight);
                     if(sample.apply_top_pt_unc)
-                        uncs_weight_map[UncertaintySource::TopPt][UncertaintyScale::Up] =
-                            static_cast<float>(top_pt_weight_provided->Get(*event) / 
-				(*summary)->totalShapeWeight_withTopPt);
+                        uncs_weight_map[UncertaintySource::TopPt][UncertaintyScale::Up] = static_cast<float>(
+                               top_pt_weight_provided->Get(*event) / (*summary)->totalShapeWeight_withTopPt);
 
                     if(sample.sampleType != SampleType::ggHH_NonRes){
                         uncs_weight_map[UncertaintySource::PileUp][UncertaintyScale::Central] = static_cast<float>(
-				tupleEvent.weight_pu / (*summary)->totalShapeWeight);
+                               tupleEvent.weight_pu / (*summary)->totalShapeWeight);
                         uncs_weight_map[UncertaintySource::PileUp][UncertaintyScale::Up] = static_cast<float>(
-				tupleEvent.weight_pu_up / (*summary)->totalShapeWeight_withPileUp_Up);
+                               tupleEvent.weight_pu_up / (*summary)->totalShapeWeight_withPileUp_Up);
                         uncs_weight_map[UncertaintySource::PileUp][UncertaintyScale::Down] = static_cast<float>(
-				tupleEvent.weight_pu_down / (*summary)->totalShapeWeight_withPileUp_Down);
+                               tupleEvent.weight_pu_down / (*summary)->totalShapeWeight_withPileUp_Down);
                     }
                 }
             }
