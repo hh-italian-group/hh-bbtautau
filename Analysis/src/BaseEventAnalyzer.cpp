@@ -290,23 +290,16 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                 if(ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017)
                     l1_prefiring_weight = (*event)->l1_prefiring_weight;
 	       
-	       	for(UncertaintyScale unc_scale_eval : GetAllUncertaintyScales()){
-	            if(unc_scale_eval == UncertaintyScale::Central)
-                    	uncs_weight_map[UncertaintySource::L1_prefiring][UncertaintyScale::Central] = 
-		        	ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017 
-				? static_cast<float>((*event)->l1_prefiring_weight) : 1;
-		    if(unc_scale_eval == UncertaintyScale::Up)
-                        uncs_weight_map[UncertaintySource::L1_prefiring][UncertaintyScale::Up] = 
-				ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017 
-				? static_cast<float>((*event)->l1_prefiring_weight_up) : 1;
-		    	if(unc_scale_eval == UncertaintyScale::Up)
-                       	 	uncs_weight_map[UncertaintySource::L1_prefiring][UncertaintyScale::Down] =
-                                ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017 
-				? static_cast<float>((*event)->l1_prefiring_weight_down) : 1;
+                uncs_weight_map[UncertaintySource::L1_prefiring][UncertaintyScale::Central] = 
+			ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017 
+			? static_cast<float>((*event)->l1_prefiring_weight) : 1;
+                uncs_weight_map[UncertaintySource::L1_prefiring][UncertaintyScale::Up] = 
+			ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017 
+			? static_cast<float>((*event)->l1_prefiring_weight_up) : 1;
+                uncs_weight_map[UncertaintySource::L1_prefiring][UncertaintyScale::Down] =
+                        ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017 
+		        ? static_cast<float>((*event)->l1_prefiring_weight_down) : 1;
 
-	    	    }
-
-                
                 auto jet_pu_id_weight_provided = eventWeights_HH->GetProviderT<mc_corrections::JetPuIdWeights>(
                         mc_corrections::WeightType::JetPuIdWeights);
                 jet_pu_id_weight = jet_pu_id_weight_provided->Get(*event);
@@ -372,11 +365,12 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
 				(*summary)->totalShapeWeight_withTopPt);
 
                     if(sample.sampleType != SampleType::ggHH_NonRes){
-                        uncs_weight_map[UncertaintySource::PileUp][UncertaintyScale::Central] = static_cast<float>(tupleEvent.weight_pu / (*summary)->totalShapeWeight);
-                        uncs_weight_map[UncertaintySource::PileUp][UncertaintyScale::Up] = static_cast<float>(tupleEvent.weight_pu_up / (*summary)->totalShapeWeight);
-
-                        uncs_weight_map[UncertaintySource::PileUp][UncertaintyScale::Down] = static_cast<float>(tupleEvent.weight_pu_down / (*summary)->totalShapeWeight);
-
+                        uncs_weight_map[UncertaintySource::PileUp][UncertaintyScale::Central] = static_cast<float>(
+				tupleEvent.weight_pu / (*summary)->totalShapeWeight);
+                        uncs_weight_map[UncertaintySource::PileUp][UncertaintyScale::Up] = static_cast<float>(
+				tupleEvent.weight_pu_up / (*summary)->totalShapeWeight_withPileUp_Up);
+                        uncs_weight_map[UncertaintySource::PileUp][UncertaintyScale::Down] = static_cast<float>(
+				tupleEvent.weight_pu_down / (*summary)->totalShapeWeight_withPileUp_Down);
                     }
                 }
             }

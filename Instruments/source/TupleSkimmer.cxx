@@ -477,7 +477,7 @@ private:
         auto pile_up_weight_provider = eventWeights_HH->GetProviderT<mc_corrections::PileUpWeightEx>(
                                        mc_corrections::WeightType::PileUp);
 
-        event.weight_pu = weightng_mode.count(WeightType::PileUp)
+        event.weight_pu = weighting_mode.count(WeightType::PileUp)
         	?  pile_up_weight_provider->Get(*eventInfo, UncertaintyScale::Central) : 1;
         event.weight_pu_up = weighting_mode.count(WeightType::PileUp)
                 ?  pile_up_weight_provider->Get(*eventInfo, UncertaintyScale::Up) : 1;
