@@ -129,7 +129,7 @@ std::map<UncertaintyScale, std::vector<double>> EventWeights_HH::GetTotalShapeWe
     size_t N = eft_points.size();
     std::map<UncertaintyScale, std::vector<double>> total_weights_scale;
     for(const auto& scale : GetAllUncertaintyScales())
-        total_weights_scale.at(scale).resize(N, 0);
+        total_weights_scale[scale].resize(N, 0);
 
     const auto mode = shape_weights & weighting_mode;
     auto mode_withoutPileUp = mode;
