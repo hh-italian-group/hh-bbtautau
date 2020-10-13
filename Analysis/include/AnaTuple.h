@@ -243,10 +243,10 @@ public:
         //const FatJetCandidate* fat_jet_cand;
 
         category_storage(){
-            num_jets = -999;
-            num_btag_loose = -999;
-            num_btag_medium = -999;
-            num_btag_tight = -999;
+            num_jets = 999;
+            num_btag_loose = 999;
+            num_btag_medium = 999;
+            num_btag_tight = 999;
             is_vbf = false;
             is_boosted = false;
         }
