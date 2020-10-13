@@ -242,7 +242,15 @@ public:
         bool is_boosted;
         //const FatJetCandidate* fat_jet_cand;
 
-        category_storage(){}
+        category_storage(){
+            num_jets = -999;
+            num_btag_loose = -999;
+            num_btag_medium = -999;
+            num_btag_tight = -999;
+            is_vbf = false;
+            is_boosted = false;
+        }
+
         category_storage(size_t _num_jets, size_t _num_btag_loose, size_t _num_btag_medium, size_t _num_btag_tight,
                          bool _is_vbf, bool _is_boosted):
              num_jets(_num_jets), num_btag_loose(_num_btag_loose), num_btag_medium(_num_btag_medium),
