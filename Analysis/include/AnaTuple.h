@@ -233,6 +233,23 @@ public:
 
     static const NameSet BoolBranches, IntBranches;
 
+    struct category_storage{
+        size_t num_jets;
+        size_t num_btag_loose;
+        size_t num_btag_medium;
+        size_t num_btag_tight;
+        bool is_vbf;
+        bool is_boosted;
+        //const FatJetCandidate* fat_jet_cand;
+
+        category_storage(){}
+        category_storage(size_t _num_jets, size_t _num_btag_loose, size_t _num_btag_medium, size_t _num_btag_tight,
+                         bool _is_vbf, bool _is_boosted):
+             num_jets(_num_jets), num_btag_loose(_num_btag_loose), num_btag_medium(_num_btag_medium),
+             num_btag_tight(_num_btag_tight), is_vbf(_is_vbf), is_boosted(_is_boosted) {}
+
+    };
+
     AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names);
     size_t GetNumberOfEntries() const;
     const DataId& GetDataIdByHash(Hash hash) const;
