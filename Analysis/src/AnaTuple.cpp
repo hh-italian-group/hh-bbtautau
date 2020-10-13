@@ -496,6 +496,31 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
     Define(df_bb, "hh_btag_b1_minus_b2", Delta, {"b1_HHbtag", "b2_HHbtag"});
     Define(df_vbf, "hh_btag_VBF1VBF2", Sum, {"VBF1_HHbtag", "VBF2_HHbtag"});
 
+    struct category_storage{
+        size_t num_jets;
+        size_t num_btag_loose;
+        size_t num_btag_medium;
+        size_t num_btag_tight;
+        bool is_vbf;
+        bool is_boosted;
+        //const FatJetCandidate* fat_jet_cand;
+
+        category_storage(size_t _num_jets, size_t _num_btag_loose, size_t _num_btag_medium, size_t _num_btag_tight,
+                         bool _is_vbf, bool _is_boosted):
+             num_jets(_num_jets), num_btag_loose(_num_btag_loose), num_btag_medium(_num_btag_medium),
+             num_btag_tight(_num_btag_tight), is_vbf(_is_vbf), is_boosted(_is_boosted) {}
+
+    };
+
+    const auto return_category_storage = [] (size_t num_jets, size_t num_btag_loose, size_t num_btag_medium,
+            size_t num_btag_tight, bool is_vbf, bool is_boosted) {
+        return category_storage(num_jets, num_btag_loose,num_btag_medium, num_btag_tight,is_vbf, is_boosted);
+    };
+
+    Define(df, "category_storage",return_category_storage,{"num_jets", "num_btag_loose", "num_btag_medium", "num_btag_tight",
+           "is_vbf", "is_boosted"});
+
+
     skimmed_df.push_back(df_bb);
     skimmed_df.push_back(df_vbf);
     skimmed_df.push_back(df_sv);
