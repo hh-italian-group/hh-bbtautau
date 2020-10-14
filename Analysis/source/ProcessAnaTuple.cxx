@@ -155,8 +155,10 @@ private:
 
 
         template<typename T>
-        void Fill(size_t dataId_hash, double weight, bbtautau::AnaTupleReader::category_storage, T&& value) const
+        void Fill(size_t dataId_hash, double weight, bbtautau::AnaTupleReader::category_storage category_storage, T&& value) const
         {
+            //EventCategory evtCategory()
+
             Hist* hist = GetHistogram(dataId_hash);
             if(hist) {
                 auto x = value;
@@ -233,7 +235,7 @@ private:
                 result = df.Fill<VecType<size_t>, VecType<double>, bbtautau::AnaTupleReader::category_storage,
                         bool>(std::move(filter), branches);
             else if(bbtautau::AnaTupleReader::IntBranches.count(df_hist_name))
-                result = df.Fill<VecType<size_t>, VecType<double>,bbtautau::AnaTupleReader::category_storage,
+                result = df.Fill<VecType<size_t>, VecType<double>, bbtautau::AnaTupleReader::category_storage,
                         int>(std::move(filter), branches);
             else if(is_defined_column(df, hist_name))
                 result = df.Fill<VecType<size_t>, VecType<double>, bbtautau::AnaTupleReader::category_storage,
