@@ -185,7 +185,7 @@ private:
                 return iter->second;
             const auto& dataId = tupleReader->GetDataIdByHash(dataId_hash);
             Hist* hist = nullptr;
-            if(categories->count(evtCategory)
+            if(categories->count(dataId.Get<EventCategory>())
                     && subCategories->count(dataId.Get<EventSubCategory>())
                     && unc_sources->count(dataId.Get<UncertaintySource>())
                     && (is_limit_var || dataId.Get<UncertaintyScale>() == UncertaintyScale::Central)) {
