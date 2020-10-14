@@ -181,6 +181,7 @@ private:
                 return iter->second;
             const auto& dataId = tupleReader->GetDataIdByHash(dataId_hash);
             Hist* hist = nullptr;
+            std::cout<<"EventCategory = "<< dataId.Get<EventCategory>()<<std::endl;
             if(categories->count(dataId.Get<EventCategory>())
                     && subCategories->count(dataId.Get<EventSubCategory>())
                     && unc_sources->count(dataId.Get<UncertaintySource>())
@@ -221,7 +222,7 @@ private:
         for(const auto& hist_name : activeVariables) {
             std::cout << hist_name << " ";
             const std::string df_hist_name = hist_name == "mva_score" ? "all_mva_scores" : hist_name;
-            const std::vector<std::string> branches = {"dataIds", "all_weights", df_hist_name};
+            const std::vector<std::string> branches = {"dataIds", "all_weights", "column_storage", df_hist_name};
             AnaDataFiller filter(tupleReader, anaDataCollection, ana_setup.categories, subCategories,
                                  ana_setup.unc_sources, hist_name, limitVariables.count(hist_name));
             auto df = get_df(hist_name);
