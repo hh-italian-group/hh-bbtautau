@@ -429,7 +429,7 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
         return category_storage(num_jets, num_btag_loose,num_btag_medium, num_btag_tight,is_vbf, is_boosted);
     };
 
-    Define(df, "category_storage",return_category_storage,{"num_jets", "num_btag_loose", "num_btag_medium", "num_btag_tight",
+    Define(df, "category_storage",return_category_storage,{"n_jets", "num_btag_loose", "num_btag_medium", "num_btag_tight",
            "is_vbf", "is_boosted"}, true);
 
 
