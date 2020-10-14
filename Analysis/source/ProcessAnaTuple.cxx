@@ -191,7 +191,7 @@ private:
                     && (is_limit_var || dataId.Get<UncertaintyScale>() == UncertaintyScale::Central)) {
                  hist = &anaDataCollection->Get(dataId).GetHistogram(hist_name)();
              }
-            (*histograms)[dataId_hash,evtCategory] = hist;
+            (*histograms)[dataId_hash] = hist;
             return hist;
         }
     };
