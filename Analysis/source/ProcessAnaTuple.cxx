@@ -127,7 +127,7 @@ private:
     struct AnaDataFiller : public TObject {
         using Hist = EventAnalyzerData::Entry::Hist;
         using Mutex = Hist::Mutex;
-        using HistMap = std::map<size_t, Hist*>;
+        using HistMap = std::map<std::pair<size_t,EventCategory>, Hist*>;
         // template <typename T> using VecType = std::vector<T>;
 
         const bbtautau::AnaTupleReader* tupleReader;
@@ -155,11 +155,13 @@ private:
 
 
         template<typename T>
-        void Fill(size_t dataId_hash, double weight, bbtautau::AnaTupleReader::category_storage category_storage, T&& value) const
+        void Fill(size_t dataId_hash, double weight, const bbtautau::AnaTupleReader::category_storage& category_storage, T&& value) const
         {
-            //EventCategory evtCategory()
+            //EventCategory evtCategory(category_storage.num_jets,category_storage.num_btag_medium,
+            //                          category_storage.num_btag_tight,DiscriminatorWP::Medium,category_storage.is_boosted,
+            //                          category_storage.is_vbf);
 
-            Hist* hist = GetHistogram(dataId_hash);
+            Hist* hist = GetHistogram(dataId_hash, evtCategory);
             if(hist) {
                 auto x = value;
                 if(is_mva_score) {
@@ -175,7 +177,7 @@ private:
         void Merge(TList*) {}
 
     private:
-        Hist* GetHistogram(size_t dataId_hash) const
+        Hist* GetHistogram(size_t dataId_hash, EventCategory evtCategory) const
         {
             std::lock_guard<Mutex> lock(*mutex);
             auto iter = histograms->find(dataId_hash);
@@ -183,13 +185,13 @@ private:
                 return iter->second;
             const auto& dataId = tupleReader->GetDataIdByHash(dataId_hash);
             Hist* hist = nullptr;
-            if(categories->count(dataId.Get<EventCategory>())
+            if(categories->count(evtCategory)
                     && subCategories->count(dataId.Get<EventSubCategory>())
                     && unc_sources->count(dataId.Get<UncertaintySource>())
                     && (is_limit_var || dataId.Get<UncertaintyScale>() == UncertaintyScale::Central)) {
                  hist = &anaDataCollection->Get(dataId).GetHistogram(hist_name)();
              }
-            (*histograms)[dataId_hash] = hist;
+            (*histograms)[dataId_hash,evtCategory] = hist;
             return hist;
         }
     };
