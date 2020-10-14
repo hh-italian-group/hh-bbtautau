@@ -424,6 +424,15 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
     Define(df, "MET_p4", ReturnMETP4, {"MET_pt", "MET_phi"}, true);
     Define(df, "HttMET_p4", SumP4, { "Htt_p4", "MET_p4" }, true);
 
+    const auto return_category_storage = [] (size_t num_jets, size_t num_btag_loose, size_t num_btag_medium,
+            size_t num_btag_tight, bool is_vbf, bool is_boosted) {
+        return category_storage(num_jets, num_btag_loose,num_btag_medium, num_btag_tight,is_vbf, is_boosted);
+    };
+
+    Define(df, "category_storage",return_category_storage,{"num_jets", "num_btag_loose", "num_btag_medium", "num_btag_tight",
+           "is_vbf", "is_boosted"});
+
+
     auto df_bb = Filter(df, "has_b_pair");
     DefineP4(df_bb, "b1");
     DefineP4(df_bb, "b2");
@@ -495,14 +504,6 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
     Define(df_bb, "hh_btag_b1b2", Sum, {"b1_HHbtag", "b2_HHbtag"});
     Define(df_bb, "hh_btag_b1_minus_b2", Delta, {"b1_HHbtag", "b2_HHbtag"});
     Define(df_vbf, "hh_btag_VBF1VBF2", Sum, {"VBF1_HHbtag", "VBF2_HHbtag"});
-
-    const auto return_category_storage = [] (size_t num_jets, size_t num_btag_loose, size_t num_btag_medium,
-            size_t num_btag_tight, bool is_vbf, bool is_boosted) {
-        return category_storage(num_jets, num_btag_loose,num_btag_medium, num_btag_tight,is_vbf, is_boosted);
-    };
-
-    Define(df, "category_storage",return_category_storage,{"num_jets", "num_btag_loose", "num_btag_medium", "num_btag_tight",
-           "is_vbf", "is_boosted"});
 
 
     skimmed_df.push_back(df_bb);
