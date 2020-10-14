@@ -155,7 +155,7 @@ private:
 
 
         template<typename T>
-        void Fill(size_t dataId_hash, double weight, T&& value) const
+        void Fill(size_t dataId_hash, double weight, AnaTupleReader::category_storage, T&& value) const
         {
             Hist* hist = GetHistogram(dataId_hash);
             if(hist) {
@@ -228,15 +228,20 @@ private:
             auto df = get_df(hist_name);
             ROOT::RDF::RResultPtr<AnaDataFiller> result;
             if(filter.is_mva_score)
-                result = df.Fill<VecType<size_t>, VecType<double>, VecType<float>>(std::move(filter), branches);
+                result = df.Fill<VecType<size_t>, VecType<double>, VecType<AnaTupleReader::category_storage>,
+                        VecType<float>>(std::move(filter), branches);
             else if(bbtautau::AnaTupleReader::BoolBranches.count(df_hist_name))
-                result = df.Fill<VecType<size_t>, VecType<double>, bool>(std::move(filter), branches);
+                result = df.Fill<VecType<size_t>, VecType<double>, VecType<AnaTupleReader::category_storage>,
+                        bool>(std::move(filter), branches);
             else if(bbtautau::AnaTupleReader::IntBranches.count(df_hist_name))
-                result = df.Fill<VecType<size_t>, VecType<double>, int>(std::move(filter), branches);
+                result = df.Fill<VecType<size_t>, VecType<double>,VecType<AnaTupleReader::category_storage>,
+                        int>(std::move(filter), branches);
             else if(is_defined_column(df, hist_name))
-                result = df.Fill<VecType<size_t>, VecType<double>, double>(std::move(filter), branches);
+                result = df.Fill<VecType<size_t>, VecType<double>, VecType<AnaTupleReader::category_storage>,
+                        double>(std::move(filter), branches);
             else
-                result = df.Fill<VecType<size_t>, VecType<double>, float>(std::move(filter), branches);
+                result = df.Fill<VecType<size_t>, VecType<double>, VecType<AnaTupleReader::category_storage>,
+                        float>(std::move(filter), branches);
             results.push_back(result);
         }
         std::cout << std::endl;
