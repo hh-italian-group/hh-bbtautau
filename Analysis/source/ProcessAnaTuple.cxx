@@ -127,7 +127,7 @@ private:
     struct AnaDataFiller : public TObject {
         using Hist = EventAnalyzerData::Entry::Hist;
         using Mutex = Hist::Mutex;
-        using HistMap = std::map<std::pair<size_t,EventCategory>, Hist*>;
+        using HistMap = std::map<size_t>, Hist*>;
         // template <typename T> using VecType = std::vector<T>;
 
         const bbtautau::AnaTupleReader* tupleReader;
