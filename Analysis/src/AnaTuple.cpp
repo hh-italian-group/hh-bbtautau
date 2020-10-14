@@ -430,7 +430,7 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
     };
 
     Define(df, "category_storage",return_category_storage,{"num_jets", "num_btag_loose", "num_btag_medium", "num_btag_tight",
-           "is_vbf", "is_boosted"});
+           "is_vbf", "is_boosted"}, true);
 
 
     auto df_bb = Filter(df, "has_b_pair");
