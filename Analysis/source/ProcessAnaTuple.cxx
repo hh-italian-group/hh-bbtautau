@@ -161,7 +161,7 @@ private:
             //                          category_storage.num_btag_tight,DiscriminatorWP::Medium,category_storage.is_boosted,
             //                          category_storage.is_vbf);
 
-            Hist* hist = GetHistogram(dataId_hash, evtCategory);
+            Hist* hist = GetHistogram(dataId_hash) //, evtCategory);
             if(hist) {
                 auto x = value;
                 if(is_mva_score) {
@@ -177,7 +177,7 @@ private:
         void Merge(TList*) {}
 
     private:
-        Hist* GetHistogram(size_t dataId_hash, EventCategory evtCategory) const
+        Hist* GetHistogram(size_t dataId_hash) const
         {
             std::lock_guard<Mutex> lock(*mutex);
             auto iter = histograms->find(dataId_hash);
