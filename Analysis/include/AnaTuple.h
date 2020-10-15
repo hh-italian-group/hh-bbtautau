@@ -251,8 +251,8 @@ public:
             num_btag_tight = 999;
             is_vbf = false;
             is_boosted = false;
-            dataId = 999;
-            weight = 999;
+            //dataId = ;
+            //weight = 999;
         }
 
         category_storage(size_t _num_jets, size_t _num_btag_loose, size_t _num_btag_medium, size_t _num_btag_tight,
