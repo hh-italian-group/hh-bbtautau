@@ -425,12 +425,12 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
     Define(df, "HttMET_p4", SumP4, { "Htt_p4", "MET_p4" }, true);
 
     const auto return_category_storage = [] (size_t num_jets, size_t num_btag_loose, size_t num_btag_medium,
-            size_t num_btag_tight, bool is_vbf, bool is_boosted) {
-        return category_storage(num_jets, num_btag_loose,num_btag_medium, num_btag_tight,is_vbf, is_boosted);
+            size_t num_btag_tight, bool is_vbf, bool is_boosted, std::vector<size_t> dataId, std::vector<double> weight) {
+        return category_storage(num_jets, num_btag_loose,num_btag_medium, num_btag_tight,is_vbf, is_boosted, dataId, weight);
     };
 
     Define(df, "category_storage",return_category_storage,{"n_jets", "num_btag_loose", "num_btag_medium", "num_btag_tight",
-           "is_vbf", "is_boosted"}, true);
+           "is_vbf", "is_boosted", "dataIds", "all_weights"}, true);
 
 
     auto df_bb = Filter(df, "has_b_pair");

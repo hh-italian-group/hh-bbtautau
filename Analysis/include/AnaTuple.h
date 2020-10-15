@@ -240,6 +240,8 @@ public:
         size_t num_btag_tight;
         bool is_vbf;
         bool is_boosted;
+        std::vector<size_t> dataId;
+        std::vector<double> weight;
         //const FatJetCandidate* fat_jet_cand;
 
         category_storage(){
@@ -249,12 +251,15 @@ public:
             num_btag_tight = 999;
             is_vbf = false;
             is_boosted = false;
+            dataId = 999;
+            weight = 999;
         }
 
         category_storage(size_t _num_jets, size_t _num_btag_loose, size_t _num_btag_medium, size_t _num_btag_tight,
-                         bool _is_vbf, bool _is_boosted):
+                         bool _is_vbf, bool _is_boosted, std::vector<size_t> _dataId, std::vector<double> _weight):
              num_jets(_num_jets), num_btag_loose(_num_btag_loose), num_btag_medium(_num_btag_medium),
-             num_btag_tight(_num_btag_tight), is_vbf(_is_vbf), is_boosted(_is_boosted) {}
+             num_btag_tight(_num_btag_tight), is_vbf(_is_vbf), is_boosted(_is_boosted), dataId(_dataId),
+             weight(_weight){}
 
     };
 
