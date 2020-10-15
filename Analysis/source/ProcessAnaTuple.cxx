@@ -160,7 +160,8 @@ private:
             //EventCategory evtCategory(category_storage.num_jets,category_storage.num_btag_medium,
             //                          category_storage.num_btag_tight,DiscriminatorWP::Medium,category_storage.is_boosted,
             //                          category_storage.is_vbf);
-
+            size_t dataId_hash = category_storage.dataId.at(0);
+            double weight = category_storage.weight.at(0);
             Hist* hist = GetHistogram(dataId_hash); //, evtCategory);
             if(hist) {
                 auto x = value;
