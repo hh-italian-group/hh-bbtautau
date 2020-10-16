@@ -167,13 +167,13 @@ private:
 
 
         template<typename T>
-        void Exec(unsigned int slot, size_t dataId_hash, double weight, bbtautau::AnaTupleReader::category_storage category_storage, T&& value) const
+        void Exec(unsigned int slot, std::vector<size_t> dataId_hash_vec, std::vector<double> weight_vec, bbtautau::AnaTupleReader::category_storage category_storage, T&& value) const
         {
             //EventCategory evtCategory(category_storage.num_jets,category_storage.num_btag_medium,
             //                          category_storage.num_btag_tight,DiscriminatorWP::Medium,category_storage.is_boosted,
             //                          category_storage.is_vbf);
-            //size_t dataId_hash = category_storage.dataId.at(0);
-            //double weight = category_storage.weight.at(0);
+            size_t dataId_hash = dataId_hash_vec.at(0);
+            double weight = weight_vec.at(0);
             Hist* hist = GetHistogram(dataId_hash); //, evtCategory);
             if(hist) {
                 auto x = value;
