@@ -273,7 +273,7 @@ private:
         static constexpr size_t counts_per_step = 1000;
         size_t n_processed = 0;
         AnaDataFiller::Mutex mutex;
-        results.front().OnPartialResultSlot(counts_per_step, [&](unsigned int, AnaDataFiller&) {
+        results.front().OnPartialResultSlot(counts_per_step, [&](unsigned int, bool&) {
             std::lock_guard<AnaDataFiller::Mutex> lock(mutex);
             n_processed += counts_per_step;
             progressReporter.Report(n_processed, false);
