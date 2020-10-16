@@ -243,11 +243,12 @@ private:
                                  ana_setup.unc_sources, hist_name, limitVariables.count(hist_name));
             auto df = get_df(hist_name);
             ROOT::RDF::RResultPtr<bool> result;
-            if(filter.is_mva_score)
-               result = df.Book< bbtautau::AnaTupleReader::category_storage,
+            //if(filter.is_mva_score)
+            //   result = df.Book< bbtautau::AnaTupleReader::category_storage,
                 //result = df.Fill<VecType<size_t>, VecType<double>, bbtautau::AnaTupleReader::category_storage,
-                          VecType<float>>(std::move(filter), branches);
-            else if(bbtautau::AnaTupleReader::BoolBranches.count(df_hist_name))
+            //              VecType<float>>(std::move(filter), branches);
+            //else if(bbtautau::AnaTupleReader::BoolBranches.count(df_hist_name))
+            if(bbtautau::AnaTupleReader::BoolBranches.count(df_hist_name))
                 result = df.Book< bbtautau::AnaTupleReader::category_storage,
                 //result = df.Fill<VecType<size_t>, VecType<double>, bbtautau::AnaTupleReader::category_storage,
                         bool>(std::move(filter), branches);
