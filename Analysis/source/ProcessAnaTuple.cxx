@@ -242,7 +242,7 @@ private:
             AnaDataFiller filter(tupleReader, anaDataCollection, ana_setup.categories, subCategories,
                                  ana_setup.unc_sources, hist_name, limitVariables.count(hist_name));
             auto df = get_df(hist_name);
-            ROOT::RDF::RResultPtr<AnaDataFiller> result;
+            ROOT::RDF::RResultPtr<bool> result;
             if(filter.is_mva_score)
                result = df.Book< bbtautau::AnaTupleReader::category_storage,
                 //result = df.Fill<VecType<size_t>, VecType<double>, bbtautau::AnaTupleReader::category_storage,
