@@ -126,7 +126,7 @@ private:
 
     //struct AnaDataFiller : public TObject {
     struct AnaDataFiller : ROOT::Detail::RDF::RActionImpl<AnaDataFiller> {
-        using Result_t = AnaDataFiller;
+        using Result_t = bool;
         using Hist = EventAnalyzerData::Entry::Hist;
         using Mutex = Hist::Mutex;
         using HistMap = std::map<size_t, Hist*>;
