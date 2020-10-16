@@ -244,23 +244,23 @@ private:
             auto df = get_df(hist_name);
             ROOT::RDF::RResultPtr<AnaDataFiller> result;
             if(filter.is_mva_score)
-               result = df.book< bbtautau::AnaTupleReader::category_storage,
+               result = df.Book< bbtautau::AnaTupleReader::category_storage,
                 //result = df.Fill<VecType<size_t>, VecType<double>, bbtautau::AnaTupleReader::category_storage,
                           VecType<float>>(std::move(filter), branches);
             else if(bbtautau::AnaTupleReader::BoolBranches.count(df_hist_name))
-                result = df.book< bbtautau::AnaTupleReader::category_storage,
+                result = df.Book< bbtautau::AnaTupleReader::category_storage,
                 //result = df.Fill<VecType<size_t>, VecType<double>, bbtautau::AnaTupleReader::category_storage,
                         bool>(std::move(filter), branches);
             else if(bbtautau::AnaTupleReader::IntBranches.count(df_hist_name))
-                result = df.book< bbtautau::AnaTupleReader::category_storage,
+                result = df.Book< bbtautau::AnaTupleReader::category_storage,
                 //result = df.Fill<VecType<size_t>, VecType<double>, bbtautau::AnaTupleReader::category_storage,
                         int>(std::move(filter), branches);
             else if(is_defined_column(df, hist_name))
-                result = df.book< bbtautau::AnaTupleReader::category_storage,
+                result = df.Book< bbtautau::AnaTupleReader::category_storage,
                 //result = df.Fill<VecType<size_t>, VecType<double>, bbtautau::AnaTupleReader::category_storage,
                         double>(std::move(filter), branches);
             else
-                result = df.book<bbtautau::AnaTupleReader::category_storage,
+                result = df.Book<bbtautau::AnaTupleReader::category_storage,
                 //result = df.Fill<VecType<size_t>, VecType<double>, bbtautau::AnaTupleReader::category_storage,
                         float>(std::move(filter), branches);
             results.push_back(result);
