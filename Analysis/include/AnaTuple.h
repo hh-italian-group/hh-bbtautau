@@ -245,7 +245,7 @@ public:
         //const FatJetCandidate* fat_jet_cand;
 
         category_storage(){
-            num_jets = -999.9;
+            num_jets = -99.9;
             num_btag_loose = -999;
             num_btag_medium = -999;
             num_btag_tight = -999;
