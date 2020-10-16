@@ -163,6 +163,8 @@ private:
 
         void Finalize() {}
 
+        std::string GetActionName() {return "AnaDataFiller";}
+
 
         template<typename T>
         void Exec(unsigned int slot, bbtautau::AnaTupleReader::category_storage category_storage, T&& value) const
