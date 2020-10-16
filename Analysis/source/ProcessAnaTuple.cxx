@@ -167,13 +167,13 @@ private:
 
 
         template<typename T>
-        void Exec(unsigned int slot, bbtautau::AnaTupleReader::category_storage category_storage, T&& value) const
+        void Exec(unsigned int slot, size_t dataId_hash, double weight, bbtautau::AnaTupleReader::category_storage category_storage, T&& value) const
         {
             //EventCategory evtCategory(category_storage.num_jets,category_storage.num_btag_medium,
             //                          category_storage.num_btag_tight,DiscriminatorWP::Medium,category_storage.is_boosted,
             //                          category_storage.is_vbf);
-            size_t dataId_hash = category_storage.dataId.at(0);
-            double weight = category_storage.weight.at(0);
+            //size_t dataId_hash = category_storage.dataId.at(0);
+            //double weight = category_storage.weight.at(0);
             Hist* hist = GetHistogram(dataId_hash); //, evtCategory);
             if(hist) {
                 auto x = value;
@@ -239,8 +239,8 @@ private:
         for(const auto& hist_name : activeVariables) {
             std::cout << hist_name << " ";
             const std::string df_hist_name = hist_name == "mva_score" ? "all_mva_scores" : hist_name;
-            //const std::vector<std::string> branches = {"dataIds", "all_weights", "category_storage", df_hist_name};
-            const std::vector<std::string> branches = {"category_storage", df_hist_name};
+            const std::vector<std::string> branches = {"dataIds", "all_weights", "category_storage", df_hist_name};
+            //const std::vector<std::string> branches = {"category_storage", df_hist_name};
             AnaDataFiller filter(tupleReader, anaDataCollection, ana_setup.categories, subCategories,
                                  ana_setup.unc_sources, hist_name, limitVariables.count(hist_name));
             auto df = get_df(hist_name);
@@ -251,20 +251,20 @@ private:
             //              VecType<float>>(std::move(filter), branches);
             //else if(bbtautau::AnaTupleReader::BoolBranches.count(df_hist_name))
             if(bbtautau::AnaTupleReader::BoolBranches.count(df_hist_name))
-                result = df.Book< bbtautau::AnaTupleReader::category_storage,
-                //result = df.Fill<VecType<size_t>, VecType<double>, bbtautau::AnaTupleReader::category_storage,
+                //result = df.Book< bbtautau::AnaTupleReader::category_storage,
+                result = df.Book<VecType<size_t>, VecType<double>, bbtautau::AnaTupleReader::category_storage,
                         bool>(std::move(filter), branches);
             else if(bbtautau::AnaTupleReader::IntBranches.count(df_hist_name))
-                result = df.Book< bbtautau::AnaTupleReader::category_storage,
-                //result = df.Fill<VecType<size_t>, VecType<double>, bbtautau::AnaTupleReader::category_storage,
+                //result = df.Book< bbtautau::AnaTupleReader::category_storage,
+                result = df.Book<VecType<size_t>, VecType<double>, bbtautau::AnaTupleReader::category_storage,
                         int>(std::move(filter), branches);
             else if(is_defined_column(df, hist_name))
-                result = df.Book< bbtautau::AnaTupleReader::category_storage,
-                //result = df.Fill<VecType<size_t>, VecType<double>, bbtautau::AnaTupleReader::category_storage,
+                //result = df.Book< bbtautau::AnaTupleReader::category_storage,
+                result = df.Book<VecType<size_t>, VecType<double>, bbtautau::AnaTupleReader::category_storage,
                         double>(std::move(filter), branches);
             else
-                result = df.Book<bbtautau::AnaTupleReader::category_storage,
-                //result = df.Fill<VecType<size_t>, VecType<double>, bbtautau::AnaTupleReader::category_storage,
+                //result = df.Book<bbtautau::AnaTupleReader::category_storage,
+                result = df.Book<VecType<size_t>, VecType<double>, bbtautau::AnaTupleReader::category_storage,
                         float>(std::move(filter), branches);
             results.push_back(result);
         }
