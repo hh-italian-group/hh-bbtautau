@@ -175,10 +175,10 @@ private:
             Hist* hist = GetHistogram(dataId_hash); //, evtCategory);
             if(hist) {
                 auto x = value;
-                if(is_mva_score) {
+               /* if(is_mva_score) {
                     const auto& dataId = tupleReader->GetDataIdByHash(dataId_hash);
                     x = static_cast<T>(tupleReader->GetNormalizedMvaScore(dataId, static_cast<float>(x)));
-                }
+                }*/
 
                 std::lock_guard<Hist::Mutex> lock(hist->GetMutex());
                 hist->Fill(x, weight);
