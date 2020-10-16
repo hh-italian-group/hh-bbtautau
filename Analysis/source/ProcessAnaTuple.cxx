@@ -232,7 +232,7 @@ private:
             throw exception("ProduceHistograms: Column with name '%1%' not found.") % hist_name;
         };
 
-        std::vector<ROOT::RDF::RResultPtr<AnaDataFiller>> results;
+        std::vector<ROOT::RDF::RResultPtr<bool>> results;
         std::cout << "\t\tAdding: ";
         for(const auto& hist_name : activeVariables) {
             std::cout << hist_name << " ";
