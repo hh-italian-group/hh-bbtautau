@@ -124,7 +124,9 @@ public:
 
 private:
 
-    struct AnaDataFiller : public TObject {
+    //struct AnaDataFiller : public TObject {
+    struct AnaDataFiller : ROOT::Detail::RDF::RActionImpl<AnaDataFiller> {
+        using Result_t = AnaDataFiller;
         using Hist = EventAnalyzerData::Entry::Hist;
         using Mutex = Hist::Mutex;
         using HistMap = std::map<size_t, Hist*>;
@@ -153,9 +155,17 @@ private:
         //AnaDataFiller& operator=(const AnaDataFiller&) = default;
         // virtual ~AnaDataFiller() {}
 
+        void Initialize() {}
+        void InitTask(TTreeReader *, unsigned int) {}
+
+
+        std::shared_ptr<bool> GetResultPtr() const { return std::make_shared<bool>(true); }
+
+        void Finalize() {}
+
 
         template<typename T>
-        void Fill(bbtautau::AnaTupleReader::category_storage category_storage, T&& value) const
+        void Exec(unsigned int slot, bbtautau::AnaTupleReader::category_storage category_storage, T&& value) const
         {
             //EventCategory evtCategory(category_storage.num_jets,category_storage.num_btag_medium,
             //                          category_storage.num_btag_tight,DiscriminatorWP::Medium,category_storage.is_boosted,
@@ -173,6 +183,7 @@ private:
                 std::lock_guard<Hist::Mutex> lock(hist->GetMutex());
                 hist->Fill(x, weight);
             }
+            (int) slot;
         }
 
         void Merge(TList*) {}
@@ -233,23 +244,23 @@ private:
             auto df = get_df(hist_name);
             ROOT::RDF::RResultPtr<AnaDataFiller> result;
             if(filter.is_mva_score)
-               result = df.Fill< bbtautau::AnaTupleReader::category_storage,
+               result = df.book< bbtautau::AnaTupleReader::category_storage,
                 //result = df.Fill<VecType<size_t>, VecType<double>, bbtautau::AnaTupleReader::category_storage,
                           VecType<float>>(std::move(filter), branches);
             else if(bbtautau::AnaTupleReader::BoolBranches.count(df_hist_name))
-                result = df.Fill< bbtautau::AnaTupleReader::category_storage,
+                result = df.book< bbtautau::AnaTupleReader::category_storage,
                 //result = df.Fill<VecType<size_t>, VecType<double>, bbtautau::AnaTupleReader::category_storage,
                         bool>(std::move(filter), branches);
             else if(bbtautau::AnaTupleReader::IntBranches.count(df_hist_name))
-                result = df.Fill< bbtautau::AnaTupleReader::category_storage,
+                result = df.book< bbtautau::AnaTupleReader::category_storage,
                 //result = df.Fill<VecType<size_t>, VecType<double>, bbtautau::AnaTupleReader::category_storage,
                         int>(std::move(filter), branches);
             else if(is_defined_column(df, hist_name))
-                result = df.Fill< bbtautau::AnaTupleReader::category_storage,
+                result = df.book< bbtautau::AnaTupleReader::category_storage,
                 //result = df.Fill<VecType<size_t>, VecType<double>, bbtautau::AnaTupleReader::category_storage,
                         double>(std::move(filter), branches);
             else
-                result = df.Fill<bbtautau::AnaTupleReader::category_storage,
+                result = df.book<bbtautau::AnaTupleReader::category_storage,
                 //result = df.Fill<VecType<size_t>, VecType<double>, bbtautau::AnaTupleReader::category_storage,
                         float>(std::move(filter), branches);
             results.push_back(result);
