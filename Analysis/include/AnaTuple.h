@@ -234,10 +234,10 @@ public:
     static const NameSet BoolBranches, IntBranches;
 
     struct category_storage{
-        size_t num_jets;
-        size_t num_btag_loose;
-        size_t num_btag_medium;
-        size_t num_btag_tight;
+        float num_jets;
+        int num_btag_loose;
+        int num_btag_medium;
+        int num_btag_tight;
         bool is_vbf;
         bool is_boosted;
         std::vector<size_t> dataId;
@@ -245,17 +245,17 @@ public:
         //const FatJetCandidate* fat_jet_cand;
 
         category_storage(){
-            num_jets = 999;
-            num_btag_loose = 999;
-            num_btag_medium = 999;
-            num_btag_tight = 999;
+            num_jets = -999.9;
+            num_btag_loose = -999;
+            num_btag_medium = -999;
+            num_btag_tight = -999;
             is_vbf = false;
             is_boosted = false;
             //dataId = ;
             //weight = 999;
         }
 
-        category_storage(size_t _num_jets, size_t _num_btag_loose, size_t _num_btag_medium, size_t _num_btag_tight,
+        category_storage(float _num_jets, int _num_btag_loose, int _num_btag_medium, int _num_btag_tight,
                          bool _is_vbf, bool _is_boosted, std::vector<size_t> _dataId, std::vector<double> _weight):
              num_jets(_num_jets), num_btag_loose(_num_btag_loose), num_btag_medium(_num_btag_medium),
              num_btag_tight(_num_btag_tight), is_vbf(_is_vbf), is_boosted(_is_boosted), dataId(_dataId),
