@@ -341,14 +341,15 @@ private:
         try {
             std::map<Channel, std::shared_ptr<EventTuple>> outputTuples;
 
+            for (Channel channel : setup.channels) {
+                const std::string treeName = ToString(channel);
+                outputTuples[channel] = ntuple::CreateEventTuple(treeName, outputFile.get(), false,
+                                                                 ntuple::TreeState::Skimmed);
+            }
+
             EventPtr event;
             while(writeQueue.Pop(event)) {
                 const Channel channel = static_cast<Channel>(event->channelId);
-                if(!outputTuples.count(channel)) {
-                    const std::string treeName = ToString(channel);
-                    outputTuples[channel] = ntuple::CreateEventTuple(treeName, outputFile.get(), false,
-                                                                     ntuple::TreeState::Skimmed);
-                }
                 (*outputTuples[channel])() = *event;
                 outputTuples[channel]->Fill();
             }
@@ -396,6 +397,8 @@ private:
             summary.totalShapeWeight = desc.GetCrossSection(*crossSectionProvider);
             weight_xs_withTopPt = desc.GetCrossSection(*crossSectionProvider) / summary.totalShapeWeight_withTopPt;
             summary.totalShapeWeight_withTopPt = desc.GetCrossSection(*crossSectionProvider);
+            summary.totalShapeWeight_withPileUp_Up = summary.totalShapeWeight_withPileUp_Up;
+            summary.totalShapeWeight_withPileUp_Down = summary.totalShapeWeight_withPileUp_Down;
         } else {
             weight_xs = 1;
             weight_xs_withTopPt = 1;
@@ -471,8 +474,16 @@ private:
         const auto eventInfo = CreateAnyEventInfo(event);
         if(!eventInfo) return false;
 
+        auto pile_up_weight_provider = eventWeights_HH->GetProviderT<mc_corrections::PileUpWeightEx>(
+                                       mc_corrections::WeightType::PileUp);
+
         event.weight_pu = weighting_mode.count(WeightType::PileUp)
-                        ? eventWeights_HH->GetWeight(*eventInfo, WeightType::PileUp) : 1;
+        	?  pile_up_weight_provider->Get(*eventInfo, UncertaintyScale::Central) : 1;
+        event.weight_pu_up = weighting_mode.count(WeightType::PileUp)
+                ?  pile_up_weight_provider->Get(*eventInfo, UncertaintyScale::Up) : 1;
+        event.weight_pu_down = weighting_mode.count(WeightType::PileUp)
+                ?  pile_up_weight_provider->Get(*eventInfo, UncertaintyScale::Down) : 1;
+
         event.weight_dy = weighting_mode.count(WeightType::DY)
                 ? eventWeights_HH->GetWeight(*eventInfo, WeightType::DY) : 1;
         event.weight_ttbar = weighting_mode.count(WeightType::TTbar)

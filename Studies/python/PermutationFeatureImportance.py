@@ -19,8 +19,6 @@ import ParametrizedModel as pm
 import BayesianOptimizationCustom as bo
 from CalculateWeigths import CreateSampleWeigts, CrossCheckWeights
 
-
-
 parser = argparse.ArgumentParser()
 parser.add_argument("-w", "--weights")
 parser.add_argument("-p", "--parity", type=int)
@@ -31,7 +29,7 @@ parser.add_argument("-f", "--file", nargs='+')
 args = parser.parse_args()
 
 file_name = pm.ListToVector(args.file)
-with open(params_json) as f:
+with open(args.params_json) as f:
     params = json.load(f)
 
 data = InputsProducer.CreateRootDF(file_name, args.parity, False, True)

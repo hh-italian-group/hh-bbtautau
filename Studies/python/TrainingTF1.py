@@ -2,22 +2,25 @@
 # This file is part of https://github.com/hh-italian-group/hh-bbtautau.
 
 import tensorflow as tf
-gpus = tf.config.experimental.list_physical_devices('GPU')
-tf.config.experimental.set_memory_growth(gpus[0], True)
+from keras import Model
+config = tf.ConfigProto(allow_soft_placement=False, device_count = {'CPU' : 1, 'GPU' : 1})
+config.gpu_options.allow_growth = True
+session = tf.Session(config=config)
 
-from tensorflow import keras
-from tensorflow.keras.callbacks import CSVLogger
+from keras.callbacks import CSVLogger
+from keras.callbacks import Callback
+from keras.optimizers import adam
+from keras import backend as K
+K.set_session(session)
 
 import argparse
 import json
 import numpy as np
 
 import InputsProducer
-import ParametrizedModel as pm
+import ParametrizedModelTF1 as pm
 from CalculateWeigths import CreateSampleWeigts, CrossCheckWeights
 import ROOT
-
-from keras.callbacks import Callback
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-params", "--params")
@@ -45,6 +48,7 @@ class WeightsSaver(Callback):
   def on_epoch_end(self, epoch, logs={}):
     if self.epoch % self.N == 0:
         name = '{}_par{}_weight_epoch_{}.h5'.format(args.output, args.parity, self.epoch )
+        # name = ('weights_epoch_%04d.h5') % self.epoch
         self.model.save_weights(name)
     self.epoch += 1
 
@@ -55,25 +59,23 @@ def PerformTraining(file_name, n_epoch, params):
     print(var_pos)
     w = CreateSampleWeigts(X, Z)
     Y = Y.reshape(Y.shape[0:2])
-    tf.random.set_seed(args.seed)
+    tf.set_random_seed(args.seed)
 
-    model = pm.HHModel(var_pos,'../config/mean_std_red.json', '../config/min_max_red.json', params)
-    model.call(X[0:1,:,:])
-    opt = getattr(tf.keras.optimizers, params['optimizers'])(lr=10 ** params['learning_rate_exp'])
-    model.compile(loss='binary_crossentropy',
-                  optimizer=opt,
-                  weighted_metrics=[pm.sel_acc_2])
-
-    model.build(X.shape)
+    model = pm.HHModel(var_pos, 10,'../config/mean_std_red.json', '../config/min_max_red.json', params)
+    opt = adam(lr=10 ** params['learning_rate_exp'])
+    model.compile(loss=K.binary_crossentropy,  optimizer=opt)
     model.summary()
 
-    early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_sel_acc_2', mode='max', patience=args.patience)
+    early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', mode='min', patience=args.patience)
     csv_logger = CSVLogger('{}_par{}_training_history.csv'.format(args.output, args.parity), append=False, separator=',')
     save_best_only =  tf.keras.callbacks.ModelCheckpoint(filepath='{}_par{}_best_weights.h5'.format(args.output, args.parity),
-                                                         monitor='val_sel_acc_2',  mode='max', save_best_only=True, verbose=1)
+                                                         monitor='val_loss',  mode='min', save_weights_only=True,
+                                                         save_best_only=True, verbose=1)
 
-    model.fit(X, Y, sample_weight=w, validation_split=args.validation_split, epochs=args.n_epoch, batch_size=params['batch_size'],
-              callbacks=[csv_logger, save_best_only, early_stop, WeightsSaver(1)],verbose=2)
+    model.fit(X, Y, sample_weight=w, validation_split=args.validation_split, epochs=args.n_epoch, batch_size=100,
+                  callbacks=[csv_logger, save_best_only,early_stop,  WeightsSaver(1)],verbose=2)
+
+    model.save('{}_par_{}_all_model'.format(args.output,args.parity ))
 
     model.save_weights('{}_par{}_final_weights.h5'.format(args.output, args.parity))
 

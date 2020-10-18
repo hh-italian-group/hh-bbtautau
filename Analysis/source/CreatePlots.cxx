@@ -26,7 +26,7 @@ public:
     using PlotsProducer = ::analysis::StackedPlotsProducer;
 
     CreatePlots(const AnalyzerArguments& _args) :
-        EventAnalyzerCore(_args, _args.channel()), args(_args), activeVariables(ParseVarSet(args.vars())),
+        EventAnalyzerCore(_args, _args.channel(), false), args(_args), activeVariables(ParseVarSet(args.vars())),
         inputFile(root_ext::OpenRootFile(args.input() + "_full.root"))
     {
         histConfig.Parse(FullPath(ana_setup.hist_cfg));

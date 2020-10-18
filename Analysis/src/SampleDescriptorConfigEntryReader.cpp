@@ -21,6 +21,8 @@ void AnalyzerConfigEntryReader::EndEntry()
     CheckReadParamCounts("unc_sources", 1, Condition::less_equal);
     CheckReadParamCounts("categories", 1, Condition::less_equal);
     CheckReadParamCounts("sub_categories", 1, Condition::less_equal);
+    CheckReadParamCounts("categories_base", 1, Condition::less_equal);
+    CheckReadParamCounts("sub_categories_base", 1, Condition::less_equal);
     CheckReadParamCounts("regions", 1, Condition::less_equal);
     CheckReadParamCounts("data", 1, Condition::less_equal);
     CheckReadParamCounts("signals", 1, Condition::less_equal);
@@ -62,6 +64,8 @@ void AnalyzerConfigEntryReader::ReadParameter(const std::string& /*param_name*/,
     ParseEnumList("unc_sources", current.unc_sources);
     ParseEnumList("categories", current.categories);
     ParseEnumList("sub_categories", current.sub_categories);
+    ParseEnumList("categories_base", current.categories_base);
+    ParseEnumList("sub_categories_base", current.sub_categories_base);
     ParseEnumList("regions", current.regions_str);
     ParseEntryList("data", current.data);
     ParseEntryList("signals", current.signals);

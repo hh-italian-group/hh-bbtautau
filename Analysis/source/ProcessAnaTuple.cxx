@@ -29,7 +29,7 @@ public:
     using PlotsProducer = ::analysis::StackedPlotsProducer;
 
     ProcessAnaTuple(const AnalyzerArguments& _args) :
-        EventAnalyzerCore(_args, _args.channel()), args(_args), activeVariables(ParseVarSet(args.vars())),
+        EventAnalyzerCore(_args, _args.channel(), false), args(_args), activeVariables(ParseVarSet(args.vars())),
         tupleReader(args.input(), args.channel(), activeVariables),
         outputFile(root_ext::CreateRootFile(args.output() + "_full.root"))
     {
