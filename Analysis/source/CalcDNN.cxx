@@ -9,6 +9,9 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "cms_hh_proc_interface/processing/interface/feat_comp.hh"
 #include "hh-bbtautau/Analysis/include/AnaTuple.h"
 
+#include "PhysicsTools/TensorFlow/interface/TensorFlow.h"
+
+
 namespace analysis {
 
 struct Arguments {
@@ -22,6 +25,8 @@ struct Arguments {
     OPT_ARG(std::string, masses, "");
     OPT_ARG(unsigned, n_threads, 1);
     OPT_ARG(Long64_t, max_events, std::numeric_limits<Long64_t>::max());
+    OPT_ARG(Long64_t, begin_entry_index, 0);
+    OPT_ARG(Long64_t, end_entry_index, std::numeric_limits<Long64_t>::max());
 };
 
 class CalcDNN {
@@ -78,11 +83,14 @@ public:
             outputTree->Branch(branchName.c_str(), &outputs.at(point_index), (branchName + "/F").c_str());
         }
 
-        const Long64_t nEntries = std::min(anaTuple.GetEntries(), args.max_events());
+        const Long64_t endEntry = std::min(anaTuple.GetEntries(), args.end_entry_index());
+        const Long64_t nEntries = std::min(endEntry - args.begin_entry_index(), args.max_events());
         tools::ProgressReporter progressReporter(10, std::cout);
         progressReporter.SetTotalNumberOfEvents(static_cast<unsigned long>(nEntries));
+
         for (Long64_t n = 0; n < nEntries; ++n) {
-            anaTuple.GetEntry(n);
+            const Long64_t entry_index = args.begin_entry_index() + n;
+            anaTuple.GetEntry(entry_index);
 
             for(size_t point_index = 0; point_index < points.size(); ++point_index) {
                 outputs.at(point_index) = ComputeScore(anaTuple.data(), points.at(point_index));
@@ -146,7 +154,7 @@ private:
                             vbf_2 = createLVec(event.VBF2_pt, event.VBF2_eta, event.VBF2_phi, event.VBF2_m),
                             svfit = createLVec(event.SVfit_pt, event.SVfit_eta, event.SVfit_phi, event.SVfit_m);
 
-        const bool is_boosted = false; // FIXME
+        const bool is_boosted = event.is_boosted;
 
         static const std::map<::analysis::Channel, ::Channel> ch_map = {
             { Channel::ETau, eTau }, { Channel::MuTau, muTau }, { Channel::TauTau, tauTau },
@@ -175,6 +183,7 @@ private:
         const int n_vbf = event.has_VBF_pair ? 2 : 0;
 
         const float cv = 1, c2v = 1, c3 = 0;
+        const bool cut_passed = true;
 
         const std::vector<float> feat_vals = evt_proc->process_as_vec(
                 b_1, b_2, l_1, l_2, met, svfit, vbf_1, vbf_2, event.kinFit_m, event.kinFit_chi2, event.MT2,
@@ -184,7 +193,7 @@ private:
                 event.b1_HHbtag, event.b2_HHbtag, event.VBF1_HHbtag, event.VBF2_HHbtag, event.b1_DeepFlavour_CvsL,
                 event.b2_DeepFlavour_CvsL, event.VBF1_DeepFlavour_CvsL, event.VBF2_DeepFlavour_CvsL,
                 event.b1_DeepFlavour_CvsB, event.b2_DeepFlavour_CvsB, event.VBF1_DeepFlavour_CvsB,
-                event.VBF2_DeepFlavour_CvsB, cv, c2v, c3);
+                event.VBF2_DeepFlavour_CvsB, cv, c2v, c3, cut_passed);
         return wrapper->predict(feat_vals, event.evt);
     }
 

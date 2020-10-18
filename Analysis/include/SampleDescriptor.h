@@ -29,6 +29,8 @@ struct AnalyzerSetup {
     std::set<UncertaintySource> unc_sources;
     EventCategorySet categories;
     EventSubCategorySet sub_categories;
+    EventCategorySet categories_base;
+    EventSubCategorySet sub_categories_base;
     EventRegionSet regions;
     std::vector<std::string> regions_str;
     std::vector<std::string> data, signals, backgrounds, cmb_samples;
@@ -124,6 +126,7 @@ struct SampleDescriptorBase {
     std::string NLO_weight_file;
     std::string sampleOrder{"LO"};
     DYFitModel fit_method{DYFitModel::None};
+    bool apply_top_pt_unc{false};
 
     PointCollection working_points;
 

@@ -6,6 +6,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Core/include/AnalysisTypes.h"
 #include "AnalysisTools/Run/include/MultiThread.h"
 #include "h-tautau/McCorrections/include/JetPuIdWeights.h"
+#include "h-tautau/McCorrections/include/TopPtWeight.h"
 
 namespace analysis {
 
@@ -19,7 +20,7 @@ SyncDescriptor::SyncDescriptor(const std::string& desc_str, std::shared_ptr<TFil
 }
 
 BaseEventAnalyzer::BaseEventAnalyzer(const AnalyzerArguments& _args, Channel channel) :
-    EventAnalyzerCore(_args, channel), args(_args), anaTupleWriter(args.output(), channel, ana_setup.use_kinFit,
+    EventAnalyzerCore(_args, channel, true), args(_args), anaTupleWriter(args.output(), channel, ana_setup.use_kinFit,
                       ana_setup.use_svFit,ana_setup.allow_calc_svFit), trigger_patterns(ana_setup.trigger.at(channel))
 
 {
@@ -58,12 +59,17 @@ void BaseEventAnalyzer::Run()
     }
 }
 
-EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfo& event, bool pass_vbf_trigger)
+std::pair<EventCategorySet,
+          bbtautau::AnaTupleWriter::CategoriesFlags> BaseEventAnalyzer::DetermineEventCategories(EventInfo& event,
+                                                                                                 bool pass_vbf_trigger)
 {
+
     static const std::map<DiscriminatorWP, size_t> btag_working_points = {{DiscriminatorWP::Loose, 0},
                                                                           {DiscriminatorWP::Medium, 0},
                                                                           {DiscriminatorWP::Tight, 0}};
     EventCategorySet categories;
+    bbtautau::AnaTupleWriter::CategoriesFlags categories_flags;
+
     // const bool is_boosted =  false;
     auto fatJet = SignalObjectSelector::SelectFatJet(event.GetEventCandidate(), event.GetSelectedSignalJets());
     const bool is_boosted = fatJet != nullptr;
@@ -87,7 +93,6 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfo& event, b
     }
 
     const auto& all_jets = event.GetCentralJets();
-
     auto bjet_counts = btag_working_points;
     if(event.HasBjetPair()) {
         for(size_t bjet_index = 1; bjet_index <= 2; ++bjet_index) {
@@ -98,12 +103,19 @@ EventCategorySet BaseEventAnalyzer::DetermineEventCategories(EventInfo& event, b
             }
         }
     }
+    categories_flags.num_jets = all_jets.size();
+    categories_flags.num_btag_loose = bjet_counts.at(DiscriminatorWP::Loose);
+    categories_flags.num_btag_medium = bjet_counts.at(DiscriminatorWP::Medium);
+    categories_flags.num_btag_tight = bjet_counts.at(DiscriminatorWP::Tight);
+    categories_flags.is_vbf = is_VBF;
+    categories_flags.is_boosted = is_boosted;
+    categories_flags.fat_jet_cand = fatJet;
 
-    for(const auto& category : ana_setup.categories) {
+    for(const auto& category : ana_setup.categories_base) {
         if(category.Contains(all_jets.size(), bjet_counts, is_VBF, is_boosted, vbf_tag))
             categories.insert(category);
     }
-    return categories;
+    return std::make_pair(categories, categories_flags);
 }
 
 void BaseEventAnalyzer::InitializeMvaReader()
@@ -230,6 +242,10 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                           const ntuple::ProdSummary& prod_summary)
 {
     std::vector<std::string> vbf_triggers;
+    std::map<UncertaintySource, std::map<UncertaintyScale, float>>  uncs_weight_map;
+    std::vector<DiscriminatorWP> btag_wps = { DiscriminatorWP::Loose, DiscriminatorWP::Medium,
+                                         DiscriminatorWP::Tight };
+
     if(ana_setup.trigger_vbf.count(channelId))
         vbf_triggers = ana_setup.trigger_vbf.at(channelId);
     const auto summary = std::make_shared<SummaryInfo>(prod_summary, channelId, ana_setup.trigger_path,
@@ -246,18 +262,17 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
         for(const auto& [unc_source, unc_scale] : unc_variations) {
             auto event = EventInfo::Create(tupleEvent, signalObjectSelector, *bTagger, DiscriminatorWP::Medium,
                                            summary, unc_source, unc_scale);
-
             if(!event) continue;
             const bool pass_normal_trigger = event->PassNormalTriggers();
             const bool pass_vbf_trigger = event->PassVbfTriggers();
             const bool pass_trigger = pass_normal_trigger || pass_vbf_trigger;
             if(!pass_trigger) continue;
-
+            std::map<DiscriminatorWP, std::map<UncertaintyScale, float>> btag_weights;
             bbtautau::AnaTupleWriter::DataIdMap dataIds;
             std::map<size_t, bool> sync_event_selected;
 
             double lepton_id_iso_weight = 1., trigger_weight = 1., prescale_weight = 1., l1_prefiring_weight = 1.,
-                   jet_pu_id_weight = 1;
+                   jet_pu_id_weight = 1,  btag_weight = 1.;
 
             if(sample.sampleType != SampleType::Data) {
                 auto lepton_weight_provider = eventWeights_HH->GetProviderT<mc_corrections::LeptonWeights>(
@@ -274,13 +289,92 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
 
                 if(ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017)
                     l1_prefiring_weight = (*event)->l1_prefiring_weight;
+	       
+                uncs_weight_map[UncertaintySource::L1_prefiring][UncertaintyScale::Central] = 
+                        ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017 
+                        ? static_cast<float>((*event)->l1_prefiring_weight) : 1;
+                uncs_weight_map[UncertaintySource::L1_prefiring][UncertaintyScale::Up] = 
+                        ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017 
+                        ? static_cast<float>((*event)->l1_prefiring_weight_up) : 1;
+                uncs_weight_map[UncertaintySource::L1_prefiring][UncertaintyScale::Down] =
+                        ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017 
+                        ? static_cast<float>((*event)->l1_prefiring_weight_down) : 1;
 
                 auto jet_pu_id_weight_provided = eventWeights_HH->GetProviderT<mc_corrections::JetPuIdWeights>(
                         mc_corrections::WeightType::JetPuIdWeights);
                 jet_pu_id_weight = jet_pu_id_weight_provided->Get(*event);
 
+                auto top_pt_weight_provided = eventWeights_HH->GetProviderT<mc_corrections::TopPtWeight>(
+                        mc_corrections::WeightType::TopPt);
+
+                auto btag_weight_provider = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(
+                    mc_corrections::WeightType::BTag);
+
+                for(const auto wp : btag_wps){
+                    btag_weights[wp][UncertaintyScale::Central] = static_cast<float>(btag_weight_provider->Get(*event,
+                                                                                     wp, unc_source, unc_scale));
+                    if(unc_source == UncertaintySource::None) {
+                        btag_weights[wp][UncertaintyScale::Up] = static_cast<float>(btag_weight_provider->Get(*event, wp,
+                                UncertaintySource::Eff_b, UncertaintyScale::Up));
+                        btag_weights[wp][UncertaintyScale::Down] = static_cast<float>(btag_weight_provider->Get(*event,
+                                wp, UncertaintySource::Eff_b, UncertaintyScale::Down));
+                    }
+                }
+                if(unc_source == UncertaintySource::None) {
+                    static const std::vector<UncertaintySource> uncs_trigger_weight = { UncertaintySource::EleTriggerUnc,
+                        UncertaintySource::MuonTriggerUnc, UncertaintySource::TauTriggerUnc_DM0,
+                        UncertaintySource::TauTriggerUnc_DM1, UncertaintySource::TauTriggerUnc_DM10,
+                        UncertaintySource::TauTriggerUnc_DM11 };
+
+                    static const std::vector<UncertaintySource> uncs_tau_weight = { UncertaintySource::TauVSjetSF_DM0,
+                        UncertaintySource::TauVSjetSF_DM1, UncertaintySource::TauVSjetSF_3prong,
+                        UncertaintySource::TauVSjetSF_pt20to25, UncertaintySource::TauVSjetSF_pt25to30,
+                        UncertaintySource::TauVSjetSF_pt30to35, UncertaintySource::TauVSjetSF_pt35to40,
+                        UncertaintySource::TauVSjetSF_ptgt40, UncertaintySource::TauVSeSF_barrel,
+                        UncertaintySource::TauVSeSF_endcap, UncertaintySource::TauVSmuSF_etaLt0p4,
+                        UncertaintySource::TauVSmuSF_eta0p4to0p8, UncertaintySource::TauVSmuSF_eta0p8to1p2,
+                        UncertaintySource::TauVSmuSF_eta1p2to1p7, UncertaintySource::TauVSmuSF_etaGt1p7,
+                        UncertaintySource::EleIdIsoUnc, UncertaintySource::MuonIdIsoUnc };
+
+                    for (UncertaintySource unc : uncs_trigger_weight) {
+                        for(UncertaintyScale unc_scale_eval : GetAllUncertaintyScales()) {
+                            const UncertaintySource unc_eval = unc_scale_eval == UncertaintyScale::Central ?
+                                                               UncertaintySource::None : unc;
+                            uncs_weight_map[unc][unc_scale_eval] = static_cast<float>(
+                                lepton_weight_provider->GetTriggerWeight(*event,
+                                    signalObjectSelector.GetTauVSjetDiscriminator().second, unc_eval, unc_scale_eval));
+                        }
+                    }
+
+                    for (UncertaintySource unc : uncs_tau_weight) {
+                        for(UncertaintyScale unc_scale_eval : GetAllUncertaintyScales()) {
+                            const UncertaintySource unc_eval = unc_scale_eval == UncertaintyScale::Central ?
+                                                               UncertaintySource::None : unc;
+                            uncs_weight_map[unc][unc_scale_eval] = static_cast<float>(
+                                lepton_weight_provider->GetIdIsoWeight(*event,
+                                signalObjectSelector.GetTauVSeDiscriminator(channelId).second,
+                                signalObjectSelector.GetTauVSmuDiscriminator(channelId).second,
+                                signalObjectSelector.GetTauVSjetDiscriminator().second, unc_eval, unc_scale_eval));
+                        }
+                    }
+                    uncs_weight_map[UncertaintySource::TopPt][UncertaintyScale::Central] = 
+                            static_cast<float>(1. / (*summary)->totalShapeWeight);
+                    if(sample.apply_top_pt_unc)
+                        uncs_weight_map[UncertaintySource::TopPt][UncertaintyScale::Up] = static_cast<float>(
+                               top_pt_weight_provided->Get(*event) / (*summary)->totalShapeWeight_withTopPt);
+
+                    if(sample.sampleType != SampleType::ggHH_NonRes){
+                        uncs_weight_map[UncertaintySource::PileUp][UncertaintyScale::Central] = static_cast<float>(
+                               tupleEvent.weight_pu / (*summary)->totalShapeWeight);
+                        uncs_weight_map[UncertaintySource::PileUp][UncertaintyScale::Up] = static_cast<float>(
+                               tupleEvent.weight_pu_up / (*summary)->totalShapeWeight_withPileUp_Up);
+                        uncs_weight_map[UncertaintySource::PileUp][UncertaintyScale::Down] = static_cast<float>(
+                               tupleEvent.weight_pu_down / (*summary)->totalShapeWeight_withPileUp_Down);
+                    }
+                }
             }
-            const auto eventCategories = DetermineEventCategories(*event, pass_vbf_trigger);
+
+            const auto [eventCategories, categories_flags] = DetermineEventCategories(*event, pass_vbf_trigger);
             for(auto eventCategory : eventCategories) {
                 const EventRegion eventRegion = DetermineEventRegion(*event, eventCategory);
                 for(const auto& region : ana_setup.regions){
@@ -296,16 +390,13 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                         event->SetMvaScore(mva_score);
                         const EventAnalyzerDataId anaDataId(eventCategory, subCategory, region,
                                                             unc_source, unc_scale, sample_wp.full_name);
-                        double btag_weight = 1., shape_weight = 1.;
+                        double shape_weight = 1.;
                         if(sample.sampleType == SampleType::Data) {
                             dataIds[anaDataId] = std::make_tuple(1., mva_score);
                         } else {
 
-                            if(eventCategory.HasBtagConstraint()) {
-                                auto btag_weight_provider = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(
-                                        mc_corrections::WeightType::BTag);
-                                btag_weight = btag_weight_provider->Get(*event);
-                            }
+                            if(eventCategory.HasBtagConstraint())
+                                btag_weight = btag_weights.at(eventCategory.BtagWP()).at(UncertaintyScale::Central);
 
                             double cross_section = (*summary)->cross_section > 0 ? (*summary)->cross_section :
                                                                                     sample.cross_section;
@@ -321,7 +412,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                 dataIds[anaDataId] = std::make_tuple(weight, mva_score);
                             } else
                                 ProcessSpecialEvent(sample, sample_wp, anaDataId, *event, weight,
-                                                    (*summary)->totalShapeWeight, dataIds, cross_section);
+                                                    (*summary)->totalShapeWeight, dataIds, cross_section, uncs_weight_map);
                         }
 
                         for(size_t n = 0; n < sync_descriptors.size(); ++n) {
@@ -329,10 +420,11 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                             const auto& regex_pattern = sync_descriptors.at(n).regex_pattern;
                             for(auto& dataId : dataIds) {
                                 if(!boost::regex_match(dataId.first.GetName(), *regex_pattern)) continue;
+
                                 htt_sync::FillSyncTuple(*event, *sync_descriptors.at(n).sync_tree, ana_setup.period,
                                                         ana_setup.use_svFit, std::get<0>(dataId.second),
                                                         lepton_id_iso_weight, trigger_weight, btag_weight,
-                                                        shape_weight, jet_pu_id_weight);
+                                                        shape_weight, jet_pu_id_weight, prescale_weight);
                                 sync_event_selected[n] = true;
                                 break;
                             }
@@ -341,7 +433,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                 }
             }
             //dataId
-            anaTupleWriter.AddEvent(*event, dataIds, pass_vbf_trigger);
+            anaTupleWriter.AddEvent(*event, dataIds, pass_vbf_trigger, categories_flags, btag_weights, uncs_weight_map);
         }
     }
 }
@@ -350,24 +442,13 @@ void BaseEventAnalyzer::ProcessSpecialEvent(const SampleDescriptor& sample,
                                             const SampleDescriptor::Point& /*sample_wp*/,
                                             const EventAnalyzerDataId& anaDataId, EventInfo& event, double weight,
                                             double shape_weight, bbtautau::AnaTupleWriter::DataIdMap& dataIds,
-                                            double cross_section)
+                                            double cross_section,
+                                            std::map<UncertaintySource,std::map<UncertaintyScale,float>>& uncs_weight_map)
 {
     if(sample.sampleType == SampleType::DY){
         dymod.at(sample.name)->ProcessEvent(anaDataId,event,weight,dataIds);
-    } else if(sample.sampleType == SampleType::TT) {
-        dataIds[anaDataId] = std::make_tuple(weight, event.GetMvaScore());
-        if(anaDataId.Get<UncertaintySource>() == UncertaintySource::None
-                && ana_setup.unc_sources.count(UncertaintySource::TopPt)) {
-//                const double weight_topPt = event->weight_total * sample.cross_section * ana_setup.int_lumi
-//                        / event.GetSummaryInfo()->totalShapeWeight_withTopPt;
-            // FIXME
-            dataIds[anaDataId.Set(UncertaintySource::TopPt).Set(UncertaintyScale::Up)] =
-                    std::make_tuple(weight * event->weight_top_pt, event.GetMvaScore());
-            dataIds[anaDataId.Set(UncertaintySource::TopPt).Set(UncertaintyScale::Down)] =
-                    std::make_tuple(weight * event->weight_top_pt, event.GetMvaScore());
-        }
     } else if(sample.sampleType == SampleType::ggHH_NonRes) {
-        nonResModel->ProcessEvent(anaDataId, event, weight, shape_weight, dataIds, cross_section);
+        nonResModel->ProcessEvent(anaDataId, event, weight, shape_weight, dataIds, cross_section, uncs_weight_map);
     } else
         throw exception("Unsupported special event type '%1%'.") % sample.sampleType;
 }

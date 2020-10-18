@@ -33,7 +33,10 @@ AnaTupleWriter::~AnaTupleWriter()
     tuple.Write();
 }
 
-void AnaTupleWriter::AddEvent(EventInfo& event, const AnaTupleWriter::DataIdMap& dataIds, const bool pass_VBF_trigger)
+void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const bool pass_VBF_trigger,
+                              const CategoriesFlags& categories_flags,
+                              const std::map<DiscriminatorWP, std::map<UncertaintyScale, float>>& btag_weights,
+                              const std::map<UncertaintySource, std::map<UncertaintyScale, float>>& uncs_weight_map)
 {
     static constexpr float def_val = std::numeric_limits<float>::lowest();
     static constexpr int def_val_int = std::numeric_limits<int>::lowest();
@@ -90,12 +93,69 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const AnaTupleWriter::DataIdMap&
         tuple().all_mva_scores.push_back(static_cast<float>(mva_score));
     }
 
+    auto fill_unc_weight_vec = [](const std::map<UncertaintyScale, float>& weights_in, std::vector<float>& weights_out,
+                                  bool store_relative = true) {
+        static const std::vector<UncertaintyScale> scales = { UncertaintyScale::Up, UncertaintyScale::Down };
+
+        weights_out.clear();
+        const float central_w = weights_in.at(UncertaintyScale::Central);
+        if(!store_relative)
+            weights_out.push_back(central_w);
+        for(auto scale : scales) {
+            if(!weights_in.count(scale)) break;
+            float w = weights_in.at(scale);
+            if(store_relative)
+                w /= central_w;
+            weights_out.push_back(w);
+        }
+    };
+
+    if(!event->isData){
+        fill_unc_weight_vec(btag_weights.at(DiscriminatorWP::Loose), tuple().btag_weight_Loose, false);
+        fill_unc_weight_vec(btag_weights.at(DiscriminatorWP::Medium), tuple().btag_weight_Medium, false);
+        fill_unc_weight_vec(btag_weights.at(DiscriminatorWP::Tight), tuple().btag_weight_Tight, false);
+        if(event.GetEventCandidate().GetUncSource() == UncertaintySource::None){
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::EleTriggerUnc), tuple().unc_EleTriggerUnc);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::MuonTriggerUnc), tuple().unc_MuonTriggerUnc);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauTriggerUnc_DM0), tuple().unc_TauTriggerUnc_DM0);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauTriggerUnc_DM1), tuple().unc_TauTriggerUnc_DM1);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauTriggerUnc_DM10), tuple().unc_TauTriggerUnc_DM10);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauTriggerUnc_DM11), tuple().unc_TauTriggerUnc_DM11);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSjetSF_DM0), tuple().unc_TauVSjetSF_DM0);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSjetSF_DM1), tuple().unc_TauVSjetSF_DM1);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSjetSF_3prong), tuple().unc_TauVSjetSF_3prong);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSjetSF_pt20to25), tuple().unc_TauVSjetSF_pt20to25);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSjetSF_pt25to30), tuple().unc_TauVSjetSF_pt25to30);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSjetSF_pt30to35), tuple().unc_TauVSjetSF_pt30to35);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSjetSF_pt35to40), tuple().unc_TauVSjetSF_pt35to40);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSjetSF_ptgt40), tuple().unc_TauVSjetSF_ptgt40);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSeSF_barrel), tuple().unc_TauVSeSF_barrel);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSeSF_endcap), tuple().unc_TauVSeSF_endcap);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSmuSF_etaLt0p4), tuple().unc_TauVSmuSF_etaLt0p4);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSmuSF_eta0p4to0p8), tuple().unc_TauVSmuSF_eta0p4to0p8);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSmuSF_eta1p2to1p7), tuple().unc_TauVSmuSF_eta1p2to1p7);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSmuSF_eta1p2to1p7), tuple().unc_TauVSmuSF_eta1p2to1p7);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSmuSF_etaGt1p7), tuple().unc_TauVSmuSF_etaGt1p7);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::EleIdIsoUnc), tuple().unc_EleIdIsoUnc);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::MuonIdIsoUnc), tuple().unc_MuonIdIsoUnc);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TopPt), tuple().unc_TopPt, true);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::L1_prefiring), tuple().unc_L1_prefiring, true);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::PileUp), tuple().unc_PileUp, true);
+        }
+    }
     tuple().has_b_pair = event.HasBjetPair();
     tuple().has_VBF_pair = event.HasVBFjetPair();
     tuple().pass_VBF_trigger = pass_VBF_trigger;
     tuple().run = event->run;
     tuple().lumi = event->lumi;
     tuple().evt = event->evt;
+    tuple().channelId = event->channelId;
+    tuple().num_central_jets =  static_cast<Int_t>(categories_flags.num_jets);
+    tuple().num_btag_loose = static_cast<Int_t>(categories_flags.num_btag_loose);
+    tuple().num_btag_medium = static_cast<Int_t>(categories_flags.num_btag_medium);
+    tuple().num_btag_tight = static_cast<Int_t>(categories_flags.num_btag_tight);
+    tuple().is_vbf = categories_flags.is_vbf;
+    tuple().is_boosted = categories_flags.is_boosted;
 
     #define TAU_DATA(name, obj) \
         tuple().name##_pt = static_cast<float>(obj.GetMomentum().pt()); \
@@ -111,6 +171,7 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const AnaTupleWriter::DataIdMap&
                                     ? obj->GetRawValue(TauIdDiscriminator::byDeepTau2017v2p1VSjet) : def_val; \
         tuple().name##_q = obj->charge(); \
         tuple().name##_gen_match = static_cast<int>(obj->gen_match()); \
+        tuple().name##_decay_mode = obj->decayMode();
         /**/
 
     const auto& t1 = event.GetLeg(1);
@@ -124,8 +185,6 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const AnaTupleWriter::DataIdMap&
         tuple().name##_eta = obj ? static_cast<float>(obj->GetMomentum().eta()) : def_val; \
         tuple().name##_phi = obj ? static_cast<float>(obj->GetMomentum().phi()) : def_val; \
         tuple().name##_m = obj ? static_cast<float>(obj->GetMomentum().M()) : def_val; \
-        tuple().name##_CSV = obj ? (*obj)->csv() : def_val; \
-        tuple().name##_DeepCSV = obj ? (*obj)->deepcsv() : def_val; \
         tuple().name##_DeepFlavour = obj ? (*obj)->deepFlavour() : def_val; \
         tuple().name##_DeepFlavour_CvsL = obj ? (*obj)->deepFlavour_CvsL() : def_val; \
         tuple().name##_DeepFlavour_CvsB = obj ? (*obj)->deepFlavour_CvsB() : def_val; \
@@ -148,7 +207,55 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const AnaTupleWriter::DataIdMap&
     JET_DATA(VBF1, vbf1)
     JET_DATA(VBF2, vbf2)
 
+    auto centralJets = event.GetCentralJets();
+    std::sort(centralJets.begin(), centralJets.end(), [](auto jet1, auto jet2) {
+        return jet1->GetMomentum().pt() > jet2->GetMomentum().pt();
+    });
+
+    auto forwardJets = event.GetForwardJets();
+    std::sort(forwardJets.begin(), forwardJets.end(), [](auto jet1, auto jet2) {return jet1->GetMomentum().pt() > jet2->GetMomentum().pt(); });
+
+    //remove forward jets with pt < 30
+    auto low_pt_iter = std::find_if(forwardJets.begin(), forwardJets.end(), [](auto jet) {
+        return jet->GetMomentum().Pt() <= cuts::hh_bbtautau_Run2::jetID::vbf_pt; });
+    forwardJets.erase(low_pt_iter, forwardJets.end());
+
+    //remove from forward and central signal jets
+    const std::set<const JetCandidate*> signal_jets = { b1, b2, vbf1, vbf2 };
+    auto is_signal = [&signal_jets](const JetCandidate* jet) -> bool { return signal_jets.count(jet); };
+    centralJets.erase(std::remove_if(centralJets.begin(), centralJets.end(), is_signal), centralJets.end());
+    forwardJets.erase(std::remove_if(forwardJets.begin(), forwardJets.end(), is_signal), forwardJets.end());
+
+    centralJets.resize(5, nullptr);
+    forwardJets.resize(5, nullptr);
+
+    JET_DATA(central_jet1, centralJets.at(0))
+    JET_DATA(central_jet2, centralJets.at(1))
+    JET_DATA(central_jet3, centralJets.at(2))
+    JET_DATA(central_jet4, centralJets.at(3))
+    JET_DATA(central_jet5, centralJets.at(4))
+
+
+    JET_DATA(forward_jet1, forwardJets.at(0))
+    JET_DATA(forward_jet2, forwardJets.at(1))
+    JET_DATA(forward_jet3, forwardJets.at(2))
+    JET_DATA(forward_jet4, forwardJets.at(3))
+    JET_DATA(forward_jet5, forwardJets.at(4))
+
     #undef JET_DATA
+
+    #define FAT_JET_DATA(name, obj) \
+        tuple().name##_pt = obj ? static_cast<float>(obj->GetMomentum().pt()) : def_val; \
+        tuple().name##_eta = obj ? static_cast<float>(obj->GetMomentum().eta()) : def_val; \
+        tuple().name##_phi = obj ? static_cast<float>(obj->GetMomentum().phi()) : def_val; \
+        tuple().name##_m = obj ? static_cast<float>(obj->GetMomentum().M()) : def_val; \
+        tuple().name##_valid = obj != nullptr; \
+        tuple().name##_m_softDrop = obj ? static_cast<float>((*obj)->m(ntuple::TupleFatJet::MassType::SoftDrop)) : def_val; \
+        /**/
+
+    FAT_JET_DATA(fat_jet, categories_flags.fat_jet_cand)
+
+    #undef FAT_JET_DATA
 
     tuple().MET_pt = static_cast<float>(event.GetMET().GetMomentum().pt());
     tuple().MET_phi = static_cast<float>(event.GetMET().GetMomentum().phi());
@@ -205,10 +312,12 @@ const AnaTupleReader::NameSet AnaTupleReader::BoolBranches = {
 };
 
 const AnaTupleReader::NameSet AnaTupleReader::IntBranches = {
-    "tau1_q", "tau1_gen_match", "tau2_q", "tau2_gen_match",
+    "tau1_q", "tau1_gen_match", "tau1_decay_mode","tau2_q", "tau2_gen_match", "tau2_decay_mode",
     "b1_valid", "b1_hadronFlavour", "b2_valid", "b2_hadronFlavour",
     "VBF1_valid", "VBF1_hadronFlavour", "VBF2_valid", "VBF2_hadronFlavour",
-    "SVfit_valid", "kinFit_convergence"
+    "SVfit_valid", "kinFit_convergence", "central_jet1_valid", "central_jet1_hadronFlavour", "central_jet2_valid",
+    "central_jet2_hadronFlavour", "central_jet3_valid", "central_jet3_hadronFlavour", "central_jet4_valid",
+    "central_jet4_hadronFlavour", "central_jet5_valid", "central_jet5_hadronFlavour"
 };
 
 std::vector<std::shared_ptr<TFile>> AnaTupleReader::OpenFiles(const std::string& file_name,
@@ -238,9 +347,12 @@ AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, Na
         files(OpenFiles(file_name, input_friends)), trees(ReadTrees(channel, files)), dataFrame(*trees.front()), df(dataFrame)
 {
     static const NameSet support_branches = {
-        "dataIds", "all_weights", "is_central_es", "sample_id", "all_mva_scores",
-        "weight", "evt", "run", "lumi", "tau1_p4", "tau2_p4", "b1_valid", "b1_p4", "b2_valid", "b2_p4", "MET_p4",
+        "dataIds", "all_weights", "is_central_es", "sample_id", "all_mva_scores", "weight", "btag_weight",
+        "evt", "run", "lumi", "tau1_p4", "tau2_p4", "b1_valid", "b1_p4", "b2_valid", "b2_p4", "MET_p4",
         "Hbb_p4", "Htt_p4", "HttMET_p4", "VBF1_valid", "VBF1_p4", "VBF2_valid", "VBF2_p4", "SVfit_p4", "mass_top_pair",
+        "is_boosted", "channelId", "central_jet1_valid", "central_jet1_p4", "central_jet2_valid", "central_jet2_p4",
+        "central_jet3_valid", "central_jet3_p4", "central_jet4_valid", "central_jet4_p4", "central_jet5_valid",
+         "central_jet5_p4"
     };
 
     DefineBranches(active_var_names, active_var_names.empty());
@@ -357,6 +469,12 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
     auto df_vbf = Filter(df_bb, "has_VBF_pair");
     DefineP4(df_vbf, "VBF1");
     DefineP4(df_vbf, "VBF2");
+
+    DefineP4(df, "central_jet1");
+    DefineP4(df, "central_jet2");
+    DefineP4(df, "central_jet3");
+    DefineP4(df, "central_jet4");
+    DefineP4(df, "central_jet5");
 
     auto df_sv = FilterInt(df, "SVfit_valid");
     DefineP4(df_sv, "SVfit");
