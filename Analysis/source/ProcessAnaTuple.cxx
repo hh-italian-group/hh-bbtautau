@@ -125,7 +125,7 @@ public:
             }
 
             if(args.shapes()) {
-                std::cout << "\t\tProducing inputs for limits..." << std::endl;
+                std::cout << "\tProducing inputs for limits..." << std::endl;
                 LimitsInputProducer limitsInputProducer(anaDataCollection, sample_descriptors,
                                                         cmb_sample_descriptors);
                 for(const auto& limit_setup : ana_setup.limit_setup) {
@@ -137,7 +137,7 @@ public:
                 }
             }
             if(args.draw()) {
-                std::cout << "\t\tCreating plots..." << std::endl;
+                std::cout << "\tCreating plots..." << std::endl;
                 PlotsProducer plotsProducer(anaDataCollection, samplesToDraw, FullPath(ana_setup.plot_cfg),
                                             ana_setup.plot_page_opt);
                 std::string pdf_prefix = args.output();
