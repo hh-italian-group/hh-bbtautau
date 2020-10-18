@@ -184,21 +184,28 @@ public:
 
     static const NameSet BoolBranches, IntBranches;
 
-    AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names);
+    AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names,
+                   const std::vector<std::string>& input_friends);
     size_t GetNumberOfEntries() const;
     const DataId& GetDataIdByHash(Hash hash) const;
     const RDF& GetDataFrame() const;
     const std::list<RDF>& GetSkimmedDataFrames() const;
     float GetNormalizedMvaScore(const DataId& dataId, float raw_score) const;
+    const std::map<std::string, std::set<std::string>>& GetParametricVariables() const;
 
 private:
     void DefineBranches(const NameSet& active_var_names, bool all);
     void ExtractDataIds(const AnaAux& aux);
     void ExtractMvaRanges(const AnaAux& aux);
 
+    static std::vector<std::shared_ptr<TFile>> OpenFiles(const std::string& file_name,
+                                                         const std::vector<std::string>& input_friends);
+    static std::vector<std::shared_ptr<TTree>> ReadTrees(Channel channel,
+                                                         const std::vector<std::shared_ptr<TFile>>& files);
+
 private:
-    std::shared_ptr<TFile> file;
-    std::shared_ptr<TTree> tree;
+    std::vector<std::shared_ptr<TFile>> files;
+    std::vector<std::shared_ptr<TTree>> trees;
     ROOT::RDataFrame dataFrame;
     RDF df;
     std::list<RDF> skimmed_df;
@@ -206,6 +213,7 @@ private:
     NameSet var_branch_names;
     RangeMap mva_ranges;
     Range mva_target_range{0., 0.99999};
+    std::map<std::string, std::set<std::string>> parametric_vars;
 };
 
 struct HyperPoint {
