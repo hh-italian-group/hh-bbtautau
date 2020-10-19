@@ -424,6 +424,21 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
     Define(df, "MET_p4", ReturnMETP4, {"MET_pt", "MET_phi"}, true);
     Define(df, "HttMET_p4", SumP4, { "Htt_p4", "MET_p4" }, true);
 
+
+    DiscriminatorWP vbf_tag = [] (const LorentzVectorM& VBF1_p4, const LorentzVectorM& VBF2_p4, bool is_VBF,
+            bool pass_vbf_trigger) {
+        const auto m_jj = (VBF1_p4 + VBF2_p4).M();
+        boost::optional<DiscriminatorWP> vbf_tag;
+        if(is_VBF) {
+            const bool is_tight = m_jj > cuts::hh_bbtautau_Run2::VBF::mass_jj_tight && pass_vbf_trigger;
+            vbf_tag = is_tight ? DiscriminatorWP::Tight : DiscriminatorWP::Loose;
+        }
+        return vbf_tag;
+    };
+
+    Define(df, "vbf_tag",vbf_tag,{"VBF1_p4","VBF2_p4","is_vbf","pass_vbf_trigger"},true);
+
+
     const auto return_category_storage = [] (float num_jets, int num_btag_loose, int num_btag_medium,
             int num_btag_tight, bool is_vbf, bool is_boosted) {
         return category_storage(num_jets, num_btag_loose,num_btag_medium, num_btag_tight,is_vbf, is_boosted);
