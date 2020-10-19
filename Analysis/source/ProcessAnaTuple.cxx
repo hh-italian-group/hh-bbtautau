@@ -169,8 +169,11 @@ private:
         template<typename T>
         void Exec(unsigned int slot, std::vector<size_t> dataId_hash_vec, std::vector<double> weight_vec, bbtautau::AnaTupleReader::category_storage category_storage, T&& value) const
         {
-            EventCategory evtCategory(category_storage.num_jets,category_storage.num_btag_medium,
-                                      category_storage.num_btag_tight,DiscriminatorWP::Medium,category_storage.is_boosted,
+            EventCategory evtCategory(static_cast<size_t>(category_storage.num_jets),
+                                      static_cast<size_t>(category_storage.num_btag_medium),
+                                      true,
+                                      DiscriminatorWP::Medium,
+                                      category_storage.is_boosted,
                                       category_storage.is_vbf);
             size_t dataId_hash = dataId_hash_vec.at(0);
             double weight = weight_vec.at(0);
