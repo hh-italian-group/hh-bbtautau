@@ -169,15 +169,15 @@ private:
         template<typename T>
         void Exec(unsigned int slot, std::vector<size_t> dataId_hash_vec, std::vector<double> weight_vec, bbtautau::AnaTupleReader::category_storage category_storage, T&& value) const
         {
-            //EventCategory evtCategory(category_storage.num_jets,category_storage.num_btag_medium,
-            //                          category_storage.num_btag_tight,DiscriminatorWP::Medium,category_storage.is_boosted,
-            //                          category_storage.is_vbf);
+            EventCategory evtCategory(category_storage.num_jets,category_storage.num_btag_medium,
+                                      category_storage.num_btag_tight,DiscriminatorWP::Medium,category_storage.is_boosted,
+                                      category_storage.is_vbf);
             size_t dataId_hash = dataId_hash_vec.at(0);
             double weight = weight_vec.at(0);
-            Hist* hist = GetHistogram(dataId_hash); //, evtCategory);
+            Hist* hist = GetHistogram(dataId_hash, evtCategory);
             if(hist) {
                 auto x = value;
-               /* if(is_mva_score) {
+                /* if(is_mva_score) {
                     const auto& dataId = tupleReader->GetDataIdByHash(dataId_hash);
                     x = static_cast<T>(tupleReader->GetNormalizedMvaScore(dataId, static_cast<float>(x)));
                 }*/
@@ -191,7 +191,7 @@ private:
         void Merge(TList*) {}
 
     private:
-        Hist* GetHistogram(size_t dataId_hash) const
+        Hist* GetHistogram(size_t dataId_hash, EventCategory evtCategory) const
         {
             std::lock_guard<Mutex> lock(*mutex);
             auto iter = histograms->find(dataId_hash);
@@ -199,7 +199,7 @@ private:
                 return iter->second;
             const auto& dataId = tupleReader->GetDataIdByHash(dataId_hash);
             Hist* hist = nullptr;
-            if(categories->count(dataId.Get<EventCategory>())
+            if(categories->count(evtCategory)
                     && subCategories->count(dataId.Get<EventSubCategory>())
                     && unc_sources->count(dataId.Get<UncertaintySource>())
                     && (is_limit_var || dataId.Get<UncertaintyScale>() == UncertaintyScale::Central)) {
