@@ -171,7 +171,7 @@ private:
         template<typename T>
         void Exec(unsigned int slot, std::vector<size_t> dataId_hash_vec, std::vector<double> weight_vec,
                   bbtautau::AnaTupleReader::category_storage category_storage, DiscriminatorWP vbf_tag,
-                  bool has_b_pair, const LorentzVectorM& SVfit_p4, const LorentzVectorM& MET_p4,
+                  bool has_b_pair, LorentzVectorM SVfit_p4, LorentzVectorM MET_p4,
                   double m_bb, double m_tt_vis, int kinFit_convergence, T&& value) const
         {
 
@@ -222,9 +222,10 @@ private:
                         for (size_t i=0; i<dataId_hash_vec.size(); i++){
                             auto dataId_hash = dataId_hash_vec.at(i);
                             const auto& dataId = tupleReader->GetDataIdByHash(dataId_hash);
-                            if(dataId.Get<EventCategory>() != EventCategory::Parse("2j")) continue;
+                            static const EventCategory evtCategory_2j = EventCategory::Parse("2j");
+                            if(dataId.Get<EventCategory>() != evtCategory_2j) continue;
                             auto weight = weight_vec.at(i);
-                            Hist* hist = GetHistogram(dataId_hash);
+                            Hist* hist = GetHistogram(dataId_hash,category,subCategory);
                             if(hist) {
                                 auto x = value;
                                 /* if(is_mva_score) {
@@ -245,13 +246,14 @@ private:
         void Merge(TList*) {}
 
     private:
-        Hist* GetHistogram(size_t dataId_hash) const
+        Hist* GetHistogram(size_t dataId_hash, EventCategory evtCategory, EventSubCategory evtSubCategory) const
         {
             std::lock_guard<Mutex> lock(*mutex);
             auto iter = histograms->find(dataId_hash);
             if(iter != histograms->end())
                 return iter->second;
-            const auto& dataId = tupleReader->GetDataIdByHash(dataId_hash);
+            const auto& dataId_temp = tupleReader->GetDataIdByHash(dataId_hash);
+            const auto& dataId = dataId_temp.Set(evtCategory).Set(evtSubCategory);
             Hist* hist = nullptr;
             if(categories->count(dataId.Get<EventCategory>())
                     && subCategories->count(dataId.Get<EventSubCategory>())
@@ -294,7 +296,8 @@ private:
             std::cout << hist_name << " ";
             const std::string df_hist_name = hist_name == "mva_score" ? "all_mva_scores" : hist_name;
             const std::vector<std::string> branches = {"dataIds", "all_weights", "category_storage", "vbf_tag",
-                                                       df_hist_name};
+                                                       "has_b_pair", "SVfit_p4", "MET_p4", "m_bb", "m_tt_vis",
+                                                       "kinFit_convergence",df_hist_name};
             //const std::vector<std::string> branches = {"category_storage", df_hist_name};
             AnaDataFiller filter(tupleReader, anaDataCollection, ana_setup.categories, subCategories,
                                  ana_setup.unc_sources, hist_name, limitVariables.count(hist_name));
@@ -308,19 +311,23 @@ private:
             if(bbtautau::AnaTupleReader::BoolBranches.count(df_hist_name))
                 //result = df.Book< bbtautau::AnaTupleReader::category_storage,
                 result = df.Book<std::vector<size_t>, std::vector<double>, bbtautau::AnaTupleReader::category_storage,
-                        DiscriminatorWP, bool>(std::move(filter), branches);
+                        DiscriminatorWP, bool, LorentzVectorM, LorentzVectorM, double, double, int,
+                        bool>(std::move(filter), branches);
             else if(bbtautau::AnaTupleReader::IntBranches.count(df_hist_name))
                 //result = df.Book< bbtautau::AnaTupleReader::category_storage,
                 result = df.Book<std::vector<size_t>, std::vector<double>, bbtautau::AnaTupleReader::category_storage,
-                        DiscriminatorWP, int>(std::move(filter), branches);
+                        DiscriminatorWP, bool, LorentzVectorM, LorentzVectorM, double, double, int,
+                        int>(std::move(filter), branches);
             else if(is_defined_column(df, hist_name))
                 //result = df.Book< bbtautau::AnaTupleReader::category_storage,
                 result = df.Book<std::vector<size_t>, std::vector<double>, bbtautau::AnaTupleReader::category_storage,
-                        DiscriminatorWP, double>(std::move(filter), branches);
+                        DiscriminatorWP, bool, LorentzVectorM, LorentzVectorM, double, double, int,
+                        double>(std::move(filter), branches);
             else
                 //result = df.Book<bbtautau::AnaTupleReader::category_storage,
                 result = df.Book<std::vector<size_t>, std::vector<double>, bbtautau::AnaTupleReader::category_storage,
-                        DiscriminatorWP, float>(std::move(filter), branches);
+                        DiscriminatorWP, bool, LorentzVectorM, LorentzVectorM, double, double, int,
+                        float>(std::move(filter), branches);
             results.push_back(result);
         }
         std::cout << std::endl;
