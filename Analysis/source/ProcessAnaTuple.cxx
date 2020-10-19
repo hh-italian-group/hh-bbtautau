@@ -175,7 +175,7 @@ private:
                   double m_bb, double m_tt_vis, int kinFit_convergence, T&& value) const
         {
 
-            static const std::map<DiscriminatorWP, size_t> bjet_counts = {{DiscriminatorWP::Loose,
+            const std::map<DiscriminatorWP, size_t> bjet_counts = {{DiscriminatorWP::Loose,
                                                                                    category_storage.num_btag_loose},
                                                                                   {DiscriminatorWP::Medium,
                                                                                    category_storage.num_btag_medium},
@@ -219,8 +219,11 @@ private:
 
                     for(const auto& subCategory : *subCategories) {
                         if(!evtSubCategory.Implies(subCategory)) continue;
-                        for (auto dataId_hash : dataId_hash_vec){
-                            for (auto weight : weight_vec) {
+                        for (size_t i=0; i<dataId_hash_vec.size(); i++){
+                            auto dataId_hash = dataId_hash_vec.at(i);
+                            const auto& dataId = tupleReader->GetDataIdByHash(dataId_hash);
+                            if(dataId.Get<EventCategory>() != EventCategory::Parse("2j")) continue;
+                            auto weight = weight_vec.at(i);
                             Hist* hist = GetHistogram(dataId_hash);
                             if(hist) {
                                 auto x = value;
@@ -231,7 +234,6 @@ private:
 
                                 std::lock_guard<Hist::Mutex> lock(hist->GetMutex());
                                 hist->Fill(x, weight);
-                                }
                             }
                         }
                     }
