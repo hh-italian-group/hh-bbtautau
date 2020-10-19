@@ -175,18 +175,20 @@ private:
                                       DiscriminatorWP::Medium,
                                       category_storage.is_boosted,
                                       category_storage.is_vbf);
-            size_t dataId_hash = dataId_hash_vec.at(0);
-            double weight = weight_vec.at(0);
-            Hist* hist = GetHistogram(dataId_hash, evtCategory);
-            if(hist) {
-                auto x = value;
-                /* if(is_mva_score) {
-                    const auto& dataId = tupleReader->GetDataIdByHash(dataId_hash);
-                    x = static_cast<T>(tupleReader->GetNormalizedMvaScore(dataId, static_cast<float>(x)));
-                }*/
+            for (auto dataId_hash : dataId_hash_vec){
+                for (auto weight : weight_vec) {
+                Hist* hist = GetHistogram(dataId_hash, evtCategory);
+                    if(hist) {
+                        auto x = value;
+                        /* if(is_mva_score) {
+                            const auto& dataId = tupleReader->GetDataIdByHash(dataId_hash);
+                            x = static_cast<T>(tupleReader->GetNormalizedMvaScore(dataId, static_cast<float>(x)));
+                        }*/
 
-                std::lock_guard<Hist::Mutex> lock(hist->GetMutex());
-                hist->Fill(x, weight);
+                    std::lock_guard<Hist::Mutex> lock(hist->GetMutex());
+                    hist->Fill(x, weight);
+                    }
+                }
             }
             //(int) slot;
         }
