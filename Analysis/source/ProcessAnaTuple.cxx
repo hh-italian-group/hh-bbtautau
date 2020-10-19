@@ -172,7 +172,7 @@ private:
         void Exec(unsigned int slot, std::vector<size_t> dataId_hash_vec, std::vector<double> weight_vec,
                   bbtautau::AnaTupleReader::category_storage category_storage, DiscriminatorWP vbf_tag,
                   bool has_b_pair, const LorentzVectorM& SVfit_p4, const LorentzVectorM& MET_p4,
-                  double mbb, double m_tt_vis, int kinFit_convergence, T&& value) const
+                  double m_bb, double m_tt_vis, int kinFit_convergence, T&& value) const
         {
 
             static const std::map<DiscriminatorWP, size_t> bjet_counts = {{DiscriminatorWP::Loose,
@@ -189,7 +189,7 @@ private:
                 if(has_b_pair) {
                     if(category.HasBoostConstraint() && category.IsBoosted()) {
                         if(ana_setup.use_svFit) {
-                            const bool isInsideBoostedCut = IsInsideBoostedMassWindow(SVfit_p4.M(), mbb);
+                            const bool isInsideBoostedCut = IsInsideBoostedMassWindow(SVfit_p4.M(), m_bb);
                             evtSubCategory.SetCutResult(SelectionCut::mh, isInsideBoostedCut);
                         }
                     } else {
@@ -199,16 +199,16 @@ private:
                             const bool cut_result = ana_setup.use_svFit
                                 //&& event.GetSVFitResults(ana_setup.allow_calc_svFit).has_valid_momentum
                                 && ana_setup.massWindowParams.at(SelectionCut::mh).IsInside(
-                                        SVfit_p4.M(), mbb);
+                                        SVfit_p4.M(), m_bb);
                             evtSubCategory.SetCutResult(SelectionCut::mh, cut_result);
                         }
                         if(ana_setup.massWindowParams.count(SelectionCut::mhVis))
                             evtSubCategory.SetCutResult(SelectionCut::mhVis,ana_setup.massWindowParams.at(SelectionCut::mhVis)
-                                    .IsInside(m_tt_vis, mbb));
+                                    .IsInside(m_tt_vis, m_bb));
 
                         if(ana_setup.massWindowParams.count(SelectionCut::mhMET))
                             evtSubCategory.SetCutResult(SelectionCut::mhMET,ana_setup.massWindowParams.at(SelectionCut::mhMET)
-                                    .IsInside((SVfit_p4+MET_p4).M(), mbb));
+                                    .IsInside((SVfit_p4+MET_p4).M(), m_bb));
 
                     }
                     if(ana_setup.use_kinFit)
