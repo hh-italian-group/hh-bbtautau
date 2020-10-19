@@ -135,6 +135,7 @@ private:
         const bbtautau::AnaTupleReader* tupleReader;
         AnaDataCollection* anaDataCollection;
         const EventCategorySet* categories;
+        const EventCategorySet* categories_base;
         const EventSubCategorySet* subCategories;
         const std::set<UncertaintySource>* unc_sources;
         std::string hist_name;
@@ -143,10 +144,12 @@ private:
         std::shared_ptr<Mutex> mutex;
 
         AnaDataFiller(const bbtautau::AnaTupleReader& _tupleReader, AnaDataCollection& _anaDataCollection,
-                      const EventCategorySet& _categories, const EventSubCategorySet& _subCategories,
+                      const EventCategorySet& _categories, const EventCategorySet& _categories_base,
+                      const EventSubCategorySet& _subCategories,
                       const std::set<UncertaintySource>& _unc_sources,
                       const std::string& _hist_name, bool _is_limit_var) :
                 tupleReader(&_tupleReader), anaDataCollection(&_anaDataCollection), categories(&_categories),
+                categories_base(&_categories_base),
                 subCategories(&_subCategories), unc_sources(&_unc_sources), hist_name(_hist_name),
                 is_mva_score(_hist_name == "mva_score"), is_limit_var(_is_limit_var),
                 histograms(std::make_shared<HistMap>()), mutex(std::make_shared<Mutex>()) {}
@@ -169,26 +172,35 @@ private:
         template<typename T>
         void Exec(unsigned int slot, std::vector<size_t> dataId_hash_vec, std::vector<double> weight_vec, bbtautau::AnaTupleReader::category_storage category_storage, T&& value) const
         {
-            EventCategory evtCategory(static_cast<size_t>(category_storage.num_jets),
-                                      static_cast<size_t>(category_storage.num_btag_medium),
-                                      true,
-                                      DiscriminatorWP::Medium,
-                                      category_storage.is_boosted,
-                                      category_storage.is_vbf);
-            for (auto dataId_hash : dataId_hash_vec){
-                for (auto weight : weight_vec) {
-                Hist* hist = GetHistogram(dataId_hash, evtCategory);
-                    if(hist) {
-                        auto x = value;
-                        /* if(is_mva_score) {
-                            const auto& dataId = tupleReader->GetDataIdByHash(dataId_hash);
-                            x = static_cast<T>(tupleReader->GetNormalizedMvaScore(dataId, static_cast<float>(x)));
-                        }*/
 
-                    std::lock_guard<Hist::Mutex> lock(hist->GetMutex());
-                    hist->Fill(x, weight);
+            static const std::map<DiscriminatorWP, size_t> bjet_counts = {{DiscriminatorWP::Loose,
+                                                                                   category_storage.num_btag_loose},
+                                                                                  {DiscriminatorWP::Medium,
+                                                                                   category_storage.num_btag_medium},
+                                                                                  {DiscriminatorWP::Tight,
+                                                                                   category_storage.num_btag_tight}};
+
+            for(const auto& category : categories_base) {
+                if(category.Contains(category_storage.num_jets, bjet_counts, category_storage.is_vbf,
+                                     category_storage.is_boosted)) {
+                    for(const auto& subCategory : subCategories) {
+                        for (auto dataId_hash : dataId_hash_vec){
+                            for (auto weight : weight_vec) {
+                                Hist* hist = GetHistogram(dataId_hash);
+                                if(hist) {
+                                    auto x = value;
+                                    /* if(is_mva_score) {
+                                        const auto& dataId = tupleReader->GetDataIdByHash(dataId_hash);
+                                        x = static_cast<T>(tupleReader->GetNormalizedMvaScore(dataId, static_cast<float>(x)));
+                                    }*/
+
+                                std::lock_guard<Hist::Mutex> lock(hist->GetMutex());
+                                hist->Fill(x, weight);
+                                }
+                            }
+                        }
                     }
-                }
+                 }
             }
             //(int) slot;
         }
@@ -196,7 +208,7 @@ private:
         void Merge(TList*) {}
 
     private:
-        Hist* GetHistogram(size_t dataId_hash, EventCategory evtCategory) const
+        Hist* GetHistogram(size_t dataId_hash) const
         {
             std::lock_guard<Mutex> lock(*mutex);
             auto iter = histograms->find(dataId_hash);
@@ -204,7 +216,7 @@ private:
                 return iter->second;
             const auto& dataId = tupleReader->GetDataIdByHash(dataId_hash);
             Hist* hist = nullptr;
-            if(categories->count(evtCategory)
+            if(categories->count(dataId.Get<EventCategory>())
                     && subCategories->count(dataId.Get<EventSubCategory>())
                     && unc_sources->count(dataId.Get<UncertaintySource>())
                     && (is_limit_var || dataId.Get<UncertaintyScale>() == UncertaintyScale::Central)) {
