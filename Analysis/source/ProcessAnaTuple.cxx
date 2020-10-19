@@ -180,10 +180,10 @@ private:
                                                                                   {DiscriminatorWP::Tight,
                                                                                    category_storage.num_btag_tight}};
 
-            for(const auto& category : categories_base) {
+            for(const auto& category : *categories_base) {
                 if(category.Contains(category_storage.num_jets, bjet_counts, category_storage.is_vbf,
                                      category_storage.is_boosted)) {
-                    for(const auto& subCategory : subCategories) {
+                    for(const auto& subCategory : *subCategories) {
                         for (auto dataId_hash : dataId_hash_vec){
                             for (auto weight : weight_vec) {
                                 Hist* hist = GetHistogram(dataId_hash);
@@ -258,7 +258,7 @@ private:
             const std::string df_hist_name = hist_name == "mva_score" ? "all_mva_scores" : hist_name;
             const std::vector<std::string> branches = {"dataIds", "all_weights", "category_storage", df_hist_name};
             //const std::vector<std::string> branches = {"category_storage", df_hist_name};
-            AnaDataFiller filter(tupleReader, anaDataCollection, ana_setup.categories, subCategories,
+            AnaDataFiller filter(tupleReader, anaDataCollection, ana_setup.categories, ana_setup.categories_base, subCategories,
                                  ana_setup.unc_sources, hist_name, limitVariables.count(hist_name));
             auto df = get_df(hist_name);
             ROOT::RDF::RResultPtr<bool> result;
