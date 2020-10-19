@@ -185,7 +185,7 @@ private:
                 std::lock_guard<Hist::Mutex> lock(hist->GetMutex());
                 hist->Fill(x, weight);
             }
-            (int) slot;
+            //(int) slot;
         }
 
         void Merge(TList*) {}
