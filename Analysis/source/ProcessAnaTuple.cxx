@@ -256,7 +256,7 @@ private:
         void Merge(TList*) {}
 
     private:
-        Hist* GetHistogram(DataId dataId) const
+        Hist* GetHistogram(const DataId& dataId) const
         {
             std::lock_guard<Mutex> lock(*mutex);
             auto iter = histograms->find(dataId);
