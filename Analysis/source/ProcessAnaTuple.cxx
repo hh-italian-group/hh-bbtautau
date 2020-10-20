@@ -155,9 +155,8 @@ private:
                 tupleReader(&_tupleReader), anaDataCollection(&_anaDataCollection), categories(&_categories),
                 subCategories(&_subCategories), unc_sources(&_unc_sources), hist_name(_hist_name),
                 is_mva_score(_hist_name == "mva_score"), is_limit_var(_is_limit_var),
-                histograms(std::make_shared<HistMap>()), massWindowParams(_massWindowParams),
-                use_kinFit(_use_kinFit), use_svFit(_use_svFit),
-                mutex(std::make_shared<Mutex>()) {}
+                massWindowParams(_massWindowParams), use_kinFit(_use_kinFit), use_svFit(_use_svFit),
+                histograms(std::make_shared<HistMap>()), mutex(std::make_shared<Mutex>()) {}
         AnaDataFiller(AnaDataFiller&) = delete;
         AnaDataFiller(AnaDataFiller&&) = default;
         //AnaDataFiller& operator=(const AnaDataFiller&) = default;

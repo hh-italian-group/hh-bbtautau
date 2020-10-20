@@ -439,7 +439,7 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
         return vbf_tag;
     };
 
-    Define(df, "vbf_tag",vbf_tag,{"VBF1_p4","VBF2_p4","is_vbf","pass_vbf_trigger"},true);
+    Define(df, "vbf_tag",vbf_tag,{"VBF1_p4","VBF2_p4","is_vbf","pass_VBF_trigger"},true);
 
 
     const auto return_category_storage = [] (float num_jets, int num_btag_loose, int num_btag_medium,
