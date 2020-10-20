@@ -423,12 +423,12 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
     Define(df, "Htt_p4", SumP4, { "tau1_p4", "tau2_p4" }, true);
     Define(df, "MET_p4", ReturnMETP4, {"MET_pt", "MET_phi"}, true);
     Define(df, "HttMET_p4", SumP4, { "Htt_p4", "MET_p4" }, true);
-    Define(df, "m_tt_vis", GetMass, {"Htt_p4"});
+    Define(df, "m_tt_vis", GetMass, {"Htt_p4"}, true);
 
     DefineP4(df, "b1");
     DefineP4(df, "b2");
     Define(df, "Hbb_p4", SumP4, { "b1_p4", "b2_p4" }, true);
-    Define(df, "m_bb", GetMass, {"Hbb_p4"});
+    Define(df, "m_bb", GetMass, {"Hbb_p4"}, true);
 
     DefineP4(df, "SVfit");
 
