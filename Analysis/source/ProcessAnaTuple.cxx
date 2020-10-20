@@ -233,7 +233,7 @@ private:
                             const auto& dataId = tupleReader->GetDataIdByHash(dataId_hash);
                             static const EventCategory evtCategory_2j = EventCategory::Parse("2j");
                             if(dataId.Get<EventCategory>() != evtCategory_2j) continue;
-                            const auto& dataId_correct = dataId.Set(evtCategory).Set(evtSubCategory);
+                            const auto& dataId_correct = dataId.Set(category).Set(evtSubCategory);
                             auto weight = weight_vec.at(i);
                             Hist* hist = GetHistogram(dataId_correct);
                             if(hist) {
