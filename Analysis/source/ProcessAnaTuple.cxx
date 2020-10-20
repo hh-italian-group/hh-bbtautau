@@ -174,6 +174,11 @@ private:
 
         std::string GetActionName() {return "AnaDataFiller";}
 
+        Result_t& PartialUpdate(unsigned int slot){
+            Result_t result{true};
+            return result;
+        }
+
 
         template<typename T>
         void Exec(unsigned int slot, std::vector<size_t> dataId_hash_vec, std::vector<double> weight_vec,
