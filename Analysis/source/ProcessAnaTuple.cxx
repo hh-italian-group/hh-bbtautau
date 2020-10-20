@@ -146,6 +146,7 @@ private:
         bool is_mva_score, is_limit_var;
         std::shared_ptr<HistMap> histograms;
         std::shared_ptr<Mutex> mutex;
+        Result_t result{true};
 
         AnaDataFiller(const bbtautau::AnaTupleReader& _tupleReader, AnaDataCollection& _anaDataCollection,
                       const EventCategorySet& _categories, const EventSubCategorySet& _subCategories,
@@ -174,10 +175,7 @@ private:
 
         std::string GetActionName() {return "AnaDataFiller";}
 
-        Result_t& PartialUpdate(unsigned int slot){
-            Result_t result{true};
-            return result;
-        }
+        Result_t& PartialUpdate(unsigned int slot){ return result; }
 
 
         template<typename T>
