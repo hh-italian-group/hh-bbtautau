@@ -149,7 +149,7 @@ private:
         AnaDataFiller(const bbtautau::AnaTupleReader& _tupleReader, AnaDataCollection& _anaDataCollection,
                       const EventCategorySet& _categories, const EventSubCategorySet& _subCategories,
                       std::map<SelectionCut,analysis::EllipseParameters> _massWindowParams,
-                      bool _use_kinFit, bool _use_svFit
+                      bool _use_kinFit, bool _use_svFit,
                       const std::set<UncertaintySource>& _unc_sources,
                       const std::string& _hist_name, bool _is_limit_var) :
                 tupleReader(&_tupleReader), anaDataCollection(&_anaDataCollection), categories(&_categories),
@@ -306,7 +306,7 @@ private:
                                                        "kinFit_convergence",df_hist_name};
             //const std::vector<std::string> branches = {"category_storage", df_hist_name};
             AnaDataFiller filter(tupleReader, anaDataCollection, ana_setup.categories, subCategories,
-                                 ana_setup.massWindowParams, ana_setup.use_kinFit, ana_setup.use_svFit
+                                 ana_setup.massWindowParams, ana_setup.use_kinFit, ana_setup.use_svFit,
                                  ana_setup.unc_sources, hist_name, limitVariables.count(hist_name));
             auto df = get_df(hist_name);
             ROOT::RDF::RResultPtr<bool> result;
