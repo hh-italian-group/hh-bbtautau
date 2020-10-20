@@ -129,7 +129,8 @@ private:
         using Result_t = bool;
         using Hist = EventAnalyzerData::Entry::Hist;
         using Mutex = Hist::Mutex;
-        using HistMap = std::map<size_t, Hist*>;
+        using DataId = bbtautau::AnaTupleReader::DataId;
+        using HistMap = std::map<DataId, Hist*>;
         using LorentzVectorM = ROOT::Math::LorentzVector<ROOT::Math::PtEtaPhiM4D<double>>;
         // template <typename T> using VecType = std::vector<T>;
 
@@ -223,6 +224,8 @@ private:
                     }
 
 
+
+
                     for(const auto& subCategory : *subCategories) {
                         if(!evtSubCategory.Implies(subCategory)) continue;
                         for (size_t i=0; i<dataId_hash_vec.size(); i++){
@@ -230,8 +233,9 @@ private:
                             const auto& dataId = tupleReader->GetDataIdByHash(dataId_hash);
                             static const EventCategory evtCategory_2j = EventCategory::Parse("2j");
                             if(dataId.Get<EventCategory>() != evtCategory_2j) continue;
+                            const auto& dataId_correct = dataId.Set(evtCategory).Set(evtSubCategory);
                             auto weight = weight_vec.at(i);
-                            Hist* hist = GetHistogram(dataId_hash,category,subCategory);
+                            Hist* hist = GetHistogram(dataId_correct);
                             if(hist) {
                                 auto x = value;
                                 /* if(is_mva_score) {
@@ -252,14 +256,14 @@ private:
         void Merge(TList*) {}
 
     private:
-        Hist* GetHistogram(size_t dataId_hash, EventCategory evtCategory, EventSubCategory evtSubCategory) const
+        Hist* GetHistogram(DataId dataId) const
         {
             std::lock_guard<Mutex> lock(*mutex);
-            auto iter = histograms->find(dataId_hash);
+            auto iter = histograms->find(dataId);
             if(iter != histograms->end())
                 return iter->second;
-            const auto& dataId_temp = tupleReader->GetDataIdByHash(dataId_hash);
-            const auto& dataId = dataId_temp.Set(evtCategory).Set(evtSubCategory);
+            //const auto& dataId_temp = tupleReader->GetDataIdByHash(dataId_hash);
+            //const auto& dataId = dataId_temp.Set(evtCategory).Set(evtSubCategory);
             Hist* hist = nullptr;
             if(categories->count(dataId.Get<EventCategory>())
                     && subCategories->count(dataId.Get<EventSubCategory>())
@@ -267,7 +271,7 @@ private:
                     && (is_limit_var || dataId.Get<UncertaintyScale>() == UncertaintyScale::Central)) {
                  hist = &anaDataCollection->Get(dataId).GetHistogram(hist_name)();
              }
-            (*histograms)[dataId_hash] = hist;
+            (*histograms)[dataId] = hist;
             return hist;
         }
     };
