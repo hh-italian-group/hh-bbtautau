@@ -137,6 +137,9 @@ private:
         AnaDataCollection* anaDataCollection;
         const EventCategorySet* categories;
         const EventSubCategorySet* subCategories;
+        std::map<SelectionCut,analysis::EllipseParameters> massWindowParams;
+        bool use_kinFit{false}, use_svFit{false};
+
         const std::set<UncertaintySource>* unc_sources;
         std::string hist_name;
         bool is_mva_score, is_limit_var;
@@ -144,14 +147,16 @@ private:
         std::shared_ptr<Mutex> mutex;
 
         AnaDataFiller(const bbtautau::AnaTupleReader& _tupleReader, AnaDataCollection& _anaDataCollection,
-                      const EventCategorySet& _categories, const EventCategorySet& _categories_base,
-                      const EventSubCategorySet& _subCategories,
+                      const EventCategorySet& _categories, const EventSubCategorySet& _subCategories,
                       const std::set<UncertaintySource>& _unc_sources,
-                      const std::string& _hist_name, bool _is_limit_var) :
+                      const std::string& _hist_name, bool _is_limit_var,
+                      std::map<SelectionCut,analysis::EllipseParameters> _massWindowParams,
+                      bool _use_kinFit, bool _use_svFit) :
                 tupleReader(&_tupleReader), anaDataCollection(&_anaDataCollection), categories(&_categories),
                 subCategories(&_subCategories), unc_sources(&_unc_sources), hist_name(_hist_name),
                 is_mva_score(_hist_name == "mva_score"), is_limit_var(_is_limit_var),
-                histograms(std::make_shared<HistMap>()), mutex(std::make_shared<Mutex>()) {}
+                histograms(std::make_shared<HistMap>()), mutex(std::make_shared<Mutex>()),
+                massWindowParams(_massWindowParams), use_kinFit(_use_kinFit), use_svFit(_use_svFit) {}
         AnaDataFiller(AnaDataFiller&) = delete;
         AnaDataFiller(AnaDataFiller&&) = default;
         //AnaDataFiller& operator=(const AnaDataFiller&) = default;
@@ -183,35 +188,35 @@ private:
                                                                                    category_storage.num_btag_tight}};
 
             for(const auto& category : *categories) {
-                if(!category.Contains(category_storage.num_jets, bjet_counts, category_storage.is_vbf,
+                if(!category.Contains(static_cast<size_t>(category_storage.num_jets), bjet_counts, category_storage.is_vbf,
                                      category_storage.is_boosted,vbf_tag) ) continue;
                 EventSubCategory evtSubCategory;
                 if(has_b_pair) {
                     if(category.HasBoostConstraint() && category.IsBoosted()) {
-                        if(ana_setup.use_svFit) {
-                            const bool isInsideBoostedCut = IsInsideBoostedMassWindow(SVfit_p4.M(), m_bb);
+                        if(use_svFit) {
+                            const bool isInsideBoostedCut = cuts::hh_bbtautau_Run2::hh_tag::IsInsideBoostedMassWindow(SVfit_p4.M(), m_bb);
                             evtSubCategory.SetCutResult(SelectionCut::mh, isInsideBoostedCut);
                         }
                     } else {
-                        if(!ana_setup.use_svFit && ana_setup.massWindowParams.count(SelectionCut::mh))
+                        if(!use_svFit && massWindowParams.count(SelectionCut::mh))
                             throw exception("Category mh inconsistent with the false requirement of SVfit.");
                         if(ana_setup.massWindowParams.count(SelectionCut::mh)) {
-                            const bool cut_result = ana_setup.use_svFit
+                            const bool cut_result = use_svFit
                                 //&& event.GetSVFitResults(ana_setup.allow_calc_svFit).has_valid_momentum
-                                && ana_setup.massWindowParams.at(SelectionCut::mh).IsInside(
+                                && massWindowParams.at(SelectionCut::mh).IsInside(
                                         SVfit_p4.M(), m_bb);
                             evtSubCategory.SetCutResult(SelectionCut::mh, cut_result);
                         }
-                        if(ana_setup.massWindowParams.count(SelectionCut::mhVis))
-                            evtSubCategory.SetCutResult(SelectionCut::mhVis,ana_setup.massWindowParams.at(SelectionCut::mhVis)
+                        if(massWindowParams.count(SelectionCut::mhVis))
+                            evtSubCategory.SetCutResult(SelectionCut::mhVis,massWindowParams.at(SelectionCut::mhVis)
                                     .IsInside(m_tt_vis, m_bb));
 
-                        if(ana_setup.massWindowParams.count(SelectionCut::mhMET))
-                            evtSubCategory.SetCutResult(SelectionCut::mhMET,ana_setup.massWindowParams.at(SelectionCut::mhMET)
+                        if(massWindowParams.count(SelectionCut::mhMET))
+                            evtSubCategory.SetCutResult(SelectionCut::mhMET,massWindowParams.at(SelectionCut::mhMET)
                                     .IsInside((SVfit_p4+MET_p4).M(), m_bb));
 
                     }
-                    if(ana_setup.use_kinFit)
+                    if(use_kinFit)
                         evtSubCategory.SetCutResult(SelectionCut::KinematicFitConverged,
                                                       kinFit_convergence);
                     }
@@ -300,7 +305,8 @@ private:
                                                        "kinFit_convergence",df_hist_name};
             //const std::vector<std::string> branches = {"category_storage", df_hist_name};
             AnaDataFiller filter(tupleReader, anaDataCollection, ana_setup.categories, subCategories,
-                                 ana_setup.unc_sources, hist_name, limitVariables.count(hist_name));
+                                 ana_setup.unc_sources, hist_name, limitVariables.count(hist_name),
+                                 ana_setup.massWindowParams, ana_setup.use_kinFit, ana_setup.use_svFit);
             auto df = get_df(hist_name);
             ROOT::RDF::RResultPtr<bool> result;
             //if(filter.is_mva_score)
