@@ -148,14 +148,15 @@ private:
 
         AnaDataFiller(const bbtautau::AnaTupleReader& _tupleReader, AnaDataCollection& _anaDataCollection,
                       const EventCategorySet& _categories, const EventSubCategorySet& _subCategories,
-                      const std::set<UncertaintySource>& _unc_sources,
-                      const std::string& _hist_name, bool _is_limit_var,
                       std::map<SelectionCut,analysis::EllipseParameters> _massWindowParams,
-                      bool _use_kinFit, bool _use_svFit) :
+                      bool _use_kinFit, bool _use_svFit
+                      const std::set<UncertaintySource>& _unc_sources,
+                      const std::string& _hist_name, bool _is_limit_var) :
                 tupleReader(&_tupleReader), anaDataCollection(&_anaDataCollection), categories(&_categories),
-                subCategories(&_subCategories), unc_sources(&_unc_sources), hist_name(_hist_name),
-                is_mva_score(_hist_name == "mva_score"), is_limit_var(_is_limit_var),
+                subCategories(&_subCategories),
                 massWindowParams(_massWindowParams), use_kinFit(_use_kinFit), use_svFit(_use_svFit),
+                unc_sources(&_unc_sources), hist_name(_hist_name),
+                is_mva_score(_hist_name == "mva_score"), is_limit_var(_is_limit_var),
                 histograms(std::make_shared<HistMap>()), mutex(std::make_shared<Mutex>()) {}
         AnaDataFiller(AnaDataFiller&) = delete;
         AnaDataFiller(AnaDataFiller&&) = default;
@@ -305,8 +306,8 @@ private:
                                                        "kinFit_convergence",df_hist_name};
             //const std::vector<std::string> branches = {"category_storage", df_hist_name};
             AnaDataFiller filter(tupleReader, anaDataCollection, ana_setup.categories, subCategories,
-                                 ana_setup.unc_sources, hist_name, limitVariables.count(hist_name),
-                                 ana_setup.massWindowParams, ana_setup.use_kinFit, ana_setup.use_svFit);
+                                 ana_setup.massWindowParams, ana_setup.use_kinFit, ana_setup.use_svFit
+                                 ana_setup.unc_sources, hist_name, limitVariables.count(hist_name));
             auto df = get_df(hist_name);
             ROOT::RDF::RResultPtr<bool> result;
             //if(filter.is_mva_score)

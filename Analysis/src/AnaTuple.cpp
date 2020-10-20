@@ -457,8 +457,8 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
     Define(df_bb, "Hbb_p4", SumP4, { "b1_p4", "b2_p4" }, true);
 
     auto df_vbf = Filter(df_bb, "has_VBF_pair");
-    DefineP4(df_vbf, "VBF1");
-    DefineP4(df_vbf, "VBF2");
+    //DefineP4(df_vbf, "VBF1");
+    //DefineP4(df_vbf, "VBF2");
 
     DefineP4(df, "central_jet1");
     DefineP4(df, "central_jet2");
