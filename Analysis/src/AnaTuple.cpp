@@ -423,6 +423,15 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
     Define(df, "Htt_p4", SumP4, { "tau1_p4", "tau2_p4" }, true);
     Define(df, "MET_p4", ReturnMETP4, {"MET_pt", "MET_phi"}, true);
     Define(df, "HttMET_p4", SumP4, { "Htt_p4", "MET_p4" }, true);
+    Define(df, "m_tt_vis", GetMass, {"Htt_p4"});
+
+    DefineP4(df, "b1");
+    DefineP4(df, "b2");
+    Define(df, "Hbb_p4", SumP4, { "b1_p4", "b2_p4" }, true);
+    Define(df, "m_bb", GetMass, {"Hbb_p4"});
+
+    DefineP4(df, "SVfit");
+
 
 
     DefineP4(df, "VBF1");
@@ -452,9 +461,7 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
 
 
     auto df_bb = Filter(df, "has_b_pair");
-    DefineP4(df_bb, "b1");
-    DefineP4(df_bb, "b2");
-    Define(df_bb, "Hbb_p4", SumP4, { "b1_p4", "b2_p4" }, true);
+
 
     auto df_vbf = Filter(df_bb, "has_VBF_pair");
     //DefineP4(df_vbf, "VBF1");
@@ -467,12 +474,12 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
     DefineP4(df, "central_jet5");
 
     auto df_sv = FilterInt(df, "SVfit_valid");
-    DefineP4(df_sv, "SVfit");
+
 
     auto df_bb_sv = FilterInt(df_bb, "SVfit_valid");
-    DefineP4(df_bb_sv, "SVfit");
+    //DefineP4(df_bb_sv, "SVfit");
 
-    Define(df, "m_tt_vis", GetMass, {"Htt_p4"});
+
     Define(df, "pt_H_tt", GetPt, {"Htt_p4"});
     Define(df, "eta_H_tt", GetEta, {"Htt_p4"});
     Define(df, "phi_H_tt", GetPhi, {"Htt_p4"});
@@ -495,7 +502,7 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
     Define(df, "mt_tot", [](const LorentzVectorM& tau1_p4, const LorentzVectorM& tau2_p4, const LorentzVectorM& MET_p4)
         { return Calculate_TotalMT(tau1_p4, tau2_p4, MET_p4); }, {"tau1_p4", "tau2_p4", "MET_p4"});
 
-    Define(df_bb, "m_bb", GetMass, {"Hbb_p4"});
+
     Define(df_bb, "pt_H_bb", GetPt, {"Hbb_p4"});
     Define(df_bb_sv, "dphi_hbbhtautau", DeltaPhi, {"Hbb_p4", "SVfit_p4"});
     Define(df_bb_sv, "deta_hbbhtautau", DeltaEta, {"Hbb_p4", "SVfit_p4"});
