@@ -180,7 +180,7 @@ private:
 
         template<typename T>
         void Exec(unsigned int slot, std::vector<size_t> dataId_hash_vec, std::vector<double> weight_vec,
-                  bbtautau::AnaTupleReader::category_storage category_storage, DiscriminatorWP vbf_tag,
+                  bbtautau::AnaTupleReader::category_storage category_storage, int vbf_tag_raw,
                   bool has_b_pair, LorentzVectorM SVfit_p4, LorentzVectorM MET_p4,
                   double m_bb, double m_tt_vis, int kinFit_convergence, T&& value) const
         {
@@ -191,6 +191,9 @@ private:
                                                                                    category_storage.num_btag_medium},
                                                                                   {DiscriminatorWP::Tight,
                                                                                    category_storage.num_btag_tight}};
+
+            boost::optional<DiscriminatorWP> vbf_tag;
+            if(vbf_tag_raw > 0) vbf_tag = static_cast<DiscriminatorWP>(vbf_tag_raw);
 
             for(const auto& category : *categories) {
                 if(!category.Contains(static_cast<size_t>(category_storage.num_jets), bjet_counts, category_storage.is_vbf,
@@ -308,7 +311,7 @@ private:
         for(const auto& hist_name : activeVariables) {
             std::cout << hist_name << " ";
             const std::string df_hist_name = hist_name == "mva_score" ? "all_mva_scores" : hist_name;
-            const std::vector<std::string> branches = {"dataIds", "all_weights", "category_storage", "vbf_tag",
+            const std::vector<std::string> branches = {"dataIds", "all_weights", "category_storage", "vbf_tag_raw",
                                                        "has_b_pair", "SVfit_p4", "MET_p4", "m_bb", "m_tt_vis",
                                                        "kinFit_convergence",df_hist_name};
             //const std::vector<std::string> branches = {"category_storage", df_hist_name};
@@ -325,22 +328,22 @@ private:
             if(bbtautau::AnaTupleReader::BoolBranches.count(df_hist_name))
                 //result = df.Book< bbtautau::AnaTupleReader::category_storage,
                 result = df.Book<std::vector<size_t>, std::vector<double>, bbtautau::AnaTupleReader::category_storage,
-                        DiscriminatorWP, bool, LorentzVectorM, LorentzVectorM, double, double, int,
+                        int, bool, LorentzVectorM, LorentzVectorM, double, double, int,
                         bool>(std::move(filter), branches);
             else if(bbtautau::AnaTupleReader::IntBranches.count(df_hist_name))
                 //result = df.Book< bbtautau::AnaTupleReader::category_storage,
                 result = df.Book<std::vector<size_t>, std::vector<double>, bbtautau::AnaTupleReader::category_storage,
-                        DiscriminatorWP, bool, LorentzVectorM, LorentzVectorM, double, double, int,
+                        int, bool, LorentzVectorM, LorentzVectorM, double, double, int,
                         int>(std::move(filter), branches);
             else if(is_defined_column(df, hist_name))
                 //result = df.Book< bbtautau::AnaTupleReader::category_storage,
                 result = df.Book<std::vector<size_t>, std::vector<double>, bbtautau::AnaTupleReader::category_storage,
-                        DiscriminatorWP, bool, LorentzVectorM, LorentzVectorM, double, double, int,
+                        int, bool, LorentzVectorM, LorentzVectorM, double, double, int,
                         double>(std::move(filter), branches);
             else
                 //result = df.Book<bbtautau::AnaTupleReader::category_storage,
                 result = df.Book<std::vector<size_t>, std::vector<double>, bbtautau::AnaTupleReader::category_storage,
-                        DiscriminatorWP, bool, LorentzVectorM, LorentzVectorM, double, double, int,
+                        int, bool, LorentzVectorM, LorentzVectorM, double, double, int,
                         float>(std::move(filter), branches);
             results.push_back(result);
         }
