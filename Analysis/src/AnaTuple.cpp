@@ -8,7 +8,7 @@ namespace bbtautau {
 
 AnaTupleWriter::AnaTupleWriter(const std::string& file_name, Channel channel, bool _runKinFit, bool _runSVfit,
                                bool _allow_calc_svFit) :
-    file(root_ext::CreateRootFile(file_name, ROOT::kLZ4, 4)), tuple(ToString(channel), file.get(), false),
+    file(root_ext::CreateRootFile(file_name, ROOT::kLZMA, 9)), tuple(ToString(channel), file.get(), false),
     aux_tuple(file.get(), false), runKinFit(_runKinFit), runSVfit(_runSVfit), allow_calc_svFit(_allow_calc_svFit)
 {
 }
@@ -320,9 +320,31 @@ const AnaTupleReader::NameSet AnaTupleReader::IntBranches = {
     "central_jet4_hadronFlavour", "central_jet5_valid", "central_jet5_hadronFlavour"
 };
 
-AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names) :
-    file(root_ext::OpenRootFile(file_name)), tree(root_ext::ReadObject<TTree>(*file, ToString(channel))),
-    dataFrame(*tree), df(dataFrame)
+std::vector<std::shared_ptr<TFile>> AnaTupleReader::OpenFiles(const std::string& file_name,
+                                                              const std::vector<std::string>& input_friends)
+{
+    std::vector<std::shared_ptr<TFile>> files;
+    files.emplace_back(root_ext::OpenRootFile(file_name));
+    for(const std::string& friend_file_name : input_friends)
+        files.emplace_back(root_ext::OpenRootFile(friend_file_name));
+    return files;
+}
+
+std::vector<std::shared_ptr<TTree>> AnaTupleReader::ReadTrees(Channel channel,
+                                                              const std::vector<std::shared_ptr<TFile>>& files)
+{
+    std::vector<std::shared_ptr<TTree>> trees;
+    for(const auto& file : files) {
+        trees.emplace_back(root_ext::ReadObject<TTree>(*file, ToString(channel)));
+        if(trees.size() > 1)
+            trees.front()->AddFriend(trees.back().get());
+    }
+    return trees;
+}
+
+AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names,
+                               const std::vector<std::string>& input_friends) :
+        files(OpenFiles(file_name, input_friends)), trees(ReadTrees(channel, files)), dataFrame(*trees.front()), df(dataFrame)
 {
     static const NameSet support_branches = {
         "dataIds", "all_weights", "is_central_es", "sample_id", "all_mva_scores", "weight", "btag_weight",
@@ -346,9 +368,24 @@ AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, Na
                     active_var_names.insert(name);
             }
         }
+    } else {
+        for(const auto& var_name : active_var_names) {
+            if(var_name.back() == '+') {
+                const std::string name = var_name.substr(0, var_name.size() - 1);
+                for(const auto& column : df.GetColumnNames()) {
+                    if(column.rfind(name, 0) == 0)
+                        parametric_vars[name].insert(column);
+                }
+            }
+        }
+        for(const auto& [name, columns] : parametric_vars) {
+            active_var_names.erase(name + "+");
+            for(const auto& column : columns)
+                active_var_names.insert(column);
+        }
     }
 
-    AnaAuxTuple aux_tuple(file.get(), true);
+    AnaAuxTuple aux_tuple(files.front().get(), true);
     aux_tuple.GetEntry(0);
     ExtractDataIds(aux_tuple());
     ExtractMvaRanges(aux_tuple());
@@ -547,9 +584,14 @@ const AnaTupleReader::DataId& AnaTupleReader::GetDataIdByHash(Hash hash) const
     return iter->second;
 }
 
-size_t AnaTupleReader::GetNumberOfEntries() const { return static_cast<size_t>(tree->GetEntries()); }
+size_t AnaTupleReader::GetNumberOfEntries() const { return static_cast<size_t>(trees.front()->GetEntries()); }
 const AnaTupleReader::RDF& AnaTupleReader::GetDataFrame() const { return df; }
 const std::list<AnaTupleReader::RDF>& AnaTupleReader::GetSkimmedDataFrames() const { return skimmed_df; }
+
+const std::map<std::string, std::set<std::string>>& AnaTupleReader::GetParametricVariables() const
+{
+    return parametric_vars;
+}
 
 void AnaTupleReader::ExtractDataIds(const AnaAux& aux)
 {

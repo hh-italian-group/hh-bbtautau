@@ -20,6 +20,7 @@ struct AnalyzerArguments : CoreAnalyzerArguments {
     OPT_ARG(bool, draw, true);
     OPT_ARG(std::string, vars, "");
     OPT_ARG(size_t, n_parallel, 10);
+    run::Argument<std::vector<std::string>> input_friends{"input_friends", "", {}};
 };
 
 class ProcessAnaTuple : public EventAnalyzerCore {
@@ -30,7 +31,7 @@ public:
 
     ProcessAnaTuple(const AnalyzerArguments& _args) :
         EventAnalyzerCore(_args, _args.channel(), false), args(_args), activeVariables(ParseVarSet(args.vars())),
-        tupleReader(args.input(), args.channel(), activeVariables),
+        tupleReader(args.input(), args.channel(), activeVariables, args.input_friends()),
         outputFile(root_ext::CreateRootFile(args.output() + "_full.root"))
     {
         histConfig.Parse(FullPath(ana_setup.hist_cfg));
@@ -42,10 +43,38 @@ public:
             config_reader.ReadConfig(FullPath(ana_setup.unc_cfg));
         }
 
+        if(!args.input_friends().empty()) {
+            std::cout << "Input TTree friends:\n";
+            for(const std::string& file_name : args.input_friends())
+                std::cout << '\t' << file_name << '\n';
+            std::cout << std::endl;
+        }
+
+        if(!tupleReader.GetParametricVariables().empty()) {
+            std::cout << "Parametric variables:\n";
+            for(const auto& [name, columns] : tupleReader.GetParametricVariables()) {
+                std::cout << '\t' << name << ": ";
+                for(const auto& column : columns) {
+                    std::cout << column << " ";
+                }
+                std::cout << '\n';
+            }
+            std::cout << std::endl;
+        }
+
         if(args.shapes()) {
             for(const auto& limit_setup : ana_setup.limit_setup){
-                for(const auto& [es, var] : limit_setup.second) {
-                    if(!limitVariables.count(var) && !activeVariables.count(var)) {
+                for(const auto& [cat, var] : limit_setup.second) {
+                    if(limitVariables.count(var)) continue;
+                    bool var_found = false;
+                    if(activeVariables.count(var)) {
+                        var_found = true;
+                    } else if(var.back() == '+') {
+                        const std::string var_name = var.substr(0, var.size() - 1);
+                        var_found = tupleReader.GetParametricVariables().count(var_name);
+                    }
+
+                    if(!var_found) {
                         throw exception("Variable '%1%' is used in the limit setup '%2%', but it is not enabled."
                                         " Consider to enable it or run with option --shapes 0.")
                                         % var % limit_setup.first;
@@ -96,10 +125,10 @@ public:
             }
 
             if(args.shapes()) {
-                std::cout << "\t\tProducing inputs for limits..." << std::endl;
+                std::cout << "\tProducing inputs for limits..." << std::endl;
                 LimitsInputProducer limitsInputProducer(anaDataCollection, sample_descriptors,
                                                         cmb_sample_descriptors);
-                for(const auto& limit_setup : ana_setup.limit_setup){
+                for(const auto& limit_setup : ana_setup.limit_setup) {
                     std::cout << "\t\tsetup_name: " << limit_setup.first <<  std::endl;
                     for(const auto& subCategory : subCategories)
                         limitsInputProducer.Produce(args.output(), limit_setup.first, limit_setup.second, subCategory,
@@ -108,7 +137,7 @@ public:
                 }
             }
             if(args.draw()) {
-                std::cout << "\t\tCreating plots..." << std::endl;
+                std::cout << "\tCreating plots..." << std::endl;
                 PlotsProducer plotsProducer(anaDataCollection, samplesToDraw, FullPath(ana_setup.plot_cfg),
                                             ana_setup.plot_page_opt);
                 std::string pdf_prefix = args.output();
@@ -317,7 +346,7 @@ private:
             //const std::vector<std::string> branches = {"category_storage", df_hist_name};
             AnaDataFiller filter(tupleReader, anaDataCollection, ana_setup.categories, subCategories,
                                  ana_setup.massWindowParams, ana_setup.use_kinFit, ana_setup.use_svFit,
-                                 ana_setup.unc_sources, hist_name, limitVariables.count(hist_name));
+                                 ana_setup.unc_sources, hist_name, true) ; //limitVariables.count(hist_name));
             auto df = get_df(hist_name);
             ROOT::RDF::RResultPtr<bool> result;
             //if(filter.is_mva_score)
