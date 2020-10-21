@@ -482,8 +482,9 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
         if(is_VBF) {
             const bool is_tight = m_jj > cuts::hh_bbtautau_Run2::VBF::mass_jj_tight && pass_vbf_trigger;
             vbf_tag = is_tight ? DiscriminatorWP::Tight : DiscriminatorWP::Loose;
+            vbf_tag_raw = static_cast<int>(vbf_tag);
         }
-        vbf_tag_raw = static_cast<int>(vbf_tag);
+
         return vbf_tag_raw;
     };
 
