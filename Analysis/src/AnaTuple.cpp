@@ -441,12 +441,12 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
             bool pass_vbf_trigger) {
         int vbf_tag_raw = -1;
         const auto m_jj = (VBF1_p4 + VBF2_p4).M();
-        boost::optional<DiscriminatorWP> vbf_tag = DiscriminatorWP::Loose;
+        DiscriminatorWP vbf_tag = DiscriminatorWP::Loose;
         if(is_VBF) {
             const bool is_tight = m_jj > cuts::hh_bbtautau_Run2::VBF::mass_jj_tight && pass_vbf_trigger;
             vbf_tag = is_tight ? DiscriminatorWP::Tight : DiscriminatorWP::Loose;
         }
-        vbf_tag_raw = vbf_tag;
+        vbf_tag_raw = static_cast<int>(vbf_tag);
         return vbf_tag_raw;
     };
 
