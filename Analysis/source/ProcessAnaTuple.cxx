@@ -224,38 +224,48 @@ private:
             boost::optional<DiscriminatorWP> vbf_tag;
             if(vbf_tag_raw > 0) vbf_tag = static_cast<DiscriminatorWP>(vbf_tag_raw);
 
-            for(const auto& category : *categories) {
-                if(!category.Contains(static_cast<size_t>(category_storage.num_jets), bjet_counts, category_storage.is_vbf,
+            for (size_t i=0; i<dataId_hash_vec.size(); i++){
+
+                auto dataId_hash = dataId_hash_vec.at(i);
+                const auto& dataId = tupleReader->GetDataIdByHash(dataId_hash);
+                static const EventCategory evtCategory_2j = EventCategory::Parse("2j");
+                if((dataId.Get<EventCategory>() != evtCategory_2j)
+                        || !(unc_sources->count(dataId.Get<UncertaintySource>()))) continue;
+
+                auto weight = weight_vec.at(i);
+
+                for(const auto& category : *categories) {
+                    if(!category.Contains(static_cast<size_t>(category_storage.num_jets), bjet_counts, category_storage.is_vbf,
                                      category_storage.is_boosted,vbf_tag) ) continue;
-                EventSubCategory evtSubCategory;
-                if(has_b_pair) {
-                    if(category.HasBoostConstraint() && category.IsBoosted()) {
-                        if(use_svFit) {
-                            const bool isInsideBoostedCut = cuts::hh_bbtautau_Run2::hh_tag::IsInsideBoostedMassWindow(SVfit_p4.M(), m_bb);
-                            evtSubCategory.SetCutResult(SelectionCut::mh, isInsideBoostedCut);
-                        }
-                    } else {
-                        if(!use_svFit && massWindowParams.count(SelectionCut::mh))
-                            throw exception("Category mh inconsistent with the false requirement of SVfit.");
-                        if(massWindowParams.count(SelectionCut::mh)) {
-                            const bool cut_result = use_svFit
-                                //&& event.GetSVFitResults(ana_setup.allow_calc_svFit).has_valid_momentum
-                                && massWindowParams.at(SelectionCut::mh).IsInside(
-                                        SVfit_p4.M(), m_bb);
-                            evtSubCategory.SetCutResult(SelectionCut::mh, cut_result);
-                        }
-                        if(massWindowParams.count(SelectionCut::mhVis))
-                            evtSubCategory.SetCutResult(SelectionCut::mhVis,massWindowParams.at(SelectionCut::mhVis)
-                                    .IsInside(m_tt_vis, m_bb));
+                    EventSubCategory evtSubCategory;
+                    if(has_b_pair) {
+                        if(category.HasBoostConstraint() && category.IsBoosted()) {
+                            if(use_svFit) {
+                                const bool isInsideBoostedCut = cuts::hh_bbtautau_Run2::hh_tag::IsInsideBoostedMassWindow(SVfit_p4.M(), m_bb);
+                                evtSubCategory.SetCutResult(SelectionCut::mh, isInsideBoostedCut);
+                            }
+                        } else {
+                            if(!use_svFit && massWindowParams.count(SelectionCut::mh))
+                                throw exception("Category mh inconsistent with the false requirement of SVfit.");
+                            if(massWindowParams.count(SelectionCut::mh)) {
+                                const bool cut_result = use_svFit
+                                            //&& event.GetSVFitResults(ana_setup.allow_calc_svFit).has_valid_momentum
+                                            && massWindowParams.at(SelectionCut::mh).IsInside(
+                                            SVfit_p4.M(), m_bb);
+                                evtSubCategory.SetCutResult(SelectionCut::mh, cut_result);
+                            }
+                            if(massWindowParams.count(SelectionCut::mhVis))
+                                evtSubCategory.SetCutResult(SelectionCut::mhVis,massWindowParams.at(SelectionCut::mhVis)
+                                        .IsInside(m_tt_vis, m_bb));
 
-                        if(massWindowParams.count(SelectionCut::mhMET))
-                            evtSubCategory.SetCutResult(SelectionCut::mhMET,massWindowParams.at(SelectionCut::mhMET)
-                                    .IsInside((SVfit_p4+MET_p4).M(), m_bb));
+                            if(massWindowParams.count(SelectionCut::mhMET))
+                                evtSubCategory.SetCutResult(SelectionCut::mhMET,massWindowParams.at(SelectionCut::mhMET)
+                                        .IsInside((SVfit_p4+MET_p4).M(), m_bb));
 
-                    }
-                    if(use_kinFit)
-                        evtSubCategory.SetCutResult(SelectionCut::KinematicFitConverged,
-                                                      kinFit_convergence);
+                        }
+                        if(use_kinFit)
+                            evtSubCategory.SetCutResult(SelectionCut::KinematicFitConverged,
+                                                        kinFit_convergence);
                     }
 
 
@@ -263,26 +273,22 @@ private:
 
                     for(const auto& subCategory : *subCategories) {
                         if(!evtSubCategory.Implies(subCategory)) continue;
-                        for (size_t i=0; i<dataId_hash_vec.size(); i++){
-                            auto dataId_hash = dataId_hash_vec.at(i);
-                            const auto& dataId = tupleReader->GetDataIdByHash(dataId_hash);
-                            static const EventCategory evtCategory_2j = EventCategory::Parse("2j");
-                            if(dataId.Get<EventCategory>() != evtCategory_2j) continue;
-                            const auto& dataId_correct = dataId.Set(category).Set(evtSubCategory);
-                            auto weight = weight_vec.at(i);
-                            Hist* hist = GetHistogram(dataId_correct);
-                            if(hist) {
-                                auto x = value;
-                                /* if(is_mva_score) {
-                                    const auto& dataId = tupleReader->GetDataIdByHash(dataId_hash);
-                                    x = static_cast<T>(tupleReader->GetNormalizedMvaScore(dataId, static_cast<float>(x)));
-                                }*/
 
-                                std::lock_guard<Hist::Mutex> lock(hist->GetMutex());
-                                hist->Fill(x, weight);
-                            }
+                        const auto& dataId_correct = dataId.Set(category).Set(evtSubCategory);
+
+                        Hist* hist = GetHistogram(dataId_correct);
+                        if(hist) {
+                            auto x = value;
+                            /* if(is_mva_score) {
+                                const auto& dataId = tupleReader->GetDataIdByHash(dataId_hash);
+                                x = static_cast<T>(tupleReader->GetNormalizedMvaScore(dataId, static_cast<float>(x)));
+                            }*/
+
+                            std::lock_guard<Hist::Mutex> lock(hist->GetMutex());
+                            hist->Fill(x, weight);
                         }
                     }
+                }
 
             }
             //(int) slot;
@@ -300,12 +306,12 @@ private:
             //const auto& dataId_temp = tupleReader->GetDataIdByHash(dataId_hash);
             //const auto& dataId = dataId_temp.Set(evtCategory).Set(evtSubCategory);
             Hist* hist = nullptr;
-            if(categories->count(dataId.Get<EventCategory>())
-                    && subCategories->count(dataId.Get<EventSubCategory>())
-                    && unc_sources->count(dataId.Get<UncertaintySource>())
-                    && (is_limit_var || dataId.Get<UncertaintyScale>() == UncertaintyScale::Central)) {
-                 hist = &anaDataCollection->Get(dataId).GetHistogram(hist_name)();
-             }
+            //if(categories->count(dataId.Get<EventCategory>())
+            //        && subCategories->count(dataId.Get<EventSubCategory>())
+            //        &&
+            //        && (is_limit_var || dataId.Get<UncertaintyScale>() == UncertaintyScale::Central)) {
+            hist = &anaDataCollection->Get(dataId).GetHistogram(hist_name)();
+            // }
             (*histograms)[dataId] = hist;
             return hist;
         }
