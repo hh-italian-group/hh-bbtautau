@@ -233,6 +233,35 @@ public:
 
     static const NameSet BoolBranches, IntBranches;
 
+    struct category_storage{
+        float num_jets;
+        int num_btag_loose;
+        int num_btag_medium;
+        int num_btag_tight;
+        bool is_vbf;
+        bool is_boosted;
+        //std::vector<size_t> dataId;
+        //std::vector<double> weight;
+        //const FatJetCandidate* fat_jet_cand;
+
+        category_storage(){
+            num_jets = 999;
+            num_btag_loose = -999;
+            num_btag_medium = -999;
+            num_btag_tight = -999;
+            is_vbf = false;
+            is_boosted = false;
+            //dataId = ;
+            //weight = 999;
+        }
+
+        category_storage(float _num_jets, int _num_btag_loose, int _num_btag_medium, int _num_btag_tight,
+                         bool _is_vbf, bool _is_boosted):
+             num_jets(_num_jets), num_btag_loose(_num_btag_loose), num_btag_medium(_num_btag_medium),
+             num_btag_tight(_num_btag_tight), is_vbf(_is_vbf), is_boosted(_is_boosted) {}
+
+    };
+
     AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names,
                    const std::vector<std::string>& input_friends);
     size_t GetNumberOfEntries() const;
