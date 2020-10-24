@@ -274,7 +274,7 @@ private:
                     for(const auto& subCategory : *subCategories) {
                         if(!evtSubCategory.Implies(subCategory)) continue;
 
-                        const auto& dataId_correct = dataId.Set(category).Set(evtSubCategory);
+                        const auto& dataId_correct = dataId.Set(category).Set(subCategory);
 
                         Hist* hist = GetHistogram(dataId_correct);
                         if(hist) {
