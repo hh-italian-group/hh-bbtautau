@@ -343,7 +343,7 @@ std::vector<std::shared_ptr<TTree>> AnaTupleReader::ReadTrees(Channel channel,
 }
 
 AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names,
-                               const std::vector<std::string>& input_friends) :
+                               const std::vector<std::string>& input_friends, const EventTagCreator& event_tagger) :
         files(OpenFiles(file_name, input_friends)), trees(ReadTrees(channel, files)), dataFrame(*trees.front()), df(dataFrame)
 {
     static const NameSet support_branches = {
@@ -355,7 +355,7 @@ AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, Na
          "central_jet5_p4"
     };
 
-    DefineBranches(active_var_names, active_var_names.empty());
+    DefineBranches(active_var_names, active_var_names.empty(), event_tagger);
     if(active_var_names.empty()) {
         std::vector<std::vector<std::string>> names = {
             df.GetColumnNames(),
@@ -391,7 +391,7 @@ AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, Na
     ExtractMvaRanges(aux_tuple());
 }
 
-void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
+void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, const EventTagCreator& event_tagger)
 {
     // const auto Define = [&](RDF& target_df, const std::string& var, const std::string& expr) {
     //     if(all || active_var_names.count(var))
@@ -474,30 +474,36 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
     DefineP4(df, "VBF1");
     DefineP4(df, "VBF2");
 
-    const auto vbf_tag_raw = [] (const LorentzVectorM& VBF1_p4, const LorentzVectorM& VBF2_p4, bool is_VBF,
+    const auto convert_dataIds = [&](const std::vector<size_t>& dataIds_raw) {
+        std::vector<DataId> dataIds;
+        for(size_t hash : dataIds_raw)
+            dataIds.push_back(GetDataIdByHash(hash));
+        return dataIds;
+    };
+    Define(df, "dataIds_base", convert_dataIds, {"dataIds"}, true);
+
+    const auto create_vbf_tag_raw = [&] (const LorentzVectorM& VBF1_p4, const LorentzVectorM& VBF2_p4, bool is_VBF,
             bool pass_vbf_trigger) {
-        int vbf_tag_raw = -1;
-        const auto m_jj = (VBF1_p4 + VBF2_p4).M();
-        DiscriminatorWP vbf_tag = DiscriminatorWP::Loose;
-        if(is_VBF) {
-            const bool is_tight = m_jj > cuts::hh_bbtautau_Run2::VBF::mass_jj_tight && pass_vbf_trigger;
-            vbf_tag = is_tight ? DiscriminatorWP::Tight : DiscriminatorWP::Loose;
-            vbf_tag_raw = static_cast<int>(vbf_tag);
-        }
+        return event_tagger.CreateVBFTag(VBF1_p4, VBF2_p4, is_VBF, pass_vbf_trigger);
+    };
+    Define(df, "vbf_tag_raw", create_vbf_tag_raw, {"VBF1_p4","VBF2_p4","is_vbf","pass_VBF_trigger"}, true);
 
-        return vbf_tag_raw;
+
+    const auto create_event_tags = [&] (const std::vector<DataId>& dataIds_base,
+                                        const std::vector<double>& weights, int num_central_jets, bool has_b_pair,
+                                        int num_btag_loose, int num_btag_medium, int num_btag_tight,
+                                        bool is_vbf, bool is_boosted, int vbf_tag_raw,
+                                        const LorentzVectorM& SVfit_p4, const LorentzVectorM& MET_p4,
+                                        double m_bb, double m_tt_vis, int kinFit_convergence) {
+        return event_tagger.CreateEventTags(dataIds_base, weights, num_central_jets, has_b_pair, num_btag_loose,
+                                            num_btag_medium, num_btag_tight, is_vbf, is_boosted, vbf_tag_raw,
+                                            SVfit_p4, MET_p4, m_bb, m_tt_vis, kinFit_convergence);
     };
 
-    Define(df, "vbf_tag_raw",vbf_tag_raw,{"VBF1_p4","VBF2_p4","is_vbf","pass_VBF_trigger"},true);
-
-
-    const auto return_category_storage = [] (float num_jets, int num_btag_loose, int num_btag_medium,
-            int num_btag_tight, bool is_vbf, bool is_boosted) {
-        return category_storage(num_jets, num_btag_loose,num_btag_medium, num_btag_tight,is_vbf, is_boosted);
-    };
-
-    Define(df, "category_storage",return_category_storage,{"n_jets", "num_btag_loose", "num_btag_medium", "num_btag_tight",
-           "is_vbf", "is_boosted"}, true);
+    Define(df, "event_tags", create_event_tags, {
+        "dataIds_base", "all_weights", "num_central_jets", "has_b_pair", "num_btag_loose", "num_btag_medium",
+        "num_btag_tight", "is_vbf", "is_boosted", "vbf_tag_raw", "SVfit_p4", "MET_p4", "m_bb", "m_tt_vis",
+        "kinFit_convergence"}, true);
 
 
     auto df_bb = Filter(df, "has_b_pair");
@@ -657,6 +663,9 @@ std::string HyperPoint::ToString()
         ss << "_" << points.at(n);
     return ss.str();
 }
+
+
+
 
 } // namespace bbtautau
 } // namespace analysis
