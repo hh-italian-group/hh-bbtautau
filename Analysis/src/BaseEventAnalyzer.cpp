@@ -289,20 +289,30 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
 
                 if(ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017)
                     l1_prefiring_weight = (*event)->l1_prefiring_weight;
-	       
-                uncs_weight_map[UncertaintySource::L1_prefiring][UncertaintyScale::Central] = 
-                        ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017 
+
+                uncs_weight_map[UncertaintySource::L1_prefiring][UncertaintyScale::Central] =
+                        ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017
                         ? static_cast<float>((*event)->l1_prefiring_weight) : 1;
-                uncs_weight_map[UncertaintySource::L1_prefiring][UncertaintyScale::Up] = 
-                        ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017 
+                uncs_weight_map[UncertaintySource::L1_prefiring][UncertaintyScale::Up] =
+                        ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017
                         ? static_cast<float>((*event)->l1_prefiring_weight_up) : 1;
                 uncs_weight_map[UncertaintySource::L1_prefiring][UncertaintyScale::Down] =
-                        ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017 
+                        ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017
                         ? static_cast<float>((*event)->l1_prefiring_weight_down) : 1;
 
                 auto jet_pu_id_weight_provided = eventWeights_HH->GetProviderT<mc_corrections::JetPuIdWeights>(
                         mc_corrections::WeightType::JetPuIdWeights);
-                jet_pu_id_weight = jet_pu_id_weight_provided->Get(*event);
+                jet_pu_id_weight = jet_pu_id_weight_provided->GetWeight(*event,unc_source, unc_scale);
+
+                uncs_weight_map[UncertaintySource::PileUpJetId][UncertaintyScale::Central] =
+                     static_cast<float>(jet_pu_id_weight_provided->GetWeight(*event,UncertaintySource::PileUpJetId,
+                                                                             UncertaintyScale::Central));
+                uncs_weight_map[UncertaintySource::PileUpJetId][UncertaintyScale::Up] =
+                     static_cast<float>(jet_pu_id_weight_provided->GetWeight(*event,UncertaintySource::PileUpJetId,
+                                                                             UncertaintyScale::Up));
+                uncs_weight_map[UncertaintySource::PileUpJetId][UncertaintyScale::Down] =
+                     static_cast<float>(jet_pu_id_weight_provided->GetWeight(*event,UncertaintySource::PileUpJetId,
+                                                                             UncertaintyScale::Down));
 
                 auto top_pt_weight_provided = eventWeights_HH->GetProviderT<mc_corrections::TopPtWeight>(
                         mc_corrections::WeightType::TopPt);
@@ -357,7 +367,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                 signalObjectSelector.GetTauVSjetDiscriminator().second, unc_eval, unc_scale_eval));
                         }
                     }
-                    uncs_weight_map[UncertaintySource::TopPt][UncertaintyScale::Central] = 
+                    uncs_weight_map[UncertaintySource::TopPt][UncertaintyScale::Central] =
                             static_cast<float>(1. / (*summary)->totalShapeWeight);
                     if(sample.apply_top_pt_unc)
                         uncs_weight_map[UncertaintySource::TopPt][UncertaintyScale::Up] = static_cast<float>(
