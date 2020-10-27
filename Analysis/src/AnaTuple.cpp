@@ -141,7 +141,8 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
             fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TopPt), tuple().unc_TopPt);
             fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::L1_prefiring), tuple().unc_L1_prefiring);
             fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::PileUp), tuple().unc_PileUp);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::PileUpJetId), tuple().unc_PileUpJetId);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::PileUpJetId_eff), tuple().unc_PileUpJetId_eff);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::PileUpJetId_mistag), tuple().unc_PileUpJetId_mistag);
         }
     }
     tuple().has_b_pair = event.HasBjetPair();

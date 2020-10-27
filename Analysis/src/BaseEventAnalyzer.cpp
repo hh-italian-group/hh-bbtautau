@@ -302,17 +302,16 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
 
                 auto jet_pu_id_weight_provided = eventWeights_HH->GetProviderT<mc_corrections::JetPuIdWeights>(
                         mc_corrections::WeightType::JetPuIdWeights);
-                jet_pu_id_weight = jet_pu_id_weight_provided->GetWeight(*event,unc_source, unc_scale);
+                jet_pu_id_weight = jet_pu_id_weight_provided->GetWeight(*event);
 
-                uncs_weight_map[UncertaintySource::PileUpJetId][UncertaintyScale::Central] =
-                     static_cast<float>(jet_pu_id_weight_provided->GetWeight(*event,UncertaintySource::PileUpJetId,
-                                                                             UncertaintyScale::Central));
-                uncs_weight_map[UncertaintySource::PileUpJetId][UncertaintyScale::Up] =
-                     static_cast<float>(jet_pu_id_weight_provided->GetWeight(*event,UncertaintySource::PileUpJetId,
-                                                                             UncertaintyScale::Up));
-                uncs_weight_map[UncertaintySource::PileUpJetId][UncertaintyScale::Down] =
-                     static_cast<float>(jet_pu_id_weight_provided->GetWeight(*event,UncertaintySource::PileUpJetId,
-                                                                             UncertaintyScale::Down));
+                for(auto unc_jet_pu_id : {UncertaintySource::PileUpJetId_eff, UncertaintySource::PileUpJetId_mistag}){
+                    for(UncertaintyScale unc_scale_eval : GetAllUncertaintyScales()) {
+                            const UncertaintySource unc_eval = unc_scale_eval == UncertaintyScale::Central ?
+                                                               UncertaintySource::None : unc_jet_pu_id;
+                            uncs_weight_map[unc_jet_pu_id][unc_scale_eval] = static_cast<float>(
+                                jet_pu_id_weight_provided->GetWeight(*event, unc_eval, unc_scale_eval));
+                    }
+                }
 
                 auto top_pt_weight_provided = eventWeights_HH->GetProviderT<mc_corrections::TopPtWeight>(
                         mc_corrections::WeightType::TopPt);
