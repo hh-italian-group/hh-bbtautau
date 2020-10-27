@@ -98,7 +98,8 @@ namespace analysis {
                                  unc_TauVSeSF_barrel, unc_TauVSeSF_endcap, unc_TauVSmuSF_etaLt0p4, \
                                  unc_TauVSmuSF_eta0p4to0p8, unc_TauVSmuSF_eta0p8to1p2, unc_TauVSmuSF_eta1p2to1p7, \
                                  unc_TauVSmuSF_etaGt1p7, unc_EleIdIsoUnc, unc_MuonIdIsoUnc, unc_TopPt, unc_L1_prefiring, \
-                                 unc_PileUp, unc_PileUpJetId_eff, unc_PileUpJetId_mistag)
+                                 unc_PileUp, unc_PileUpJetId_eff, unc_PileUpJetId_mistag, unc_TauCustomSF_DM0, \
+                                 unc_TauCustomSF_DM1, unc_TauCustomSF_DM10, unc_TauCustomSF_DM11) 
     /**/
 
 namespace bbtautau {

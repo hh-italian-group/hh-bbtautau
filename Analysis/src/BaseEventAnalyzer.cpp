@@ -304,15 +304,6 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                         mc_corrections::WeightType::JetPuIdWeights);
                 jet_pu_id_weight = jet_pu_id_weight_provided->GetWeight(*event);
 
-                for(auto unc_jet_pu_id : {UncertaintySource::PileUpJetId_eff, UncertaintySource::PileUpJetId_mistag}){
-                    for(UncertaintyScale unc_scale_eval : GetAllUncertaintyScales()) {
-                            const UncertaintySource unc_eval = unc_scale_eval == UncertaintyScale::Central ?
-                                                               UncertaintySource::None : unc_jet_pu_id;
-                            uncs_weight_map[unc_jet_pu_id][unc_scale_eval] = static_cast<float>(
-                                jet_pu_id_weight_provided->GetWeight(*event, unc_eval, unc_scale_eval));
-                    }
-                }
-
                 auto top_pt_weight_provided = eventWeights_HH->GetProviderT<mc_corrections::TopPtWeight>(
                         mc_corrections::WeightType::TopPt);
 
@@ -329,6 +320,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                 wp, UncertaintySource::Eff_b, UncertaintyScale::Down));
                     }
                 }
+
                 if(unc_source == UncertaintySource::None) {
                     static const std::vector<UncertaintySource> uncs_trigger_weight = { UncertaintySource::EleTriggerUnc,
                         UncertaintySource::MuonTriggerUnc, UncertaintySource::TauTriggerUnc_DM0,
@@ -343,7 +335,9 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                         UncertaintySource::TauVSeSF_endcap, UncertaintySource::TauVSmuSF_etaLt0p4,
                         UncertaintySource::TauVSmuSF_eta0p4to0p8, UncertaintySource::TauVSmuSF_eta0p8to1p2,
                         UncertaintySource::TauVSmuSF_eta1p2to1p7, UncertaintySource::TauVSmuSF_etaGt1p7,
-                        UncertaintySource::EleIdIsoUnc, UncertaintySource::MuonIdIsoUnc };
+                        UncertaintySource::EleIdIsoUnc, UncertaintySource::MuonIdIsoUnc,
+                        UncertaintySource::TauCustomSF_DM0, UncertaintySource::TauCustomSF_DM1,
+                        UncertaintySource::TauCustomSF_DM10, UncertaintySource::TauCustomSF_DM11 };
 
                     for (UncertaintySource unc : uncs_trigger_weight) {
                         for(UncertaintyScale unc_scale_eval : GetAllUncertaintyScales()) {
@@ -379,6 +373,15 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                tupleEvent.weight_pu_up / (*summary)->totalShapeWeight_withPileUp_Up);
                         uncs_weight_map[UncertaintySource::PileUp][UncertaintyScale::Down] = static_cast<float>(
                                tupleEvent.weight_pu_down / (*summary)->totalShapeWeight_withPileUp_Down);
+                    }
+
+                    for(auto unc_jet_pu_id : {UncertaintySource::PileUpJetId_eff, UncertaintySource::PileUpJetId_mistag}){
+                        for(UncertaintyScale unc_scale_eval : GetAllUncertaintyScales()) {
+                                const UncertaintySource unc_eval = unc_scale_eval == UncertaintyScale::Central ?
+                                                                   UncertaintySource::None : unc_jet_pu_id;
+                                uncs_weight_map[unc_jet_pu_id][unc_scale_eval] = static_cast<float>(
+                                    jet_pu_id_weight_provided->GetWeight(*event, unc_eval, unc_scale_eval));
+                        }
                     }
                 }
             }

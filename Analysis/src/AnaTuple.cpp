@@ -143,6 +143,10 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
             fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::PileUp), tuple().unc_PileUp);
             fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::PileUpJetId_eff), tuple().unc_PileUpJetId_eff);
             fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::PileUpJetId_mistag), tuple().unc_PileUpJetId_mistag);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauCustomSF_DM0), tuple().unc_TauCustomSF_DM0);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauCustomSF_DM1), tuple().unc_TauCustomSF_DM1);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauCustomSF_DM10), tuple().unc_TauCustomSF_DM10);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauCustomSF_DM11), tuple().unc_TauCustomSF_DM11);
         }
     }
     tuple().has_b_pair = event.HasBjetPair();
