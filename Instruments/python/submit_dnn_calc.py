@@ -15,16 +15,36 @@ parser.add_argument('--output', required=True, type=str, help="path where to sto
 parser.add_argument('--central-output', required=True, type=str, help="path where to store the final outputs")
 parser.add_argument('--pattern', required=True, type=str, help="regex for file names")
 parser.add_argument('--queue', required=True, type=str, help="queue to submit the job")
-parser.add_argument('--model', required=True, type=str, help="path to the DNN model")
+parser.add_argument('--model', required=True, type=str,
+                    help="path to the DNN model for ggHH or comma separated list of models for qqHH")
 parser.add_argument('--kls', required=False, type=str, default=None, help="kappa lambda values")
 parser.add_argument('--spins', required=False, type=str, default=None, help="resonant spins")
 parser.add_argument('--masses', required=False, type=str, default=None, help="resonant masses")
-parser.add_argument('--max-entries-per-job', required=False, type=int, default=5000000,
+parser.add_argument('--max-entries-per-job', required=False, type=int, default=None,
                     help="maximal number of entries per job")
-parser.add_argument('--calc-dnn', required=False, type=str, default='../build/hh-bbtautau/CalcDNN',
-                    help="path to the CalcDNN executable")
+parser.add_argument('--dnn-type', required=False, type=str, default='ggHH', help="type of DNN: ggHH or qqHH")
+parser.add_argument('--calc-dnn', required=False, type=str, default=None, help="path to the CalcDNN executable")
 parser.add_argument('--verbose', action="store_true", help="print verbose output")
 args = parser.parse_args()
+
+if args.dnn_type == 'ggHH':
+    if args.calc_dnn is None:
+        args.calc_dnn = '../build/hh-bbtautau/CalcDNN'
+    if args.max_entries_per_job is None:
+        args.max_entries_per_job = 5000000
+    if args.kls is None and (args.spins is None or args.masses is None):
+        raise RuntimeError("For ggHH DNN either kl or spin&mass points must be specified")
+    if args.kls is not None and (args.spins is not None or args.masses is not None):
+        raise RuntimeError("For ggHH DNN  kl and spin&mass points can't be specified at the same time")
+elif  args.dnn_type == 'qqHH':
+    if args.calc_dnn is None:
+        args.calc_dnn = '../build/hh-bbtautau/CalcMulticlassDNN'
+    if args.max_entries_per_job is None:
+        n_models = len(args.model.split(','))
+        args.max_entries_per_job = 4000000 // n_models
+else:
+    raise RuntimeError("DNN type = {} is not supported".format(args.dnn_type))
+
 
 def EnumValues(cl):
     return [k for k in dir(cl) if k[0] != '_' ]
@@ -211,7 +231,8 @@ for job in merge_jobs:
 
 for job in calc_jobs:
     if job.HasStatus(JobStatus.Finished):
-        print('{}: already merged'.format(job.name))
+        continue
+        #print('{}: already merged'.format(job.name))
     elif os.path.exists(job.central_output_file):
         print('{}: already in the central storage'.format(job.name))
         job.UpdateStatus(JobStatus.Finished)
@@ -223,11 +244,14 @@ for job in calc_jobs:
                                                                             os.path.abspath(args.calc_dnn))
         submit_cmd += ' --input {} --output {}'.format(job.input_file, job.output_file)
         submit_cmd += ' --channel {} --period {}'.format(job.channel, job.period)
-        submit_cmd += ' --model {}'.format(os.path.abspath(args.model))
-        if args.kls is not None:
-            submit_cmd += ' --kls {}'.format(args.kls)
-        elif args.masses is not None:
-            submit_cmd += ' --spins {} --masses {}'.format(args.spins, args.masses)
+        if args.dnn_type == 'ggHH':
+            submit_cmd += ' --model {}'.format(os.path.abspath(args.model))
+            if args.kls is not None:
+                submit_cmd += ' --kls {}'.format(args.kls)
+            elif args.masses is not None:
+                submit_cmd += ' --spins {} --masses {}'.format(args.spins, args.masses)
+        elif args.dnn_type == 'qqHH':
+            submit_cmd += ' --model {}'.format(args.model)
         if job.range_index is not None:
             submit_cmd += ' --begin_entry_index {}'.format(job.begin_entry_index)
             submit_cmd += ' --end_entry_index {}'.format(job.end_entry_index)
@@ -253,7 +277,7 @@ for job in merge_jobs:
         else:
             print('Submitting "{}"...'.format(job.name))
             submit_cmd = './AnalysisTools/Run/submit_job.sh {} {} {}'.format(args.queue, job.name, job.output)
-            submit_cmd += ' hadd -ff {}'.format(job.output_file)
+            submit_cmd += ' hadd -ff -n 10 {}'.format(job.output_file)
             for calc_job in job.calc_jobs:
                 submit_cmd += ' {} '.format(os.path.abspath(calc_job.central_output_file))
             if args.verbose:
