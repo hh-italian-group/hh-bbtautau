@@ -14,7 +14,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "h-tautau/Analysis/include/EventInfo.h"
 #include "EventAnalyzerDataId.h"
 #include "h-tautau/Core/include/TauIdResults.h"
-#include "h-tautau/Cuts/include/hh_bbtautau_Run2.h"
+#include "hh-bbtautau/Analysis/include/EventTags.h"
 
 namespace analysis {
 
@@ -98,7 +98,8 @@ namespace analysis {
                                  unc_TauVSeSF_barrel, unc_TauVSeSF_endcap, unc_TauVSmuSF_etaLt0p4, \
                                  unc_TauVSmuSF_eta0p4to0p8, unc_TauVSmuSF_eta0p8to1p2, unc_TauVSmuSF_eta1p2to1p7, \
                                  unc_TauVSmuSF_etaGt1p7, unc_EleIdIsoUnc, unc_MuonIdIsoUnc, unc_TopPt, unc_L1_prefiring, \
-                                 unc_PileUp)
+                                 unc_PileUp, unc_PileUpJetId_eff, unc_PileUpJetId_mistag, unc_TauCustomSF_DM0, \
+                                 unc_TauCustomSF_DM1, unc_TauCustomSF_DM10, unc_TauCustomSF_DM11) 
     /**/
 
 namespace bbtautau {
@@ -233,21 +234,29 @@ public:
 
     static const NameSet BoolBranches, IntBranches;
 
-    AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names);
+
+    AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names,
+                   const std::vector<std::string>& input_friends, const EventTagCreator& event_tagger);
     size_t GetNumberOfEntries() const;
     const DataId& GetDataIdByHash(Hash hash) const;
     const RDF& GetDataFrame() const;
     const std::list<RDF>& GetSkimmedDataFrames() const;
     float GetNormalizedMvaScore(const DataId& dataId, float raw_score) const;
+    const std::map<std::string, std::set<std::string>>& GetParametricVariables() const;
 
 private:
-    void DefineBranches(const NameSet& active_var_names, bool all);
+    void DefineBranches(const NameSet& active_var_names, bool all, const EventTagCreator& event_tagger);
     void ExtractDataIds(const AnaAux& aux);
     void ExtractMvaRanges(const AnaAux& aux);
 
+    static std::vector<std::shared_ptr<TFile>> OpenFiles(const std::string& file_name,
+                                                         const std::vector<std::string>& input_friends);
+    static std::vector<std::shared_ptr<TTree>> ReadTrees(Channel channel,
+                                                         const std::vector<std::shared_ptr<TFile>>& files);
+
 private:
-    std::shared_ptr<TFile> file;
-    std::shared_ptr<TTree> tree;
+    std::vector<std::shared_ptr<TFile>> files;
+    std::vector<std::shared_ptr<TTree>> trees;
     ROOT::RDataFrame dataFrame;
     RDF df;
     std::list<RDF> skimmed_df;
@@ -255,6 +264,7 @@ private:
     NameSet var_branch_names;
     RangeMap mva_ranges;
     Range mva_target_range{0., 0.99999};
+    std::map<std::string, std::set<std::string>> parametric_vars;
 };
 
 struct HyperPoint {

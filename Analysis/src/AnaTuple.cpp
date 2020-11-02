@@ -8,7 +8,7 @@ namespace bbtautau {
 
 AnaTupleWriter::AnaTupleWriter(const std::string& file_name, Channel channel, bool _runKinFit, bool _runSVfit,
                                bool _allow_calc_svFit) :
-    file(root_ext::CreateRootFile(file_name, ROOT::kLZ4, 4)), tuple(ToString(channel), file.get(), false),
+    file(root_ext::CreateRootFile(file_name, ROOT::kLZMA, 9)), tuple(ToString(channel), file.get(), false),
     aux_tuple(file.get(), false), runKinFit(_runKinFit), runSVfit(_runSVfit), allow_calc_svFit(_allow_calc_svFit)
 {
 }
@@ -138,9 +138,15 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
             fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSmuSF_etaGt1p7), tuple().unc_TauVSmuSF_etaGt1p7);
             fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::EleIdIsoUnc), tuple().unc_EleIdIsoUnc);
             fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::MuonIdIsoUnc), tuple().unc_MuonIdIsoUnc);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TopPt), tuple().unc_TopPt, true);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::L1_prefiring), tuple().unc_L1_prefiring, true);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::PileUp), tuple().unc_PileUp, true);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TopPt), tuple().unc_TopPt);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::L1_prefiring), tuple().unc_L1_prefiring);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::PileUp), tuple().unc_PileUp);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::PileUpJetId_eff), tuple().unc_PileUpJetId_eff);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::PileUpJetId_mistag), tuple().unc_PileUpJetId_mistag);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauCustomSF_DM0), tuple().unc_TauCustomSF_DM0);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauCustomSF_DM1), tuple().unc_TauCustomSF_DM1);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauCustomSF_DM10), tuple().unc_TauCustomSF_DM10);
+            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauCustomSF_DM11), tuple().unc_TauCustomSF_DM11);
         }
     }
     tuple().has_b_pair = event.HasBjetPair();
@@ -320,9 +326,31 @@ const AnaTupleReader::NameSet AnaTupleReader::IntBranches = {
     "central_jet4_hadronFlavour", "central_jet5_valid", "central_jet5_hadronFlavour"
 };
 
-AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names) :
-    file(root_ext::OpenRootFile(file_name)), tree(root_ext::ReadObject<TTree>(*file, ToString(channel))),
-    dataFrame(*tree), df(dataFrame)
+std::vector<std::shared_ptr<TFile>> AnaTupleReader::OpenFiles(const std::string& file_name,
+                                                              const std::vector<std::string>& input_friends)
+{
+    std::vector<std::shared_ptr<TFile>> files;
+    files.emplace_back(root_ext::OpenRootFile(file_name));
+    for(const std::string& friend_file_name : input_friends)
+        files.emplace_back(root_ext::OpenRootFile(friend_file_name));
+    return files;
+}
+
+std::vector<std::shared_ptr<TTree>> AnaTupleReader::ReadTrees(Channel channel,
+                                                              const std::vector<std::shared_ptr<TFile>>& files)
+{
+    std::vector<std::shared_ptr<TTree>> trees;
+    for(const auto& file : files) {
+        trees.emplace_back(root_ext::ReadObject<TTree>(*file, ToString(channel)));
+        if(trees.size() > 1)
+            trees.front()->AddFriend(trees.back().get());
+    }
+    return trees;
+}
+
+AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names,
+                               const std::vector<std::string>& input_friends, const EventTagCreator& event_tagger) :
+        files(OpenFiles(file_name, input_friends)), trees(ReadTrees(channel, files)), dataFrame(*trees.front()), df(dataFrame)
 {
     static const NameSet support_branches = {
         "dataIds", "all_weights", "is_central_es", "sample_id", "all_mva_scores", "weight", "btag_weight",
@@ -333,7 +361,7 @@ AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, Na
          "central_jet5_p4"
     };
 
-    DefineBranches(active_var_names, active_var_names.empty());
+    DefineBranches(active_var_names, active_var_names.empty(), event_tagger);
     if(active_var_names.empty()) {
         std::vector<std::vector<std::string>> names = {
             df.GetColumnNames(),
@@ -346,15 +374,30 @@ AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, Na
                     active_var_names.insert(name);
             }
         }
+    } else {
+        for(const auto& var_name : active_var_names) {
+            if(var_name.back() == '+') {
+                const std::string name = var_name.substr(0, var_name.size() - 1);
+                for(const auto& column : df.GetColumnNames()) {
+                    if(column.rfind(name, 0) == 0)
+                        parametric_vars[name].insert(column);
+                }
+            }
+        }
+        for(const auto& [name, columns] : parametric_vars) {
+            active_var_names.erase(name + "+");
+            for(const auto& column : columns)
+                active_var_names.insert(column);
+        }
     }
 
-    AnaAuxTuple aux_tuple(file.get(), true);
+    AnaAuxTuple aux_tuple(files.front().get(), true);
     aux_tuple.GetEntry(0);
     ExtractDataIds(aux_tuple());
     ExtractMvaRanges(aux_tuple());
 }
 
-void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
+void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, const EventTagCreator& event_tagger)
 {
     // const auto Define = [&](RDF& target_df, const std::string& var, const std::string& expr) {
     //     if(all || active_var_names.count(var))
@@ -423,15 +466,58 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
     Define(df, "Htt_p4", SumP4, { "tau1_p4", "tau2_p4" }, true);
     Define(df, "MET_p4", ReturnMETP4, {"MET_pt", "MET_phi"}, true);
     Define(df, "HttMET_p4", SumP4, { "Htt_p4", "MET_p4" }, true);
+    Define(df, "m_tt_vis", GetMass, {"Htt_p4"}, true);
+
+    DefineP4(df, "b1");
+    DefineP4(df, "b2");
+    Define(df, "Hbb_p4", SumP4, { "b1_p4", "b2_p4" }, true);
+    Define(df, "m_bb", GetMass, {"Hbb_p4"}, true);
+
+    DefineP4(df, "SVfit");
+
+
+
+    DefineP4(df, "VBF1");
+    DefineP4(df, "VBF2");
+
+    const auto convert_dataIds = [&](const std::vector<size_t>& dataIds_raw) {
+        std::vector<DataId> dataIds;
+        for(size_t hash : dataIds_raw)
+            dataIds.push_back(GetDataIdByHash(hash));
+        return dataIds;
+    };
+    Define(df, "dataIds_base", convert_dataIds, {"dataIds"}, true);
+
+    const auto create_vbf_tag_raw = [&] (const LorentzVectorM& VBF1_p4, const LorentzVectorM& VBF2_p4, bool is_VBF,
+            bool pass_vbf_trigger) {
+        return event_tagger.CreateVBFTag(VBF1_p4, VBF2_p4, is_VBF, pass_vbf_trigger);
+    };
+    Define(df, "vbf_tag_raw", create_vbf_tag_raw, {"VBF1_p4","VBF2_p4","is_vbf","pass_VBF_trigger"}, true);
+
+
+    const auto create_event_tags = [&] (const std::vector<DataId>& dataIds_base,
+                                        const std::vector<double>& weights, int num_central_jets, bool has_b_pair,
+                                        int num_btag_loose, int num_btag_medium, int num_btag_tight,
+                                        bool is_vbf, bool is_boosted, int vbf_tag_raw,
+                                        const LorentzVectorM& SVfit_p4, const LorentzVectorM& MET_p4,
+                                        double m_bb, double m_tt_vis, int kinFit_convergence) {
+        return event_tagger.CreateEventTags(dataIds_base, weights, num_central_jets, has_b_pair, num_btag_loose,
+                                            num_btag_medium, num_btag_tight, is_vbf, is_boosted, vbf_tag_raw,
+                                            SVfit_p4, MET_p4, m_bb, m_tt_vis, kinFit_convergence);
+    };
+
+    Define(df, "event_tags", create_event_tags, {
+        "dataIds_base", "all_weights", "num_central_jets", "has_b_pair", "num_btag_loose", "num_btag_medium",
+        "num_btag_tight", "is_vbf", "is_boosted", "vbf_tag_raw", "SVfit_p4", "MET_p4", "m_bb", "m_tt_vis",
+        "kinFit_convergence"}, true);
+
 
     auto df_bb = Filter(df, "has_b_pair");
-    DefineP4(df_bb, "b1");
-    DefineP4(df_bb, "b2");
-    Define(df_bb, "Hbb_p4", SumP4, { "b1_p4", "b2_p4" }, true);
+
 
     auto df_vbf = Filter(df_bb, "has_VBF_pair");
-    DefineP4(df_vbf, "VBF1");
-    DefineP4(df_vbf, "VBF2");
+    //DefineP4(df_vbf, "VBF1");
+    //DefineP4(df_vbf, "VBF2");
 
     DefineP4(df, "central_jet1");
     DefineP4(df, "central_jet2");
@@ -440,12 +526,12 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
     DefineP4(df, "central_jet5");
 
     auto df_sv = FilterInt(df, "SVfit_valid");
-    DefineP4(df_sv, "SVfit");
+
 
     auto df_bb_sv = FilterInt(df_bb, "SVfit_valid");
-    DefineP4(df_bb_sv, "SVfit");
+    //DefineP4(df_bb_sv, "SVfit");
 
-    Define(df, "m_tt_vis", GetMass, {"Htt_p4"});
+
     Define(df, "pt_H_tt", GetPt, {"Htt_p4"});
     Define(df, "eta_H_tt", GetEta, {"Htt_p4"});
     Define(df, "phi_H_tt", GetPhi, {"Htt_p4"});
@@ -468,7 +554,7 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
     Define(df, "mt_tot", [](const LorentzVectorM& tau1_p4, const LorentzVectorM& tau2_p4, const LorentzVectorM& MET_p4)
         { return Calculate_TotalMT(tau1_p4, tau2_p4, MET_p4); }, {"tau1_p4", "tau2_p4", "MET_p4"});
 
-    Define(df_bb, "m_bb", GetMass, {"Hbb_p4"});
+
     Define(df_bb, "pt_H_bb", GetPt, {"Hbb_p4"});
     Define(df_bb_sv, "dphi_hbbhtautau", DeltaPhi, {"Hbb_p4", "SVfit_p4"});
     Define(df_bb_sv, "deta_hbbhtautau", DeltaEta, {"Hbb_p4", "SVfit_p4"});
@@ -496,6 +582,7 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all)
     Define(df_bb, "hh_btag_b1_minus_b2", Delta, {"b1_HHbtag", "b2_HHbtag"});
     Define(df_vbf, "hh_btag_VBF1VBF2", Sum, {"VBF1_HHbtag", "VBF2_HHbtag"});
 
+
     skimmed_df.push_back(df_bb);
     skimmed_df.push_back(df_vbf);
     skimmed_df.push_back(df_sv);
@@ -510,9 +597,14 @@ const AnaTupleReader::DataId& AnaTupleReader::GetDataIdByHash(Hash hash) const
     return iter->second;
 }
 
-size_t AnaTupleReader::GetNumberOfEntries() const { return static_cast<size_t>(tree->GetEntries()); }
+size_t AnaTupleReader::GetNumberOfEntries() const { return static_cast<size_t>(trees.front()->GetEntries()); }
 const AnaTupleReader::RDF& AnaTupleReader::GetDataFrame() const { return df; }
 const std::list<AnaTupleReader::RDF>& AnaTupleReader::GetSkimmedDataFrames() const { return skimmed_df; }
+
+const std::map<std::string, std::set<std::string>>& AnaTupleReader::GetParametricVariables() const
+{
+    return parametric_vars;
+}
 
 void AnaTupleReader::ExtractDataIds(const AnaAux& aux)
 {
@@ -577,6 +669,9 @@ std::string HyperPoint::ToString()
         ss << "_" << points.at(n);
     return ss.str();
 }
+
+
+
 
 } // namespace bbtautau
 } // namespace analysis
