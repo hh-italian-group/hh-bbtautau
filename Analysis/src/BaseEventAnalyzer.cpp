@@ -74,7 +74,7 @@ std::pair<EventCategorySet,
     auto fatJet = SignalObjectSelector::SelectFatJet(event.GetEventCandidate(), event.GetSelectedSignalJets());
     const bool is_boosted = fatJet != nullptr;
     bool is_VBF = false;
-    boost::optional<DiscriminatorWP> vbf_tag;
+    VBF_Categories vbf_cat;
     std::set<size_t> jets_to_exclude;
     if(event.HasVBFjetPair()){
         const auto vbf_jet_1 = event.GetVBFJet(1).GetMomentum();
@@ -86,7 +86,6 @@ std::pair<EventCategorySet,
                     && deta_jj > cuts::hh_bbtautau_Run2::VBF::deltaeta_jj);
         if(is_VBF) {
             const bool is_tight = m_jj > cuts::hh_bbtautau_Run2::VBF::mass_jj_tight && pass_vbf_trigger;
-            vbf_tag = is_tight ? DiscriminatorWP::Tight : DiscriminatorWP::Loose;
         }
         jets_to_exclude.insert(event.GetVBFJet(1)->jet_index());
         jets_to_exclude.insert(event.GetVBFJet(2)->jet_index());
@@ -111,8 +110,9 @@ std::pair<EventCategorySet,
     categories_flags.is_boosted = is_boosted;
     categories_flags.fat_jet_cand = fatJet;
 
+
     for(const auto& category : ana_setup.categories_base) {
-        if(category.Contains(all_jets.size(), bjet_counts, is_VBF, is_boosted, vbf_tag))
+        if(category.Contains(all_jets.size(), bjet_counts, is_VBF, is_boosted, vbf_cat))
             categories.insert(category);
     }
     return std::make_pair(categories, categories_flags);
@@ -289,15 +289,15 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
 
                 if(ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017)
                     l1_prefiring_weight = (*event)->l1_prefiring_weight;
-	       
-                uncs_weight_map[UncertaintySource::L1_prefiring][UncertaintyScale::Central] = 
-                        ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017 
+
+                uncs_weight_map[UncertaintySource::L1_prefiring][UncertaintyScale::Central] =
+                        ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017
                         ? static_cast<float>((*event)->l1_prefiring_weight) : 1;
-                uncs_weight_map[UncertaintySource::L1_prefiring][UncertaintyScale::Up] = 
-                        ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017 
+                uncs_weight_map[UncertaintySource::L1_prefiring][UncertaintyScale::Up] =
+                        ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017
                         ? static_cast<float>((*event)->l1_prefiring_weight_up) : 1;
                 uncs_weight_map[UncertaintySource::L1_prefiring][UncertaintyScale::Down] =
-                        ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017 
+                        ana_setup.period == Period::Run2016 || ana_setup.period == Period::Run2017
                         ? static_cast<float>((*event)->l1_prefiring_weight_down) : 1;
 
                 auto jet_pu_id_weight_provided = eventWeights_HH->GetProviderT<mc_corrections::JetPuIdWeights>(
@@ -357,7 +357,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                 signalObjectSelector.GetTauVSjetDiscriminator().second, unc_eval, unc_scale_eval));
                         }
                     }
-                    uncs_weight_map[UncertaintySource::TopPt][UncertaintyScale::Central] = 
+                    uncs_weight_map[UncertaintySource::TopPt][UncertaintyScale::Central] =
                             static_cast<float>(1. / (*summary)->totalShapeWeight);
                     if(sample.apply_top_pt_unc)
                         uncs_weight_map[UncertaintySource::TopPt][UncertaintyScale::Up] = static_cast<float>(

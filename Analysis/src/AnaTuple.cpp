@@ -343,7 +343,7 @@ std::vector<std::shared_ptr<TTree>> AnaTupleReader::ReadTrees(Channel channel,
 }
 
 AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names,
-                               const std::vector<std::string>& input_friends, const EventTagCreator& event_tagger) :
+                               const std::vector<std::string>& input_friends, const EventTagCreator& event_tagger, const std::string& mdnn_version) :
         files(OpenFiles(file_name, input_friends)), trees(ReadTrees(channel, files)), dataFrame(*trees.front()), df(dataFrame)
 {
     static const NameSet support_branches = {
@@ -355,7 +355,7 @@ AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, Na
          "central_jet5_p4"
     };
 
-    DefineBranches(active_var_names, active_var_names.empty(), event_tagger);
+    DefineBranches(active_var_names, active_var_names.empty(), event_tagger, mdnn_version);
     if(active_var_names.empty()) {
         std::vector<std::vector<std::string>> names = {
             df.GetColumnNames(),
@@ -391,7 +391,7 @@ AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, Na
     ExtractMvaRanges(aux_tuple());
 }
 
-void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, const EventTagCreator& event_tagger)
+void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, const EventTagCreator& event_tagger, const std::string& mdnn_version)
 {
     // const auto Define = [&](RDF& target_df, const std::string& var, const std::string& expr) {
     //     if(all || active_var_names.count(var))
@@ -403,6 +403,9 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
         if(force || all || active_var_names.count(var))
             target_df = target_df.Define(var, expr, columns);
     };
+
+    //const auto Define_VBF = [&](RDF& target_df, const enum categories, auto expr, const std::vector<std::string>& columns, bool force=false){
+    //  if (force || all )
 
     const auto Filter = [](RDF& target_df, const std::string& var) -> RDF {
         return target_df.Filter([](bool flag){ return flag; }, {var});
@@ -455,6 +458,7 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
         return Calculate_MT(p4, MET_p4);
     };
 
+
     DefineP4(df, "tau1");
     DefineP4(df, "tau2");
     Define(df, "Htt_p4", SumP4, { "tau1_p4", "tau2_p4" }, true);
@@ -469,8 +473,6 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
 
     DefineP4(df, "SVfit");
 
-
-
     DefineP4(df, "VBF1");
     DefineP4(df, "VBF2");
 
@@ -482,27 +484,41 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
     };
     Define(df, "dataIds_base", convert_dataIds, {"dataIds"}, true);
 
-    const auto create_vbf_tag_raw = [&] (const LorentzVectorM& VBF1_p4, const LorentzVectorM& VBF2_p4, bool is_VBF,
-            bool pass_vbf_trigger) {
-        return event_tagger.CreateVBFTag(VBF1_p4, VBF2_p4, is_VBF, pass_vbf_trigger);
-    };
-    Define(df, "vbf_tag_raw", create_vbf_tag_raw, {"VBF1_p4","VBF2_p4","is_vbf","pass_VBF_trigger"}, true);
-
+    std::vector<std::string> mdnn_branches;
+    static const std::vector<std::string> mdnn_score_names{"_tt_dl","_tt_sl", "_tt_lep", "_tt_fh","_dy","_hh_ggf", "_tth","_tth_tautau","_tth_bb","_hh_vbf","_hh_vbf_c2v","_hh_vbf_sm"};
+    for(const auto& score_name : mdnn_score_names) {
+        const std::string branch = "mdnn_" + mdnn_version + score_name;
+        mdnn_branches.push_back(branch);
+    }
+    const auto vbf_category = [&](float dnn_score_TT_dl, float dnn_score_TT_sl, float dnn_score_TT_lep,
+                                    float dnn_score_TT_FH, float dnn_score_DY, float dnn_score_ggHH,
+                                    float dnn_score_ttH, float dnn_score_ttH_tautau, float dnn_score_tth_bb,
+                                    float dnn_score_qqHH, float dnn_score_qqHH_vbf_c2v, float dnn_score_qqHH_sm){
+                                    return event_tagger.FindVBFCategory( dnn_score_TT_dl,  dnn_score_TT_sl,  dnn_score_TT_lep, dnn_score_TT_FH,  dnn_score_DY,  dnn_score_ggHH, dnn_score_ttH,  dnn_score_ttH_tautau,  dnn_score_tth_bb, dnn_score_qqHH,  dnn_score_qqHH_vbf_c2v,  dnn_score_qqHH_sm, mdnn_version);
+                                };
+    Define(df, "vbf_cat", vbf_category, mdnn_branches, true);
+    Define(df, "mdnn_score", [](const std::pair<float, VBF_Categories>& vbf_cat) { return vbf_cat.first; }, {"vbf_cat"}, true);
 
     const auto create_event_tags = [&] (const std::vector<DataId>& dataIds_base,
-                                        const std::vector<double>& weights, int num_central_jets, bool has_b_pair,
+                                        const std::vector<double>& weights,
+                                        const std::vector<float>& btag_weight_Loose,
+                                        const std::vector<float>& btag_weight_Medium,
+                                        const std::vector<float>& btag_weight_Tight,
+                                        int num_central_jets, bool has_b_pair,
                                         int num_btag_loose, int num_btag_medium, int num_btag_tight,
-                                        bool is_vbf, bool is_boosted, int vbf_tag_raw,
+                                        bool is_vbf, bool is_boosted, std::pair<float,VBF_Categories> vbf_cat,
                                         const LorentzVectorM& SVfit_p4, const LorentzVectorM& MET_p4,
                                         double m_bb, double m_tt_vis, int kinFit_convergence) {
-        return event_tagger.CreateEventTags(dataIds_base, weights, num_central_jets, has_b_pair, num_btag_loose,
-                                            num_btag_medium, num_btag_tight, is_vbf, is_boosted, vbf_tag_raw,
+        return event_tagger.CreateEventTags(dataIds_base, weights, btag_weight_Loose, btag_weight_Medium,
+                                            btag_weight_Tight, num_central_jets, has_b_pair, num_btag_loose,
+                                            num_btag_medium, num_btag_tight, is_vbf, is_boosted, vbf_cat,
                                             SVfit_p4, MET_p4, m_bb, m_tt_vis, kinFit_convergence);
     };
 
+
     Define(df, "event_tags", create_event_tags, {
-        "dataIds_base", "all_weights", "num_central_jets", "has_b_pair", "num_btag_loose", "num_btag_medium",
-        "num_btag_tight", "is_vbf", "is_boosted", "vbf_tag_raw", "SVfit_p4", "MET_p4", "m_bb", "m_tt_vis",
+        "dataIds_base", "all_weights", "btag_weight_Loose", "btag_weight_Medium", "btag_weight_Tight", "num_central_jets", "has_b_pair", "num_btag_loose", "num_btag_medium",
+        "num_btag_tight", "is_vbf", "is_boosted", "vbf_cat", "SVfit_p4", "MET_p4", "m_bb", "m_tt_vis",
         "kinFit_convergence"}, true);
 
 

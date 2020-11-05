@@ -235,7 +235,7 @@ public:
 
 
     AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names,
-                   const std::vector<std::string>& input_friends, const EventTagCreator& event_tagger);
+                   const std::vector<std::string>& input_friends, const EventTagCreator& event_tagger, const std::string& mdnn_version);
     size_t GetNumberOfEntries() const;
     const DataId& GetDataIdByHash(Hash hash) const;
     const RDF& GetDataFrame() const;
@@ -244,7 +244,7 @@ public:
     const std::map<std::string, std::set<std::string>>& GetParametricVariables() const;
 
 private:
-    void DefineBranches(const NameSet& active_var_names, bool all, const EventTagCreator& event_tagger);
+    void DefineBranches(const NameSet& active_var_names, bool all, const EventTagCreator& event_tagger, const std::string& mdnn_version);
     void ExtractDataIds(const AnaAux& aux);
     void ExtractMvaRanges(const AnaAux& aux);
 
