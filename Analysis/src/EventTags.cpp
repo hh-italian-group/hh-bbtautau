@@ -18,11 +18,11 @@ EventTagCreator::EventTagCreator(const EventCategorySet& _categories,
         use_svFit(_use_svFit)
 {
 }
-
+/*
 std::pair<float, VBF_Categories> EventTagCreator::FindVBFCategory(float dnn_score_TT_dl, float dnn_score_TT_sl, float dnn_score_TT_lep,
                                                  float dnn_score_TT_FH, float dnn_score_DY, float dnn_score_ggHH,
                                                  float dnn_score_ttH, float dnn_score_ttH_tautau, float dnn_score_tth_bb,
-                                                 float dnn_score_qqHH, float dnn_score_qqHH_vbf_c2v, float dnn_score_qqHH_sm, std::string mdnn_version) const
+                                                 float dnn_score_qqHH, float dnn_score_qqHH_vbf_c2v, float dnn_score_qqHH_sm) const
 {
     std::vector<std::pair<float, VBF_Categories>> category_and_dnn;
     if(!mdnn_version.empty()){
@@ -39,7 +39,20 @@ std::pair<float, VBF_Categories> EventTagCreator::FindVBFCategory(float dnn_scor
     std::sort(category_and_dnn.begin(), category_and_dnn.end());
     return *category_and_dnn.begin();
 }
+*/
+int EventTagCreator::CreateVBFTag(const LorentzVectorM& VBF1_p4, const LorentzVectorM& VBF2_p4, bool is_VBF,
+                                  bool pass_vbf_trigger) const
+{
+    int vbf_tag_raw = -1;
+    if(is_VBF) {
+        const auto m_jj = (VBF1_p4 + VBF2_p4).M();
+        const bool is_tight = m_jj > cuts::hh_bbtautau_Run2::VBF::mass_jj_tight && pass_vbf_trigger;
+        const DiscriminatorWP vbf_tag = is_tight ? DiscriminatorWP::Tight : DiscriminatorWP::Loose;
+        vbf_tag_raw = static_cast<int>(vbf_tag);
+    }
 
+    return vbf_tag_raw;
+}
 EventTags EventTagCreator::CreateEventTags(const std::vector<DataId>& dataIds_base,
                                            const std::vector<double>& weights,
                                            const std::vector<float>& btag_weight_Loose,
@@ -47,7 +60,7 @@ EventTags EventTagCreator::CreateEventTags(const std::vector<DataId>& dataIds_ba
                                            const std::vector<float>& btag_weight_Tight,
                                            int num_central_jets, bool has_b_pair,
                                            int num_btag_loose, int num_btag_medium, int num_btag_tight,
-                                           bool is_vbf, bool is_boosted, std::pair<float,VBF_Categories> vbf_cat,
+                                           bool is_vbf, bool is_boosted, int vbf_tag_raw,
                                            const LorentzVectorM& SVfit_p4, const LorentzVectorM& MET_p4,
                                            double m_bb, double m_tt_vis, int kinFit_convergence) const
 {
@@ -66,8 +79,8 @@ EventTags EventTagCreator::CreateEventTags(const std::vector<DataId>& dataIds_ba
       { DiscriminatorWP::Tight, btag_weight_Tight.at(0)},
     };
 
-    //boost::optional<DiscriminatorWP> vbf_tag;
-    //if(vbf_tag_raw > 0) vbf_tag = static_cast<DiscriminatorWP>(vbf_tag_raw);
+    boost::optional<DiscriminatorWP> vbf_tag;
+    if(vbf_tag_raw > 0) vbf_tag = static_cast<DiscriminatorWP>(vbf_tag_raw);
 
     EventTags evt_tags;
 
@@ -80,7 +93,7 @@ EventTags EventTagCreator::CreateEventTags(const std::vector<DataId>& dataIds_ba
             continue;
 
         for(const auto& category : categories) {
-            if(!category.Contains(static_cast<size_t>(num_central_jets), bjet_counts, is_vbf, is_boosted, vbf_cat.second))
+            if(!category.Contains(static_cast<size_t>(num_central_jets), bjet_counts, is_vbf, is_boosted, vbf_tag))
                 continue;
             EventSubCategory evtSubCategory;
             double btag_sf = 1;

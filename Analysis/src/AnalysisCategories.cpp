@@ -215,7 +215,7 @@ EventCategory::EventCategory(size_t _n_jets, size_t _n_btag, bool _strict_n_btag
 }
 
 EventCategory::EventCategory(size_t _n_jets, size_t _n_btag, bool _strict_n_btag, DiscriminatorWP _btag_wp,
-                             boost::optional<bool> _boosted, bool _is_VBF, VBF_Categories _vbf_cat):
+                             boost::optional<bool> _boosted, bool _is_VBF, VBF_Category _vbf_cat):
     n_jets(_n_jets), n_btag(_n_btag), strict_n_btag(_strict_n_btag), btag_wp(_btag_wp), boosted(_boosted),
     is_VBF(_is_VBF), vbf_cat(_vbf_cat)
 {
@@ -268,7 +268,7 @@ bool EventCategory::isVBF() const
     return *is_VBF;
 }
 /*bool EventCategory::HasVBFCategory() const { return vbf_cat.is_initialized(); }
-VBF_Categories EventCategory::VBF_Cat() const
+VBF_Category EventCategory::VBF_Cat() const
 {
     if(!HasVBFCategory())
         throw exception("VBF category is not defined.");
@@ -315,8 +315,8 @@ std::string EventCategory::ToString() const
             VBF_str = "_noVBF";
         } else {
             VBF_str = "_VBF";
-            if(vbf_cat != VBF_Categories::None)
-                VBF_str += "_" + VBF_Categories_names.EnumToString(vbf_cat);
+            if(vbf_cat != VBF_Category::None)
+                VBF_str += "_" + VBF_Category.analysis::ToString(vbf_cat);
         s << VBF_str;
         }
     }
@@ -328,15 +328,15 @@ EventCategory EventCategory::Parse(const std::string& str)
     static const std::string numbers = "0123456789";
     static const std::string jets_suffix = "j", btag_suffix = "b";
     static const std::map<char, bool> boosted_suffix = { { 'R', false }, { 'B', true } };
-    static const std::map<std::string, std::pair<bool, VBF_Categories>> VBF_suffix =
-        { { "noVBF", { false, VBF_Categories::None}},
-          { "VBF",   { true,  VBF_Categories::None}},
-          { "VBF_"+ VBF_Categories_names.EnumToString(VBF_Categories::qqHH),  { true, VBF_Categories::qqHH }},
-          { "VBF_"+ VBF_Categories_names.EnumToString(VBF_Categories::ggHH),  { true, VBF_Categories::ggHH }},
-          { "VBF_"+ VBF_Categories_names.EnumToString(VBF_Categories::TT_L),  { true, VBF_Categories::TT_L }},
-          { "VBF_"+ VBF_Categories_names.EnumToString(VBF_Categories::TT_FH),  { true, VBF_Categories::TT_FH }},
-          { "VBF_"+ VBF_Categories_names.EnumToString(VBF_Categories::ttH),  { true, VBF_Categories::ttH }},
-          { "VBF_"+ VBF_Categories_names.EnumToString(VBF_Categories::DY),  { true, VBF_Categories::DY }} };
+    static const std::map<std::string, std::pair<bool, VBF_Category>> VBF_suffix =
+        { { "noVBF", { false, VBF_Category::None}},
+          { "VBF",   { true,  VBF_Category::None}},
+          { "VBF_"+ VBF_Category.analysis::ToString(VBF_Category::qqHH),  { true, VBF_Category::qqHH }},
+          { "VBF_"+ VBF_Category.analysis::ToString(VBF_Category::ggHH),  { true, VBF_Category::ggHH }},
+          { "VBF_"+ VBF_Category.analysis::ToString(VBF_Category::TT_L),  { true, VBF_Category::TT_L }},
+          { "VBF_"+ VBF_Category.analysis::ToString(VBF_Category::TT_FH),  { true, VBF_Category::TT_FH }},
+          { "VBF_"+ VBF_Category.analysis::ToString(VBF_Category::ttH),  { true, VBF_Category::ttH }},
+          { "VBF_"+ VBF_Category.analysis::ToString(VBF_Category::DY),  { true, VBF_Category::DY }} };
 
     if(str == "Inclusive") return Inclusive();
     try {
@@ -388,14 +388,14 @@ EventCategory EventCategory::Parse(const std::string& str)
 }
 
 bool EventCategory::Contains(size_t num_jets, const std::map<DiscriminatorWP, size_t>& num_btag, bool is_vbf,
-                             bool is_boosted, const VBF_Categories vbf_categories) const
+                             bool is_boosted, VBF_Category vbf_category) const
 {
     if(btag_wp && !num_btag.count(*btag_wp))
         throw exception("The btag_wp, is not defined") ;
 
     return (!n_jets || num_jets >= *n_jets) && (!n_btag
                         || (*strict_n_btag ? (num_btag.at(*btag_wp) == n_btag) : (num_btag.at(*btag_wp) >= *n_btag)))
-                        && (!is_VBF || is_vbf == *is_VBF) && (vbf_cat == vbf_categories)
+                        && (!is_VBF || is_vbf == *is_VBF) && (vbf_cat == VBF_Category::None || vbf_cat == vbf_category)
                         && (!boosted || is_boosted == *boosted);
 }
 

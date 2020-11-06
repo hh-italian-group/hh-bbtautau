@@ -494,11 +494,18 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
                                     float dnn_score_TT_FH, float dnn_score_DY, float dnn_score_ggHH,
                                     float dnn_score_ttH, float dnn_score_ttH_tautau, float dnn_score_tth_bb,
                                     float dnn_score_qqHH, float dnn_score_qqHH_vbf_c2v, float dnn_score_qqHH_sm){
-                                    return event_tagger.FindVBFCategory( dnn_score_TT_dl,  dnn_score_TT_sl,  dnn_score_TT_lep, dnn_score_TT_FH,  dnn_score_DY,  dnn_score_ggHH, dnn_score_ttH,  dnn_score_ttH_tautau,  dnn_score_tth_bb, dnn_score_qqHH,  dnn_score_qqHH_vbf_c2v,  dnn_score_qqHH_sm, mdnn_version);
+                                            return event_tagger.FindVBFCategory( dnn_score_TT_dl,  dnn_score_TT_sl,  dnn_score_TT_lep, dnn_score_TT_FH,
+                                            dnn_score_DY,  dnn_score_ggHH, dnn_score_ttH,  dnn_score_ttH_tautau,  dnn_score_tth_bb, dnn_score_qqHH,  dnn_score_qqHH_vbf_c2v,  dnn_score_qqHH_sm);
                                 };
-    Define(df, "vbf_cat", vbf_category, mdnn_branches, true);
-    Define(df, "mdnn_score", [](const std::pair<float, VBF_Categories>& vbf_cat) { return vbf_cat.first; }, {"vbf_cat"}, true);
-
+                            }
+    if(mdnn_version.empty()){
+        auto vbf_cat = [](){return std::make_pair(-1.f, VBF_Categories::None);};
+        Define(df, "vbf_cat", vbf_cat, {}, true);
+    }
+    else{
+        Define(df, "vbf_cat", vbf_category, mdnn_branches, true);
+        Define(df, "mdnn_score", [](const std::pair<float, VBF_Categories>& vbf_cat) -> float { return vbf_cat.first; }, {"vbf_cat"}, true);
+    }
     const auto create_event_tags = [&] (const std::vector<DataId>& dataIds_base,
                                         const std::vector<double>& weights,
                                         const std::vector<float>& btag_weight_Loose,
@@ -506,7 +513,7 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
                                         const std::vector<float>& btag_weight_Tight,
                                         int num_central_jets, bool has_b_pair,
                                         int num_btag_loose, int num_btag_medium, int num_btag_tight,
-                                        bool is_vbf, bool is_boosted, std::pair<float,VBF_Categories> vbf_cat,
+                                        bool is_vbf, bool is_boosted, const std::pair<float,VBF_Category>& vbf_cat,
                                         const LorentzVectorM& SVfit_p4, const LorentzVectorM& MET_p4,
                                         double m_bb, double m_tt_vis, int kinFit_convergence) {
         return event_tagger.CreateEventTags(dataIds_base, weights, btag_weight_Loose, btag_weight_Medium,

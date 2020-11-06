@@ -74,7 +74,7 @@ std::pair<EventCategorySet,
     auto fatJet = SignalObjectSelector::SelectFatJet(event.GetEventCandidate(), event.GetSelectedSignalJets());
     const bool is_boosted = fatJet != nullptr;
     bool is_VBF = false;
-    VBF_Categories vbf_cat;
+    VBF_Category vbf_cat;
     std::set<size_t> jets_to_exclude;
     if(event.HasVBFjetPair()){
         const auto vbf_jet_1 = event.GetVBFJet(1).GetMomentum();
