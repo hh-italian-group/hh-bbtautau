@@ -19,56 +19,21 @@ AnaTupleWriter::~AnaTupleWriter()
         aux_tuple().dataIds.push_back(id.second);
         aux_tuple().dataId_names.push_back(id.first.GetName());
     }
-    for(const auto& id : known_sample_ids.left) {
-        aux_tuple().sampleIds.push_back(id.second);
-        aux_tuple().sampleId_names.push_back(id.first);
-    }
-    for(const auto& range : mva_ranges) {
-        aux_tuple().mva_selections.push_back(static_cast<unsigned>(range.first));
-        aux_tuple().mva_min.push_back(range.second.min());
-        aux_tuple().mva_max.push_back(range.second.max());
-    }
     aux_tuple.Fill();
     aux_tuple.Write();
     tuple.Write();
 }
 
-void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const bool pass_VBF_trigger,
-                              const CategoriesFlags& categories_flags,
-                              const std::map<DiscriminatorWP, std::map<UncertaintyScale, float>>& btag_weights,
-                              const std::map<UncertaintySource, std::map<UncertaintyScale, float>>& uncs_weight_map)
+void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const CategoriesFlags& categories_flags,
+        const std::map<std::pair<DiscriminatorWP, bool>, std::map<UncertaintyScale, float>>& btag_weights,
+        const std::map<UncertaintySource, std::map<UncertaintyScale, float>>& uncs_weight_map)
 {
     static constexpr float def_val = std::numeric_limits<float>::lowest();
     static constexpr int def_val_int = std::numeric_limits<int>::lowest();
 
     if(!dataIds.size()) return;
-    tuple().is_central_es = false;
-    tuple().weight = def_val;
-    tuple().mva_score = def_val;
 
-    boost::optional<std::string> sample_id;
-    for(const auto& entry : dataIds) {
-        const DataId& data_id = entry.first;
-        const double weight = std::get<0>(entry.second);
-        const double mva_score = std::get<1>(entry.second);
-        const UncertaintySource unc_source = data_id.Get<UncertaintySource>();
-
-        if(!sample_id) {
-            sample_id = data_id.Get<std::string>();
-            if(!known_sample_ids.left.count(*sample_id)) {
-                const size_t hash = std::hash<std::string>{}(*sample_id);
-                if(known_sample_ids.right.count(hash))
-                    throw exception("Duplicated hash for sample id '%1%' and '%2%'.") % (*sample_id)
-                        %  known_sample_ids.right.at(hash);
-                known_sample_ids.insert({*sample_id, hash});
-            }
-            tuple().sample_id = known_sample_ids.left.at(*sample_id);
-        }
-        // if(*sample_id != data_id.Get<std::string>()) {
-        //     throw exception("Single event has two distinct sample ids: %1% and %2%") % (*sample_id)
-        //             % data_id.Get<std::string>();
-        // }
-
+    for(const auto& [data_id, weight] : dataIds) {
         if(!known_data_ids.left.count(data_id)) {
             const size_t hash = std::hash<std::string>{}(data_id.GetName());
             if(known_data_ids.right.count(hash))
@@ -77,89 +42,32 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
             known_data_ids.insert({data_id, hash});
         }
 
-        if(unc_source == UncertaintySource::None) {
-            tuple().is_central_es = true;
-            tuple().weight = weight;
-            tuple().mva_score = static_cast<float>(mva_score);
-        }
-
-        SelectionCut mva_cut;
-        if(data_id.Get<EventSubCategory>().TryGetLastMvaCut(mva_cut)) {
-            mva_ranges[mva_cut] = mva_ranges[mva_cut].Extend(mva_score);
-        }
-
         tuple().dataIds.push_back(known_data_ids.left.at(data_id));
-        tuple().all_weights.push_back(weight);
-        tuple().all_mva_scores.push_back(static_cast<float>(mva_score));
+        tuple().all_weights.push_back(static_cast<float>(weight));
     }
 
-    auto fill_unc_weight_vec = [](const std::map<UncertaintyScale, float>& weights_in, std::vector<float>& weights_out,
-                                  bool store_relative = true) {
-        static const std::vector<UncertaintyScale> scales = { UncertaintyScale::Up, UncertaintyScale::Down };
-
-        weights_out.clear();
-        const float central_w = weights_in.at(UncertaintyScale::Central);
-        if(!store_relative)
-            weights_out.push_back(central_w);
-        for(auto scale : scales) {
-            if(!weights_in.count(scale)) break;
-            float w = weights_in.at(scale);
-            if(store_relative)
-                w /= central_w;
-            weights_out.push_back(w);
-        }
-    };
-
-    if(!event->isData){
-        fill_unc_weight_vec(btag_weights.at(DiscriminatorWP::Loose), tuple().btag_weight_Loose, false);
-        fill_unc_weight_vec(btag_weights.at(DiscriminatorWP::Medium), tuple().btag_weight_Medium, false);
-        fill_unc_weight_vec(btag_weights.at(DiscriminatorWP::Tight), tuple().btag_weight_Tight, false);
-        if(event.GetEventCandidate().GetUncSource() == UncertaintySource::None){
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::EleTriggerUnc), tuple().unc_EleTriggerUnc);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::MuonTriggerUnc), tuple().unc_MuonTriggerUnc);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauTriggerUnc_DM0), tuple().unc_TauTriggerUnc_DM0);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauTriggerUnc_DM1), tuple().unc_TauTriggerUnc_DM1);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauTriggerUnc_DM10), tuple().unc_TauTriggerUnc_DM10);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauTriggerUnc_DM11), tuple().unc_TauTriggerUnc_DM11);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSjetSF_DM0), tuple().unc_TauVSjetSF_DM0);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSjetSF_DM1), tuple().unc_TauVSjetSF_DM1);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSjetSF_3prong), tuple().unc_TauVSjetSF_3prong);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSjetSF_pt20to25), tuple().unc_TauVSjetSF_pt20to25);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSjetSF_pt25to30), tuple().unc_TauVSjetSF_pt25to30);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSjetSF_pt30to35), tuple().unc_TauVSjetSF_pt30to35);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSjetSF_pt35to40), tuple().unc_TauVSjetSF_pt35to40);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSjetSF_ptgt40), tuple().unc_TauVSjetSF_ptgt40);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSeSF_barrel), tuple().unc_TauVSeSF_barrel);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSeSF_endcap), tuple().unc_TauVSeSF_endcap);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSmuSF_etaLt0p4), tuple().unc_TauVSmuSF_etaLt0p4);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSmuSF_eta0p4to0p8), tuple().unc_TauVSmuSF_eta0p4to0p8);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSmuSF_eta1p2to1p7), tuple().unc_TauVSmuSF_eta1p2to1p7);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSmuSF_eta1p2to1p7), tuple().unc_TauVSmuSF_eta1p2to1p7);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauVSmuSF_etaGt1p7), tuple().unc_TauVSmuSF_etaGt1p7);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::EleIdIsoUnc), tuple().unc_EleIdIsoUnc);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::MuonIdIsoUnc), tuple().unc_MuonIdIsoUnc);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TopPt), tuple().unc_TopPt);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::L1_prefiring), tuple().unc_L1_prefiring);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::PileUp), tuple().unc_PileUp);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::PileUpJetId_eff), tuple().unc_PileUpJetId_eff);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::PileUpJetId_mistag), tuple().unc_PileUpJetId_mistag);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauCustomSF_DM0), tuple().unc_TauCustomSF_DM0);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauCustomSF_DM1), tuple().unc_TauCustomSF_DM1);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauCustomSF_DM10), tuple().unc_TauCustomSF_DM10);
-            fill_unc_weight_vec(uncs_weight_map.at(UncertaintySource::TauCustomSF_DM11), tuple().unc_TauCustomSF_DM11);
-        }
-    }
-    tuple().has_b_pair = event.HasBjetPair();
-    tuple().has_VBF_pair = event.HasVBFjetPair();
-    tuple().pass_VBF_trigger = pass_VBF_trigger;
     tuple().run = event->run;
     tuple().lumi = event->lumi;
     tuple().evt = event->evt;
     tuple().channelId = event->channelId;
+    tuple().is_data = event->isData;
+
+    tuple().has_b_pair = event.HasBjetPair();
+    tuple().has_VBF_pair = event.HasVBFjetPair();
+    tuple().pass_VBF_trigger = categories_flags.pass_vbf_trigger;
+    tuple().pass_only_VBF_trigger = categories_flags.pass_only_vbf_trigger;
     tuple().num_central_jets =  static_cast<Int_t>(categories_flags.num_jets);
-    tuple().num_btag_loose = static_cast<Int_t>(categories_flags.num_btag_loose);
-    tuple().num_btag_medium = static_cast<Int_t>(categories_flags.num_btag_medium);
-    tuple().num_btag_tight = static_cast<Int_t>(categories_flags.num_btag_tight);
+
+    #define SET_NBTAG(col, wp) \
+        tuple().col##_##wp = static_cast<Int_t>(categories_flags.col.at(DiscriminatorWP::wp))
+
+    SET_NBTAG(num_btag, Loose);
+    SET_NBTAG(num_btag, Medium);
+    SET_NBTAG(num_btag, Tight);
+    SET_NBTAG(nbtag, Loose);
+    SET_NBTAG(nbtag, Medium);
+    SET_NBTAG(nbtag, Tight);
+
     tuple().is_vbf = categories_flags.is_vbf;
     tuple().is_boosted = categories_flags.is_boosted;
 
@@ -195,6 +103,7 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
         tuple().name##_DeepFlavour_CvsL = obj ? (*obj)->deepFlavour_CvsL() : def_val; \
         tuple().name##_DeepFlavour_CvsB = obj ? (*obj)->deepFlavour_CvsB() : def_val; \
         tuple().name##_HHbtag = obj ? (*obj)->hh_btag() : def_val; \
+        tuple().name##_resolution = obj ? (*obj)->resolution() : def_val; \
         tuple().name##_valid = obj != nullptr; \
         tuple().name##_hadronFlavour = obj ? (*obj)->hadronFlavour() : def_val_int; \
         /**/
@@ -213,22 +122,25 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
     JET_DATA(VBF1, vbf1)
     JET_DATA(VBF2, vbf2)
 
-    auto centralJets = event.GetCentralJets();
-    std::sort(centralJets.begin(), centralJets.end(), [](auto jet1, auto jet2) {
+    static const auto order_jets = [] (const auto& jet1, const auto& jet2) {
         return jet1->GetMomentum().pt() > jet2->GetMomentum().pt();
-    });
+    };
+
+    auto centralJets = event.GetCentralJets();
+    std::sort(centralJets.begin(), centralJets.end(), order_jets);
 
     auto forwardJets = event.GetForwardJets();
-    std::sort(forwardJets.begin(), forwardJets.end(), [](auto jet1, auto jet2) {return jet1->GetMomentum().pt() > jet2->GetMomentum().pt(); });
+    std::sort(forwardJets.begin(), forwardJets.end(), order_jets);
 
     //remove forward jets with pt < 30
-    auto low_pt_iter = std::find_if(forwardJets.begin(), forwardJets.end(), [](auto jet) {
-        return jet->GetMomentum().Pt() <= cuts::hh_bbtautau_Run2::jetID::vbf_pt; });
+    const auto low_pt_iter = std::find_if(forwardJets.begin(), forwardJets.end(), [](const auto& jet) {
+        return jet->GetMomentum().Pt() <= cuts::hh_bbtautau_Run2::jetID::vbf_pt;
+    });
     forwardJets.erase(low_pt_iter, forwardJets.end());
 
     //remove from forward and central signal jets
     const std::set<const JetCandidate*> signal_jets = { b1, b2, vbf1, vbf2 };
-    auto is_signal = [&signal_jets](const JetCandidate* jet) -> bool { return signal_jets.count(jet); };
+    const auto is_signal = [&signal_jets](const JetCandidate* jet) -> bool { return signal_jets.count(jet); };
     centralJets.erase(std::remove_if(centralJets.begin(), centralJets.end(), is_signal), centralJets.end());
     forwardJets.erase(std::remove_if(forwardJets.begin(), forwardJets.end(), is_signal), forwardJets.end());
 
@@ -240,7 +152,6 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
     JET_DATA(central_jet3, centralJets.at(2))
     JET_DATA(central_jet4, centralJets.at(3))
     JET_DATA(central_jet5, centralJets.at(4))
-
 
     JET_DATA(forward_jet1, forwardJets.at(0))
     JET_DATA(forward_jet2, forwardJets.at(1))
@@ -265,6 +176,9 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
 
     tuple().MET_pt = static_cast<float>(event.GetMET().GetMomentum().pt());
     tuple().MET_phi = static_cast<float>(event.GetMET().GetMomentum().phi());
+    tuple().MET_cov_00 = static_cast<float>(event.GetMET().GetCovMatrix()(0, 0));
+    tuple().MET_cov_01 = static_cast<float>(event.GetMET().GetCovMatrix()(0, 1));
+    tuple().MET_cov_11 = static_cast<float>(event.GetMET().GetCovMatrix()(1, 1));
 
 
     const sv_fit_ana::FitResults* SVfit = nullptr;
@@ -310,8 +224,63 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
     tuple().jets_nTotal_hadronFlavour_b = event->jets_nTotal_hadronFlavour_b;
     tuple().jets_nTotal_hadronFlavour_c = event->jets_nTotal_hadronFlavour_c;
 
+    if(!event->isData) {
+        #define FILL_BTAG(wp, suffix) \
+            FillUncWeightVec(btag_weights.at(std::make_pair(DiscriminatorWP::wp, false)), \
+                                tuple().btag_weight##suffix##wp, false)
+
+        FILL_BTAG(Loose, _);
+        FILL_BTAG(Medium, _);
+        FILL_BTAG(Tight, _);
+
+        FillUncWeightVec(btag_weights.at(std::make_pair(DiscriminatorWP::Medium, false)),
+                         tuple().btag_weight_IterativeFit, false);
+
+        #undef FILL_BTAG
+
+        #define FILL_UNC(r, _, name) \
+            FillUncWeightVec(uncs_weight_map.at(UncertaintySource::name), tuple().BOOST_PP_CAT(unc_, name));
+        #define FILL_UNC_LIST(_, ...) BOOST_PP_SEQ_FOR_EACH(FILL_UNC, _, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
+
+        if(event.GetEventCandidate().GetUncSource() == UncertaintySource::None){
+            FILL_UNC_LIST(float,
+                EleTriggerUnc, MuonTriggerUnc,
+                TauTriggerUnc_DM0, TauTriggerUnc_DM1, TauTriggerUnc_DM10, TauTriggerUnc_DM11,
+                TauVSjetSF_DM0, TauVSjetSF_DM1, TauVSjetSF_3prong,
+                TauVSjetSF_pt20to25, TauVSjetSF_pt25to30, TauVSjetSF_pt30to35, TauVSjetSF_pt35to40, TauVSjetSF_ptgt40,
+                TauVSeSF_barrel, TauVSeSF_endcap,
+                TauVSmuSF_etaLt0p4, TauVSmuSF_eta0p4to0p8, TauVSmuSF_eta0p8to1p2, TauVSmuSF_eta1p2to1p7,
+                TauVSmuSF_etaGt1p7,
+                EleIdIsoUnc, MuonIdIsoUnc,
+                TopPt, L1_prefiring, PileUp, PileUpJetId_eff, PileUpJetId_mistag,
+                TauCustomSF_DM0, TauCustomSF_DM1, TauCustomSF_DM10, TauCustomSF_DM11
+            )
+        }
+        #undef FILL_UNC
+        #undef FILL_UNC_LIST
+    }
+
     tuple.Fill();
 }
+
+void AnaTupleWriter::FillUncWeightVec(const std::map<UncertaintyScale, float>& weights_in,
+                                      std::vector<float>& weights_out, bool store_relative)
+{
+    static const std::vector<UncertaintyScale> scales = { UncertaintyScale::Up, UncertaintyScale::Down };
+
+    weights_out.clear();
+    const float central_w = weights_in.at(UncertaintyScale::Central);
+    if(!store_relative)
+        weights_out.push_back(central_w);
+    for(auto scale : scales) {
+        if(!weights_in.count(scale)) break;
+        float w = weights_in.at(scale);
+        if(store_relative)
+            w /= central_w;
+        weights_out.push_back(w);
+    }
+}
+
 
 const AnaTupleReader::NameSet AnaTupleReader::BoolBranches = {
     "has_b_pair", "has_VBF_pair", "pass_VBF_trigger"
@@ -394,7 +363,6 @@ AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, Na
     AnaAuxTuple aux_tuple(files.front().get(), true);
     aux_tuple.GetEntry(0);
     ExtractDataIds(aux_tuple());
-    ExtractMvaRanges(aux_tuple());
 }
 
 void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, const EventTagCreator& event_tagger)
@@ -625,33 +593,6 @@ void AnaTupleReader::ExtractDataIds(const AnaAux& aux)
     }
 }
 
-void AnaTupleReader::ExtractMvaRanges(const AnaAux& aux)
-{
-    const size_t N = aux.mva_selections.size();
-    if(aux.mva_min.size() != N || aux.mva_max.size() != N)
-        throw exception("Inconsistent mva range info in AnaAux tuple.");
-    for(size_t n = 0; n < N; ++n) {
-        const SelectionCut sel = static_cast<SelectionCut>(aux.mva_selections.at(n));
-        if(mva_ranges.count(sel))
-            throw exception("Duplicated mva selection = %1% in AnaAux tuple.") % sel;
-        mva_ranges[sel] = Range(aux.mva_min.at(n), aux.mva_max.at(n));
-    }
-}
-
-float AnaTupleReader::GetNormalizedMvaScore(const DataId& dataId, float raw_score) const
-{
-    SelectionCut sel;
-    if(!dataId.Get<EventSubCategory>().TryGetLastMvaCut(sel))
-        return raw_score;
-    auto iter = mva_ranges.find(sel);
-    if(iter == mva_ranges.end())
-        throw exception("Mva range not found for %1%.") % sel;
-    const Range& range = iter->second;
-    const double result = mva_target_range.size() / range.size() * (raw_score - range.min())
-            + mva_target_range.min();
-    return static_cast<float>(result);
-}
-
 std::string HyperPoint::ToString()
 {
     std::vector<std::string> points;
@@ -669,9 +610,6 @@ std::string HyperPoint::ToString()
         ss << "_" << points.at(n);
     return ss.str();
 }
-
-
-
 
 } // namespace bbtautau
 } // namespace analysis

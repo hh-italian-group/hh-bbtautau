@@ -228,7 +228,7 @@ void DYModel::ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfo& even
             else norm_sf = scale_factor_maps.at(sample_wp.full_name+"_"+ToString(it->first.second)+Pt_suffix());
         }
     }
-    dataIds[finalId] = std::make_tuple(weight * norm_sf, event.GetMvaScore());
+    dataIds[finalId] = weight * norm_sf;
 }
 
 DYModel_HTT::DYModel_HTT(const SampleDescriptor& sample,const std::string& working_path) //constructor
@@ -249,7 +249,7 @@ void DYModel_HTT::ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfo& 
         break;
     }
 
-    dataIds[anaDataId] = std::make_tuple(weight * norm_sf, event.GetMvaScore());
+    dataIds[anaDataId] = weight * norm_sf;
 }
 
 }
