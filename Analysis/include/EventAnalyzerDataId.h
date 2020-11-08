@@ -57,6 +57,8 @@ public:
     }
 
     bool operator< (const EventAnalyzerDataId& other) const;
+    bool operator== (const EventAnalyzerDataId& other) const;
+    bool operator!= (const EventAnalyzerDataId& other) const;
     std::string GetName(const std::string& separator = "/") const;
     bool IsComplete() const;
 

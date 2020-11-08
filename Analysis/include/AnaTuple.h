@@ -6,15 +6,10 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include <boost/preprocessor/seq.hpp>
 #include <boost/preprocessor/variadic.hpp>
 #include <boost/bimap.hpp>
-#include <ROOT/RDataFrame.hxx>
 #include "AnalysisTools/Core/include/SmartTree.h"
-#include "AnalysisTools/Core/include/AnalysisMath.h"
-#include "AnalysisTools/Core/include/NumericPrimitives.h"
-#include "AnalysisTools/Core/include/RootExt.h"
 #include "h-tautau/Analysis/include/EventInfo.h"
 #include "EventAnalyzerDataId.h"
 #include "h-tautau/Core/include/TauIdResults.h"
-#include "hh-bbtautau/Analysis/include/EventTags.h"
 
 namespace analysis {
 
@@ -175,53 +170,6 @@ private:
     AnaAuxTuple aux_tuple;
     bool runKinFit, runSVfit, allow_calc_svFit;
     DataIdBiMap known_data_ids;
-};
-
-class AnaTupleReader {
-public:
-    using DataId = EventAnalyzerDataId;
-    using Hash = size_t;
-    using DataIdBiMap = boost::bimap<DataId, Hash>;
-    using DataIdMap = std::map<DataId, std::tuple<double, double>>;
-    using NameSet = std::set<std::string>;
-    using RDF = ROOT::RDF::RNode;
-
-    static const NameSet BoolBranches, IntBranches;
-
-    AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names,
-                   const std::vector<std::string>& input_friends, const EventTagCreator& event_tagger);
-    size_t GetNumberOfEntries() const;
-    const DataId& GetDataIdByHash(Hash hash) const;
-    const RDF& GetDataFrame() const;
-    const std::list<RDF>& GetSkimmedDataFrames() const;
-    const std::map<std::string, std::set<std::string>>& GetParametricVariables() const;
-
-private:
-    void DefineBranches(const NameSet& active_var_names, bool all, const EventTagCreator& event_tagger);
-    void ExtractDataIds(const AnaAux& aux);
-
-    static std::vector<std::shared_ptr<TFile>> OpenFiles(const std::string& file_name,
-                                                         const std::vector<std::string>& input_friends);
-    static std::vector<std::shared_ptr<TTree>> ReadTrees(Channel channel,
-                                                         const std::vector<std::shared_ptr<TFile>>& files);
-
-private:
-    std::vector<std::shared_ptr<TFile>> files;
-    std::vector<std::shared_ptr<TTree>> trees;
-    ROOT::RDataFrame dataFrame;
-    RDF df;
-    std::list<RDF> skimmed_df;
-    DataIdBiMap known_data_ids;
-    NameSet var_branch_names;
-    std::map<std::string, std::set<std::string>> parametric_vars;
-};
-
-struct HyperPoint {
-    boost::optional<int> spin;
-    boost::optional<double> mass;
-    boost::optional<double> kl;
-
-    std::string ToString();
 };
 
 } // namespace bbtautau
