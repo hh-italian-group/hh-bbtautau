@@ -20,7 +20,7 @@ EventTagCreator::EventTagCreator(const EventCategorySet& _categories,
 }
 
 int EventTagCreator::CreateVBFTag(const LorentzVectorM& VBF1_p4, const LorentzVectorM& VBF2_p4, bool is_VBF,
-                                  bool pass_vbf_trigger) const
+                                  bool pass_vbf_trigger)
 {
     int vbf_tag_raw = -1;
     if(is_VBF) {
@@ -34,11 +34,11 @@ int EventTagCreator::CreateVBFTag(const LorentzVectorM& VBF1_p4, const LorentzVe
 }
 
 EventTags EventTagCreator::CreateEventTags(const std::vector<DataId>& dataIds_base,
-                                           const std::vector<double>& weights, int num_central_jets, bool has_b_pair,
+                                           const std::vector<float>& weights, int num_central_jets, bool has_b_pair,
                                            int num_btag_loose, int num_btag_medium, int num_btag_tight,
                                            bool is_vbf, bool is_boosted, int vbf_tag_raw,
                                            const LorentzVectorM& SVfit_p4, const LorentzVectorM& MET_p4,
-                                           double m_bb, double m_tt_vis, int kinFit_convergence) const
+                                           float m_bb, float m_tt_vis, int kinFit_convergence) const
 {
     static const EventCategory evtCategory_2j = EventCategory::Parse("2j");
 
@@ -55,7 +55,7 @@ EventTags EventTagCreator::CreateEventTags(const std::vector<DataId>& dataIds_ba
 
     for (size_t i = 0; i < dataIds_base.size(); ++i) {
         const auto& dataId_base = dataIds_base.at(i);
-        const double weight = weights.at(i);
+        const float weight = weights.at(i);
 
         if(dataId_base.Get<EventCategory>() != evtCategory_2j
                 || !event_unc_sources.count(dataId_base.Get<UncertaintySource>()))

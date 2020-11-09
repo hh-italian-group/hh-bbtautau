@@ -10,6 +10,16 @@ bool EventAnalyzerDataId::operator< (const EventAnalyzerDataId& other) const
     return id_tuple < other.id_tuple;
 }
 
+bool EventAnalyzerDataId::operator== (const EventAnalyzerDataId& other) const
+{
+    return id_tuple == other.id_tuple;
+}
+
+bool EventAnalyzerDataId::operator!= (const EventAnalyzerDataId& other) const
+{
+    return id_tuple != other.id_tuple;
+}
+
 std::string EventAnalyzerDataId::GetName(const std::string& separator) const
 {
     return GetSubName(std::make_index_sequence<TupleSize>{}, separator);

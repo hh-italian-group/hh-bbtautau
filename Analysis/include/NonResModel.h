@@ -33,15 +33,15 @@ private:
     };
 
 public:
-    NonResModel(Period period, const SampleDescriptor& sample, std::shared_ptr<TFile> file,
-                tuple_skimmer::CrossSectionProvider& xs_provider);
+    NonResModel(const mc_corrections::EventWeights_HH& _weights, const SampleDescriptor& sample,
+                std::shared_ptr<TFile> file, tuple_skimmer::CrossSectionProvider& xs_provider);
     void ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfo& event, double weight, double shape_weight,
                       bbtautau::AnaTupleWriter::DataIdMap& dataIds, double cross_section,
                       std::map<UncertaintySource, std::map<UncertaintyScale, float>>& uncs_weight_map);
 
 private:
     WeightingMode weighting_mode;
-    mc_corrections::EventWeights_HH weights;
+    const mc_corrections::EventWeights_HH& weights;
     std::shared_ptr<NonResHH_EFT::WeightProvider> eft_weights;
     std::vector<std::string> point_names;
     std::vector<Point> points;

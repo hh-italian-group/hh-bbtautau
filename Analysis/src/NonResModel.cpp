@@ -44,10 +44,10 @@ void NonResModel::ParamPositionDesc::SetValue(const ValueVec& values, const std:
     }
 }
 
-NonResModel::NonResModel(Period period, const SampleDescriptor& sample, std::shared_ptr<TFile> file,
-                         tuple_skimmer::CrossSectionProvider& xs_provider) :
+NonResModel::NonResModel(const mc_corrections::EventWeights_HH& _weights, const SampleDescriptor& sample,
+                         std::shared_ptr<TFile> file, tuple_skimmer::CrossSectionProvider& xs_provider) :
         weighting_mode(WeightType::PileUp, WeightType::BSM_to_SM, WeightType::GenEventWeight),
-        weights(period, BTagger(period, BTaggerKind::DeepFlavour), weighting_mode),
+        weights(_weights),
         eft_weights(weights.GetProviderT<NonResHH_EFT::WeightProvider>(WeightType::BSM_to_SM)),
         points_are_orthogonal(sample.create_orthogonal_points)
 {
@@ -84,7 +84,7 @@ void NonResModel::ProcessEvent(const EventAnalyzerDataId& anaDataId, EventInfo& 
         const double eft_weight_correction = eft_weight / event->weight_bsm_to_sm;
         const double xs_correction = point_xs.at(n) > 0 ? point_xs.at(n) / cross_section : 1.;
         const double final_weight = weight * shape_weight_correction * eft_weight_correction * xs_correction;
-        dataIds[final_id] = std::make_tuple(final_weight, event.GetMvaScore());
+        dataIds[final_id] = final_weight;
 
         uncs_weight_map[UncertaintySource::PileUp][UncertaintyScale::Central] = static_cast<float>(event->weight_pu /
                 total_shape_weights.at(UncertaintyScale::Central).at(n));

@@ -19,8 +19,9 @@ public:
                                               bool control_duplicates = true) const;
 
 
-    std::map<UncertaintyScale, std::vector<double>> GetTotalShapeWeights(const std::shared_ptr<TFile>& file, const WeightingMode& weighting_mode,
-                                             const std::vector<NonResHH_EFT::Point>& eft_points, bool orthogonal);
+    std::map<UncertaintyScale, std::vector<double>> GetTotalShapeWeights(const std::shared_ptr<TFile>& file,
+            const WeightingMode& weighting_mode, const std::vector<NonResHH_EFT::Point>& eft_points,
+            bool orthogonal) const;
 
 private:
     static std::string FullBSMtoSM_Name(const std::string& fileName);
