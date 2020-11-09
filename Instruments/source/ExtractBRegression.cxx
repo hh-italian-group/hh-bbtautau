@@ -1,6 +1,10 @@
 /*! Extract b-regression values to be aligned with AnaTuple.
 This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
+#include <TTreeReader.h>
+#include <TTreeReaderValue.h>
+#include <TTreeReaderArray.h>
+
 #include "AnalysisTools/Core/include/ProgressReporter.h"
 #include "AnalysisTools/Core/include/RootExt.h"
 #include "AnalysisTools/Run/include/program_main.h"
@@ -137,7 +141,7 @@ public:
                 #undef B_BR
                 #undef B_FILL
 
-                weight = static_cast<float>(event.weight);
+                weight = event.all_weights.at(0);
                 m_sv = event.SVfit_m;
                 tau1_pt = event.tau1_pt;
                 tau1_eta = event.tau1_eta;
