@@ -316,7 +316,7 @@ std::string EventCategory::ToString() const
         } else {
             VBF_str = "_VBF";
             if(vbf_cat != VBF_Category::None)
-                VBF_str += "_" + VBF_Category.analysis::ToString(vbf_cat);
+                VBF_str += "_" + analysis::ToString(vbf_cat);
         s << VBF_str;
         }
     }
@@ -331,12 +331,12 @@ EventCategory EventCategory::Parse(const std::string& str)
     static const std::map<std::string, std::pair<bool, VBF_Category>> VBF_suffix =
         { { "noVBF", { false, VBF_Category::None}},
           { "VBF",   { true,  VBF_Category::None}},
-          { "VBF_"+ VBF_Category.analysis::ToString(VBF_Category::qqHH),  { true, VBF_Category::qqHH }},
-          { "VBF_"+ VBF_Category.analysis::ToString(VBF_Category::ggHH),  { true, VBF_Category::ggHH }},
-          { "VBF_"+ VBF_Category.analysis::ToString(VBF_Category::TT_L),  { true, VBF_Category::TT_L }},
-          { "VBF_"+ VBF_Category.analysis::ToString(VBF_Category::TT_FH),  { true, VBF_Category::TT_FH }},
-          { "VBF_"+ VBF_Category.analysis::ToString(VBF_Category::ttH),  { true, VBF_Category::ttH }},
-          { "VBF_"+ VBF_Category.analysis::ToString(VBF_Category::DY),  { true, VBF_Category::DY }} };
+          { "VBF_"+ analysis::ToString(VBF_Category::qqHH),  { true, VBF_Category::qqHH }},
+          { "VBF_"+ analysis::ToString(VBF_Category::ggHH),  { true, VBF_Category::ggHH }},
+          { "VBF_"+ analysis::ToString(VBF_Category::TT_L),  { true, VBF_Category::TT_L }},
+          { "VBF_"+ analysis::ToString(VBF_Category::TT_FH),  { true, VBF_Category::TT_FH }},
+          { "VBF_"+ analysis::ToString(VBF_Category::ttH),  { true, VBF_Category::ttH }},
+          { "VBF_"+ analysis::ToString(VBF_Category::DY),  { true, VBF_Category::DY }} };
 
     if(str == "Inclusive") return Inclusive();
     try {

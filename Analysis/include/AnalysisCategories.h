@@ -134,7 +134,7 @@ private:
     boost::optional<bool> strict_n_btag;
     boost::optional<DiscriminatorWP> btag_wp;
     boost::optional<bool> boosted, is_VBF;
-    VBF_Category vbf_cat(VBF_Category::None);
+    VBF_Category vbf_cat{VBF_Category::None};
 };
 
 std::ostream& operator<<(std::ostream& os, const EventCategory& eventCategory);
@@ -233,4 +233,3 @@ using EventSubCategorySet = std::set<EventSubCategory>;
 using Dataset = std::string;
 
 } // namespace analysis
-VBF_Category

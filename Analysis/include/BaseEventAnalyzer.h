@@ -20,7 +20,7 @@ namespace analysis {
 struct AnalyzerArguments : CoreAnalyzerArguments {
     REQ_ARG(std::string, input);
     REQ_ARG(std::string, output);
-    OPT_ARG(std::string, output_sync,"sync.root");
+    OPT_ARG(std::string, output_sync, "sync.root");
 };
 
 struct SyncDescriptor {
@@ -39,13 +39,10 @@ public:
     void Run();
 
 protected:
-    std::pair<EventCategorySet, bbtautau::AnaTupleWriter::CategoriesFlags> DetermineEventCategories(EventInfo& event, bool pass_vbf_trigger);
+    void SetEventCategoryFlags(EventInfo& event, bbtautau::AnaTupleWriter::CategoriesFlags& category_flags) const;
+
     virtual EventRegion DetermineEventRegion(EventInfo& event, EventCategory eventCategory) = 0;
 
-
-    void InitializeMvaReader();
-    virtual EventSubCategory DetermineEventSubCategory(EventInfo& event, const EventCategory& category,
-                                                       std::map<SelectionCut, double>& mva_scores);
     void ProcessSamples(const std::vector<std::string>& sample_names, const std::string& sample_set_name);
 
     void ProcessDataSource(const SampleDescriptor& sample, const SampleDescriptor::Point& sample_wp,
@@ -62,7 +59,6 @@ protected:
 protected:
     AnalyzerArguments args;
     bbtautau::AnaTupleWriter anaTupleWriter;
-    mva_study::MvaReader mva_reader;
     std::shared_ptr<TFile> outputFile_sync;
     std::vector<SyncDescriptor> sync_descriptors;
     std::map<std::string,std::shared_ptr<DYModelBase>> dymod;

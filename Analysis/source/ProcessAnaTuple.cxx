@@ -2,7 +2,7 @@
 This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include "AnalysisTools/Core/include/ProgressReporter.h"
-#include "hh-bbtautau/Analysis/include/AnaTuple.h"
+#include "hh-bbtautau/Analysis/include/AnaTupleReader.h"
 #include "hh-bbtautau/Analysis/include/EventAnalyzerCore.h"
 #include "hh-bbtautau/Analysis/include/EventAnalyzerDataCollection.h"
 #include "hh-bbtautau/Analysis/include/LimitsInputProducer.h"
@@ -19,7 +19,6 @@ struct AnalyzerArguments : CoreAnalyzerArguments {
     OPT_ARG(bool, shapes, true);
     OPT_ARG(bool, draw, true);
     OPT_ARG(std::string, vars, "");
-    OPT_ARG(size_t, n_parallel, 10);
     run::Argument<std::vector<std::string>> input_friends{"input_friends", "", {}};
 };
 
@@ -32,7 +31,7 @@ public:
     ProcessAnaTuple(const AnalyzerArguments& _args) :
         EventAnalyzerCore(_args, _args.channel(), false), args(_args), activeVariables(ParseVarSet(args.vars())),
         eventTagger(ana_setup.categories, sub_categories_to_process, ana_setup.massWindowParams,
-                    ana_setup.unc_sources, {}),
+                    ana_setup.unc_sources, {}, ana_setup.use_kinFit, ana_setup.use_svFit),
         tupleReader(args.input(), args.channel(), activeVariables, args.input_friends(), eventTagger, ana_setup.mdnn_version),
         outputFile(root_ext::CreateRootFile(args.output() + "_full.root", ROOT::kLZMA, 9))
     {
@@ -301,12 +300,6 @@ private:
             return iter != columns.end();
         };
 
-        const auto is_defined_column = [](bbtautau::AnaTupleReader::RDF& df, const std::string& column_name) {
-            auto columns = df.GetDefinedColumnNames();
-            auto iter = std::find(columns.begin(), columns.end(), column_name);
-            return iter != columns.end();
-        };
-
         const auto get_df = [&](const std::string& hist_name) {
             auto main_df = tupleReader.GetDataFrame();
             if(has_column(main_df, hist_name)) return main_df;
@@ -318,20 +311,23 @@ private:
         std::vector<ROOT::RDF::RResultPtr<bool>> results;
         std::cout << "\t\tAdding: ";
         for(const auto& hist_name : activeVariables) {
+
+            auto branch_type_ptr = tupleReader.TryGetBranchType(hist_name);
+            const std::string branch_type = branch_type_ptr ? *branch_type_ptr : "Float_t";
+
             std::cout << hist_name << " ";
-            const std::string df_hist_name = hist_name == "mva_score" ? "all_mva_scores" : hist_name;
-            const std::vector<std::string> branches = { "event_tags", df_hist_name };
+            const std::vector<std::string> branches = { "event_tags", hist_name };
             AnaDataFiller filter(anaDataCollection, hist_name, args.n_threads());
             auto df = get_df(hist_name);
             ROOT::RDF::RResultPtr<bool> result;
-            if(bbtautau::AnaTupleReader::BoolBranches.count(df_hist_name))
+            if(branch_type == "Bool_t")
                 result = df.Book<bbtautau::EventTags, bool>(std::move(filter), branches);
-            else if(bbtautau::AnaTupleReader::IntBranches.count(df_hist_name))
+            else if(branch_type == "Int_t")
                 result = df.Book<bbtautau::EventTags, int>(std::move(filter), branches);
-            else if(is_defined_column(df, hist_name))
-                result = df.Book<bbtautau::EventTags, double>(std::move(filter), branches);
-            else
+            else if(branch_type == "Float_t")
                 result = df.Book<bbtautau::EventTags, float>(std::move(filter), branches);
+            else
+                throw exception("Branch type = '%1%' does not supported.") % branch_type;
             results.push_back(result);
         }
         std::cout << std::endl;

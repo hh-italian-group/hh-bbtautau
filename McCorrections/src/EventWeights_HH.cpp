@@ -14,38 +14,31 @@ EventWeights_HH::EventWeights_HH(Period period, const BTagger& bTagger, const We
         EventWeights(period, bTagger, mode)
 {
     if (period == Period::Run2016) {
-        std::string dy_weights = Full_Cfg_Name("2016/dyjets_weights_2016.cfg");
         if(mode.empty() || mode.count(WeightType::DY))
-            providers[WeightType::DY] = std::make_shared<NJets_HT_weight>("DY", dy_weights);
+            CreateProvider<NJets_HT_weight>(WeightType::DY, "DY", Full_Cfg_Name("2016/dyjets_weights_2016.cfg"));
         if(mode.empty() || mode.count(WeightType::TTbar))
-            providers[WeightType::TTbar] = std::make_shared<TTbar_weight>(Full_Cfg_Name("2016/ttbar_weights_full.cfg"));
-        std::string wjet_weights = Full_Cfg_Name("2016/wjets_weights_2016.cfg");
+            CreateProvider<TTbar_weight>(WeightType::TTbar, Full_Cfg_Name("2016/ttbar_weights_full.cfg"));
         if(mode.empty() || mode.count(WeightType::Wjets))
-            providers[WeightType::Wjets] = std::make_shared<NJets_HT_weight>("Wjets", wjet_weights);
+            CreateProvider<NJets_HT_weight>(WeightType::Wjets, "Wjets", Full_Cfg_Name("2016/wjets_weights_2016.cfg"));
     }
     else if (period == Period::Run2017){
-        std::string dy_weights = Full_Cfg_Name("2017/dyjets_weights_2017.cfg");
         if(mode.empty() || mode.count(WeightType::DY))
-            providers[WeightType::DY] = std::make_shared<NJets_HT_weight>("DY", dy_weights);
-        std::string wjet_weights = Full_Cfg_Name("2017/wjets_weights_2017.cfg");
+            CreateProvider<NJets_HT_weight>(WeightType::DY, "DY", Full_Cfg_Name("2017/dyjets_weights_2017.cfg"));
         if(mode.empty() || mode.count(WeightType::Wjets))
-            providers[WeightType::Wjets] = std::make_shared<NJets_HT_weight>("Wjets", wjet_weights);
-
+            CreateProvider<NJets_HT_weight>(WeightType::Wjets, "Wjets", Full_Cfg_Name("2017/wjets_weights_2017.cfg"));
     }
     else if (period == Period::Run2018){
-        std::string dy_weights = Full_Cfg_Name("2018/dyjets_weights_2018.cfg");
         if(mode.empty() || mode.count(WeightType::DY))
-            providers[WeightType::DY] = std::make_shared<NJets_HT_weight>("DY", dy_weights);
-        std::string wjet_weights = Full_Cfg_Name("2018/wjets_weights_2018.cfg");
+            CreateProvider<NJets_HT_weight>(WeightType::DY, "DY", Full_Cfg_Name("2018/dyjets_weights_2018.cfg"));
         if(mode.empty() || mode.count(WeightType::Wjets))
-            providers[WeightType::Wjets] = std::make_shared<NJets_HT_weight>("Wjets", wjet_weights);
+            CreateProvider<NJets_HT_weight>(WeightType::Wjets, "Wjets", Full_Cfg_Name("2018/wjets_weights_2018.cfg"));
     }
     else
         throw exception("Period %1% is not supported (EventWeights_HH).") % period;
 
     if(mode.empty() || mode.count(WeightType::BSM_to_SM))
-        providers[WeightType::BSM_to_SM] = std::make_shared<NonResHH_EFT::WeightProvider>(
-                    FullBSMtoSM_Name("coefficientsByBin_extended_3M_costHHSim_19-4.txt"));
+        CreateProvider<NonResHH_EFT::WeightProvider>(WeightType::BSM_to_SM,
+                FullBSMtoSM_Name("coefficientsByBin_extended_3M_costHHSim_19-4.txt"));
 }
 
 ntuple::ProdSummary EventWeights_HH::GetSummaryWithWeights(const std::shared_ptr<TFile>& file,
@@ -63,7 +56,7 @@ ntuple::ProdSummary EventWeights_HH::GetSummaryWithWeights(const std::shared_ptr
     summary.totalShapeWeight_withTopPt = 0;
     summary.totalShapeWeight_withPileUp_Up = 0;
     summary.totalShapeWeight_withPileUp_Down = 0;
-    
+
 
     const auto mode = shape_weights & weighting_mode;
     //TopPt
@@ -119,10 +112,9 @@ ntuple::ProdSummary EventWeights_HH::GetSummaryWithWeights(const std::shared_ptr
     return summary;
 }
 
-std::map<UncertaintyScale, std::vector<double>> EventWeights_HH::GetTotalShapeWeights(const std::shared_ptr<TFile>& file,
-                                                                  const WeightingMode& weighting_mode,
-                                                                  const std::vector<NonResHH_EFT::Point>& eft_points,
-                                                                  bool orthogonal)
+std::map<UncertaintyScale, std::vector<double>> EventWeights_HH::GetTotalShapeWeights(
+        const std::shared_ptr<TFile>& file, const WeightingMode& weighting_mode,
+        const std::vector<NonResHH_EFT::Point>& eft_points, bool orthogonal) const
 {
     static const WeightingMode shape_weights(WeightType::PileUp, WeightType::BSM_to_SM, WeightType::DY,
                                              WeightType::TTbar, WeightType::Wjets, WeightType::GenEventWeight);
@@ -145,12 +137,12 @@ std::map<UncertaintyScale, std::vector<double>> EventWeights_HH::GetTotalShapeWe
                 for(size_t n = 0; n < N; ++n) {
                     if(orthogonal && (event.evt % N) != n) continue;
                     eft_weights_provider->SetTargetPoint(eft_points.at(n));
-                    const double pu_weight = weighting_mode.count(WeightType::PileUp) ? 
+                    const double pu_weight = weighting_mode.count(WeightType::PileUp) ?
                                              pu_weight_provider->Get(event, scale) : 1.;
                     total_weights_scale.at(scale).at(n) += GetTotalWeight(event, mode_withoutPileUp) * pu_weight;
                 }
             }
-        }		
+        }
     }
     return total_weights_scale;
 }
