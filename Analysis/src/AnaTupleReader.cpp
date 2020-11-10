@@ -206,11 +206,6 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
             mdnn_branches.push_back(branch);
         }
         const auto vbf_cat = make_function(&EventTagCreator::FindVBFCategory);
-                                    /*[](float dnn_score_TT_dl, float dnn_score_TT_sl, float dnn_score_TT_lep,
-                                    float dnn_score_TT_FH, float dnn_score_DY, float dnn_score_ggHH,
-                                    float dnn_score_ttH, float dnn_score_ttH_tautau, float dnn_score_tth_bb,
-                                    float dnn_score_qqHH, float dnn_score_qqHH_vbf_c2v, float dnn_score_qqHH_sm ){
-                                    {return event_tagger.CreateVBFTag(dnn_score_TT_dl, dnn_score_TT_sl, dnn_score_TT_lep, dnn_score_ttH, dnn_score_ttH_tautau, dnn_score_tth_bb, dnn_score_qqHH, dnn_score_qqHH_vbf_c2v, dnn_score_qqHH_sm);*/
         Define(df, "vbf_cat", vbf_cat, mdnn_branches, true);
     }
     Define(df, "mdnn_score", [](const std::pair<float, analysis::VBF_Category>& vbf_cat) -> float { return vbf_cat.first; }, {"vbf_cat"}, true);
