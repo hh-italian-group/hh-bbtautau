@@ -8,6 +8,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "cms_hh_proc_interface/processing/interface/evt_proc.hh"
 #include "cms_hh_proc_interface/processing/interface/feat_comp.hh"
 #include "hh-bbtautau/Analysis/include/AnaTuple.h"
+#include "hh-bbtautau/Analysis/include/AnaTupleReader.h"
 
 #include "PhysicsTools/TensorFlow/interface/TensorFlow.h"
 

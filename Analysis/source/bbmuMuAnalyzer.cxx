@@ -31,7 +31,7 @@ protected:
     }
 
     virtual EventSubCategory DetermineEventSubCategory(EventInfo& event, const EventCategory& /*category*/,
-                                                       std::map<SelectionCut, double>& /*mva_scores*/) override
+                                                       std::map<SelectionCut, double>& /*mva_scores*/) /*override*/
     {
         const double mass_muMu = event.GetHiggsTTMomentum(false)->M();
         const double ht_other_jets = event.GetHT(false, true);
