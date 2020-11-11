@@ -93,31 +93,7 @@ EventTags EventTagCreator::CreateEventTags(const std::vector<DataId>& dataIds_ba
             if(has_b_pair) {
               const EllipseParameters& window = category.HasBoostConstraint() && category.IsBoosted() ? cuts::hh_bbtautau_Run2::hh_tag::boosted_window : cuts::hh_bbtautau_Run2::hh_tag::resolved_window;
               evtSubCategory.SetCutResult(SelectionCut::mh, SVfit_valid && window.IsInside(SVfit_p4.M(), m_bb));
-            /*
-            if(has_b_pair) {
-                if(category.HasBoostConstraint() && category.IsBoosted()) {
-                    const bool isInsideBoostedCut = cuts::hh_bbtautau_Run2::hh_tag::IsInsideBoostedMassWindow(SVfit_p4.M(), m_bb);
-                    evtSubCategory.SetCutResult(SelectionCut::mh, isInsideBoostedCut);
-                }
-                else {
-                    if( massWindowParams.count(SelectionCut::mh))
-                        throw exception("Category mh inconsistent with the false requirement of SVfit.");
-                    if(massWindowParams.count(SelectionCut::mh)) {
-                        const bool cut_result = massWindowParams.at(SelectionCut::mh).IsInside(SVfit_p4.M(), m_bb);
-                        //&& event.GetSVFitResults(ana_setup.allow_calc_svFit).has_valid_momentum
-                        evtSubCategory.SetCutResult(SelectionCut::mh, );
-                    }
-                    if(massWindowParams.count(SelectionCut::mhVis))
-                        evtSubCategory.SetCutResult(SelectionCut::mhVis,massWindowParams.at(SelectionCut::mhVis)
-                                .IsInside(m_tt_vis, m_bb));
-
-                    if(massWindowParams.count(SelectionCut::mhMET))
-                        evtSubCategory.SetCutResult(SelectionCut::mhMET,massWindowParams.at(SelectionCut::mhMET)
-                                .IsInside((SVfit_p4+MET_p4).M(), m_bb));
-
-                }
-                */
-                evtSubCategory.SetCutResult(SelectionCut::KinematicFitConverged, kinFit_convergence>0);
+              evtSubCategory.SetCutResult(SelectionCut::KinematicFitConverged, kinFit_convergence>0);
             }
 
             for(const auto& subCategory : subCategories) {
