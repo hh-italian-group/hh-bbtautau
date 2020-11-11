@@ -8,6 +8,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "cms_hh_proc_interface/processing/interface/evt_proc.hh"
 #include "cms_hh_proc_interface/processing/interface/feat_comp.hh"
 #include "hh-bbtautau/Analysis/include/AnaTuple.h"
+#include "hh-bbtautau/Analysis/include/AnaTupleReader.h"
 
 #include "PhysicsTools/TensorFlow/interface/TensorFlow.h"
 
@@ -33,7 +34,8 @@ class CalcDNN {
 public:
     CalcDNN(const Arguments& _args) :
         args(_args), inputFile(root_ext::OpenRootFile(args.input())),
-        outputFile(root_ext::CreateRootFile(args.output())), anaTuple(ToString(args.channel()), inputFile.get(), true)
+        outputFile(root_ext::CreateRootFile(args.output(), ROOT::kLZMA, 9)),
+        anaTuple(ToString(args.channel()), inputFile.get(), true)
     {
         ROOT::EnableThreadSafety();
         if(args.n_threads() > 1)
