@@ -15,7 +15,10 @@ struct CalcMulticlassDNNArguments {
   REQ_ARG(Period, period);
   REQ_ARG(std::string, input);
   REQ_ARG(std::string, output);
-  OPT_ARG(int, end, -1);
+  REQ_ARG(std::string, model);
+  OPT_ARG(Long64_t, max_events, std::numeric_limits<Long64_t>::max());
+  OPT_ARG(Long64_t, begin_entry_index, 0);
+  OPT_ARG(Long64_t, end_entry_index, std::numeric_limits<Long64_t>::max());
   OPT_ARG(int, progress, 100);
 };
 
@@ -63,17 +66,19 @@ class CalcMulticlassDNN {
   CalcMulticlassDNN(const CalcMulticlassDNNArguments& args)
       : args_(args)
       , inputFile_(root_ext::OpenRootFile(args_.input()))
-      , outputFile_(root_ext::CreateRootFile(args_.output())) {
+      , outputFile_(root_ext::CreateRootFile(args_.output(), ROOT::kLZMA, 9)) {
   }
 
   void Run() {
-    std::cout << "running multiclass classification inference" << std::endl;
-    std::cout << "channel : " << args_.channel() << std::endl;
-    std::cout << "period  : " << args_.period() << std::endl;
-    std::cout << "input   : " << args_.input() << std::endl;
-    std::cout << "output  : " << args_.output() << std::endl;
-    std::cout << "end     : " << args_.end() << std::endl;
-    std::cout << "progress: " << args_.progress() << std::endl;
+    std::cout << "running multiclass classification inference\n"
+              << "channel           : " << args_.channel() << '\n'
+              << "period            : " << args_.period() << '\n'
+              << "input             : " << args_.input() << '\n'
+              << "output            : " << args_.output() << '\n'
+              << "max_events        : " << args_.max_events() << '\n'
+              << "begin_entry_index : " << args_.begin_entry_index() << '\n'
+              << "end_entry_index   : " << args_.end_entry_index() << '\n'
+              << "progress          : " << args_.progress() << std::endl;
 
     // disable potential multi-threading to preserve the order of entries
     ROOT::DisableImplicitMT();
@@ -90,16 +95,18 @@ class CalcMulticlassDNN {
     auto outTree = std::make_unique<TTree>(channelName.c_str(), channelName.c_str());
 
     // load models and define output branches
-    std::vector<std::pair<std::string, std::string>> modelSpecs = {
+    static const std::vector<std::pair<std::string, std::string>> modelSpecs = {
       { "v3", "kl1_c2v1_c31_vbf" },
       { "v3", "kl1_c2v1_c31_vr" },
       { "v4", "kl1_c2v1_c31_vbf" },
       { "v4", "kl1_c2v1_c31_vr" },
+      { "v5", "kl1_c2v1_c31_vbf" },
     };
+    const auto activeModels = SplitValueListT<std::string, std::set<std::string>>(args_.model(), false, ",", true);
+
     std::vector<hmc::Model*> models;
-    for (const auto& modelSpec : modelSpecs) {
-      const std::string& version = modelSpec.first;
-      const std::string& tag = modelSpec.second;
+    for (const auto& [version, tag] : modelSpecs) {
+      if(!activeModels.count(version)) continue;
 
       // load the model
       models.push_back(hmc::loadModel(int(args_.period()), version, tag));
@@ -119,12 +126,16 @@ class CalcMulticlassDNN {
     }
 
     // start iterating
-    const Long64_t nEntries = args_.end() > 0 ? args_.end() : anaTuple.GetEntries();
+    const Long64_t endEntry = std::min(anaTuple.GetEntries(), args_.end_entry_index());
+    const Long64_t nEntries = std::min(endEntry - args_.begin_entry_index(), args_.max_events());
     tools::ProgressReporter progressReporter(10, std::cout);
-    progressReporter.SetTotalNumberOfEvents(nEntries);
-    for (Long64_t i = 0; i < nEntries; i++) {
+    progressReporter.SetTotalNumberOfEvents(static_cast<unsigned long>(nEntries));
+
+    for (Long64_t i = 0; i < nEntries; ++i) {
+      const Long64_t entry_index = args_.begin_entry_index() + i;
+
       // calculate features
-      features.calculate(i);
+      features.calculate(entry_index);
 
       // fill features of all models and run them
       for (hmc::Model*& model : models) {
