@@ -11,9 +11,9 @@ EventTagCreator::EventTagCreator(const EventCategorySet& _categories, const Even
                                   const std::map<SelectionCut, analysis::EllipseParameters>& _massWindowParams,
                                   const std::set<UncertaintySource>& _event_unc_sources,
                                   const std::set<UncertaintySource>& _norm_unc_sources,
-                                  bool _use_IterativeFit:
+                                  bool _use_IterativeFit):
         categories(_categories), subCategories(_subCategories), massWindowParams(_massWindowParams),
-        event_unc_sources(_event_unc_sources), norm_unc_sources(_norm_unc_sources), use_IterativeFit(_use_IterativeFit),
+        event_unc_sources(_event_unc_sources), norm_unc_sources(_norm_unc_sources), use_IterativeFit(_use_IterativeFit)
 {
 }
 
@@ -38,12 +38,12 @@ EventTags EventTagCreator::CreateEventTags(const std::vector<DataId>& dataIds_ba
                                             const std::vector<float>& btag_weight_Loose,
                                             const std::vector<float>& btag_weight_Medium,
                                             const std::vector<float>& btag_weight_Tight,
-                                            const std::vector<float>& btag_weight_IterativeFit, 
+                                            const std::vector<float>& btag_weight_IterativeFit,
                                             int num_central_jets, bool has_b_pair,
                                             int num_btag_loose, int num_btag_medium, int num_btag_tight,
-                                            bool is_vbf, bool is_boosted, std::pair<float,VBF_Category>& vbf_cat,
+                                            bool is_vbf, bool is_boosted, const std::pair<float,VBF_Category>& vbf_cat,
                                             const LorentzVectorM& SVfit_p4, const LorentzVectorM& MET_p4,
-                                            float m_bb, float m_tt_vis, int kinFit_convergence) const
+                                            float m_bb, float m_tt_vis, int kinFit_convergence, int SVfit_valid) const
 {
     static const EventCategory evtCategory_2j = EventCategory::Parse("2j");
 
@@ -89,19 +89,23 @@ EventTags EventTagCreator::CreateEventTags(const std::vector<DataId>& dataIds_ba
             }
             weight *= btag_sf;
 
+
+            if(has_b_pair) {
+              const EllipseParameters& window = category.HasBoostConstraint() && category.IsBoosted() ? cuts::hh_bbtautau_Run2::hh_tag::boosted_window : cuts::hh_bbtautau_Run2::hh_tag::resolved_window;
+              evtSubCategory.SetCutResult(SelectionCut::mh, SVfit_valid && window.IsInside(SVfit_p4.M(), m_bb));
+            /*
             if(has_b_pair) {
                 if(category.HasBoostConstraint() && category.IsBoosted()) {
                     const bool isInsideBoostedCut = cuts::hh_bbtautau_Run2::hh_tag::IsInsideBoostedMassWindow(SVfit_p4.M(), m_bb);
                     evtSubCategory.SetCutResult(SelectionCut::mh, isInsideBoostedCut);
-
-                } else {
+                }
+                else {
                     if( massWindowParams.count(SelectionCut::mh))
                         throw exception("Category mh inconsistent with the false requirement of SVfit.");
                     if(massWindowParams.count(SelectionCut::mh)) {
+                        const bool cut_result = massWindowParams.at(SelectionCut::mh).IsInside(SVfit_p4.M(), m_bb);
                         //&& event.GetSVFitResults(ana_setup.allow_calc_svFit).has_valid_momentum
-                        && massWindowParams.at(SelectionCut::mh).IsInside(
-                        SVfit_p4.M(), m_bb);
-                        evtSubCategory.SetCutResult(SelectionCut::mh, cut_result);
+                        evtSubCategory.SetCutResult(SelectionCut::mh, );
                     }
                     if(massWindowParams.count(SelectionCut::mhVis))
                         evtSubCategory.SetCutResult(SelectionCut::mhVis,massWindowParams.at(SelectionCut::mhVis)
@@ -112,6 +116,7 @@ EventTags EventTagCreator::CreateEventTags(const std::vector<DataId>& dataIds_ba
                                 .IsInside((SVfit_p4+MET_p4).M(), m_bb));
 
                 }
+                */
                 evtSubCategory.SetCutResult(SelectionCut::KinematicFitConverged, kinFit_convergence>0);
             }
 

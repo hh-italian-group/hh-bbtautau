@@ -39,13 +39,14 @@ public:
                                int num_central_jets, bool has_b_pair, int num_btag_loose, int num_btag_medium,
                                int num_btag_tight, bool is_vbf, bool is_boosted, const std::pair<float, VBF_Category>& vbf_cat,
                                const LorentzVectorM& SVfit_p4, const LorentzVectorM& MET_p4,
-                               float m_bb, float m_tt_vis, int kinFit_convergence) const;
+                               float m_bb, float m_tt_vis, int kinFit_convergence, int SVfit_valid) const;
 
 private:
     const EventCategorySet& categories;
     const EventSubCategorySet& subCategories;
     const std::map<SelectionCut,analysis::EllipseParameters>& massWindowParams;
     const std::set<UncertaintySource>& event_unc_sources, norm_unc_sources;
+    const bool use_IterativeFit;
 };
 
 } // namespace bbtautau

@@ -213,7 +213,7 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
     Define(df, "event_tags", create_event_tags,
         { "dataIds_base", "all_weights", "btag_weight_Loose","btag_weight_Medium", "btag_weight_Tight","btag_weight_IterativeFit","num_central_jets", "has_b_pair", "num_btag_Loose", "num_btag_Medium",
           "num_btag_Tight", "is_vbf", "is_boosted", "vbf_cat", "SVfit_p4", "MET_p4", "m_bb", "m_tt_vis",
-          "kinFit_convergence" }, true);
+          "kinFit_convergence", "SVfit_valid"}, true);
 
 
     auto df_bb = Filter(df, "has_b_pair");
