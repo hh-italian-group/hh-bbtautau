@@ -191,8 +191,6 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
     };
     Define(df, "dataIds_base", convert_dataIds, {"dataIds"}, true);
 
-    const auto create_vbf_tag_raw = make_function(&EventTagCreator::CreateVBFTag);
-    Define(df, "vbf_tag_raw", create_vbf_tag_raw, {"VBF1_p4","VBF2_p4","is_vbf","pass_VBF_trigger"}, true);
 
     if(mdnn_version.empty()){
         auto fake_vbf_cat = [](){return std::make_pair(-1.f, analysis::VBF_Category::None);};
@@ -213,7 +211,7 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
 
     const auto create_event_tags = bind_this(event_tagger, &EventTagCreator::CreateEventTags);
     Define(df, "event_tags", create_event_tags,
-        { "dataIds_base", "all_weights", "btag_weight_IterativeFit", "btag_weight_IterativeFit","btag_weight_IterativeFit","num_central_jets", "has_b_pair", "num_btag_Loose", "num_btag_Medium",
+        { "dataIds_base", "all_weights", "btag_weight_Loose","btag_weight_Medium", "btag_weight_Tight","btag_weight_IterativeFit","num_central_jets", "has_b_pair", "num_btag_Loose", "num_btag_Medium",
           "num_btag_Tight", "is_vbf", "is_boosted", "vbf_cat", "SVfit_p4", "MET_p4", "m_bb", "m_tt_vis",
           "kinFit_convergence" }, true);
 

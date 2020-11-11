@@ -24,12 +24,7 @@ public:
                      const std::map<SelectionCut, analysis::EllipseParameters>& _massWindowParams,
                      const std::set<UncertaintySource>& _event_unc_sources,
                      const std::set<UncertaintySource>& _norm_unc_sources,
-                     bool _use_kinFit, bool _use_svFit);
-
-    static int CreateVBFTag(const LorentzVectorM& VBF1_p4, const LorentzVectorM& VBF2_p4, bool is_VBF,
-                     bool pass_vbf_trigger);
-    //int CreateVBFTag(const LorentzVectorM& VBF1_p4, const LorentzVectorM& VBF2_p4, bool is_VBF,
-    //                 bool pass_vbf_trigger) const;
+                     bool _use_IterativeFit);
 
     static std::pair<float, VBF_Category> FindVBFCategory(float dnn_score_TT_dl, float dnn_score_TT_sl, float dnn_score_TT_lep,
                                                             float dnn_score_TT_FH, float dnn_score_DY, float dnn_score_ggHH,
@@ -40,8 +35,9 @@ public:
                                const std::vector<float>& btag_weight_Loose,
                                const std::vector<float>& btag_weight_Medium,
                                const std::vector<float>& btag_weight_Tight,
+                               const std::vector<float>& btag_weight_IterativeFit,
                                int num_central_jets, bool has_b_pair, int num_btag_loose, int num_btag_medium,
-                               int num_btag_tight, bool is_vbf, bool is_boosted, std::pair<float, VBF_Category>& vbf_cat,
+                               int num_btag_tight, bool is_vbf, bool is_boosted, const std::pair<float, VBF_Category>& vbf_cat,
                                const LorentzVectorM& SVfit_p4, const LorentzVectorM& MET_p4,
                                float m_bb, float m_tt_vis, int kinFit_convergence) const;
 
@@ -50,8 +46,6 @@ private:
     const EventSubCategorySet& subCategories;
     const std::map<SelectionCut,analysis::EllipseParameters>& massWindowParams;
     const std::set<UncertaintySource>& event_unc_sources, norm_unc_sources;
-    //const bool use_kinFit, use_svFit;
-    const bool use_kinFit, use_svFit;
 };
 
 } // namespace bbtautau

@@ -267,13 +267,6 @@ bool EventCategory::isVBF() const
         throw exception("VBF constraint is not defined.");
     return *is_VBF;
 }
-/*bool EventCategory::HasVBFCategory() const { return vbf_cat.is_initialized(); }
-VBF_Category EventCategory::VBF_Cat() const
-{
-    if(!HasVBFCategory())
-        throw exception("VBF category is not defined.");
-    return *vbf_cat;
-}*/
 bool EventCategory::operator ==(const EventCategory& ec) const
 {
     return n_jets == ec.n_jets && n_btag == ec.n_btag && strict_n_btag == ec.strict_n_btag && btag_wp == ec.btag_wp
