@@ -46,10 +46,7 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
         tuple().all_weights.push_back(static_cast<float>(weight));
     }
 
-<<<<<<< HEAD
 
-=======
->>>>>>> c4fb97914206ca07d57d30d021fac0ab736f9be2
     tuple().run = event->run;
     tuple().lumi = event->lumi;
     tuple().evt = event->evt;

@@ -104,10 +104,6 @@ namespace analysis {
              unc_TopPt, unc_L1_prefiring, unc_PileUp, unc_PileUpJetId_eff, unc_PileUpJetId_mistag, \
              unc_TauCustomSF_DM0, unc_TauCustomSF_DM1, unc_TauCustomSF_DM10, unc_TauCustomSF_DM11) \
              /* effects of various uncertainty sources on the event weight */ \
-<<<<<<< HEAD
-
-=======
->>>>>>> c4fb97914206ca07d57d30d021fac0ab736f9be2
     /**/
 
 #define VAR(type, name) DECLARE_BRANCH_VARIABLE(type, name)
