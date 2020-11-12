@@ -35,6 +35,14 @@ ENUM_NAMES(DYFitModel) = {
     { DYFitModel::NbjetBins_ptBins, "NbjetBins_ptBins"}, { DYFitModel::Htt, "Htt"}
 };
 
+enum class VBF_Category {None=-1, qqHH = 0, ggHH = 1, TT_L = 2, TT_FH = 3,  ttH = 4, DY = 5};
+ENUM_NAMES(VBF_Category) = {
+    { VBF_Category::None, "NoCategory"}, { VBF_Category::qqHH, "qqHH"},
+    { VBF_Category::ggHH, "ggHH"}, { VBF_Category::TT_L, "TT_L"},
+    { VBF_Category::TT_FH, "TT_FH"}, { VBF_Category::ttH, "ttH"}, { VBF_Category::DY, "DY"}
+};
+
+
 struct EventRegion {
     static const EventRegion& Unknown();
     static const EventRegion& OS_Isolated();
@@ -93,7 +101,7 @@ struct EventCategory {
     EventCategory(size_t _n_jets, size_t _n_btag, bool _strict_n_btag, DiscriminatorWP _btag_wp,
                   boost::optional<bool> _boosted, bool _is_VBF);
     EventCategory(size_t _n_jets, size_t _n_btag, bool _strict_n_btag, DiscriminatorWP _btag_wp,
-                  boost::optional<bool> _boosted, bool _is_VBF, boost::optional<DiscriminatorWP> _VBF_wp);
+                  boost::optional<bool> _boosted, bool _is_VBF, VBF_Category _vbf_cat);
 
     bool HasJetConstraint() const;
     size_t N_jets() const;
@@ -108,6 +116,10 @@ struct EventCategory {
 
     bool HasVBFConstraint() const;
     bool isVBF() const;
+
+    bool HasVBFCategory() const ;
+    VBF_Category VBF_Cat() const;
+
     bool operator ==(const EventCategory& ec) const;
     bool operator !=(const EventCategory& ec) const;
     bool operator <(const EventCategory& ec) const;
@@ -116,13 +128,13 @@ struct EventCategory {
     static EventCategory Parse(const std::string& str);
 
     bool Contains(size_t num_jets, const std::map<DiscriminatorWP, size_t>& num_btag, bool is_vbf,
-                  bool is_boosted, const boost::optional<DiscriminatorWP>& vbf_tag) const;
+                  bool is_boosted, VBF_Category vbf_category) const;
 private:
     boost::optional<size_t> n_jets, n_btag ;
     boost::optional<bool> strict_n_btag;
     boost::optional<DiscriminatorWP> btag_wp;
     boost::optional<bool> boosted, is_VBF;
-    boost::optional<DiscriminatorWP> VBF_wp;
+    VBF_Category vbf_cat{VBF_Category::None};
 };
 
 std::ostream& operator<<(std::ostream& os, const EventCategory& eventCategory);

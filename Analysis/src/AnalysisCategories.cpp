@@ -209,17 +209,15 @@ EventCategory::EventCategory(size_t _n_jets, size_t _n_btag, bool _strict_n_btag
                              boost::optional<bool> _boosted, bool _is_VBF):
     n_jets(_n_jets), n_btag(_n_btag), strict_n_btag(_strict_n_btag), btag_wp(_btag_wp), boosted(_boosted),
     is_VBF(_is_VBF)
-
 {
     if(n_btag > n_jets)
         throw exception("Number of btag can't be greater than number of jets");
 }
 
 EventCategory::EventCategory(size_t _n_jets, size_t _n_btag, bool _strict_n_btag, DiscriminatorWP _btag_wp,
-                             boost::optional<bool> _boosted, bool _is_VBF, boost::optional<DiscriminatorWP> _VBF_wp):
+                             boost::optional<bool> _boosted, bool _is_VBF, VBF_Category _vbf_cat):
     n_jets(_n_jets), n_btag(_n_btag), strict_n_btag(_strict_n_btag), btag_wp(_btag_wp), boosted(_boosted),
-    is_VBF(_is_VBF), VBF_wp(_VBF_wp)
-
+    is_VBF(_is_VBF), vbf_cat(_vbf_cat)
 {
     if(n_btag > n_jets)
         throw exception("Number of btag can't be greater than number of jets");
@@ -269,11 +267,10 @@ bool EventCategory::isVBF() const
         throw exception("VBF constraint is not defined.");
     return *is_VBF;
 }
-
 bool EventCategory::operator ==(const EventCategory& ec) const
 {
     return n_jets == ec.n_jets && n_btag == ec.n_btag && strict_n_btag == ec.strict_n_btag && btag_wp == ec.btag_wp
-            && boosted == ec.boosted && is_VBF == ec.is_VBF && VBF_wp == ec.VBF_wp;
+            && boosted == ec.boosted && is_VBF == ec.is_VBF && vbf_cat == ec.vbf_cat;
 }
 bool EventCategory::operator !=(const EventCategory& ec) const { return !(*this == ec); }
 bool EventCategory::operator <(const EventCategory& ec) const
@@ -283,7 +280,7 @@ bool EventCategory::operator <(const EventCategory& ec) const
     if (strict_n_btag != ec.strict_n_btag) return strict_n_btag < ec.strict_n_btag;
     if(btag_wp != ec.btag_wp) return btag_wp < ec.btag_wp;
     if(boosted != ec.boosted) return boosted < ec.boosted;
-    if(VBF_wp != ec.VBF_wp) return VBF_wp < ec.VBF_wp;
+    if(vbf_cat != ec.vbf_cat) return vbf_cat < ec.vbf_cat;
     return is_VBF < ec.is_VBF;
 }
 
@@ -307,16 +304,14 @@ std::string EventCategory::ToString() const
     }
     if(HasVBFConstraint()) {
         std::string VBF_str = "";
-        if(!isVBF())
+        if(!isVBF()) {
             VBF_str = "_noVBF";
-        else if(isVBF() && !VBF_wp.is_initialized())
+        } else {
             VBF_str = "_VBF";
-        else if(isVBF() && VBF_wp == DiscriminatorWP::Loose)
-            VBF_str = "_VBFL";
-        else if(isVBF() &&  VBF_wp == DiscriminatorWP::Tight)
-            VBF_str = "_VBFT";
-
+            if(vbf_cat != VBF_Category::None)
+                VBF_str += "_" + analysis::ToString(vbf_cat);
         s << VBF_str;
+        }
     }
     return s.str();
 }
@@ -326,11 +321,15 @@ EventCategory EventCategory::Parse(const std::string& str)
     static const std::string numbers = "0123456789";
     static const std::string jets_suffix = "j", btag_suffix = "b";
     static const std::map<char, bool> boosted_suffix = { { 'R', false }, { 'B', true } };
-    static const std::map<std::string, std::pair<bool, boost::optional<DiscriminatorWP>>> VBF_suffix =
-        { { "noVBF", { false, boost::optional<DiscriminatorWP>() }},
-          { "VBF",   { true,  boost::optional<DiscriminatorWP>() }},
-          { "VBFL",  { true, boost::optional<DiscriminatorWP>(DiscriminatorWP::Loose) }},
-          { "VBFT",  { true, boost::optional<DiscriminatorWP>(DiscriminatorWP::Tight) }} };
+    static const std::map<std::string, std::pair<bool, VBF_Category>> VBF_suffix =
+        { { "noVBF", { false, VBF_Category::None}},
+          { "VBF",   { true,  VBF_Category::None}},
+          { "VBF_"+ analysis::ToString(VBF_Category::qqHH),  { true, VBF_Category::qqHH }},
+          { "VBF_"+ analysis::ToString(VBF_Category::ggHH),  { true, VBF_Category::ggHH }},
+          { "VBF_"+ analysis::ToString(VBF_Category::TT_L),  { true, VBF_Category::TT_L }},
+          { "VBF_"+ analysis::ToString(VBF_Category::TT_FH),  { true, VBF_Category::TT_FH }},
+          { "VBF_"+ analysis::ToString(VBF_Category::ttH),  { true, VBF_Category::ttH }},
+          { "VBF_"+ analysis::ToString(VBF_Category::DY),  { true, VBF_Category::DY }} };
 
     if(str == "Inclusive") return Inclusive();
     try {
@@ -374,10 +373,7 @@ EventCategory EventCategory::Parse(const std::string& str)
             throw exception("");
 
         const bool is_VBF = VBF_suffix.at(isVBF_flag).first;
-        if(!VBF_suffix.at(isVBF_flag).second.is_initialized())
-            return EventCategory(n_jets, n_btag, is_strictbtag, btag_wp, is_boosted, is_VBF);
-        else
-            return EventCategory(n_jets, n_btag, is_strictbtag, btag_wp, is_boosted, is_VBF,
+        return EventCategory(n_jets, n_btag, is_strictbtag, btag_wp, is_boosted, is_VBF,
                                  VBF_suffix.at(isVBF_flag).second);
     }catch(exception& e) {
         throw exception("Invalid EventCategory '%1%'. %2%") % str % e.message();
@@ -385,14 +381,14 @@ EventCategory EventCategory::Parse(const std::string& str)
 }
 
 bool EventCategory::Contains(size_t num_jets, const std::map<DiscriminatorWP, size_t>& num_btag, bool is_vbf,
-                             bool is_boosted, const boost::optional<DiscriminatorWP>& vbf_tag) const
+                             bool is_boosted, VBF_Category vbf_category) const
 {
     if(btag_wp && !num_btag.count(*btag_wp))
         throw exception("The btag_wp, is not defined") ;
 
     return (!n_jets || num_jets >= *n_jets) && (!n_btag
                         || (*strict_n_btag ? (num_btag.at(*btag_wp) == n_btag) : (num_btag.at(*btag_wp) >= *n_btag)))
-                        && (!is_VBF || is_vbf == *is_VBF) && (!VBF_wp || VBF_wp == vbf_tag)
+                        && (!is_VBF || is_vbf == *is_VBF) && (vbf_cat == VBF_Category::None || vbf_cat == vbf_category)
                         && (!boosted || is_boosted == *boosted);
 }
 

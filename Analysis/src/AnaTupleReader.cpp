@@ -46,13 +46,14 @@ std::vector<std::shared_ptr<TTree>> AnaTupleReader::ReadTrees(Channel channel,
 }
 
 AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names,
-                               const std::vector<std::string>& input_friends, const EventTagCreator& event_tagger) :
+                               const std::vector<std::string>& input_friends, const EventTagCreator& event_tagger, const std::string& mdnn_version) :
+
         files(OpenFiles(file_name, input_friends)), trees(ReadTrees(channel, files)), dataFrame(*trees.front()), df(dataFrame)
 {
     for(const auto& column : df.GetColumnNames())
         branch_types[column] = df.GetColumnType(column);
 
-    DefineBranches(active_var_names, active_var_names.empty(), event_tagger);
+    DefineBranches(active_var_names, active_var_names.empty(), event_tagger, mdnn_version);
     if(active_var_names.empty()) {
         std::vector<std::vector<std::string>> names = {
             df.GetColumnNames(),
@@ -106,7 +107,7 @@ AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, Na
     aux_df.Foreach(extractDataIds, { "dataIds", "dataId_names" });
 }
 
-void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, const EventTagCreator& event_tagger)
+void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, const EventTagCreator& event_tagger, const std::string& mdnn_version)
 {
     const auto Define = [&](RDF& target_df, const std::string& var, auto expr,
                               const std::vector<std::string>& columns, bool force = false) {
@@ -191,14 +192,29 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
     };
     Define(df, "dataIds_base", convert_dataIds, {"dataIds"}, true);
 
-    const auto create_vbf_tag_raw = make_function(&EventTagCreator::CreateVBFTag);
-    Define(df, "vbf_tag_raw", create_vbf_tag_raw, {"VBF1_p4","VBF2_p4","is_vbf","pass_VBF_trigger"}, true);
+
+    if(mdnn_version.empty()){
+        auto fake_vbf_cat = [](){return std::make_pair(-1.f, analysis::VBF_Category::None);};
+        Define(df,"vbf_cat", fake_vbf_cat, {}, true);
+    }
+    else{
+        std::vector<std::string> mdnn_branches;
+        static const std::vector<std::string> mdnn_score_names{"_tt_dl","_tt_sl", "_tt_lep", "_tt_fh","_dy","_hh_ggf", "_tth","_tth_tautau","_tth_bb","_hh_vbf","_hh_vbf_c2v","_hh_vbf_sm"};
+        for(const auto& score_name : mdnn_score_names) {
+            const std::string branch = "mdnn_" + mdnn_version + score_name;
+            mdnn_branches.push_back(branch);
+        }
+        const auto vbf_cat = make_function(&EventTagCreator::FindVBFCategory);
+        Define(df, "vbf_cat", vbf_cat, mdnn_branches, true);
+    }
+    Define(df, "mdnn_score", [](const std::pair<float, analysis::VBF_Category>& vbf_cat) -> float { return vbf_cat.first; }, {"vbf_cat"}, true);
+
 
     const auto create_event_tags = bind_this(event_tagger, &EventTagCreator::CreateEventTags);
     Define(df, "event_tags", create_event_tags,
-        { "dataIds_base", "all_weights", "num_central_jets", "has_b_pair", "num_btag_Loose", "num_btag_Medium",
-          "num_btag_Tight", "is_vbf", "is_boosted", "vbf_tag_raw", "SVfit_p4", "MET_p4", "m_bb", "m_tt_vis",
-          "kinFit_convergence" }, true);
+        { "dataIds_base", "all_weights", "btag_weight_Loose","btag_weight_Medium", "btag_weight_Tight","btag_weight_IterativeFit","num_central_jets", "has_b_pair", "num_btag_Loose", "num_btag_Medium",
+          "num_btag_Tight", "is_vbf", "is_boosted", "vbf_cat", "SVfit_p4", "MET_p4", "m_bb", "m_tt_vis",
+          "kinFit_convergence", "SVfit_valid"}, true);
 
 
     auto df_bb = Filter(df, "has_b_pair");

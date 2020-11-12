@@ -89,14 +89,14 @@ public:
                     auto eventbase = EventInfo::Create(event, signalObjectSelector,bTagger, DiscriminatorWP::Medium);
                     if(!eventbase) continue;
                     if (args.suffix() == "_ANcut"){
-                        if (!cuts::hh_bbtautau_Run2::hh_tag::m_hh_window.IsInside(
+                        if (!cuts::hh_bbtautau_Run2::hh_tag::resolved_window.IsInside(
                             eventbase->GetSVFitResults().momentum.mass(),bb.mass())) continue;
                     }
                     if (entry.id == SampleType::Bkg_TTbar && event.file_desc_id>=2) continue;
                     if (entry.id == SampleType::Sgn_NonRes && event.file_desc_id!=0) continue;
 
                     if (args.suffix() == "_newcut"){
-                        if (!cuts::hh_bbtautau_Run2::hh_tag::new_m_hh_window.IsInside(
+                        if (!cuts::hh_bbtautau_Run2::hh_tag::resolved_window.IsInside(
                             eventbase->GetHiggsTTMomentum(false)->M(),bb.mass())) continue;
 
                     }

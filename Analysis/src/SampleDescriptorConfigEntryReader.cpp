@@ -17,6 +17,7 @@ void AnalyzerConfigEntryReader::EndEntry()
     CheckReadParamCounts("pt_sel_bins", 1, Condition::less_equal);
     CheckReadParamCounts("use_kinFit", 1, Condition::less_equal);
     CheckReadParamCounts("use_svFit", 1, Condition::less_equal);
+    CheckReadParamCounts("use_IterativeFit", 1, Condition::less_equal);
     CheckReadParamCounts("allow_calc_svFit", 1, Condition::less_equal);
     CheckReadParamCounts("unc_sources", 1, Condition::less_equal);
     CheckReadParamCounts("categories", 1, Condition::less_equal);
@@ -43,6 +44,7 @@ void AnalyzerConfigEntryReader::EndEntry()
     CheckReadParamCounts("limit_setup", 0, Condition::greater_equal);
     CheckReadParamCounts("qcd_ss_os_sf",1,Condition::less_equal);
     CheckReadParamCounts("qcd_ss_os_err",1, Condition::less_equal);
+    CheckReadParamCounts("mdnn_version",1, Condition::less_equal);
     current.CreateLimitSetups();
     ConfigEntryReaderT<AnalyzerSetup>::EndEntry();
 }
@@ -60,6 +62,7 @@ void AnalyzerConfigEntryReader::ReadParameter(const std::string& /*param_name*/,
     ParseEntryList("pt_sel_bins", current.pt_sel_bins);
     ParseEntry("use_kinFit", current.use_kinFit);
     ParseEntry("use_svFit", current.use_svFit);
+    ParseEntry("use_IterativeFit", current.use_IterativeFit);
     ParseEntry("allow_calc_svFit", current.allow_calc_svFit);
     ParseEnumList("unc_sources", current.unc_sources);
     ParseEnumList("categories", current.categories);
@@ -87,6 +90,7 @@ void AnalyzerConfigEntryReader::ReadParameter(const std::string& /*param_name*/,
     ParseMappedEntryList("limit_setup", current.limit_setup_raw,false);
     ParseEntry("qcd_ss_os_sf",current.qcd_ss_os_sf);
     ParseEntry("qcd_ss_os_err",current.qcd_ss_os_err);
+    ParseEntry("mdnn_version",current.mdnn_version);
 }
 
 void MvaReaderSetupEntryReader::EndEntry()

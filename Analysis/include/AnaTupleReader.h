@@ -21,7 +21,7 @@ public:
     using RDF = ROOT::RDF::RNode;
 
     AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names,
-                   const std::vector<std::string>& input_friends, const EventTagCreator& event_tagger);
+                   const std::vector<std::string>& input_friends, const EventTagCreator& event_tagger, const std::string& mdnn_version);
     size_t GetNumberOfEntries() const;
     const DataId& GetDataIdByHash(Hash hash) const;
     const RDF& GetDataFrame() const;
@@ -30,7 +30,7 @@ public:
     boost::optional<std::string> TryGetBranchType(const std::string& branch_name) const;
 
 private:
-    void DefineBranches(const NameSet& active_var_names, bool all, const EventTagCreator& event_tagger);
+    void DefineBranches(const NameSet& active_var_names, bool all, const EventTagCreator& event_tagger, const std::string& mdnn_version);
 
     static std::vector<std::shared_ptr<TFile>> OpenFiles(const std::string& file_name,
                                                          const std::vector<std::string>& input_friends);
