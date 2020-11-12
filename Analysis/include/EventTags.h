@@ -24,7 +24,8 @@ public:
                      const std::map<SelectionCut, analysis::EllipseParameters>& _massWindowParams,
                      const std::set<UncertaintySource>& _event_unc_sources,
                      const std::set<UncertaintySource>& _norm_unc_sources,
-                     bool _use_IterativeFit);
+                     bool _use_IterativeFit,
+                     const analysis::Channel& _channel, const analysis::Period& _period);
 
     static std::pair<float, VBF_Category> FindVBFCategory(float dnn_score_TT_dl, float dnn_score_TT_sl, float dnn_score_TT_lep,
                                                             float dnn_score_TT_FH, float dnn_score_DY, float dnn_score_ggHH,
@@ -47,6 +48,8 @@ private:
     const std::map<SelectionCut,analysis::EllipseParameters>& massWindowParams;
     const std::set<UncertaintySource>& event_unc_sources, norm_unc_sources;
     const bool use_IterativeFit;
+    const analysis::Channel channel;
+    const analysis::Period period;
 };
 
 } // namespace bbtautau
