@@ -11,7 +11,7 @@ EventTagCreator::EventTagCreator(const EventCategorySet& _categories, const Even
                                   const std::map<SelectionCut, analysis::EllipseParameters>& _massWindowParams,
                                   const std::set<UncertaintySource>& _event_unc_sources,
                                   const std::set<UncertaintySource>& _norm_unc_sources,
-                                  bool _use_IterativeFit, const Channel& _channel, const Period& _period ):
+                                  bool _use_IterativeFit, const Channel _channel, const Period _period ):
         categories(_categories), subCategories(_subCategories), massWindowParams(_massWindowParams),
         event_unc_sources(_event_unc_sources), norm_unc_sources(_norm_unc_sources), use_IterativeFit(_use_IterativeFit),
         channel(_channel),period(_period)
