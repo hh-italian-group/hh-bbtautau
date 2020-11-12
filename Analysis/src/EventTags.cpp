@@ -19,7 +19,7 @@ EventTagCreator::EventTagCreator(const EventCategorySet& _categories, const Even
 }
 
 std::pair<float, VBF_Category> EventTagCreator::FindVBFCategory(float dnn_score_TT_dl, float dnn_score_TT_sl, float dnn_score_TT_lep,
-                                                                 float dnn_score_TT_FH, float dnn_score_DY, float dnn_score_ggHH,
+                                                                 float dnn_score_TT_fh, float dnn_score_DY, float dnn_score_ggHH,
                                                                  float dnn_score_ttH, float dnn_score_ttH_tautau, float dnn_score_tth_bb,
                                                                  float dnn_score_qqHH, float dnn_score_qqHH_vbf_c2v, float dnn_score_qqHH_sm)
 {
@@ -27,7 +27,7 @@ std::pair<float, VBF_Category> EventTagCreator::FindVBFCategory(float dnn_score_
         { dnn_score_qqHH_sm + dnn_score_qqHH + dnn_score_qqHH_vbf_c2v, VBF_Category::qqHH },
         { dnn_score_ggHH , VBF_Category::ggHH},
         { dnn_score_TT_dl + dnn_score_TT_lep + dnn_score_TT_sl , VBF_Category::TT_L },
-        { dnn_score_TT_FH, VBF_Category::TT_FH},
+        { dnn_score_TT_fh, VBF_Category::TT_FH},
         { dnn_score_ttH + dnn_score_ttH_tautau + dnn_score_tth_bb, VBF_Category::ttH},
         { dnn_score_DY, VBF_Category::DY},
         };

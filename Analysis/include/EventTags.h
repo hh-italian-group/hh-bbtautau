@@ -28,7 +28,7 @@ public:
                      const Channel _channel, const Period _period);
 
     static std::pair<float, VBF_Category> FindVBFCategory(float dnn_score_TT_dl, float dnn_score_TT_sl, float dnn_score_TT_lep,
-                                                            float dnn_score_TT_FH, float dnn_score_DY, float dnn_score_ggHH,
+                                                            float dnn_score_TT_fh, float dnn_score_DY, float dnn_score_ggHH,
                                                             float dnn_score_ttH, float dnn_score_ttH_tautau, float dnn_score_tth_bb,
                                                             float dnn_score_qqHH, float dnn_score_qqHH_vbf_c2v, float dnn_score_qqHH_sm);
 
