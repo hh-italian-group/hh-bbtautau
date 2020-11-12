@@ -76,9 +76,9 @@ EventTags EventTagCreator::CreateEventTags(const std::vector<DataId>& dataIds_ba
     }
     else if(btag_weight_IterativeFit.size()!=0 && use_IterativeFit){
         btag_weights = {
-            { DiscriminatorWP::Loose, btag_weight_IterativeFit.at(0) },
-            { DiscriminatorWP::Medium, btag_weight_IterativeFit.at(0) },
-            { DiscriminatorWP::Tight, btag_weight_IterativeFit.at(0) },
+            { DiscriminatorWP::Loose, btag_weight_IterativeFit.at(0)*iterativeFit_corr },
+            { DiscriminatorWP::Medium, btag_weight_IterativeFit.at(0)*iterativeFit_corr },
+            { DiscriminatorWP::Tight, btag_weight_IterativeFit.at(0)*iterativeFit_corr },
         };
     }
 
@@ -100,7 +100,6 @@ EventTags EventTagCreator::CreateEventTags(const std::vector<DataId>& dataIds_ba
             if(category.HasBtagConstraint() && !btag_weights.empty()){
                   btag_sf = btag_weights.at(category.BtagWP());
             }
-            weight *= iterativeFit_corr;
             weight *= btag_sf;
 
 
