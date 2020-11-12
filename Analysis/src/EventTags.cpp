@@ -11,9 +11,10 @@ EventTagCreator::EventTagCreator(const EventCategorySet& _categories, const Even
                                   const std::map<SelectionCut, analysis::EllipseParameters>& _massWindowParams,
                                   const std::set<UncertaintySource>& _event_unc_sources,
                                   const std::set<UncertaintySource>& _norm_unc_sources,
-                                  bool _use_IterativeFit):
+                                  bool _use_IterativeFit, const Channel _channel, const Period _period ):
         categories(_categories), subCategories(_subCategories), massWindowParams(_massWindowParams),
-        event_unc_sources(_event_unc_sources), norm_unc_sources(_norm_unc_sources), use_IterativeFit(_use_IterativeFit)
+        event_unc_sources(_event_unc_sources), norm_unc_sources(_norm_unc_sources), use_IterativeFit(_use_IterativeFit),
+        channel(_channel),period(_period)
 {
 }
 
@@ -46,12 +47,24 @@ EventTags EventTagCreator::CreateEventTags(const std::vector<DataId>& dataIds_ba
                                             float m_bb, float m_tt_vis, int kinFit_convergence, int SVfit_valid) const
 {
     static const EventCategory evtCategory_2j = EventCategory::Parse("2j");
-
+    const std::map<std::pair<Channel, Period>, float> iterativeFit_correction = {
+    {{Channel::ETau, Period::Run2016}, 1.0120}, // 1.01203715762
+    {{Channel::MuTau, Period::Run2016}, 1.013}, // 1.01296331792
+    {{Channel::TauTau, Period::Run2016}, 1.0101}, // 1.01010364517
+    {{Channel::ETau, Period::Run2017}, 0.9949}, // 0.994930642536
+    {{Channel::MuTau, Period::Run2017}, 0.9993}, // 0.999263715405
+    {{Channel::TauTau, Period::Run2017}, 0.9547}, // 0.954725518543
+    {{Channel::ETau, Period::Run2018}, 1.0004}, // 1.0003768284
+    {{Channel::MuTau, Period::Run2018}, 1.0039}, // 1.00388888346
+    {{Channel::TauTau, Period::Run2018}, 0.9795}, // 0.97949255088
+    };
     const std::map<DiscriminatorWP, size_t> bjet_counts = {
         { DiscriminatorWP::Loose, num_btag_loose },
         { DiscriminatorWP::Medium, num_btag_medium },
         { DiscriminatorWP::Tight, num_btag_tight}
     };
+
+    float iterativeFit_corr = iterativeFit_correction.at({channel, period});
 
     std::map<DiscriminatorWP, float > btag_weights = {};
     if((btag_weight_Loose.size()!=0 || btag_weight_Medium.size()!=0 || btag_weight_Tight.size()!=0) && !use_IterativeFit){
@@ -63,9 +76,9 @@ EventTags EventTagCreator::CreateEventTags(const std::vector<DataId>& dataIds_ba
     }
     else if(btag_weight_IterativeFit.size()!=0 && use_IterativeFit){
         btag_weights = {
-            { DiscriminatorWP::Loose, btag_weight_IterativeFit.at(0) },
-            { DiscriminatorWP::Medium, btag_weight_IterativeFit.at(0) },
-            { DiscriminatorWP::Tight, btag_weight_IterativeFit.at(0)},
+            { DiscriminatorWP::Loose, btag_weight_IterativeFit.at(0)*iterativeFit_corr },
+            { DiscriminatorWP::Medium, btag_weight_IterativeFit.at(0)*iterativeFit_corr },
+            { DiscriminatorWP::Tight, btag_weight_IterativeFit.at(0)*iterativeFit_corr },
         };
     }
 
