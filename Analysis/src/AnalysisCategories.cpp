@@ -3,6 +3,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include "hh-bbtautau/Analysis/include/AnalysisCategories.h"
 #include <boost/bimap.hpp>
+#include <boost/regex.hpp>
 
 namespace analysis {
 const std::unique_ptr<boost::bimap<std::string, EventRegion>> EventRegion::predefined_regions =
@@ -310,72 +311,57 @@ std::string EventCategory::ToString() const
             VBF_str = "_VBF";
             if(vbf_cat != VBF_Category::None)
                 VBF_str += "_" + analysis::ToString(vbf_cat);
-        s << VBF_str;
         }
+        s << VBF_str;
     }
     return s.str();
 }
 
 EventCategory EventCategory::Parse(const std::string& str)
 {
-    static const std::string numbers = "0123456789";
-    static const std::string jets_suffix = "j", btag_suffix = "b";
-    static const std::map<char, bool> boosted_suffix = { { 'R', false }, { 'B', true } };
-    static const std::map<std::string, std::pair<bool, VBF_Category>> VBF_suffix =
-        { { "noVBF", { false, VBF_Category::None}},
-          { "VBF",   { true,  VBF_Category::None}},
-          { "VBF_"+ analysis::ToString(VBF_Category::qqHH),  { true, VBF_Category::qqHH }},
-          { "VBF_"+ analysis::ToString(VBF_Category::ggHH),  { true, VBF_Category::ggHH }},
-          { "VBF_"+ analysis::ToString(VBF_Category::TT_L),  { true, VBF_Category::TT_L }},
-          { "VBF_"+ analysis::ToString(VBF_Category::TT_FH),  { true, VBF_Category::TT_FH }},
-          { "VBF_"+ analysis::ToString(VBF_Category::ttH),  { true, VBF_Category::ttH }},
-          { "VBF_"+ analysis::ToString(VBF_Category::DY),  { true, VBF_Category::DY }} };
+    static const std::string regex_str = "^((Inclusive)|([0-9]+)j(([0-9])(L|M|T|)b(\\+|)(R|B|)(_(VBF)(_(.*)|)|_(noVBF)|)|))$";
 
-    if(str == "Inclusive") return Inclusive();
+    static const int incl_idx = 2, n_jets_idx = 3, n_btag_idx = 5, btag_wp_idx = 6, btag_strict_idx = 7,
+                     boosted_idx = 8, vbf_flag_idx = 10, no_vbf_flag_idx = 13, vbf_cat_idx = 12;
+    static const auto regex = boost::regex(regex_str);
+
     try {
-        const size_t jet_pos = str.find_first_not_of(numbers);
-        if(jet_pos == std::string::npos && str.substr(jet_pos, jets_suffix.size()) != "j")
-            throw exception("");
-        const size_t n_jets = ::analysis::Parse<size_t>(str.substr(0, jet_pos));
-        const size_t btag_str_pos = jet_pos + jets_suffix.size();
-        if(str.size() == btag_str_pos)
+        boost::smatch match;
+        if(!boost::regex_match(str, match, regex))
+            throw exception("Invalid category name = '%1%'.") % str;
+
+        if(match[incl_idx].matched) return Inclusive();
+
+        const auto m_str = [&match](int idx) { return std::string(match[idx].first, match[idx].second); };
+
+        const size_t n_jets = ::analysis::Parse<size_t>(m_str(n_jets_idx));
+        if(!match[n_btag_idx].matched)
             return EventCategory(n_jets);
-        const size_t btag_wp_pos = str.find_first_not_of(numbers, btag_str_pos);
-        if(btag_wp_pos == std::string::npos)
-            throw exception("");
-        const size_t n_btag = ::analysis::Parse<size_t>(str.substr(btag_str_pos, btag_wp_pos - btag_str_pos));
-        const size_t btag_pos = str.find(btag_suffix, btag_wp_pos);
-        if(btag_pos == std::string::npos)
-            throw exception("");
-        const DiscriminatorWP btag_wp = btag_wp_pos == btag_pos ? DiscriminatorWP::Medium
-                : __DiscriminatorWP_short_names.Parse(str.substr(btag_wp_pos, btag_pos - btag_wp_pos));
-        const size_t strictbtag_pos = btag_pos + btag_suffix.size();
-        const char strictbtag_flag = strictbtag_pos == str.size() ? ' ' : str.at(strictbtag_pos);
-        const bool is_strictbtag = strictbtag_flag != '+'?  true : false;
-        const size_t boosted_pos = strictbtag_flag == '+' ? strictbtag_pos + 1 : strictbtag_pos;
-        if(str.size() == boosted_pos)
-            return EventCategory(n_jets, n_btag, is_strictbtag, btag_wp);
-        const char boosted_flag = str.at(boosted_pos);
-        if(!boosted_suffix.count(boosted_flag) && boosted_flag!='_')
-            throw exception("");
+
+        const size_t n_btag = ::analysis::Parse<size_t>(m_str(n_btag_idx));
+        DiscriminatorWP btag_wp = DiscriminatorWP::Medium;
+        const auto btag_wp_str = m_str(btag_wp_idx);
+        if(!btag_wp_str.empty())
+            btag_wp = __DiscriminatorWP_short_names.Parse(btag_wp_str);
+        const bool btag_strict = m_str(btag_strict_idx).empty();
+
+        const auto boosted_str = m_str(boosted_idx);
         boost::optional<bool> is_boosted = boost::make_optional(false, false);
-        bool boosted = false;
-        if (boosted_suffix.count(boosted_flag)){
-            is_boosted = boosted_suffix.at(boosted_flag);
-            boosted = boosted_suffix.at(boosted_flag);
-        }
-        if(str.size() == boosted_pos+1)
-            return EventCategory(n_jets, n_btag, is_strictbtag, btag_wp, boosted);
+        if(boosted_str.empty() && !match[vbf_flag_idx].matched && !match[no_vbf_flag_idx].matched)
+            return EventCategory(n_jets, n_btag, btag_strict, btag_wp);
 
-        const size_t isVBF_pos = str.find("_")+1;
-        const std::string isVBF_flag = str.substr(isVBF_pos);
-        if(!VBF_suffix.count(isVBF_flag))
-            throw exception("");
+        if(!boosted_str.empty())
+            is_boosted = boosted_str == "B";
+        if(!match[vbf_flag_idx].matched && !match[no_vbf_flag_idx].matched)
+            return EventCategory(n_jets, n_btag, btag_strict, btag_wp, *is_boosted);
 
-        const bool is_VBF = VBF_suffix.at(isVBF_flag).first;
-        return EventCategory(n_jets, n_btag, is_strictbtag, btag_wp, is_boosted, is_VBF,
-                                 VBF_suffix.at(isVBF_flag).second);
-    }catch(exception& e) {
+        const bool is_vbf = match[vbf_flag_idx].matched;
+        if(!match[vbf_cat_idx].matched)
+            return EventCategory(n_jets, n_btag, btag_strict, btag_wp, is_boosted, is_vbf);
+
+        const VBF_Category vbf_cat = ::analysis::Parse<VBF_Category>(m_str(vbf_cat_idx));
+        return EventCategory(n_jets, n_btag, btag_strict, btag_wp, is_boosted, is_vbf, vbf_cat);
+    } catch(exception& e) {
         throw exception("Invalid EventCategory '%1%'. %2%") % str % e.message();
     }
 }

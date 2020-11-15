@@ -26,9 +26,10 @@ ENUM_NAMES(SampleType) = {
     { SampleType::TT, "TT" }, {SampleType::ggHH_NonRes, "ggHH_NonRes"},
     {SampleType::VBFHH_NonRes, "VBFHH_NonRes"}, {SampleType::ggHH_Res, "ggHH_Res"},
     {SampleType::VBFHH_Res, "VBFHH_Res"}
-
 };
-enum class DYFitModel { None = 0, NbjetBins = 1, NbjetBins_htBins = 2 , NbjetBins_NjetBins = 3, NbjetBins_ptBins = 4, Htt = 5};
+
+enum class DYFitModel { None = 0, NbjetBins = 1, NbjetBins_htBins = 2 , NbjetBins_NjetBins = 3, NbjetBins_ptBins = 4,
+                        Htt = 5};
 ENUM_NAMES(DYFitModel) = {
     { DYFitModel::None, "None" } , { DYFitModel::NbjetBins, "NbjetBins" } ,
     { DYFitModel::NbjetBins_htBins, "NbjetBins_htBins"}, { DYFitModel::NbjetBins_NjetBins, "NbjetBins_NjetBins"},
@@ -41,7 +42,6 @@ ENUM_NAMES(VBF_Category) = {
     { VBF_Category::ggHH, "ggHH"}, { VBF_Category::TT_L, "TT_L"},
     { VBF_Category::TT_FH, "TT_FH"}, { VBF_Category::ttH, "ttH"}, { VBF_Category::DY, "DY"}
 };
-
 
 struct EventRegion {
     static const EventRegion& Unknown();
