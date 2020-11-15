@@ -14,16 +14,16 @@ namespace bbtautau {
 class AnaTupleReader {
 public:
     using DataId = EventAnalyzerDataId;
-    using Hash = size_t;
-    using DataIdBiMap = boost::bimap<DataId, Hash>;
-    using DataIdMap = std::map<DataId, std::tuple<double, double>>;
+    using DatasetBiMap = boost::bimap<std::string, unsigned>;
+    using RegionBiMap = boost::bimap<EventRegion, unsigned>;
     using NameSet = std::set<std::string>;
     using RDF = ROOT::RDF::RNode;
 
     AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names,
                    const std::vector<std::string>& input_friends, const EventTagCreator& event_tagger, const std::string& mdnn_version);
     size_t GetNumberOfEntries() const;
-    const DataId& GetDataIdByHash(Hash hash) const;
+    const std::string& GetDatasetByHash(unsigned hash) const;
+    const EventRegion& GetRegionByHash(unsigned hash) const;
     const RDF& GetDataFrame() const;
     const std::list<RDF>& GetSkimmedDataFrames() const;
     const std::map<std::string, std::set<std::string>>& GetParametricVariables() const;
@@ -43,7 +43,8 @@ private:
     ROOT::RDataFrame dataFrame;
     RDF df;
     std::list<RDF> skimmed_df;
-    DataIdBiMap known_data_ids;
+    DatasetBiMap known_datasets;
+    RegionBiMap known_regions;
     std::map<std::string, std::set<std::string>> parametric_vars;
     std::map<std::string, std::string> branch_types;
 };

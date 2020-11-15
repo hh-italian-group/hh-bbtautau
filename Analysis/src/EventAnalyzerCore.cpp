@@ -107,7 +107,7 @@ void EventAnalyzerCore::ProcessCombinedSamples(AnaDataCollection& anaDataCollect
             throw exception("Combined sample '%1%' not found.") % sample_name;
         CombinedSampleDescriptor& sample = cmb_sample_descriptors.at(sample_name);
         if(sample.channels.size() && !sample.channels.count(channelId)) continue;
-        std::cout << "\t\t" << sample.name << std::endl;
+        std::cout << "\t\t\t" << sample.name << '\n';
         for(const std::string& sub_sample_name : sample.sample_descriptors) {
             if(!sample_descriptors.count(sub_sample_name))
                 throw exception("Unable to create '%1%': sub-sample '%2%' not found.")

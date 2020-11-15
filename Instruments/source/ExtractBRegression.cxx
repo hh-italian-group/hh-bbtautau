@@ -44,7 +44,7 @@ public:
 
         bbtautau::AnaAuxTuple aux_tuple(inputFile.get(), true);
         aux_tuple.GetEntry(0);
-        refDataId = FindRefDataId(aux_tuple(), args.dataIdName());
+        refDataId = FindRefDatasetHash(aux_tuple(), args.dataIdName());
     }
 
     void Run()
@@ -119,14 +119,7 @@ public:
             anaTuple.GetEntry(n);
             const auto& event = anaTuple.data();
 
-            bool id_found = false;
-            for(size_t dataId : event.dataIds) {
-                if(dataId == refDataId) {
-                    id_found = true;
-                    break;
-                }
-            }
-            if(id_found) {
+            if(event.dataset == refDataId) {
 
                 #define BR(name, idx) b##idx##_##name = b##idx.name
                 #define B_FILL(idx) \
@@ -141,7 +134,7 @@ public:
                 #undef B_BR
                 #undef B_FILL
 
-                weight = event.all_weights.at(0);
+                weight = event.weight;
                 m_sv = event.SVfit_m;
                 tau1_pt = event.tau1_pt;
                 tau1_eta = event.tau1_eta;
@@ -267,15 +260,15 @@ public:
         throw exception("Jet entry not found. evt=%1%, eta=%2%, phi=%3%.") % evt % eta % phi;
     }
 
-    static size_t FindRefDataId(const bbtautau::AnaAux& aux, const std::string& name)
+    static unsigned FindRefDatasetHash(const bbtautau::AnaAux& aux, const std::string& name)
     {
-        const size_t N = aux.dataIds.size();
-        if(aux.dataId_names.size() != N)
+        const size_t N = aux.dataset_hashes.size();
+        if(aux.dataset_names.size() != N)
             throw exception("Inconsistent dataId info in AnaAux tuple.");
         for(size_t n = 0; n < N; ++n) {
-            const auto hash = aux.dataIds.at(n);
-            const auto& dataId_name = aux.dataId_names.at(n);
-            if(dataId_name == name)
+            const auto hash = aux.dataset_hashes.at(n);
+            const auto& dataset_name = aux.dataset_names.at(n);
+            if(dataset_name == name)
                 return hash;
         }
         throw exception("Hash not found.");
