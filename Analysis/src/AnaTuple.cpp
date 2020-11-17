@@ -15,10 +15,16 @@ AnaTupleWriter::AnaTupleWriter(const std::string& file_name, Channel channel, bo
 
 AnaTupleWriter::~AnaTupleWriter()
 {
-    for(const auto& id : known_data_ids.left) {
-        aux_tuple().dataIds.push_back(id.second);
-        aux_tuple().dataId_names.push_back(id.first.GetName());
+    for(const auto& [name, hash] : known_datasets) {
+        aux_tuple().dataset_hashes.push_back(hash);
+        aux_tuple().dataset_names.push_back(name);
     }
+
+    for(const auto& [name, hash] : known_regions) {
+        aux_tuple().region_hashes.push_back(hash);
+        aux_tuple().region_names.push_back(name);
+    }
+
     aux_tuple.Fill();
     aux_tuple.Write();
     tuple.Write();
@@ -32,20 +38,6 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
     static constexpr int def_val_int = std::numeric_limits<int>::lowest();
 
     if(!dataIds.size()) return;
-
-    for(const auto& [data_id, weight] : dataIds) {
-        if(!known_data_ids.left.count(data_id)) {
-            const size_t hash = std::hash<std::string>{}(data_id.GetName());
-            if(known_data_ids.right.count(hash))
-                throw exception("Duplicated hash for event id '%1%' and '%2%'.") % data_id
-                    %  known_data_ids.right.at(hash);
-            known_data_ids.insert({data_id, hash});
-        }
-
-        tuple().dataIds.push_back(known_data_ids.left.at(data_id));
-        tuple().all_weights.push_back(static_cast<float>(weight));
-    }
-
 
     tuple().run = event->run;
     tuple().lumi = event->lumi;
@@ -226,21 +218,22 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
     tuple().jets_nTotal_hadronFlavour_c = event->jets_nTotal_hadronFlavour_c;
 
     if(!event->isData) {
-        #define FILL_BTAG(wp, suffix) \
-            FillUncWeightVec(btag_weights.at(std::make_pair(DiscriminatorWP::wp, false)), \
-                                tuple().btag_weight##suffix##wp, false)
+        #define FILL_BTAG(wp, suffix, is_iterative) \
+            FillUncWeightVec(btag_weights.at(std::make_pair(DiscriminatorWP::wp, is_iterative)), \
+                                &tuple().weight_btag_##suffix, &tuple().unc_btag_##suffix##_Up, \
+                                &tuple().unc_btag_##suffix##_Down)
 
-        FILL_BTAG(Loose, _);
-        FILL_BTAG(Medium, _);
-        FILL_BTAG(Tight, _);
-
-        FillUncWeightVec(btag_weights.at(std::make_pair(DiscriminatorWP::Medium, true)),
-                         tuple().btag_weight_IterativeFit, false);
+        FILL_BTAG(Loose, Loose, false);
+        FILL_BTAG(Medium, Medium, false);
+        FILL_BTAG(Tight, Tight, false);
+        FILL_BTAG(Medium, IterativeFit, true);
 
         #undef FILL_BTAG
 
         #define FILL_UNC(r, _, name) \
-            FillUncWeightVec(uncs_weight_map.at(UncertaintySource::name), tuple().BOOST_PP_CAT(unc_, name));
+            FillUncWeightVec(uncs_weight_map.at(UncertaintySource::name), nullptr, \
+                &tuple().BOOST_PP_CAT(BOOST_PP_CAT(unc_, name), _Up), \
+                &tuple().BOOST_PP_CAT(BOOST_PP_CAT(unc_, name), _Down) );
         #define FILL_UNC_LIST(_, ...) BOOST_PP_SEQ_FOR_EACH(FILL_UNC, _, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
 
         if(event.GetEventCandidate().GetUncSource() == UncertaintySource::None){
@@ -261,25 +254,49 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
         #undef FILL_UNC_LIST
     }
 
-    tuple.Fill();
+    for(const auto& [data_id, weight] : dataIds) {
+        const std::string dataset_name = data_id.Get<std::string>();
+        const std::string event_region = data_id.Get<EventRegion>().ToString();
+
+        if(!known_datasets.count(dataset_name))
+            known_datasets[dataset_name] = static_cast<unsigned>(known_datasets.size());
+        tuple().dataset = known_datasets.at(dataset_name);
+
+        if(!known_regions.count(event_region))
+            known_regions[event_region] = static_cast<unsigned>(known_regions.size());
+        tuple().event_region = known_regions.at(event_region);
+
+        tuple().unc_source = static_cast<int>(data_id.Get<UncertaintySource>());
+        tuple().unc_scale = static_cast<int>(data_id.Get<UncertaintyScale>());
+
+        tuple().weight = static_cast<float>(weight);
+
+        tuple.Fill();
+    }
 }
 
 void AnaTupleWriter::FillUncWeightVec(const std::map<UncertaintyScale, float>& weights_in,
-                                      std::vector<float>& weights_out, bool store_relative)
+                                      float* weight, float* unc_up, float* unc_down)
 {
-    static const std::vector<UncertaintyScale> scales = { UncertaintyScale::Up, UncertaintyScale::Down };
+    static constexpr float def_val = std::numeric_limits<float>::lowest();
 
-    weights_out.clear();
     const float central_w = weights_in.at(UncertaintyScale::Central);
-    if(!store_relative)
-        weights_out.push_back(central_w);
-    for(auto scale : scales) {
-        if(!weights_in.count(scale)) break;
-        float w = weights_in.at(scale);
-        if(store_relative)
-            w /= central_w;
-        weights_out.push_back(w);
-    }
+    if(weight)
+        *weight = central_w;
+
+    const auto set_unc = [&](UncertaintyScale scale, float* output) {
+        if(output) {
+            float w = def_val;
+            auto iter = weights_in.find(scale);
+            if(iter != weights_in.end()) {
+                w = iter->second / central_w;
+            }
+            *output = w;
+        }
+    };
+
+    set_unc(UncertaintyScale::Up, unc_up);
+    set_unc(UncertaintyScale::Down, unc_down);
 }
 
 } // namespace bbtautau

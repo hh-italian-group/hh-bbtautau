@@ -30,9 +30,10 @@ public:
 
     ProcessAnaTuple(const AnalyzerArguments& _args) :
         EventAnalyzerCore(_args, _args.channel(), false), args(_args), activeVariables(ParseVarSet(args.vars())),
-        eventTagger(ana_setup.categories, sub_categories_to_process, ana_setup.massWindowParams,
-                    ana_setup.unc_sources, {}, ana_setup.use_IterativeFit, args.channel(), args.period()),
-        tupleReader(args.input(), args.channel(), activeVariables, args.input_friends(), eventTagger, ana_setup.mdnn_version),
+        eventTagger(ana_setup.categories, sub_categories_to_process, ana_setup.unc_sources, {},
+                    ana_setup.use_IterativeFit, args.channel(), args.period()),
+        tupleReader(args.input(), args.channel(), activeVariables, args.input_friends(), eventTagger,
+                    ana_setup.mdnn_version),
         outputFile(root_ext::CreateRootFile(args.output() + "_full.root", ROOT::kLZMA, 9))
     {
         histConfig.Parse(FullPath(ana_setup.hist_cfg));
@@ -105,7 +106,7 @@ public:
 
         std::cout << "\tProcessing combined samples and QCD... " << std::endl;
         for(const auto& subCategory : subCategories) {
-
+            std::cout << "\t\tsub-category " << subCategory << "\n";
             ProcessCombinedSamples(anaDataCollection, subCategory, ana_setup.cmb_samples);
             for(const auto& sample : sample_descriptors) {
                 if(sample.second.sampleType == SampleType::QCD) {

@@ -11,6 +11,7 @@ This file is part of https://github.com/hh-italian-group/AnalysisTools. */
 
 using EC = analysis::EventCategory;
 using WP = analysis::DiscriminatorWP;
+using VBF_Category = analysis::VBF_Category;
 
 BOOST_AUTO_TEST_CASE(ec_to_string)
 {
@@ -72,6 +73,11 @@ BOOST_AUTO_TEST_CASE(ec_to_string)
     {
         EC e(2,2,false, analysis::DiscriminatorWP::Medium, true, false);
         BOOST_TEST(EC::Parse("2j2b+B_noVBF") == e);
+    }
+
+    {
+        EC e(2,1,false, analysis::DiscriminatorWP::Medium, false, true, VBF_Category::ggHH);
+        BOOST_TEST(EC::Parse("2j1b+R_VBF_ggHH") == e);
     }
 
     {
@@ -138,6 +144,12 @@ BOOST_AUTO_TEST_CASE(ec_to_string)
         EC e(2,2,false, analysis::DiscriminatorWP::Medium, true, false);
         BOOST_TEST("2j2b+B_noVBF" == e.ToString());
     }
+
+    {
+        EC e(2,1,false, analysis::DiscriminatorWP::Medium, false, true, VBF_Category::ggHH);
+        BOOST_TEST("2j1b+R_VBF_ggHH" == e.ToString());
+    }
+
 }
 BOOST_AUTO_TEST_CASE(determine_ec_1)
 {

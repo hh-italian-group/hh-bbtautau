@@ -46,9 +46,10 @@ std::vector<std::shared_ptr<TTree>> AnaTupleReader::ReadTrees(Channel channel,
 }
 
 AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names,
-                               const std::vector<std::string>& input_friends, const EventTagCreator& event_tagger, const std::string& mdnn_version) :
-
-        files(OpenFiles(file_name, input_friends)), trees(ReadTrees(channel, files)), dataFrame(*trees.front()), df(dataFrame)
+                               const std::vector<std::string>& input_friends, const EventTagCreator& event_tagger,
+                               const std::string& mdnn_version) :
+        files(OpenFiles(file_name, input_friends)), trees(ReadTrees(channel, files)), dataFrame(*trees.front()),
+        df(dataFrame)
 {
     for(const auto& column : df.GetColumnNames())
         branch_types[column] = df.GetColumnType(column);
@@ -81,30 +82,38 @@ AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, Na
     }
 
     std::mutex mutex;
-    auto extractDataIds = [&](const std::vector<size_t>& dataIds, const std::vector<std::string>& dataId_names) {
+    auto extract_names = [&](const std::vector<unsigned>& hashes, const std::vector<std::string>& names,
+                             DatasetBiMap& name_map) -> bool {
         std::lock_guard<std::mutex> lock(mutex);
-        const size_t N = dataIds.size();
-        if(dataId_names.size() != N)
-            throw exception("Inconsistent dataId info in AnaAux tuple.");
+        const size_t N = hashes.size();
+        if(names.size() != N)
+            throw exception("Inconsistent info in AnaAux tuple.");
         for(size_t n = 0; n < N; ++n) {
-            const auto hash = dataIds.at(n);
-            const auto& dataId_name = dataId_names.at(n);
-            const auto dataId = DataId::Parse(dataId_name);
-            if(known_data_ids.right.count(hash) || known_data_ids.left.count(dataId)) {
-                if(known_data_ids.right.count(hash) && known_data_ids.right.at(hash) != dataId)
-                    throw exception("Duplicated hash = %1% in AnaAux tuple for dataId = %2%.\n"
-                                    "This hash is already assigned to %3%") % hash % dataId_name
-                                    % known_data_ids.right.at(hash);
-                if(known_data_ids.left.count(dataId) && known_data_ids.left.at(dataId) != hash)
-                    throw exception("Duplicated dataId = '%1%' in AnaAux tuple.") % dataId_name;
+            const auto hash = hashes.at(n);
+            const auto& name = names.at(n);
+            if(name_map.right.count(hash) || name_map.left.count(name)) {
+                if(name_map.right.count(hash) && name_map.right.at(hash) != name)
+                    throw exception("Duplicated hash = %1% in AnaAux tuple for name = %2%.\n"
+                                    "This hash is already assigned to %3%") % hash % name % name_map.right.at(hash);
+                if(name_map.left.count(name) && name_map.left.at(name) != hash)
+                    throw exception("Duplicated name = '%1%' in AnaAux tuple.") % name;
             } else {
-                known_data_ids.insert({dataId, hash});
+                name_map.insert({name, hash});
             }
         }
+        return true;
     };
 
+    //using namespace std::placeholders;
     ROOT::RDataFrame aux_df("aux", files.front().get());
-    aux_df.Foreach(extractDataIds, { "dataIds", "dataId_names" });
+    aux_df.Foreach([&](const std::vector<unsigned>& hashes, const std::vector<std::string>& names) {
+                   extract_names(hashes, names, known_datasets); }, { "dataset_hashes", "dataset_names" });
+    DatasetBiMap known_regions_str;
+    aux_df.Foreach([&](const std::vector<unsigned>& hashes, const std::vector<std::string>& names) {
+                   extract_names(hashes, names, known_regions_str); }, { "region_hashes", "region_names" });
+
+    for(const auto& [region_str, hash] : known_regions_str.left)
+        known_regions.insert({Parse<EventRegion>(region_str), hash});
 }
 
 void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, const EventTagCreator& event_tagger, const std::string& mdnn_version)
@@ -184,22 +193,23 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
     DefineP4(df, "VBF1");
     DefineP4(df, "VBF2");
 
-    const auto convert_dataIds = [&](const std::vector<size_t>& dataIds_raw) {
-        std::vector<DataId> dataIds;
-        for(size_t hash : dataIds_raw)
-            dataIds.push_back(GetDataIdByHash(hash));
-        return dataIds;
+    const auto convertToDataId = [&](unsigned dataset, unsigned event_region, int unc_source, int unc_scale) {
+        return DataId(GetDatasetByHash(dataset), GetRegionByHash(event_region),
+                      static_cast<UncertaintySource>(unc_source), static_cast<UncertaintyScale>(unc_scale));
     };
-    Define(df, "dataIds_base", convert_dataIds, {"dataIds"}, true);
+    Define(df, "dataId", convertToDataId, { "dataset", "event_region", "unc_source", "unc_scale" }, true);
 
 
     if(mdnn_version.empty()){
         auto fake_vbf_cat = [](){return std::make_pair(-1.f, analysis::VBF_Category::None);};
-        Define(df,"vbf_cat", fake_vbf_cat, {}, true);
+        Define(df, "vbf_cat", fake_vbf_cat, {}, true);
     }
     else{
         std::vector<std::string> mdnn_branches;
-        static const std::vector<std::string> mdnn_score_names{"_tt_dl","_tt_sl", "_tt_lep", "_tt_fh","_dy","_hh_ggf", "_tth","_tth_tautau","_tth_bb","_hh_vbf","_hh_vbf_c2v","_hh_vbf_sm"};
+        static const std::vector<std::string> mdnn_score_names = {
+            "_tt_dl", "_tt_sl", "_tt_lep", "_tt_fh", "_dy", "_hh_ggf", "_tth", "_tth_tautau", "_tth_bb", "_hh_vbf",
+            "_hh_vbf_c2v", "_hh_vbf_sm"
+        };
         for(const auto& score_name : mdnn_score_names) {
             const std::string branch = "mdnn_" + mdnn_version + score_name;
             mdnn_branches.push_back(branch);
@@ -207,14 +217,16 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
         const auto vbf_cat = make_function(&EventTagCreator::FindVBFCategory);
         Define(df, "vbf_cat", vbf_cat, mdnn_branches, true);
     }
-    Define(df, "mdnn_score", [](const std::pair<float, analysis::VBF_Category>& vbf_cat) -> float { return vbf_cat.first; }, {"vbf_cat"}, true);
+    Define(df, "mdnn_score", [](const std::pair<float, analysis::VBF_Category>& vbf_cat) { return vbf_cat.first; },
+           {"vbf_cat"}, true);
 
 
     const auto create_event_tags = bind_this(event_tagger, &EventTagCreator::CreateEventTags);
     Define(df, "event_tags", create_event_tags,
-        { "dataIds_base", "all_weights", "btag_weight_Loose","btag_weight_Medium", "btag_weight_Tight","btag_weight_IterativeFit","num_central_jets", "has_b_pair", "num_btag_Loose", "num_btag_Medium",
-          "num_btag_Tight", "is_vbf", "is_boosted", "vbf_cat", "SVfit_p4", "MET_p4", "m_bb", "m_tt_vis",
-          "kinFit_convergence", "SVfit_valid"}, true);
+           { "dataId", "weight", "is_data", "weight_btag_Loose", "weight_btag_Medium", "weight_btag_Tight",
+             "weight_btag_IterativeFit", "num_central_jets", "has_b_pair", "num_btag_Loose", "num_btag_Medium",
+             "num_btag_Tight", "is_vbf", "is_boosted", "vbf_cat", "SVfit_p4", "m_bb", "m_tt_vis",
+             "kinFit_convergence", "SVfit_valid" }, true);
 
 
     auto df_bb = Filter(df, "has_b_pair");
@@ -294,11 +306,19 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
     skimmed_df.push_back(df_bb_sv);
 }
 
-const AnaTupleReader::DataId& AnaTupleReader::GetDataIdByHash(Hash hash) const
+const std::string& AnaTupleReader::GetDatasetByHash(unsigned hash) const
 {
-    const auto iter = known_data_ids.right.find(hash);
-    if(iter == known_data_ids.right.end())
-        throw exception("EventAnalyzerDataId not found for hash = %1%") % hash;
+    const auto iter = known_datasets.right.find(hash);
+    if(iter == known_datasets.right.end())
+        throw exception("Dataset not found for hash = %1%") % hash;
+    return iter->second;
+}
+
+const EventRegion& AnaTupleReader::GetRegionByHash(unsigned hash) const
+{
+    const auto iter = known_regions.right.find(hash);
+    if(iter == known_regions.right.end())
+        throw exception("Event region not found for hash = %1%") % hash;
     return iter->second;
 }
 
