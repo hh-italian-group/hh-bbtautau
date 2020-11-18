@@ -44,7 +44,7 @@ std::pair<float, VBF_Category> EventTagCreator::FindVBFCategory(float dnn_score_
         { dnn_score_qqHH_sm + dnn_score_qqHH + dnn_score_qqHH_vbf_c2v, VBF_Category::qqHH },
         { dnn_score_ggHH , VBF_Category::ggHH},
         { dnn_score_TT_dl + dnn_score_TT_lep + dnn_score_TT_sl , VBF_Category::TT_L },
-        { dnn_score_TT_fh, VBF_Category::TT_FH},
+        { dnn_score_TT_FH, VBF_Category::TT_FH},
         { dnn_score_ttH + dnn_score_ttH_tautau + dnn_score_tth_bb, VBF_Category::ttH},
         { dnn_score_DY, VBF_Category::DY},
     };
@@ -72,7 +72,7 @@ EventTags EventTagCreator::CreateEventTags(const DataId& dataId_base, float weig
         if(use_IterativeFit) return weight_btag_IterativeFit * iterativeFit_correction;
         return btag_weights.at(wp);
     };
-    
+
 
     EventTags evt_tags;
 

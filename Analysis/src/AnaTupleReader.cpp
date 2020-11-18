@@ -20,7 +20,67 @@ std::function<Result(Args...)> bind_this(const Class& obj, Result (Class::*fn)(A
 {
     return [=](auto&& ...args) { return (obj.*fn)(std::forward<Args>(args)...); };
 }
+/*********************qui comincia ********************/
+using UncMap = std::map<std::pair<UncertaintySource, UncertaintyScale>, float>;
+using RDF = ROOT::RDF::RNode;
 
+void FillUncMap(UncMap& unc_map, const std::vector<UncertaintySource>& unc_sources, size_t index)
+{
+    /**** unused parameters ******/
+}
+
+template<typename ...Args>
+void FillUncMap(UncMap& unc_map, const std::vector<UncertaintySource>& unc_sources, size_t index,
+                float up, float down, Args... args)
+{
+    static constexpr float def_val = std::numeric_limits<float>::lowest();
+    if(up != def_val)
+        unc_map.insert({{unc_sources.at(index), UncertaintyScale::Up}, up});
+    if(down == def_val && up != def_val)
+        down = up;
+    if(down != def_val)
+        unc_map.insert({{unc_sources.at(index), UncertaintyScale::Down}, down});
+
+    FillUncMap(unc_map, unc_sources, index + 1, args...);
+}
+
+template<typename ...Args>
+UncMap CreateUncMap(const std::vector<UncertaintySource>& unc_sources, Args... args)
+{
+    UncMap unc_map;
+    if(!unc_sources.empty())
+        FillUncMap(unc_map, unc_sources, 0, args...);
+    return unc_map;
+}
+
+template<std::size_t N, typename = std::make_index_sequence<2*N>>
+struct UncMapCreator;
+
+template<std::size_t N, std::size_t... S>
+struct UncMapCreator<N, std::index_sequence<S...>> {
+    template<class T, size_t>
+    using Type = T;
+
+    using Fn = std::function<UncMap(Type<float, S>...)>;
+
+    static RDF CallDefine(RDF& df, const std::vector<UncertaintySource>& unc_sources, const std::vector<std::string>& column_names)
+    {
+        if(unc_sources.size() == N) {
+            Fn fn = [&](auto... args) { return CreateUncMap(unc_sources, args...); };
+            return df.Define("unc_map", fn, column_names);
+        }
+        return UncMapCreator<N - 1>::CallDefine(df, unc_sources, column_names);
+    }
+};
+
+template<std::size_t... S>
+struct UncMapCreator<0, std::index_sequence<S...>> {
+    static RDF CallDefine(RDF& df, const std::vector<UncertaintySource>& /*unc_sources*/, const std::vector<std::string>& /*column_names*/)
+    {
+        return df.Define("unc_map", [](){ return UncMap(); }, {});
+    }
+};
+/***************** qui finisce *****************/
 }
 
 std::vector<std::shared_ptr<TFile>> AnaTupleReader::OpenFiles(const std::string& file_name,
@@ -44,6 +104,7 @@ std::vector<std::shared_ptr<TTree>> AnaTupleReader::ReadTrees(Channel channel,
     }
     return trees;
 }
+
 
 AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names,
                                const std::vector<std::string>& input_friends, const EventTagCreator& event_tagger,
@@ -143,7 +204,6 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
         return LorentzVectorM(pt, 0, phi, 0);
     };
 
-
     const auto SumP4 = [](const LorentzVectorM& p4_1, const LorentzVectorM& p4_2) {
         return p4_1 + p4_2;
     };
@@ -170,6 +230,7 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
         Define(target_df, prefix + "_p4", ReturnP4,
                { prefix + "_pt", prefix + "_eta", prefix + "_phi", prefix + "_m" }, true);
     };
+
 
     const auto _Calculate_MT = [](const LorentzVectorM& p4, const LorentzVectorM& MET_p4) -> float {
         return static_cast<float>(Calculate_MT(p4, MET_p4));
@@ -219,6 +280,45 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
     }
     Define(df, "mdnn_score", [](const std::pair<float, analysis::VBF_Category>& vbf_cat) { return vbf_cat.first; },
            {"vbf_cat"}, true);
+
+
+    const std::vector<UncertaintySource> unc_sources = {
+    UncertaintySource::EleTriggerUnc, UncertaintySource::MuonTriggerUnc,
+    UncertaintySource::TauTriggerUnc_DM0, UncertaintySource::TauTriggerUnc_DM1, UncertaintySource::TauTriggerUnc_DM10, UncertaintySource::TauTriggerUnc_DM11,
+    UncertaintySource::TauVSjetSF_DM0, UncertaintySource::TauVSjetSF_DM1, UncertaintySource::TauVSjetSF_3prong,
+    UncertaintySource::TauVSjetSF_pt20to25, UncertaintySource::TauVSjetSF_pt25to30};
+
+    std::vector<std::string> unc_names;
+    std::vector<std::string> unc_args;
+    for (auto i:unc_sources){
+        unc_names.push_back("unc_"+analysis::ToString(i)+"_Up") ;
+        unc_names.push_back("unc_"+analysis::ToString(i)+"_Down") ;
+    }
+    df = UncMapCreator<10>::CallDefine(df, unc_sources, unc_names);
+    /*
+    ************* old stuff  **************
+    const auto create_unc_map = [&](float ele_up, float ele_down, float mu_up, float mu_down){return CreateUncMap(unc_sources, ele_up, ele_down, mu_up, mu_down);};
+    Define(df, "unc_map", create_unc_map, unc_names, true);*
+
+    const auto create_unc_map = [&](auto... args) { return CreateUncMap(unc_sources, args...); };
+    if(unc_sources.size() == 1) {
+    std::function<UncMap(float, float)> fn = create_unc_map;
+    Define(df, "unc_map", fn, unc_names, true);
+    }
+    else if(unc_sources.size() == 2) {
+    std::function<UncMap(float, float,float,float)> fn = create_unc_map;
+    Define(df, "unc_map", fn, unc_names, true);
+    }
+    //auto define_map = [&](){return CallDefine(df, unc_sources, unc_names);}
+    //template<typename ...Args>
+
+    //std::vect<float> vars[unc_sources.size()];
+
+    //const auto create_unc_map = [&](vars) { return CreateUncMap(unc_sources, _vars); };
+    //const auto create_unc_map_func = [&](Args... args){return CreateUncMap(unc_sources, args...);};
+    //const auto create_unc_map= bind_this(unc_sources);
+    *********** end old stuff ***************
+    */
 
 
     const auto create_event_tags = bind_this(event_tagger, &EventTagCreator::CreateEventTags);
