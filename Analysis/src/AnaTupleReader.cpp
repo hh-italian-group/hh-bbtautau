@@ -20,8 +20,70 @@ std::function<Result(Args...)> bind_this(const Class& obj, Result (Class::*fn)(A
 {
     return [=](auto&& ...args) { return (obj.*fn)(std::forward<Args>(args)...); };
 }
-
+/*********************qui comincia ********************/
+using UncMap = std::map<std::pair<UncertaintySource, UncertaintyScale>, float>;
+using RDF = ROOT::RDF::RNode;
+void FillUncMap(UncMap& /*unc_map*/, const std::vector<UncertaintySource>& /*unc_sources*/, size_t /*index*/)
+{
 }
+
+template<typename ...Args>
+void FillUncMap(UncMap& unc_map, const std::vector<UncertaintySource>& unc_sources, size_t index,
+                float up, float down, Args... args)
+{
+    static constexpr float def_val = std::numeric_limits<float>::lowest();
+    if(index >= unc_sources.size())
+        return;
+    if(up != def_val)
+        unc_map.insert({{unc_sources.at(index), UncertaintyScale::Up}, up});
+    if(down == def_val && up != def_val)
+        down = up;
+    if(down != def_val)
+        unc_map.insert({{unc_sources.at(index), UncertaintyScale::Down}, down});
+
+    FillUncMap(unc_map, unc_sources, index + 1, args...);
+}
+
+template<typename ...Args>
+UncMap CreateUncMap(const std::vector<UncertaintySource>& unc_sources, Args... args)
+{
+    UncMap unc_map;
+    if(!unc_sources.empty())
+        FillUncMap(unc_map, unc_sources, 0, args...);
+    return unc_map;
+}
+
+template<std::size_t N, typename = std::make_index_sequence<2*N>>
+struct UncMapCreator;
+
+
+template <typename Result, typename ...Args>
+struct StdFunction {
+    using Fn = typename std::function<Result(Args...)>;
+};
+
+template<std::size_t N, std::size_t... S>
+struct UncMapCreator<N, std::index_sequence<S...>> {
+    template<typename T, size_t>
+    using Type = T;
+
+    using Fn = typename StdFunction<UncMap, Type<float, S>...>::Fn;
+
+    static RDF CallDefine(RDF& df, const std::vector<UncertaintySource>& unc_sources,
+                          const std::vector<std::string>& column_names)
+    {
+        Fn fn = [&](Type<float, S>... args) { return CreateUncMap(unc_sources, args...); };
+        std::vector<std::string> column_names_cp = column_names;
+        if(!column_names.size()) {
+            return df.Define("unc_map", [](){ return UncMap(); }, {});
+        }
+        const std::string& default_name = column_names.back();
+        column_names_cp.resize(2 * N, default_name);
+        return df.Define("unc_map", fn, column_names_cp);
+    }
+};
+}
+/******************qui finisce **************/
 
 std::vector<std::shared_ptr<TFile>> AnaTupleReader::OpenFiles(const std::string& file_name,
                                                               const std::vector<std::string>& input_friends)
@@ -44,6 +106,7 @@ std::vector<std::shared_ptr<TTree>> AnaTupleReader::ReadTrees(Channel channel,
     }
     return trees;
 }
+
 
 AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names,
                                const std::vector<std::string>& input_friends, const EventTagCreator& event_tagger,
@@ -143,7 +206,6 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
         return LorentzVectorM(pt, 0, phi, 0);
     };
 
-
     const auto SumP4 = [](const LorentzVectorM& p4_1, const LorentzVectorM& p4_2) {
         return p4_1 + p4_2;
     };
@@ -170,6 +232,7 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
         Define(target_df, prefix + "_p4", ReturnP4,
                { prefix + "_pt", prefix + "_eta", prefix + "_phi", prefix + "_m" }, true);
     };
+
 
     const auto _Calculate_MT = [](const LorentzVectorM& p4, const LorentzVectorM& MET_p4) -> float {
         return static_cast<float>(Calculate_MT(p4, MET_p4));
@@ -221,11 +284,44 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
            {"vbf_cat"}, true);
 
 
+    const std::vector<UncertaintySource> unc_sources = {UncertaintySource::EleTriggerUnc, UncertaintySource::MuonTriggerUnc,
+                                                            UncertaintySource::TauTriggerUnc_DM0, UncertaintySource::TauTriggerUnc_DM1};/*
+                                                            UncertaintySource::TauTriggerUnc_DM10, UncertaintySource::TauTriggerUnc_DM11,
+                                                            UncertaintySource::TauVSjetSF_DM0, UncertaintySource::TauVSjetSF_DM1,
+                                                            UncertaintySource::TauVSjetSF_3prong, UncertaintySource::TauVSjetSF_pt20to25,
+                                                            UncertaintySource::TauVSjetSF_pt25to30, UncertaintySource::TauVSjetSF_pt30to35,
+                                                            UncertaintySource::TauVSjetSF_pt35to40, UncertaintySource::TauVSjetSF_ptgt40,
+                                                            UncertaintySource::TauVSeSF_barrel, UncertaintySource::TauVSeSF_endcap,
+                                                            UncertaintySource::TauVSmuSF_etaLt0p4, UncertaintySource::TauVSmuSF_eta0p4to0p8,
+                                                            UncertaintySource::TauVSmuSF_eta0p8to1p2, UncertaintySource::TauVSmuSF_eta1p2to1p7,
+                                                            UncertaintySource::TauVSmuSF_etaGt1p7, UncertaintySource::EleIdIsoUnc,
+                                                            UncertaintySource::MuonIdIsoUnc, UncertaintySource::TopPt,
+                                                            UncertaintySource::L1_prefiring, UncertaintySource::PileUp,
+                                                            UncertaintySource::PileUpJetId_eff, UncertaintySource::PileUpJetId_mistag,
+                                                            UncertaintySource::TauCustomSF_DM0, UncertaintySource::TauCustomSF_DM1,
+                                                            UncertaintySource::TauCustomSF_DM10, UncertaintySource::TauCustomSF_DM11};/*/
+
+    std::vector<std::string> unc_names;
+    std::vector<std::string> unc_args;
+    std::cout<< unc_sources.size() << std::endl;
+    for (auto i:unc_sources){
+        std::cout<< i << std::endl;
+        unc_names.push_back("unc_"+analysis::ToString(i)+"_Up") ;
+        unc_names.push_back("unc_"+analysis::ToString(i)+"_Down") ;
+    }
+    std::cout<< unc_names.size() << std::endl;
+    for (auto i:unc_names){
+        std::cout<< i << std::endl;
+    }
+
+    df = UncMapCreator<10>::CallDefine(df, unc_sources, unc_names);
+
+
     const auto create_event_tags = bind_this(event_tagger, &EventTagCreator::CreateEventTags);
     Define(df, "event_tags", create_event_tags,
            { "dataId", "weight", "is_data", "weight_btag_Loose", "weight_btag_Medium", "weight_btag_Tight",
              "weight_btag_IterativeFit", "num_central_jets", "has_b_pair", "num_btag_Loose", "num_btag_Medium",
-             "num_btag_Tight", "is_vbf", "is_boosted", "vbf_cat", "SVfit_p4", "m_bb", "m_tt_vis",
+             "num_btag_Tight", "is_vbf", "is_boosted", "vbf_cat", "SVfit_p4", "unc_map", "m_bb", "m_tt_vis",
              "kinFit_convergence", "SVfit_valid" }, true);
 
 

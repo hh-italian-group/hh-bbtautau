@@ -34,7 +34,6 @@ EventTagCreator::EventTagCreator(const EventCategorySet& _categories, const Even
     }
 }
 
-
 std::pair<float, VBF_Category> EventTagCreator::FindVBFCategory(float dnn_score_TT_dl, float dnn_score_TT_sl,
         float dnn_score_TT_lep, float dnn_score_TT_FH, float dnn_score_DY, float dnn_score_ggHH, float dnn_score_ttH,
         float dnn_score_ttH_tautau, float dnn_score_tth_bb, float dnn_score_qqHH, float dnn_score_qqHH_vbf_c2v,
@@ -44,7 +43,7 @@ std::pair<float, VBF_Category> EventTagCreator::FindVBFCategory(float dnn_score_
         { dnn_score_qqHH_sm + dnn_score_qqHH + dnn_score_qqHH_vbf_c2v, VBF_Category::qqHH },
         { dnn_score_ggHH , VBF_Category::ggHH},
         { dnn_score_TT_dl + dnn_score_TT_lep + dnn_score_TT_sl , VBF_Category::TT_L },
-        { dnn_score_TT_fh, VBF_Category::TT_FH},
+        { dnn_score_TT_FH, VBF_Category::TT_FH},
         { dnn_score_ttH + dnn_score_ttH_tautau + dnn_score_tth_bb, VBF_Category::ttH},
         { dnn_score_DY, VBF_Category::DY},
     };
@@ -55,7 +54,7 @@ EventTags EventTagCreator::CreateEventTags(const DataId& dataId_base, float weig
         float weight_btag_Loose, float weight_btag_Medium, float weight_btag_Tight, float weight_btag_IterativeFit,
         int num_central_jets, bool has_b_pair, int num_btag_loose, int num_btag_medium, int num_btag_tight,
         bool is_vbf, bool is_boosted, const std::pair<float,VBF_Category>& vbf_cat, const LorentzVectorM& SVfit_p4,
-        float m_bb, float /*m_tt_vis*/, int kinFit_convergence, int SVfit_valid) const
+        UncMap& unc_map, float m_bb, float /*m_tt_vis*/, int kinFit_convergence, int SVfit_valid) const
 {
     const std::map<DiscriminatorWP, size_t> bjet_counts = {
         { DiscriminatorWP::Loose, num_btag_loose },
@@ -72,7 +71,6 @@ EventTags EventTagCreator::CreateEventTags(const DataId& dataId_base, float weig
         if(use_IterativeFit) return weight_btag_IterativeFit * iterativeFit_correction;
         return btag_weights.at(wp);
     };
-    
 
     EventTags evt_tags;
 
@@ -86,6 +84,12 @@ EventTags EventTagCreator::CreateEventTags(const DataId& dataId_base, float weig
         const float btag_sf = category.HasBtagConstraint() && !is_data ? get_weight_btag(category.BtagWP()) : 1.f;
         const float cat_weight = weight * btag_sf;
 
+        for (auto& [k,o] : unc_map){
+            std::cout << "ciao" << std::endl;
+            std::cout<< k.first << std::endl;
+            std::cout<< k.second << std::endl;
+            std::cout<< o <<std::endl;
+        }
 
         if(has_b_pair) {
             const EllipseParameters& window = category.HasBoostConstraint() && category.IsBoosted()
@@ -96,10 +100,26 @@ EventTags EventTagCreator::CreateEventTags(const DataId& dataId_base, float weig
 
         for(const auto& subCategory : subCategories) {
             if(!evtSubCategory.Implies(subCategory)) continue;
-            const auto& dataId = dataId_base.Set(category).Set(subCategory);
+            const auto dataId = dataId_base.Set(category).Set(subCategory);
             evt_tags.dataIds.push_back(dataId);
             evt_tags.weights.push_back(cat_weight);
         }
+        /*
+        for(const auto& subCategory : subCategories) {
+            if(!evtSubCategory.Implies(subCategory)) continue;
+            const auto dataId = dataId_base.Set(category).Set(subCategory);
+            evt_tags.dataIds.push_back(dataId);
+            evt_tags.weights.push_back(cat_weight);
+            if(!is_data && dataId_base.Get<UncertaintySource>()==UncertaintySource::None) {
+                for(const auto& [key, weight_shift] : unc_map) {
+                    const auto dataId_scaled = dataId.Set(key.first).Set(key.second);
+                    evt_tags.dataIds.push_back(dataId_scaled);
+                    evt_tags.weights.push_back(cat_weight * weight_shift);
+                }
+            }
+        }
+        */
+
     }
 
     return evt_tags;
