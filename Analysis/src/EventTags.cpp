@@ -84,7 +84,7 @@ EventTags EventTagCreator::CreateEventTags(const DataId& dataId_base, float weig
         const float btag_sf = category.HasBtagConstraint() && !is_data ? get_weight_btag(category.BtagWP()) : 1.f;
         const float cat_weight = weight * btag_sf;
 
-        std::cout<<"map size"= << unc_map.size()<<std::endl;
+        std::cout<<unc_map.size()<<std::endl;
 
         /*for (auto& [k,o] : unc_map){
             std::cout << "ciao" << std::endl;
