@@ -84,13 +84,14 @@ EventTags EventTagCreator::CreateEventTags(const DataId& dataId_base, float weig
         const float btag_sf = category.HasBtagConstraint() && !is_data ? get_weight_btag(category.BtagWP()) : 1.f;
         const float cat_weight = weight * btag_sf;
 
-        for (auto& [k,o] : unc_map){
+        std::cout<<"map size"= << unc_map.size()<<std::endl;
+
+        /*for (auto& [k,o] : unc_map){
             std::cout << "ciao" << std::endl;
             std::cout<< k.first << std::endl;
             std::cout<< k.second << std::endl;
             std::cout<< o <<std::endl;
-        }
-
+        }*/
         if(has_b_pair) {
             const EllipseParameters& window = category.HasBoostConstraint() && category.IsBoosted()
                     ? cuts::hh_bbtautau_Run2::hh_tag::boosted_window : cuts::hh_bbtautau_Run2::hh_tag::resolved_window;
