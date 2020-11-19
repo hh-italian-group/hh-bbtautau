@@ -18,6 +18,7 @@ public:
     using RegionBiMap = boost::bimap<EventRegion, unsigned>;
     using NameSet = std::set<std::string>;
     using RDF = ROOT::RDF::RNode;
+    //using UncMap = std::map<std::pair<UncertaintySource, UncertaintyScale>, float>;
 
     AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names,
                    const std::vector<std::string>& input_friends, const EventTagCreator& event_tagger, const std::string& mdnn_version);
