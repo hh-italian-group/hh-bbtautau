@@ -23,6 +23,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "TLatex.h"
 #include "RooPlot.h"
 #include "RooFitResult.h"
+#include "RooFormulaVar.h"
 
 struct Arguments {
     REQ_ARG(std::string, input_file);
@@ -115,7 +116,7 @@ public:
 
     void Run()
     {
-        EventRegion::Initialize(DiscriminatorWP::Medium,DiscriminatorWP::VVLoose,DiscriminatorWP::Medium); 
+        EventRegion::Initialize(DiscriminatorWP::Medium,DiscriminatorWP::VVLoose,DiscriminatorWP::Medium);
 	static std::string dy_contrib_prefix;
         if(args.sample_order() == "LO") dy_contrib_prefix= "DY_lo";
         else if(args.sample_order() == "NLO") dy_contrib_prefix = "DY_nlo";
@@ -128,7 +129,7 @@ public:
         const std::vector<int> nJet_points = {args.low_nJet(), args.high_nJet() };
         std::vector<int> pt_points;
         if(args.sample_order() == "NLO") pt_points = {args.vlowPt(), args.lowPt(), args.medPt(), args.highPt()};
-        else if(args.sample_order() == "LO") pt_points = {args.vlowPt(), args.lowPt(), 
+        else if(args.sample_order() == "LO") pt_points = {args.vlowPt(), args.lowPt(),
 args.medPt1(), args.medPt2(), args.highPt(),
                                                           args.vhighPt()};
         static const size_t max_n_b = 2;

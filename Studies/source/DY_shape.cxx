@@ -27,6 +27,7 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 #include "RooChebychev.h"
 #include "RooProdPdf.h"
 #include "RooNumIntConfig.h"
+#include "RooFormulaVar.h"
 
 
 struct Arguments {
