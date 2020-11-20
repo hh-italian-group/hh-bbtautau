@@ -30,7 +30,7 @@ public:
 
     ProcessAnaTuple(const AnalyzerArguments& _args) :
         EventAnalyzerCore(_args, _args.channel(), false), args(_args), activeVariables(ParseVarSet(args.vars())),
-        eventTagger(ana_setup.categories, sub_categories_to_process, ana_setup.unc_sources, {},
+        eventTagger(ana_setup.categories, sub_categories_to_process, EventAnalyzerCore::unc_sources_group, {},
                     ana_setup.use_IterativeFit, args.channel(), args.period()),
         tupleReader(args.input(), args.channel(), activeVariables, args.input_friends(), eventTagger,
                     ana_setup.mdnn_version),
@@ -124,7 +124,7 @@ public:
                 std::cout << "\t\tsetup_name: " << limit_setup.first <<  std::endl;
                 for(const auto& subCategory : subCategories)
                     limitsInputProducer.Produce(args.output(), limit_setup.first, limit_setup.second, subCategory,
-                                                ana_setup.unc_sources, ana_setup.regions, mva_sel_aliases,
+                                                EventAnalyzerCore::unc_sources_group, ana_setup.regions, mva_sel_aliases,
                                                 args.period());
             }
         }

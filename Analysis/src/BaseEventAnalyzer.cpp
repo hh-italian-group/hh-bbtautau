@@ -154,7 +154,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                                        trigger_patterns, vbf_triggers);
     std::set<UncertaintySource> unc_sources = { UncertaintySource::None };
     if(sample.sampleType != SampleType::Data)
-        unc_sources = ana_setup.unc_sources;
+        unc_sources = EventAnalyzerCore::unc_sources_group;
     const auto unc_variations = EnumerateUncVariations(unc_sources);
     const bool is_data = sample.sampleType == SampleType::Data;
     for(const auto& tupleEvent : *tuple) {

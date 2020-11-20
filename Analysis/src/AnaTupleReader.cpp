@@ -72,7 +72,10 @@ struct UncMapCreator<N, std::index_sequence<S...>> {
     static RDF CallDefine(RDF& df, const std::vector<UncertaintySource>& unc_sources,
                           const std::vector<std::string>& column_names)
     {
-        Fn fn = [&](Type<float, S>... args) { return CreateUncMap(unc_sources, args...); };
+        const Fn fn = [=](Type<float, S>... args) { return CreateUncMap(unc_sources, args...); };
+        //static const auto create = [&](Type<float, S>... args) { return CreateUncMap(unc_sources, args...); };
+        //Fn fn = create;
+        //Fn fn = [&](Type<float, S>... args) { return CreateUncMap(unc_sources, args...); };
         std::vector<std::string> column_names_cp = column_names;
         if(!column_names.size()) {
             return df.Define("unc_map", [](){ return UncMap(); }, {});
@@ -285,7 +288,7 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
 
 
     const std::vector<UncertaintySource> unc_sources = {UncertaintySource::EleTriggerUnc, UncertaintySource::MuonTriggerUnc,
-                                                            UncertaintySource::TauTriggerUnc_DM0, UncertaintySource::TauTriggerUnc_DM1};/*
+                                                            UncertaintySource::TauTriggerUnc_DM0, UncertaintySource::TauTriggerUnc_DM1,
                                                             UncertaintySource::TauTriggerUnc_DM10, UncertaintySource::TauTriggerUnc_DM11,
                                                             UncertaintySource::TauVSjetSF_DM0, UncertaintySource::TauVSjetSF_DM1,
                                                             UncertaintySource::TauVSjetSF_3prong, UncertaintySource::TauVSjetSF_pt20to25,
@@ -299,22 +302,22 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
                                                             UncertaintySource::L1_prefiring, UncertaintySource::PileUp,
                                                             UncertaintySource::PileUpJetId_eff, UncertaintySource::PileUpJetId_mistag,
                                                             UncertaintySource::TauCustomSF_DM0, UncertaintySource::TauCustomSF_DM1,
-                                                            UncertaintySource::TauCustomSF_DM10, UncertaintySource::TauCustomSF_DM11};/*/
+                                                            UncertaintySource::TauCustomSF_DM10, UncertaintySource::TauCustomSF_DM11};
 
     std::vector<std::string> unc_names;
     std::vector<std::string> unc_args;
-    std::cout<< unc_sources.size() << std::endl;
+    //std::cout<< unc_sources.size() << std::endl;
     for (auto i:unc_sources){
-        std::cout<< i << std::endl;
+        //std::cout<< i << std::endl;
         unc_names.push_back("unc_"+analysis::ToString(i)+"_Up") ;
         unc_names.push_back("unc_"+analysis::ToString(i)+"_Down") ;
     }
-    std::cout<< unc_names.size() << std::endl;
-    for (auto i:unc_names){
-        std::cout<< i << std::endl;
-    }
+    //std::cout<< unc_names.size() << std::endl;
+    //for (auto i:unc_names){
+    //    std::cout<< i << std::endl;
+    //}
 
-    df = UncMapCreator<10>::CallDefine(df, unc_sources, unc_names);
+    df = UncMapCreator<40>::CallDefine(df, unc_sources, unc_names);
 
 
     const auto create_event_tags = bind_this(event_tagger, &EventTagCreator::CreateEventTags);
@@ -417,7 +420,6 @@ const EventRegion& AnaTupleReader::GetRegionByHash(unsigned hash) const
         throw exception("Event region not found for hash = %1%") % hash;
     return iter->second;
 }
-
 size_t AnaTupleReader::GetNumberOfEntries() const { return static_cast<size_t>(trees.front()->GetEntries()); }
 const AnaTupleReader::RDF& AnaTupleReader::GetDataFrame() const { return df; }
 const std::list<AnaTupleReader::RDF>& AnaTupleReader::GetSkimmedDataFrames() const { return skimmed_df; }
