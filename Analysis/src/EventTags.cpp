@@ -83,32 +83,13 @@ EventTags EventTagCreator::CreateEventTags(const DataId& dataId_base, float weig
         EventSubCategory evtSubCategory;
         const float btag_sf = category.HasBtagConstraint() && !is_data ? get_weight_btag(category.BtagWP()) : 1.f;
         const float cat_weight = weight * btag_sf;
-        /*
-        std::cout<<std::endl;
-        std::cout<<"map size "<< unc_map.size()<<std::endl;
 
-        for (auto& [k,o] : unc_map){
-            std::cout<< "first " << k.first << std::endl;
-            std::cout<< "second " << k.second << std::endl;
-            std::cout<< "float " << o <<std::endl;
-        }
-
-        std::cout<<std::endl;
-        */
         if(has_b_pair) {
             const EllipseParameters& window = category.HasBoostConstraint() && category.IsBoosted()
                     ? cuts::hh_bbtautau_Run2::hh_tag::boosted_window : cuts::hh_bbtautau_Run2::hh_tag::resolved_window;
             evtSubCategory.SetCutResult(SelectionCut::mh, SVfit_valid && window.IsInside(SVfit_p4.M(), m_bb));
             evtSubCategory.SetCutResult(SelectionCut::KinematicFitConverged, kinFit_convergence > 0);
         }
-        /*
-        for(const auto& subCategory : subCategories) {
-            if(!evtSubCategory.Implies(subCategory)) continue;
-            const auto dataId = dataId_base.Set(category).Set(subCategory);
-            evt_tags.dataIds.push_back(dataId);
-            evt_tags.weights.push_back(cat_weight);
-        }
-        */
         for(const auto& subCategory : subCategories) {
             if(!evtSubCategory.Implies(subCategory)) continue;
             const auto dataId = dataId_base.Set(category).Set(subCategory);

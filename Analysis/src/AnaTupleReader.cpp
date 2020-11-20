@@ -306,19 +306,11 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
 
     std::vector<std::string> unc_names;
     std::vector<std::string> unc_args;
-    //std::cout<< unc_sources.size() << std::endl;
     for (auto i:unc_sources){
-        //std::cout<< i << std::endl;
         unc_names.push_back("unc_"+analysis::ToString(i)+"_Up") ;
         unc_names.push_back("unc_"+analysis::ToString(i)+"_Down") ;
     }
-    //std::cout<< unc_names.size() << std::endl;
-    //for (auto i:unc_names){
-    //    std::cout<< i << std::endl;
-    //}
-
     df = UncMapCreator<40>::CallDefine(df, unc_sources, unc_names);
-
 
     const auto create_event_tags = bind_this(event_tagger, &EventTagCreator::CreateEventTags);
     Define(df, "event_tags", create_event_tags,

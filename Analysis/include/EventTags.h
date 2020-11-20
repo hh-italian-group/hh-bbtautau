@@ -38,8 +38,8 @@ public:
 
 private:
     const EventCategorySet& categories;
-    const EventSubCategorySet& subCategories; 
-    const std::set<UncertaintySource>& event_unc_sources,norm_unc_sources;
+    const EventSubCategorySet& subCategories;
+    const std::set<UncertaintySource>& event_unc_sources, norm_unc_sources;
     const bool use_IterativeFit;
     const Channel channel;
     const Period period;

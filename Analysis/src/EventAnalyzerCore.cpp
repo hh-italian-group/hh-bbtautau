@@ -51,27 +51,10 @@ EventAnalyzerCore::EventAnalyzerCore(const CoreAnalyzerArguments& args, Channel 
     if(!ana_setup.xs_cfg.empty())
         crossSectionProvider = std::make_shared<tuple_skimmer::CrossSectionProvider>(ana_setup.xs_cfg);
 
-    std::vector<std::string> unc_sources_group_string = SplitValueList(args.unc_sources_groups(),false, ",", true);
-                                        //const std::string& separators = " \t",
-                                        //bool enable_token_compress = true);
+    std::vector<std::string> unc_sources_group_string = SplitValueList(args.unc_sources_groups(),false, ",", true); 
     for (auto& s : unc_sources_group_string){
         unc_sources_group.insert(ana_setup.unc_sources.at(s).begin(), ana_setup.unc_sources.at(s).end());
     }
-
-    /*size_t pos = 0;
-    std::string delimiter = ",";
-    std::string token;
-    while ((pos = args.unc_sources_groups().find(delimiter)) != std::string::npos) {
-        token = args.unc_sources_groups().substr(0, pos);
-        if(token=="Central")
-            unc_sources_group.insert(ana_setup.Central_unc_sources.begin(),ana_setup.Central_unc_sources.end());
-        if(token=="JES")
-            unc_sources_group.insert(ana_setup.JES_unc_sources.begin(),ana_setup.JES_unc_sources.end());
-        if(token=="LES")
-            unc_sources_group.insert(ana_setup.LES_unc_sources.begin(),ana_setup.LES_unc_sources.end());
-        pos = pos + delimiter.length();
-        //args.unc_sources_groups().erase(0, pos + delimiter.length());
-    }*/
 
 }
 
