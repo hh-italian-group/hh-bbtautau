@@ -31,7 +31,7 @@ AnaTupleWriter::~AnaTupleWriter()
 }
 
 void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const CategoriesFlags& categories_flags,
-                              const std::map<DiscriminatorWP, std::map<UncertaintyScale, float>>& btag_weights,
+                              const std::map<std::pair<DiscriminatorWP, bool>, std::map<UncertaintyScale, float>>& btag_weights,
                               const std::map<UncertaintySource, std::map<UncertaintyScale, float>>& uncs_weight_map,
                               const std::map<UncertaintyScale, std::vector<float>>& btag_weights_iter_fit,
                               bool use_IterativeFit)
@@ -220,20 +220,22 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
     tuple().jets_nTotal_hadronFlavour_c = event->jets_nTotal_hadronFlavour_c;
 
     if(!event->isData) {
-        if(!use_IterativeFit) {
-            #define FILL_BTAG(wp, suffix) \
-            FillUncWeightVec(btag_weights.at(DiscriminatorWP::wp), \
+        #define FILL_BTAG(wp, suffix, is_iterative) \
+            FillUncWeightVec(btag_weights.at(std::make_pair(DiscriminatorWP::wp, is_iterative)), \
                                 &tuple().weight_btag_##suffix, &tuple().unc_btag_##suffix##_Up, \
                                 &tuple().unc_btag_##suffix##_Down)
 
-            FILL_BTAG(Loose, Loose);
-            FILL_BTAG(Medium, Medium);
-            FILL_BTAG(Tight, Tight);
-        }else{
+        FILL_BTAG(Loose, Loose, false);
+        FILL_BTAG(Medium, Medium, false);
+        FILL_BTAG(Tight, Tight, false);
+        FILL_BTAG(Medium, IterativeFit, true);
+
+        #undef FILL_BTAG
+
+        if(use_IterativeFit){
             tuple().btag_iterative_fit_up = btag_weights_iter_fit.at(UncertaintyScale::Up);
             tuple().btag_iterative_fit_down = btag_weights_iter_fit.at(UncertaintyScale::Down);
         }
-        #undef FILL_BTAG
 
         #define FILL_UNC(r, _, name) \
            FillUncWeightVec(uncs_weight_map.at(UncertaintySource::name), nullptr, \

@@ -185,7 +185,7 @@ public:
                    bool _allow_calc_svFit);
     ~AnaTupleWriter();
     void AddEvent(EventInfo& event, const DataIdMap& dataIds, const CategoriesFlags& categories_flags,
-                  const std::map<DiscriminatorWP, std::map<UncertaintyScale, float>>& btag_weights,
+                  const std::map<std::pair<DiscriminatorWP, bool>, std::map<UncertaintyScale, float>>& btag_weights,
                   const std::map<UncertaintySource, std::map<UncertaintyScale, float>>& uncs_weight_map,
                   const std::map<UncertaintyScale, std::vector<float>>& btag_weights_iter_fit,
                   bool use_IterativeFit = true);

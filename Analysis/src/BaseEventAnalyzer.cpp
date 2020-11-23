@@ -170,7 +170,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
             const bool pass_trigger = pass_normal_trigger || pass_vbf_trigger;
             const bool pass_only_vbf_trigger = !pass_normal_trigger && pass_vbf_trigger;
             if(!pass_trigger) continue;
-            std::map<DiscriminatorWP, std::map<UncertaintyScale, float>> btag_weights;
+             std::map<std::pair<DiscriminatorWP, bool>, std::map<UncertaintyScale, float>> btag_weights;
             std::map<UncertaintyScale, std::vector<float>> btag_weights_iter_fit;
             bbtautau::AnaTupleWriter::DataIdMap dataIds;
             std::map<size_t, bool> sync_event_selected;
@@ -223,21 +223,22 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                      };
 
 
-                if(!ana_setup.use_IterativeFit) {
+                for(const bool iter_fit : {false, true}) {
                     for(const auto wp : btag_wps){
-                        btag_weights[wp][UncertaintyScale::Central] = static_cast<float>(
-                                btag_weight_provider->Get(*event, wp, unc_source, unc_scale));
-                        if(unc_source == UncertaintySource::None) {
-                            btag_weights[wp][UncertaintyScale::Up] = static_cast<float>(
-                                    btag_weight_provider->Get(*event, wp, UncertaintySource::Eff_b,
-                                                              UncertaintyScale::Up));
-                            btag_weights[wp][UncertaintyScale::Down] = static_cast<float>(
-                                    btag_weight_provider->Get(*event, wp, UncertaintySource::Eff_b,
-                                                              UncertaintyScale::Down));
+                        const std::pair<DiscriminatorWP, bool> key(wp, iter_fit);
+                        btag_weights[key][UncertaintyScale::Central] = static_cast<float>(
+                                btag_weight_provider->Get(*event, wp, iter_fit, unc_source, unc_scale));
+                        if(unc_source == UncertaintySource::None && !iter_fit) {
+                            btag_weights[key][UncertaintyScale::Up] = static_cast<float>(
+                                    btag_weight_provider->Get(*event, wp, iter_fit, UncertaintySource::Eff_b,
+                                                               UncertaintyScale::Up));
+                            btag_weights[key][UncertaintyScale::Down] = static_cast<float>(
+                                    btag_weight_provider->Get(*event, wp, iter_fit, UncertaintySource::Eff_b,
+                                                               UncertaintyScale::Down));
                         }
                     }
                 }
-                else if(ana_setup.use_IterativeFit && unc_source == UncertaintySource::None){
+                if(ana_setup.use_IterativeFit && unc_source == UncertaintySource::None){
                     for (UncertaintySource unc : btag_sources) {
                         for(const auto wp : btag_wps){
                             btag_weights_iter_fit[UncertaintyScale::Up] = btag_weight_provider->GetEvtWeightShifted(*event,
@@ -330,7 +331,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                 } else {
 
                     if(eventCategory.HasBtagConstraint())
-                        btag_weight = btag_weights.at(eventCategory.BtagWP()).at(UncertaintyScale::Central);
+                         btag_weight = btag_weights.at({eventCategory.BtagWP(), false}).at(UncertaintyScale::Central);
 
                     double cross_section = (*summary)->cross_section > 0 ? (*summary)->cross_section :
                                                                             sample.cross_section;
