@@ -111,6 +111,7 @@ namespace analysis {
                     jets_nTotal_hadronFlavour_b, jets_nTotal_hadronFlavour_c) /* other global event quantities */ \
     WVAR_LIST(_, btag_Loose, btag_Medium, btag_Tight, btag_IterativeFit) \
              /* btag weights for various working points estimated by different algorithms and their unc variations */ \
+    VAR_LIST(std::vector<float>, btag_iterative_fit_up, btag_iterative_fit_down)  /* vector with up unc variations from iterative btag weights */ \
     UNC_VAR_LIST(_, \
              EleTriggerUnc, MuonTriggerUnc, \
              TauTriggerUnc_DM0, TauTriggerUnc_DM1, TauTriggerUnc_DM10, TauTriggerUnc_DM11, \
@@ -121,7 +122,7 @@ namespace analysis {
              TauVSmuSF_etaGt1p7, \
              EleIdIsoUnc, MuonIdIsoUnc, \
              TopPt, L1_prefiring, PileUp, PileUpJetId_eff, PileUpJetId_mistag, \
-             TauCustomSF_DM0, TauCustomSF_DM1, TauCustomSF_DM10, TauCustomSF_DM11) \
+             TauCustomSF_DM0, TauCustomSF_DM1, TauCustomSF_DM10, TauCustomSF_DM11, VBFTauTriggerUnc) \
              /* effects of various uncertainty sources on the event weight */ \
     /**/
 
@@ -184,8 +185,10 @@ public:
                    bool _allow_calc_svFit);
     ~AnaTupleWriter();
     void AddEvent(EventInfo& event, const DataIdMap& dataIds, const CategoriesFlags& categories_flags,
-                  const std::map<std::pair<DiscriminatorWP, bool>, std::map<UncertaintyScale, float>>& btag_weights,
-                  const std::map<UncertaintySource, std::map<UncertaintyScale, float>>& uncs_weight_map);
+                  const std::map<DiscriminatorWP, std::map<UncertaintyScale, float>>& btag_weights,
+                  const std::map<UncertaintySource, std::map<UncertaintyScale, float>>& uncs_weight_map,
+                  const std::map<UncertaintyScale, std::vector<float>>& btag_weights_iter_fit,
+                  bool use_IterativeFit = true);
 
 private:
     static void FillUncWeightVec(const std::map<UncertaintyScale, float>& weights_in,
