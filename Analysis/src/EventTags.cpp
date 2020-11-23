@@ -54,7 +54,7 @@ EventTags EventTagCreator::CreateEventTags(const DataId& dataId_base, float weig
         float weight_btag_Loose, float weight_btag_Medium, float weight_btag_Tight, float weight_btag_IterativeFit,
         int num_central_jets, bool has_b_pair, int num_btag_loose, int num_btag_medium, int num_btag_tight,
         bool is_vbf, bool is_boosted, const std::pair<float,VBF_Category>& vbf_cat, const LorentzVectorM& SVfit_p4,
-        UncMap& unc_map, float m_bb, float /*m_tt_vis*/, int kinFit_convergence, int SVfit_valid) const
+        const UncMap& unc_map, float m_bb, float /*m_tt_vis*/, int kinFit_convergence, int SVfit_valid) const
 {
     const std::map<DiscriminatorWP, size_t> bjet_counts = {
         { DiscriminatorWP::Loose, num_btag_loose },
@@ -97,6 +97,7 @@ EventTags EventTagCreator::CreateEventTags(const DataId& dataId_base, float weig
             evt_tags.weights.push_back(cat_weight);
             if(!is_data && dataId_base.Get<UncertaintySource>()==UncertaintySource::None) {
                 for(const auto& [key, weight_shift] : unc_map) {
+                    if(!category.HasBtagConstraint() && analysis::ToString(key.first).find("btag")!=std::string::npos) continue;
                     const auto dataId_scaled = dataId.Set(key.first).Set(key.second);
                     evt_tags.dataIds.push_back(dataId_scaled);
                     evt_tags.weights.push_back(cat_weight * weight_shift);

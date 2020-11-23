@@ -20,9 +20,9 @@ std::function<Result(Args...)> bind_this(const Class& obj, Result (Class::*fn)(A
 {
     return [=](auto&& ...args) { return (obj.*fn)(std::forward<Args>(args)...); };
 }
-/*********************qui comincia ********************/
-using UncMap = std::map<std::pair<UncertaintySource, UncertaintyScale>, float>;
-using RDF = ROOT::RDF::RNode;
+
+using UncMap = EventTagCreator::UncMap;
+using RDF = AnaTupleReader::RDF;
 void FillUncMap(UncMap& /*unc_map*/, const std::vector<UncertaintySource>& /*unc_sources*/, size_t /*index*/)
 {
 }
@@ -40,6 +40,8 @@ void FillUncMap(UncMap& unc_map, const std::vector<UncertaintySource>& unc_sourc
         down = up;
     if(down != def_val)
         unc_map.insert({{unc_sources.at(index), UncertaintyScale::Down}, down});
+    if(up == def_val && down != def_val)
+        throw exception("Invalid uncertainty definition");
 
     FillUncMap(unc_map, unc_sources, index + 1, args...);
 }
@@ -73,9 +75,6 @@ struct UncMapCreator<N, std::index_sequence<S...>> {
                           const std::vector<std::string>& column_names)
     {
         const Fn fn = [=](Type<float, S>... args) { return CreateUncMap(unc_sources, args...); };
-        //static const auto create = [&](Type<float, S>... args) { return CreateUncMap(unc_sources, args...); };
-        //Fn fn = create;
-        //Fn fn = [&](Type<float, S>... args) { return CreateUncMap(unc_sources, args...); };
         std::vector<std::string> column_names_cp = column_names;
         if(!column_names.size()) {
             return df.Define("unc_map", [](){ return UncMap(); }, {});
@@ -86,7 +85,7 @@ struct UncMapCreator<N, std::index_sequence<S...>> {
     }
 };
 }
-/******************qui finisce **************/
+
 
 std::vector<std::shared_ptr<TFile>> AnaTupleReader::OpenFiles(const std::string& file_name,
                                                               const std::vector<std::string>& input_friends)
@@ -113,14 +112,14 @@ std::vector<std::shared_ptr<TTree>> AnaTupleReader::ReadTrees(Channel channel,
 
 AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names,
                                const std::vector<std::string>& input_friends, const EventTagCreator& event_tagger,
-                               const std::string& mdnn_version) :
+                               const std::string& _mdnn_version, std::set<UncertaintySource>& _norm_unc_sources) :
         files(OpenFiles(file_name, input_friends)), trees(ReadTrees(channel, files)), dataFrame(*trees.front()),
-        df(dataFrame)
+        df(dataFrame), mdnn_version(_mdnn_version), norm_unc(_norm_unc_sources)
 {
     for(const auto& column : df.GetColumnNames())
         branch_types[column] = df.GetColumnType(column);
 
-    DefineBranches(active_var_names, active_var_names.empty(), event_tagger, mdnn_version);
+    DefineBranches(active_var_names, active_var_names.empty(), event_tagger);
     if(active_var_names.empty()) {
         std::vector<std::vector<std::string>> names = {
             df.GetColumnNames(),
@@ -182,7 +181,7 @@ AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, Na
         known_regions.insert({Parse<EventRegion>(region_str), hash});
 }
 
-void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, const EventTagCreator& event_tagger, const std::string& mdnn_version)
+void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, const EventTagCreator& event_tagger)
 {
     const auto Define = [&](RDF& target_df, const std::string& var, auto expr,
                               const std::vector<std::string>& columns, bool force = false) {
@@ -287,30 +286,14 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
            {"vbf_cat"}, true);
 
 
-    const std::vector<UncertaintySource> unc_sources = {UncertaintySource::EleTriggerUnc, UncertaintySource::MuonTriggerUnc,
-                                                            UncertaintySource::TauTriggerUnc_DM0, UncertaintySource::TauTriggerUnc_DM1,
-                                                            UncertaintySource::TauTriggerUnc_DM10, UncertaintySource::TauTriggerUnc_DM11,
-                                                            UncertaintySource::TauVSjetSF_DM0, UncertaintySource::TauVSjetSF_DM1,
-                                                            UncertaintySource::TauVSjetSF_3prong, UncertaintySource::TauVSjetSF_pt20to25,
-                                                            UncertaintySource::TauVSjetSF_pt25to30, UncertaintySource::TauVSjetSF_pt30to35,
-                                                            UncertaintySource::TauVSjetSF_pt35to40, UncertaintySource::TauVSjetSF_ptgt40,
-                                                            UncertaintySource::TauVSeSF_barrel, UncertaintySource::TauVSeSF_endcap,
-                                                            UncertaintySource::TauVSmuSF_etaLt0p4, UncertaintySource::TauVSmuSF_eta0p4to0p8,
-                                                            UncertaintySource::TauVSmuSF_eta0p8to1p2, UncertaintySource::TauVSmuSF_eta1p2to1p7,
-                                                            UncertaintySource::TauVSmuSF_etaGt1p7, UncertaintySource::EleIdIsoUnc,
-                                                            UncertaintySource::MuonIdIsoUnc, UncertaintySource::TopPt,
-                                                            UncertaintySource::L1_prefiring, UncertaintySource::PileUp,
-                                                            UncertaintySource::PileUpJetId_eff, UncertaintySource::PileUpJetId_mistag,
-                                                            UncertaintySource::TauCustomSF_DM0, UncertaintySource::TauCustomSF_DM1,
-                                                            UncertaintySource::TauCustomSF_DM10, UncertaintySource::TauCustomSF_DM11};
+    const std::vector<UncertaintySource> norm_unc_sources(norm_unc.begin(),norm_unc.end());
 
-    std::vector<std::string> unc_names;
-    std::vector<std::string> unc_args;
-    for (auto i:unc_sources){
-        unc_names.push_back("unc_"+analysis::ToString(i)+"_Up") ;
-        unc_names.push_back("unc_"+analysis::ToString(i)+"_Down") ;
+    std::vector<std::string> norm_unc_names;
+    for (auto i:norm_unc_sources){
+        norm_unc_names.push_back("unc_"+analysis::ToString(i)+"_Up") ;
+        norm_unc_names.push_back("unc_"+analysis::ToString(i)+"_Down") ;
     }
-    df = UncMapCreator<40>::CallDefine(df, unc_sources, unc_names);
+    df = UncMapCreator<40>::CallDefine(df, norm_unc_sources, norm_unc_names);
 
     const auto create_event_tags = bind_this(event_tagger, &EventTagCreator::CreateEventTags);
     Define(df, "event_tags", create_event_tags,

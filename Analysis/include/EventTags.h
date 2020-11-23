@@ -33,7 +33,7 @@ public:
     EventTags CreateEventTags(const DataId& dataId_base, float weight, bool is_data, float weight_btag_Loose,
             float weight_btag_Medium, float weight_btag_Tight, float weight_btag_IterativeFit, int num_central_jets,
             bool has_b_pair, int num_btag_loose, int num_btag_medium, int num_btag_tight, bool is_vbf, bool is_boosted,
-            const std::pair<float,VBF_Category>& vbf_cat, const LorentzVectorM& SVfit_p4, UncMap& unc_map, float m_bb, float m_tt_vis,
+            const std::pair<float,VBF_Category>& vbf_cat, const LorentzVectorM& SVfit_p4, const UncMap& unc_map, float m_bb, float m_tt_vis,
             int kinFit_convergence, int SVfit_valid) const;
 
 private:
