@@ -254,7 +254,7 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
                 TauVSmuSF_etaGt1p7,
                 EleIdIsoUnc, MuonIdIsoUnc,
                 TopPt, L1_prefiring, PileUp, PileUpJetId_eff, PileUpJetId_mistag,
-                TauCustomSF_DM0, TauCustomSF_DM1, TauCustomSF_DM10, TauCustomSF_DM11, VBFTauTriggerUnc
+                TauCustomSF_DM0, TauCustomSF_DM1, TauCustomSF_DM10, TauCustomSF_DM11, VBFTriggerUnc
             )
         }
         #undef FILL_UNC

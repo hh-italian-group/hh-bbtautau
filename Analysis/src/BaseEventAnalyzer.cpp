@@ -215,10 +215,10 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                     mc_corrections::WeightType::BTag);
 
 
-                    static const std::vector<UncertaintySource> btag_sources = { UncertaintySource::lf,
-                        UncertaintySource::hf, UncertaintySource::hfstats1, UncertaintySource::hfstats2,
-                        UncertaintySource::lfstats1, UncertaintySource::lfstats2,
-                        UncertaintySource::cferr1, UncertaintySource::cferr2,
+                    static const std::vector<UncertaintySource> btag_sources = { UncertaintySource::btag_lf,
+                        UncertaintySource::btag_hf, UncertaintySource::btag_hfstats1, UncertaintySource::btag_hfstats2,
+                        UncertaintySource::btag_lfstats1, UncertaintySource::btag_lfstats2,
+                        UncertaintySource::btag_cferr1, UncertaintySource::btag_cferr2,
                         UncertaintySource::JetFull_Total, UncertaintySource::JetReduced_Total
                      };
 
@@ -241,10 +241,11 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                 if(ana_setup.use_IterativeFit && unc_source == UncertaintySource::None){
                     for (UncertaintySource unc : btag_sources) {
                         for(const auto wp : btag_wps){
-                            btag_weights_iter_fit[UncertaintyScale::Up] = btag_weight_provider->GetEvtWeightShifted(*event,
-                                wp,unc, UncertaintyScale::Up, ana_setup.apply_JES).at(UncertaintyScale::Up);
-                            btag_weights_iter_fit[UncertaintyScale::Down] = btag_weight_provider->GetEvtWeightShifted(*event,
-                                wp, unc, UncertaintyScale::Down, ana_setup.apply_JES).at(UncertaintyScale::Down);
+                            btag_weight_provider->Get(*event, wp, ana_setup.use_IterativeFit, unc,
+                                                      UncertaintyScale::Down, ana_setup.apply_JES, btag_weights_iter_fit);
+                            btag_weight_provider->Get(*event, wp, ana_setup.use_IterativeFit, unc, UncertaintyScale::Up,
+                                                      ana_setup.apply_JES, btag_weights_iter_fit);
+
                         }
                     }
                 }
@@ -254,7 +255,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                         UncertaintySource::EleTriggerUnc, UncertaintySource::MuonTriggerUnc,
                         UncertaintySource::TauTriggerUnc_DM0, UncertaintySource::TauTriggerUnc_DM1,
                         UncertaintySource::TauTriggerUnc_DM10, UncertaintySource::TauTriggerUnc_DM11,
-                        UncertaintySource::VBFTauTriggerUnc
+                        UncertaintySource::VBFTriggerUnc
                     };
                     static const std::vector<UncertaintySource> uncs_tau_weight = { UncertaintySource::TauVSjetSF_DM0,
                         UncertaintySource::TauVSjetSF_DM1, UncertaintySource::TauVSjetSF_3prong,
