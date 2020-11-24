@@ -16,6 +16,7 @@ struct AnalyzerArguments : CoreAnalyzerArguments {
     REQ_ARG(Period, period);
     REQ_ARG(std::string, input);
     REQ_ARG(std::string, output);
+    //OPT_ARG(std::string, unc_sources_groups, "Central,");
     OPT_ARG(bool, shapes, true);
     OPT_ARG(bool, draw, true);
     OPT_ARG(std::string, vars, "");
@@ -32,8 +33,6 @@ public:
         EventAnalyzerCore(_args, _args.channel(), false), args(_args), activeVariables(ParseVarSet(args.vars())),
         eventTagger(ana_setup.categories, sub_categories_to_process, unc_sources_group, ana_setup.norm_unc_sources,
                     ana_setup.use_IterativeFit, args.channel(), args.period()),
-        tupleReader(args.input(), args.channel(), activeVariables, args.input_friends(), eventTagger,
-                    ana_setup.mdnn_version, ana_setup.norm_unc_sources),
         outputFile(root_ext::CreateRootFile(args.output() + "_full.root", ROOT::kLZMA, 9))
     {
         histConfig.Parse(FullPath(ana_setup.hist_cfg));
@@ -51,40 +50,6 @@ public:
                 std::cout << '\t' << file_name << '\n';
             std::cout << std::endl;
         }
-
-        if(!tupleReader.GetParametricVariables().empty()) {
-            std::cout << "Parametric variables:\n";
-            for(const auto& [name, columns] : tupleReader.GetParametricVariables()) {
-                std::cout << '\t' << name << ": ";
-                for(const auto& column : columns) {
-                    std::cout << column << " ";
-                }
-                std::cout << '\n';
-            }
-            std::cout << std::endl;
-        }
-
-        if(args.shapes()) {
-            for(const auto& limit_setup : ana_setup.limit_setup){
-                for(const auto& [cat, var] : limit_setup.second) {
-                    if(limitVariables.count(var)) continue;
-                    bool var_found = false;
-                    if(activeVariables.count(var)) {
-                        var_found = true;
-                    } else if(var.back() == '+') {
-                        const std::string var_name = var.substr(0, var.size() - 1);
-                        var_found = tupleReader.GetParametricVariables().count(var_name);
-                    }
-
-                    if(!var_found) {
-                        throw exception("Variable '%1%' is used in the limit setup '%2%', but it is not enabled."
-                                        " Consider to enable it or run with option --shapes 0.")
-                                        % var % limit_setup.first;
-                    }
-                    limitVariables.insert(var);
-                }
-            }
-        }
     }
 
     void Run()
@@ -101,9 +66,48 @@ public:
                                             false, bkg_names, unc_collection);
         const EventSubCategorySet& subCategories = sub_categories_to_process;
 
-        std::cout << "\tCreating histograms..." << std::endl;
-        ProduceHistograms(anaDataCollection);
+        std::vector<std::string> unc_sources = SplitValueList(args.unc_sources_groups(),false, ",", true);
+        for (const auto& unc_source : unc_sources){
+            std::string input_file = args.input()+unc_source+".root";
+            std::cout<< "\n \t input file " << input_file << std::endl;
+            bbtautau::AnaTupleReader tupleReader(input_file, args.channel(), activeVariables, args.input_friends(), eventTagger,
+                                                    ana_setup.mdnn_version, ana_setup.norm_unc_sources);
 
+            if(!tupleReader.GetParametricVariables().empty()) {
+                std::cout << "Parametric variables:\n";
+                for(const auto& [name, columns] : tupleReader.GetParametricVariables()) {
+                    std::cout << '\t' << name << ": ";
+                    for(const auto& column : columns) {
+                        std::cout << column << " ";
+                    }
+                    std::cout << '\n';
+                }
+                std::cout << std::endl;
+            }
+            if(args.shapes()) {
+                for(const auto& limit_setup : ana_setup.limit_setup){
+                    for(const auto& [cat, var] : limit_setup.second) {
+                        if(limitVariables.count(var)) continue;
+                        bool var_found = false;
+                        if(activeVariables.count(var)) {
+                            var_found = true;
+                        } else if(var.back() == '+') {
+                            const std::string var_name = var.substr(0, var.size() - 1);
+                            var_found = tupleReader.GetParametricVariables().count(var_name);
+                        }
+
+                        if(!var_found) {
+                            throw exception("Variable '%1%' is used in the limit setup '%2%', but it is not enabled."
+                                            " Consider to enable it or run with option --shapes 0.")
+                                            % var % limit_setup.first;
+                        }
+                        limitVariables.insert(var);
+                    }
+                }
+            }
+            std::cout << "\tCreating histograms..." << std::endl;
+            if(unc_source != "Central" && anaDataCollection.Get<std::string>() != "Data_Tau") ProduceHistograms(anaDataCollection, tupleReader);
+        }
         std::cout << "\tProcessing combined samples and QCD... " << std::endl;
         for(const auto& subCategory : subCategories) {
             std::cout << "\t\tsub-category " << subCategory << "\n";
@@ -293,7 +297,7 @@ private:
 
     template <typename T> using VecType = ROOT::VecOps::RVec<T>;
 
-    void ProduceHistograms(AnaDataCollection& anaDataCollection)
+    void ProduceHistograms(AnaDataCollection& anaDataCollection, bbtautau::AnaTupleReader& tupleReader)
     {
         const auto has_column = [](bbtautau::AnaTupleReader::RDF& df, const std::string& column_name) {
             auto columns = df.GetColumnNames();
@@ -450,7 +454,7 @@ private:
     AnalyzerArguments args;
     std::set<std::string> activeVariables, limitVariables;
     bbtautau::EventTagCreator eventTagger;
-    bbtautau::AnaTupleReader tupleReader;
+    //bbtautau::AnaTupleReader tupleReader;
     std::shared_ptr<TFile> outputFile;
     PropertyConfigReader histConfig;
     std::shared_ptr<ModellingUncertaintyCollection> unc_collection;
