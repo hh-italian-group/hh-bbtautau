@@ -16,15 +16,15 @@ EventTagCreator::EventTagCreator(const EventCategorySet& _categories, const Even
 {
     if(use_IterativeFit) {
         static const std::map<std::pair<Channel, Period>, float> iterativeFit_corrections = {
-            {{Channel::ETau, Period::Run2016}, 1.0120}, // 1.01203715762
-            {{Channel::MuTau, Period::Run2016}, 1.013}, // 1.01296331792
-            {{Channel::TauTau, Period::Run2016}, 1.0101}, // 1.01010364517
-            {{Channel::ETau, Period::Run2017}, 0.9949}, // 0.994930642536
-            {{Channel::MuTau, Period::Run2017}, 0.9993}, // 0.999263715405
-            {{Channel::TauTau, Period::Run2017}, 0.9547}, // 0.954725518543
-            {{Channel::ETau, Period::Run2018}, 1.0004}, // 1.0003768284
-            {{Channel::MuTau, Period::Run2018}, 1.0039}, // 1.00388888346
-            {{Channel::TauTau, Period::Run2018}, 0.9795}, // 0.97949255088
+            {{Channel::ETau, Period::Run2016}, 1.0120f}, // 1.01203715762
+            {{Channel::MuTau, Period::Run2016}, 1.013f}, // 1.01296331792
+            {{Channel::TauTau, Period::Run2016}, 1.0101f}, // 1.01010364517
+            {{Channel::ETau, Period::Run2017}, 0.9949f}, // 0.994930642536
+            {{Channel::MuTau, Period::Run2017}, 0.9993f}, // 0.999263715405
+            {{Channel::TauTau, Period::Run2017}, 0.9547f}, // 0.954725518543
+            {{Channel::ETau, Period::Run2018}, 1.0004f}, // 1.0003768284
+            {{Channel::MuTau, Period::Run2018}, 1.0039f}, // 1.00388888346
+            {{Channel::TauTau, Period::Run2018}, 0.9795f}, // 0.97949255088
         };
         auto iter = iterativeFit_corrections.find({channel, period});
         if(iter == iterativeFit_corrections.end())
