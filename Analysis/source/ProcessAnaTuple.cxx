@@ -16,7 +16,6 @@ struct AnalyzerArguments : CoreAnalyzerArguments {
     REQ_ARG(Period, period);
     REQ_ARG(std::string, input);
     REQ_ARG(std::string, output);
-    //OPT_ARG(std::string, unc_sources_groups, "Central,");
     OPT_ARG(bool, shapes, true);
     OPT_ARG(bool, draw, true);
     OPT_ARG(std::string, vars, "");
@@ -106,7 +105,7 @@ public:
                 }
             }
             std::cout << "\tCreating histograms..." << std::endl;
-            if(unc_source != "Central" && anaDataCollection.Get<std::string>() != "Data_Tau") ProduceHistograms(anaDataCollection, tupleReader);
+            ProduceHistograms(anaDataCollection, tupleReader);
         }
         std::cout << "\tProcessing combined samples and QCD... " << std::endl;
         for(const auto& subCategory : subCategories) {
@@ -454,7 +453,6 @@ private:
     AnalyzerArguments args;
     std::set<std::string> activeVariables, limitVariables;
     bbtautau::EventTagCreator eventTagger;
-    //bbtautau::AnaTupleReader tupleReader;
     std::shared_ptr<TFile> outputFile;
     PropertyConfigReader histConfig;
     std::shared_ptr<ModellingUncertaintyCollection> unc_collection;
