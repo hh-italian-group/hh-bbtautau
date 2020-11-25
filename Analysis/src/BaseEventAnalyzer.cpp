@@ -156,8 +156,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
     const bool is_data = sample.sampleType == SampleType::Data;
     if(!is_data)
         unc_sources = unc_sources_group;
-    if(is_data && !unc_sources_group.count(UncertaintySource::None)) return;
-    if(is_data) throw;
+    if(is_data && !unc_sources_group.count(UncertaintySource::None)) return; 
     const auto unc_variations = EnumerateUncVariations(unc_sources);
     for(const auto& tupleEvent : *tuple) {
         if(!signalObjectSelector.PassMETfilters(tupleEvent,ana_setup.period,is_data)) continue;

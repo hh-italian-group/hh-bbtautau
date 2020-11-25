@@ -66,10 +66,15 @@ public:
         const EventSubCategorySet& subCategories = sub_categories_to_process;
 
         std::vector<std::string> unc_sources = SplitValueList(args.unc_sources_groups(),false, ",", true);
-        for (const auto& unc_source : unc_sources){
-            std::string input_file = args.input()+unc_source+".root";
+        for (auto& unc_source : unc_sources){
+            std::string input_file = args.input();
+            boost::replace_all(input_file, "{UNC_SOURCE}", unc_source);
+            std::vector<std::string> input_friends = args.input_friends();
+            for (auto& f: input_friends) {
+                boost::replace_all(f, "{UNC_SOURCE}", unc_source);
+            }
             std::cout<< "\n \t input file " << input_file << std::endl;
-            bbtautau::AnaTupleReader tupleReader(input_file, args.channel(), activeVariables, args.input_friends(), eventTagger,
+            bbtautau::AnaTupleReader tupleReader(input_file, args.channel(), activeVariables, input_friends, eventTagger,
                                                     ana_setup.mdnn_version, ana_setup.norm_unc_sources);
 
             if(!tupleReader.GetParametricVariables().empty()) {
@@ -83,7 +88,7 @@ public:
                 }
                 std::cout << std::endl;
             }
-            if(args.shapes()) {
+            if(args.shapes() && limitVariables.empty()) {
                 for(const auto& limit_setup : ana_setup.limit_setup){
                     for(const auto& [cat, var] : limit_setup.second) {
                         if(limitVariables.count(var)) continue;
