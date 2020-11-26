@@ -170,7 +170,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
             const bool pass_trigger = pass_normal_trigger || pass_vbf_trigger;
             const bool pass_only_vbf_trigger = !pass_normal_trigger && pass_vbf_trigger;
             if(!pass_trigger) continue;
-             std::map<std::pair<DiscriminatorWP, bool>, std::map<UncertaintyScale, float>> btag_weights;
+            // std::map<std::pair<DiscriminatorWP, bool>, std::map<UncertaintyScale, float>> btag_weights;
             bbtautau::AnaTupleWriter::DataIdMap dataIds;
             std::map<size_t, bool> sync_event_selected;
 
@@ -214,29 +214,36 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                     mc_corrections::WeightType::BTag);
 
 
-                    static const std::vector<UncertaintySource> btag_sources = { UncertaintySource::btag_lf,
-                        UncertaintySource::btag_hf, UncertaintySource::btag_hfstats1, UncertaintySource::btag_hfstats2,
-                        UncertaintySource::btag_lfstats1, UncertaintySource::btag_lfstats2,
-                        UncertaintySource::btag_cferr1, UncertaintySource::btag_cferr2,
-                        UncertaintySource::JetFull_Total, UncertaintySource::JetReduced_Total
+                    static const std::vector<UncertaintySource> btag_sources = {
+                        UncertaintySource::btag_lf, UncertaintySource::btag_hf, UncertaintySource::btag_hfstats1,
+                        UncertaintySource::btag_hfstats2, UncertaintySource::btag_lfstats1,
+                        UncertaintySource::btag_lfstats2, UncertaintySource::btag_cferr1, UncertaintySource::btag_cferr2
                      };
 
 
                 for(const bool iter_fit : {false, true}) {
                     for(const auto wp : btag_wps){
                         const std::pair<DiscriminatorWP, bool> key(wp, iter_fit);
-                        btag_weights[key][UncertaintyScale::Central] = static_cast<float>(
-                                btag_weight_provider->Get(*event, wp, iter_fit, unc_source, unc_scale));
+                        btag_weights.weights[wp][UncertaintyScale::Central] = static_cast<float>(
+                                btag_weight_provider->Get(*event, wp, iter_fit, unc_source, unc_scale, false));
                         if(unc_source == UncertaintySource::None && !iter_fit) {
                             for(const auto scale : {UncertaintyScale::Up, UncertaintyScale::Down})
-                                btag_weights[key][scale] = static_cast<float>(btag_weight_provider->Get(*event, wp,
-                                    iter_fit, UncertaintySource::Eff_b, scale));
+                                btag_weights.weights[wp][scale] = static_cast<float>(btag_weight_provider->Get(*event,
+                                    wp, iter_fit, UncertaintySource::Eff_b, scale, false));
                         }
                         else if(unc_source == UncertaintySource::None && iter_fit) {
                             for(const auto scale : {UncertaintyScale::Up, UncertaintyScale::Down}) {
-                                for(UncertaintySource unc : btag_sources) {
-                                    btag_weights[key][scale] = static_cast<float>(
-                                        btag_weight_provider->Get(*event, wp, iter_fit, unc, scale));
+                                for(const bool apply_JES : {false, true}) {
+                                    if(apply_JES) {
+                                        for(const auto unc_jes : {UncertaintySource::JetFull_Total,
+                                                                  UncertaintySource::JetReduced_Total})
+                                            btag_weights.weights_iter_jes[wp][scale] = static_cast<float>(
+                                                btag_weight_provider->Get(*event, wp, iter_fit, unc_jes, scale, true));
+                                    } else {
+                                        for(UncertaintySource unc : btag_sources)
+                                            btag_weights.weights_iter[wp][scale] = static_cast<float>(
+                                            btag_weight_provider->Get(*event, wp, iter_fit, unc, scale, false));
+                                    }
                                 }
                             }
                         }
@@ -248,7 +255,8 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                         UncertaintySource::EleTriggerUnc, UncertaintySource::MuonTriggerUnc,
                         UncertaintySource::TauTriggerUnc_DM0, UncertaintySource::TauTriggerUnc_DM1,
                         UncertaintySource::TauTriggerUnc_DM10, UncertaintySource::TauTriggerUnc_DM11,
-                        UncertaintySource::VBFTriggerUnc
+                        UncertaintySource::VBFTriggerUnc_jets, UncertaintySource::VBFTauTriggerUnc_DM0,
+                        UncertaintySource::VBFTauTriggerUnc_DM1, UncertaintySource::VBFTauTriggerUnc_3prong
                     };
                     static const std::vector<UncertaintySource> uncs_tau_weight = { UncertaintySource::TauVSjetSF_DM0,
                         UncertaintySource::TauVSjetSF_DM1, UncertaintySource::TauVSjetSF_3prong,
@@ -325,7 +333,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                 } else {
 
                     if(eventCategory.HasBtagConstraint())
-                         btag_weight = btag_weights.at({eventCategory.BtagWP(), false}).at(UncertaintyScale::Central);
+                         btag_weight = btag_weights.weights.at(eventCategory.BtagWP()).at(UncertaintyScale::Central);
 
                     double cross_section = (*summary)->cross_section > 0 ? (*summary)->cross_section :
                                                                             sample.cross_section;

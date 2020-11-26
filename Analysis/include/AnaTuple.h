@@ -109,7 +109,7 @@ namespace analysis {
     VAR_LIST(float, npv, HT_total, HT_otherjets, lhe_HT, n_jets, n_jets_eta24, n_jets_eta24_eta5, \
                     n_selected_gen_jets, n_selected_gen_bjets, genJets_nTotal, \
                     jets_nTotal_hadronFlavour_b, jets_nTotal_hadronFlavour_c) /* other global event quantities */ \
-    WVAR_LIST(_, btag_Loose, btag_Medium, btag_Tight, btag_IterativeFit) \
+    WVAR_LIST(_, btag_Loose, btag_Medium, btag_Tight, btag_IterativeFit, btag_IterativeFit_jes) \
              /* btag weights for various working points estimated by different algorithms and their unc variations */ \
     UNC_VAR_LIST(_, \
              EleTriggerUnc, MuonTriggerUnc, \
@@ -121,7 +121,8 @@ namespace analysis {
              TauVSmuSF_etaGt1p7, \
              EleIdIsoUnc, MuonIdIsoUnc, \
              TopPt, L1_prefiring, PileUp, PileUpJetId_eff, PileUpJetId_mistag, \
-             TauCustomSF_DM0, TauCustomSF_DM1, TauCustomSF_DM10, TauCustomSF_DM11, VBFTriggerUnc) \
+             TauCustomSF_DM0, TauCustomSF_DM1, TauCustomSF_DM10, TauCustomSF_DM11, VBFTriggerUnc_jets, \
+             VBFTauTriggerUnc_DM0, VBFTauTriggerUnc_DM1, VBFTauTriggerUnc_3prong) \
              /* effects of various uncertainty sources on the event weight */ \
     /**/
 
@@ -180,12 +181,19 @@ public:
         const FatJetCandidate* fat_jet_cand;
     };
 
+    struct BTagWeights {
+        std::map<DiscriminatorWP, std::map<UncertaintyScale, float>> weights;
+        std::map<DiscriminatorWP, std::map<UncertaintyScale, float>> weights_iter;
+        std::map<DiscriminatorWP, std::map<UncertaintyScale, float>> weights_iter_jes;
+    };
+
+
     AnaTupleWriter(const std::string& file_name, Channel channel, bool _runKinFit, bool _runSVfit,
                    bool _allow_calc_svFit);
     ~AnaTupleWriter();
     void AddEvent(EventInfo& event, const DataIdMap& dataIds, const CategoriesFlags& categories_flags,
-                  const std::map<std::pair<DiscriminatorWP, bool>, std::map<UncertaintyScale, float>>& btag_weights,
-                  const std::map<UncertaintySource, std::map<UncertaintyScale, float>>& uncs_weight_map);
+                  const BTagWeights& btag_weights, const std::map<UncertaintySource,
+                  std::map<UncertaintyScale, float>>& uncs_weight_map);
 
 private:
     static void FillUncWeightVec(const std::map<UncertaintyScale, float>& weights_in,

@@ -65,6 +65,7 @@ protected:
     std::shared_ptr<NonResModel> nonResModel;
     const std::vector<std::string> trigger_patterns;
     std::shared_ptr<mc_corrections::EventWeights_HH> eventWeights_HH;
+    bbtautau::AnaTupleWriter::BTagWeights btag_weights;
 };
 
 } // namespace analysis
