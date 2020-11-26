@@ -50,7 +50,12 @@ EventAnalyzerCore::EventAnalyzerCore(const CoreAnalyzerArguments& args, Channel 
 
     if(!ana_setup.xs_cfg.empty())
         crossSectionProvider = std::make_shared<tuple_skimmer::CrossSectionProvider>(ana_setup.xs_cfg);
-    std::cout << "done." << std::endl;
+
+    std::vector<std::string> unc_sources_group_string = SplitValueList(args.unc_sources_groups(),false, ",", true); 
+    for (auto& s : unc_sources_group_string){
+        unc_sources_group.insert(ana_setup.unc_sources.at(s).begin(), ana_setup.unc_sources.at(s).end());
+    }
+
 }
 
 const std::string& EventAnalyzerCore::ChannelNameLatex() const { return __Channel_names_latex.EnumToString(channelId); }
@@ -120,9 +125,8 @@ void EventAnalyzerCore::ProcessCombinedSamples(AnaDataCollection& anaDataCollect
 
 void EventAnalyzerCore::AddSampleToCombined(AnaDataCollection& anaDataCollection, const EventSubCategory& subCategory,
                                             CombinedSampleDescriptor& sample, SampleDescriptor& sub_sample)
-{
-    for(const EventAnalyzerDataId& metaDataId : EventAnalyzerDataId::MetaLoop(ana_setup.categories,
-            ana_setup.regions, ana_setup.unc_sources, GetAllUncertaintyScales())) {
+{   for(const EventAnalyzerDataId& metaDataId : EventAnalyzerDataId::MetaLoop(ana_setup.categories,
+            ana_setup.regions, unc_sources_group, GetAllUncertaintyScales())) {
         const auto anaDataId = metaDataId.Set(sample.name).Set(subCategory);
         auto& anaData = anaDataCollection.Get(anaDataId);
         for(const auto& sub_sample_wp : sub_sample.working_points) {
@@ -136,6 +140,7 @@ void EventAnalyzerCore::AddSampleToCombined(AnaDataCollection& anaDataCollection
             }
         }
     }
+
 }
 
 void EventAnalyzerCore::CreateEventSubCategoriesToProcess(bool use_base_categories)

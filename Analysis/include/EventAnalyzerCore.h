@@ -15,7 +15,7 @@ struct CoreAnalyzerArguments {
     REQ_ARG(std::string, setup);
     OPT_ARG(std::string, working_path, "./");
     OPT_ARG(unsigned, n_threads, 1);
-
+    OPT_ARG(std::string, unc_sources_groups, "Central,");
     CoreAnalyzerArguments() {}
     CoreAnalyzerArguments(const CoreAnalyzerArguments&) = default;
     virtual ~CoreAnalyzerArguments() {}
@@ -74,6 +74,7 @@ private:
             if(!used_samples.count(sample_name))
                 samples.erase(sample_name);
         }
+    
     }
 
 protected:
@@ -88,6 +89,7 @@ protected:
     std::shared_ptr<BTagger> bTagger;
     SignalObjectSelector signalObjectSelector;
     std::shared_ptr<tuple_skimmer::CrossSectionProvider> crossSectionProvider;
+    std::set<UncertaintySource> unc_sources_group ;
 };
 
 } // namespace analysis

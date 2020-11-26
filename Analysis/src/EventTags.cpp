@@ -49,12 +49,13 @@ std::pair<float, VBF_Category> EventTagCreator::FindVBFCategory(float dnn_score_
     };
     return *std::max_element(category_and_dnn.begin(), category_and_dnn.end());
 }
+//std::set<UncertaintySource> btag_uncs = {};
 
 EventTags EventTagCreator::CreateEventTags(const DataId& dataId_base, float weight, bool is_data,
         float weight_btag_Loose, float weight_btag_Medium, float weight_btag_Tight, float weight_btag_IterativeFit,
         int num_central_jets, bool has_b_pair, int num_btag_loose, int num_btag_medium, int num_btag_tight,
         bool is_vbf, bool is_boosted, const std::pair<float,VBF_Category>& vbf_cat, const LorentzVectorM& SVfit_p4,
-        float m_bb, float /*m_tt_vis*/, int kinFit_convergence, int SVfit_valid) const
+        const UncMap& unc_map, float m_bb, float /*m_tt_vis*/, int kinFit_convergence, int SVfit_valid) const
 {
     const std::map<DiscriminatorWP, size_t> bjet_counts = {
         { DiscriminatorWP::Loose, num_btag_loose },
@@ -73,9 +74,9 @@ EventTags EventTagCreator::CreateEventTags(const DataId& dataId_base, float weig
     };
 
     EventTags evt_tags;
-
     if(!event_unc_sources.count(dataId_base.Get<UncertaintySource>()))
         return evt_tags;
+
 
     for(const auto& category : categories) {
         if(!category.Contains(static_cast<size_t>(num_central_jets), bjet_counts, is_vbf, is_boosted, vbf_cat.second))
@@ -84,20 +85,28 @@ EventTags EventTagCreator::CreateEventTags(const DataId& dataId_base, float weig
         const float btag_sf = category.HasBtagConstraint() && !is_data ? get_weight_btag(category.BtagWP()) : 1.f;
         const float cat_weight = weight * btag_sf;
 
-
         if(has_b_pair) {
             const EllipseParameters& window = category.HasBoostConstraint() && category.IsBoosted()
                     ? cuts::hh_bbtautau_Run2::hh_tag::boosted_window : cuts::hh_bbtautau_Run2::hh_tag::resolved_window;
             evtSubCategory.SetCutResult(SelectionCut::mh, SVfit_valid && window.IsInside(SVfit_p4.M(), m_bb));
             evtSubCategory.SetCutResult(SelectionCut::KinematicFitConverged, kinFit_convergence > 0);
         }
-
         for(const auto& subCategory : subCategories) {
             if(!evtSubCategory.Implies(subCategory)) continue;
-            const auto& dataId = dataId_base.Set(category).Set(subCategory);
+            const auto dataId = dataId_base.Set(category).Set(subCategory);
             evt_tags.dataIds.push_back(dataId);
             evt_tags.weights.push_back(cat_weight);
+            if(!is_data && dataId_base.Get<UncertaintySource>()==UncertaintySource::None) {
+                for(const auto& [key, weight_shift] : unc_map) {
+                    //if(!category.HasBtagConstraint() && btag_uncs.Count(key.first)) continue;
+                    const auto dataId_scaled = dataId.Set(key.first).Set(key.second);
+                    evt_tags.dataIds.push_back(dataId_scaled);
+                    evt_tags.weights.push_back(cat_weight * weight_shift);
+                }
+            }
         }
+
+
     }
 
     return evt_tags;

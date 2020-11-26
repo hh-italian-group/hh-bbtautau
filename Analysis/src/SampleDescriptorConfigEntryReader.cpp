@@ -18,8 +18,8 @@ void AnalyzerConfigEntryReader::EndEntry()
     CheckReadParamCounts("use_kinFit", 1, Condition::less_equal);
     CheckReadParamCounts("use_svFit", 1, Condition::less_equal);
     CheckReadParamCounts("allow_calc_svFit", 1, Condition::less_equal);
-    CheckReadParamCounts("use_IterativeFit", 1, Condition::less_equal);
-    CheckReadParamCounts("unc_sources", 1, Condition::less_equal);
+    CheckReadParamCounts("unc_sources", 0, Condition::greater_equal);
+    CheckReadParamCounts("norm_unc_sources", 1, Condition::less_equal);
     CheckReadParamCounts("categories", 1, Condition::less_equal);
     CheckReadParamCounts("sub_categories", 1, Condition::less_equal);
     CheckReadParamCounts("categories_base", 1, Condition::less_equal);
@@ -63,8 +63,8 @@ void AnalyzerConfigEntryReader::ReadParameter(const std::string& /*param_name*/,
     ParseEntry("use_kinFit", current.use_kinFit);
     ParseEntry("use_svFit", current.use_svFit);
     ParseEntry("allow_calc_svFit", current.allow_calc_svFit);
-    ParseEntry("use_IterativeFit", current.use_IterativeFit);
-    ParseEnumList("unc_sources", current.unc_sources);
+    ParseMappedEntryList("unc_sources", current.unc_sources, false);
+    ParseEnumList("norm_unc_sources", current.norm_unc_sources);
     ParseEnumList("categories", current.categories);
     ParseEnumList("sub_categories", current.sub_categories);
     ParseEnumList("categories_base", current.categories_base);

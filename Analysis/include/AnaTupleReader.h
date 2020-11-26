@@ -19,8 +19,10 @@ public:
     using NameSet = std::set<std::string>;
     using RDF = ROOT::RDF::RNode;
 
+
     AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names,
-                   const std::vector<std::string>& input_friends, const EventTagCreator& event_tagger, const std::string& mdnn_version);
+                   const std::vector<std::string>& input_friends, const EventTagCreator& event_tagger, const std::string& _mdnn_version,
+                    std::set<UncertaintySource>& _norm_unc_sources);
     size_t GetNumberOfEntries() const;
     const std::string& GetDatasetByHash(unsigned hash) const;
     const EventRegion& GetRegionByHash(unsigned hash) const;
@@ -30,7 +32,7 @@ public:
     boost::optional<std::string> TryGetBranchType(const std::string& branch_name) const;
 
 private:
-    void DefineBranches(const NameSet& active_var_names, bool all, const EventTagCreator& event_tagger, const std::string& mdnn_version);
+    void DefineBranches(const NameSet& active_var_names, bool all, const EventTagCreator& event_tagger);
 
     static std::vector<std::shared_ptr<TFile>> OpenFiles(const std::string& file_name,
                                                          const std::vector<std::string>& input_friends);
@@ -47,6 +49,8 @@ private:
     RegionBiMap known_regions;
     std::map<std::string, std::set<std::string>> parametric_vars;
     std::map<std::string, std::string> branch_types;
+    std::string mdnn_version;
+    std::set<UncertaintySource> norm_unc;
 };
 
 struct HyperPoint {
