@@ -153,10 +153,11 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
     const auto summary = std::make_shared<SummaryInfo>(prod_summary, channelId, ana_setup.trigger_path,
                                                        trigger_patterns, vbf_triggers);
     std::set<UncertaintySource> unc_sources = { UncertaintySource::None };
-    if(sample.sampleType != SampleType::Data)
-        unc_sources = ana_setup.unc_sources;
-    const auto unc_variations = EnumerateUncVariations(unc_sources);
     const bool is_data = sample.sampleType == SampleType::Data;
+    if(!is_data)
+        unc_sources = unc_sources_group;
+    if(is_data && !unc_sources_group.count(UncertaintySource::None)) return; 
+    const auto unc_variations = EnumerateUncVariations(unc_sources);
     for(const auto& tupleEvent : *tuple) {
         if(!signalObjectSelector.PassMETfilters(tupleEvent,ana_setup.period,is_data)) continue;
         if(!signalObjectSelector.PassLeptonVetoSelection(tupleEvent)) continue;

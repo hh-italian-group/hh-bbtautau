@@ -17,8 +17,8 @@ def LoadIdFrames(file_name, id_collections):
         name_values[col] = []
     for entry in aux:
         for col in id_collections:
-            id_vector = getattr(entry, col + 'Ids')
-            name_vector = getattr(entry, col + 'Id_names')
+            id_vector = getattr(entry, col + '_hashes')
+            name_vector = getattr(entry, col + '_names')
             if id_vector.size() != name_vector.size():
                 raise RuntimeError("Inconsistent information in aux tuple")
             for n in range(id_vector.size()):
@@ -52,7 +52,7 @@ if __name__ == '__main__':
     parser.add_argument('dataId', type=str, help="dataId")
     args = parser.parse_args()
 
-    id_collections = ['data' ] #, 'sample']
+    id_collections = ['dataset' ] #, 'sample']
     data_frames = LoadIdFrames(args.input, id_collections)
     id_found = False
     for col in id_collections:

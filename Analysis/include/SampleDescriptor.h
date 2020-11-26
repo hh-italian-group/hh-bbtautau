@@ -26,7 +26,8 @@ struct AnalyzerSetup {
     DiscriminatorWP tauID_wp;
     std::vector<double> pt_sel_bins;
     bool use_kinFit{false}, use_svFit{false}, use_IterativeFit{false}, allow_calc_svFit{false};
-    std::set<UncertaintySource> unc_sources;
+    std::map<std::string, std::set<UncertaintySource>> unc_sources;
+    std::set<UncertaintySource> norm_unc_sources;
     EventCategorySet categories;
     EventSubCategorySet sub_categories;
     EventCategorySet categories_base;
