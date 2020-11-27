@@ -147,7 +147,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
     std::map<UncertaintySource, std::map<UncertaintyScale, float>>  uncs_weight_map;
     std::vector<DiscriminatorWP> btag_wps = { DiscriminatorWP::Loose, DiscriminatorWP::Medium,
                                               DiscriminatorWP::Tight };
-
+    bbtautau::AnaTupleWriter::BTagWeights btag_weights;
     if(ana_setup.trigger_vbf.count(channelId))
         vbf_triggers = ana_setup.trigger_vbf.at(channelId);
     const auto summary = std::make_shared<SummaryInfo>(prod_summary, channelId, ana_setup.trigger_path,
@@ -156,7 +156,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
     const bool is_data = sample.sampleType == SampleType::Data;
     if(!is_data)
         unc_sources = unc_sources_group;
-    if(is_data && !unc_sources_group.count(UncertaintySource::None)) return; 
+    if(is_data && !unc_sources_group.count(UncertaintySource::None)) return;
     const auto unc_variations = EnumerateUncVariations(unc_sources);
     for(const auto& tupleEvent : *tuple) {
         if(!signalObjectSelector.PassMETfilters(tupleEvent,ana_setup.period,is_data)) continue;
@@ -171,7 +171,6 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
             const bool pass_trigger = pass_normal_trigger || pass_vbf_trigger;
             const bool pass_only_vbf_trigger = !pass_normal_trigger && pass_vbf_trigger;
             if(!pass_trigger) continue;
-            // std::map<std::pair<DiscriminatorWP, bool>, std::map<UncertaintyScale, float>> btag_weights;
             bbtautau::AnaTupleWriter::DataIdMap dataIds;
             std::map<size_t, bool> sync_event_selected;
 
@@ -215,12 +214,11 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                     mc_corrections::WeightType::BTag);
 
 
-                    static const std::vector<UncertaintySource> btag_sources = {
-                        UncertaintySource::btag_lf, UncertaintySource::btag_hf, UncertaintySource::btag_hfstats1,
-                        UncertaintySource::btag_hfstats2, UncertaintySource::btag_lfstats1,
-                        UncertaintySource::btag_lfstats2, UncertaintySource::btag_cferr1, UncertaintySource::btag_cferr2
-                     };
-
+                static const std::vector<UncertaintySource> btag_sources = {
+                    UncertaintySource::btag_lf, UncertaintySource::btag_hf, UncertaintySource::btag_hfstats1,
+                    UncertaintySource::btag_hfstats2, UncertaintySource::btag_lfstats1,
+                    UncertaintySource::btag_lfstats2, UncertaintySource::btag_cferr1, UncertaintySource::btag_cferr2
+                 };
 
                 for(const bool iter_fit : {false, true}) {
                     for(const auto wp : btag_wps){
@@ -232,19 +230,21 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                                 btag_weights.weights[wp][scale] = static_cast<float>(btag_weight_provider->Get(*event,
                                     wp, iter_fit, UncertaintySource::Eff_b, scale, false));
                         }
-                        else if(unc_source == UncertaintySource::None && iter_fit) {
-                            for(const auto scale : {UncertaintyScale::Up, UncertaintyScale::Down}) {
-                                for(const bool apply_JES : {false, true}) {
-                                    if(apply_JES) {
-                                        for(const auto unc_jes : {UncertaintySource::JetFull_Total,
-                                                                  UncertaintySource::JetReduced_Total})
-                                            btag_weights.weights_iter_jes[wp][scale] = static_cast<float>(
-                                                btag_weight_provider->Get(*event, wp, iter_fit, unc_jes, scale, true));
-                                    } else {
-                                        for(UncertaintySource unc : btag_sources)
-                                            btag_weights.weights_iter[wp][scale] = static_cast<float>(
-                                            btag_weight_provider->Get(*event, wp, iter_fit, unc, scale, false));
-                                    }
+                    }
+                    if(iter_fit) {
+                        for(const auto scale : {UncertaintyScale::Up, UncertaintyScale::Down}) {
+                            for(const bool apply_JES : {false, true}) {
+                                if(apply_JES) {
+                                    for(const auto unc_jes : {UncertaintySource::JetFull_Total,
+                                                              UncertaintySource::JetReduced_Total})
+                                        btag_weights.weights_iter_jes[scale] = static_cast<float>(
+                                            btag_weight_provider->Get(*event, DiscriminatorWP::Medium, iter_fit,
+                                                                      unc_jes, scale, true));
+                                } else {
+                                    for(UncertaintySource unc : btag_sources)
+                                        btag_weights.weights_iter[std::make_pair(unc,scale)] = static_cast<float>(
+                                        btag_weight_provider->Get(*event, DiscriminatorWP::Medium, iter_fit, unc,
+                                                                  scale, false));
                                 }
                             }
                         }

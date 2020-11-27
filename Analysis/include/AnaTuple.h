@@ -109,7 +109,8 @@ namespace analysis {
     VAR_LIST(float, npv, HT_total, HT_otherjets, lhe_HT, n_jets, n_jets_eta24, n_jets_eta24_eta5, \
                     n_selected_gen_jets, n_selected_gen_bjets, genJets_nTotal, \
                     jets_nTotal_hadronFlavour_b, jets_nTotal_hadronFlavour_c) /* other global event quantities */ \
-    WVAR_LIST(_, btag_Loose, btag_Medium, btag_Tight, btag_IterativeFit, btag_IterativeFit_jes) \
+    WVAR_LIST(_, btag_Loose, btag_Medium, btag_Tight) \
+    VAR_LIST(float, weight_btag_IterativeFit, weight_btag_IterativeFit_withJES) \
              /* btag weights for various working points estimated by different algorithms and their unc variations */ \
     UNC_VAR_LIST(_, \
              EleTriggerUnc, MuonTriggerUnc, \
@@ -122,7 +123,9 @@ namespace analysis {
              EleIdIsoUnc, MuonIdIsoUnc, \
              TopPt, L1_prefiring, PileUp, PileUpJetId_eff, PileUpJetId_mistag, \
              TauCustomSF_DM0, TauCustomSF_DM1, TauCustomSF_DM10, TauCustomSF_DM11, VBFTriggerUnc_jets, \
-             VBFTauTriggerUnc_DM0, VBFTauTriggerUnc_DM1, VBFTauTriggerUnc_3prong) \
+             VBFTauTriggerUnc_DM0, VBFTauTriggerUnc_DM1, VBFTauTriggerUnc_3prong, \
+             btag_lf, btag_hf, btag_hfstats1, btag_hfstats2, btag_lfstats1, btag_lfstats2, btag_cferr1, btag_cferr2, \
+             btag_JES) \
              /* effects of various uncertainty sources on the event weight */ \
     /**/
 
@@ -183,8 +186,8 @@ public:
 
     struct BTagWeights {
         std::map<DiscriminatorWP, std::map<UncertaintyScale, float>> weights;
-        std::map<DiscriminatorWP, std::map<UncertaintyScale, float>> weights_iter;
-        std::map<DiscriminatorWP, std::map<UncertaintyScale, float>> weights_iter_jes;
+        std::map<std::pair<UncertaintySource, UncertaintyScale>, float> weights_iter;
+        std::map<UncertaintyScale, float> weights_iter_jes;
     };
 
 
@@ -198,6 +201,8 @@ public:
 private:
     static void FillUncWeightVec(const std::map<UncertaintyScale, float>& weights_in,
                                  float* weight, float* unc_up, float* unc_down);
+    static void FillUncIter(const BTagWeights& btag_weights, UncertaintySource source,
+                            float* unc_up, float* unc_down);
 
 private:
     std::shared_ptr<TFile> file;
