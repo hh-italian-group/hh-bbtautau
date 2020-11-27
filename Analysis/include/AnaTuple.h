@@ -124,8 +124,7 @@ namespace analysis {
              TopPt, L1_prefiring, PileUp, PileUpJetId_eff, PileUpJetId_mistag, \
              TauCustomSF_DM0, TauCustomSF_DM1, TauCustomSF_DM10, TauCustomSF_DM11, VBFTriggerUnc_jets, \
              VBFTauTriggerUnc_DM0, VBFTauTriggerUnc_DM1, VBFTauTriggerUnc_3prong, \
-             btag_lf, btag_hf, btag_hfstats1, btag_hfstats2, btag_lfstats1, btag_lfstats2, btag_cferr1, btag_cferr2, \
-             btag_JES) \
+             btag_lf, btag_hf, btag_hfstats1, btag_hfstats2, btag_lfstats1, btag_lfstats2, btag_cferr1, btag_cferr2) \
              /* effects of various uncertainty sources on the event weight */ \
     /**/
 
@@ -186,8 +185,8 @@ public:
 
     struct BTagWeights {
         std::map<DiscriminatorWP, std::map<UncertaintyScale, float>> weights;
-        std::map<std::pair<UncertaintySource, UncertaintyScale>, float> weights_iter;
-        std::map<UncertaintyScale, float> weights_iter_jes;
+        float iter_weight;
+        boost::optional<float> iter_weight_with_jes;
     };
 
 
@@ -201,8 +200,6 @@ public:
 private:
     static void FillUncWeightVec(const std::map<UncertaintyScale, float>& weights_in,
                                  float* weight, float* unc_up, float* unc_down);
-    static void FillUncIter(const BTagWeights& btag_weights, UncertaintySource source,
-                            float* unc_up, float* unc_down);
 
 private:
     std::shared_ptr<TFile> file;

@@ -213,40 +213,33 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                 auto btag_weight_provider = eventWeights_HH->GetProviderT<mc_corrections::BTagWeight>(
                     mc_corrections::WeightType::BTag);
 
-
                 static const std::vector<UncertaintySource> btag_sources = {
                     UncertaintySource::btag_lf, UncertaintySource::btag_hf, UncertaintySource::btag_hfstats1,
                     UncertaintySource::btag_hfstats2, UncertaintySource::btag_lfstats1,
                     UncertaintySource::btag_lfstats2, UncertaintySource::btag_cferr1, UncertaintySource::btag_cferr2
                  };
 
-                for(const bool iter_fit : {false, true}) {
-                    for(const auto wp : btag_wps){
-                        const std::pair<DiscriminatorWP, bool> key(wp, iter_fit);
-                        btag_weights.weights[wp][UncertaintyScale::Central] = static_cast<float>(
-                                btag_weight_provider->Get(*event, wp, iter_fit, unc_source, unc_scale, false));
-                        if(unc_source == UncertaintySource::None && !iter_fit) {
-                            for(const auto scale : {UncertaintyScale::Up, UncertaintyScale::Down})
-                                btag_weights.weights[wp][scale] = static_cast<float>(btag_weight_provider->Get(*event,
-                                    wp, iter_fit, UncertaintySource::Eff_b, scale, false));
-                        }
+                for(const auto wp : btag_wps){
+                    btag_weights.weights[wp][UncertaintyScale::Central] = static_cast<float>(   
+                        btag_weight_provider->Get(*event, wp, false, unc_source, unc_scale, false));
+                    if(unc_source == UncertaintySource::None) {
+                        for(const auto scale : {UncertaintyScale::Up, UncertaintyScale::Down})
+                            btag_weights.weights[wp][scale] = static_cast<float>(btag_weight_provider->Get(*event,
+                                wp, false, UncertaintySource::Eff_b, scale, false));
                     }
-                    if(iter_fit) {
+                }
+                btag_weights.iter_weight = static_cast<float>(btag_weight_provider->Get(*event, DiscriminatorWP::Medium,
+                                                              true, unc_source, unc_scale, false));
+                if(unc_source == UncertaintySource::JetFull_Total || unc_source == UncertaintySource::JetReduced_Total)
+                    btag_weights.iter_weight_with_jes = static_cast<float>(btag_weight_provider->Get(*event,
+                        DiscriminatorWP::Medium, true, unc_source, unc_scale, true));
+
+                if(unc_source == UncertaintySource::None) {
+                    for(auto btag_source : btag_sources) {
+                        uncs_weight_map[btag_source][UncertaintyScale::Central] = btag_weights.iter_weight;
                         for(const auto scale : {UncertaintyScale::Up, UncertaintyScale::Down}) {
-                            for(const bool apply_JES : {false, true}) {
-                                if(apply_JES) {
-                                    for(const auto unc_jes : {UncertaintySource::JetFull_Total,
-                                                              UncertaintySource::JetReduced_Total})
-                                        btag_weights.weights_iter_jes[scale] = static_cast<float>(
-                                            btag_weight_provider->Get(*event, DiscriminatorWP::Medium, iter_fit,
-                                                                      unc_jes, scale, true));
-                                } else {
-                                    for(UncertaintySource unc : btag_sources)
-                                        btag_weights.weights_iter[std::make_pair(unc,scale)] = static_cast<float>(
-                                        btag_weight_provider->Get(*event, DiscriminatorWP::Medium, iter_fit, unc,
-                                                                  scale, false));
-                                }
-                            }
+                            uncs_weight_map[btag_source][scale] = static_cast<float>(btag_weight_provider->Get(*event,
+                                DiscriminatorWP::Medium, true, btag_source, scale, false));
                         }
                     }
                 }

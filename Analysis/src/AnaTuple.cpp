@@ -218,34 +218,18 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
     tuple().jets_nTotal_hadronFlavour_c = event->jets_nTotal_hadronFlavour_c;
 
     if(!event->isData) {
-        #define FILL_BTAG(wp, suffix, is_iterative) \
-            FillUncWeightVec(btag_weights.weights.at(DiscriminatorWP::wp), \
-                                &tuple().weight_btag_##suffix, &tuple().unc_btag_##suffix##_Up, \
-                                &tuple().unc_btag_##suffix##_Down)
-
-        FILL_BTAG(Loose, Loose, false);
-        FILL_BTAG(Medium, Medium, false);
-        FILL_BTAG(Tight, Tight, false);
+        #define FILL_BTAG(wp, suffix) \
+            FillUncWeightVec(btag_weights.weights.at(DiscriminatorWP::wp), &tuple().weight_btag_##suffix, \
+                             &tuple().unc_btag_##suffix##_Up, &tuple().unc_btag_##suffix##_Down)
+        FILL_BTAG(Loose, Loose);
+        FILL_BTAG(Medium, Medium);
+        FILL_BTAG(Tight, Tight);
 
         #undef FILL_BTAG
 
-        #define FILL_BTAG_ITER(suffix) \
-            FillUncIter(btag_weights, UncertaintySource::btag_##suffix, &tuple().unc_btag_##suffix##_Up, \
-                        &tuple().unc_btag_##suffix##_Down)
-
-        FILL_BTAG_ITER(lf);
-        FILL_BTAG_ITER(hf);
-        FILL_BTAG_ITER(hfstats1);
-        FILL_BTAG_ITER(hfstats2);
-        FILL_BTAG_ITER(lfstats1);
-        FILL_BTAG_ITER(lfstats2);
-        FILL_BTAG_ITER(cferr1);
-        FILL_BTAG_ITER(cferr2);
-
-        #undef FILL_BTAG_ITER
-
-        tuple().unc_btag_JES_Up = btag_weights.weights_iter_jes.at(UncertaintyScale::Up);
-        tuple().unc_btag_JES_Down = btag_weights.weights_iter_jes.at(UncertaintyScale::Down);
+        tuple().weight_btag_IterativeFit = btag_weights.iter_weight;
+        tuple().weight_btag_IterativeFit_withJES = btag_weights.iter_weight_with_jes ?
+                                                   *btag_weights.iter_weight_with_jes : 1.;
 
         #define FILL_UNC(r, _, name) \
            FillUncWeightVec(uncs_weight_map.at(UncertaintySource::name), nullptr, \
@@ -265,7 +249,8 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
                 EleIdIsoUnc, MuonIdIsoUnc,
                 TopPt, L1_prefiring, PileUp, PileUpJetId_eff, PileUpJetId_mistag,
                 TauCustomSF_DM0, TauCustomSF_DM1, TauCustomSF_DM10, TauCustomSF_DM11, VBFTriggerUnc_jets,
-                VBFTauTriggerUnc_DM0, VBFTauTriggerUnc_DM1, VBFTauTriggerUnc_3prong
+                VBFTauTriggerUnc_DM0, VBFTauTriggerUnc_DM1, VBFTauTriggerUnc_3prong, btag_lf, btag_hf, btag_hfstats1,
+                btag_hfstats2, btag_lfstats1, btag_lfstats2, btag_cferr1, btag_cferr2
             )
         }
         #undef FILL_UNC
@@ -293,7 +278,6 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
     }
 }
 
-
 void AnaTupleWriter::FillUncWeightVec(const std::map<UncertaintyScale, float>& weights_in,
                                       float* weight, float* unc_up, float* unc_down)
 {
@@ -315,24 +299,6 @@ void AnaTupleWriter::FillUncWeightVec(const std::map<UncertaintyScale, float>& w
 
     set_unc(UncertaintyScale::Up, unc_up);
     set_unc(UncertaintyScale::Down, unc_down);
-}
-
-void AnaTupleWriter::FillUncIter(const BTagWeights& btag_weights, UncertaintySource source,
-                                float* unc_up, float* unc_down)
-{
-    static constexpr float def_val = std::numeric_limits<float>::lowest();
-
-    const auto set_unc = [&](UncertaintySource source, UncertaintyScale scale, float* output) {
-        if(output) {
-            float w = def_val;
-            auto iter = btag_weights.weights_iter.find(std::make_pair(source,scale));
-            if(iter != btag_weights.weights_iter.end())
-                w = iter->second;
-            *output = w;
-        }
-    };
-    set_unc(source,UncertaintyScale::Up, unc_up);
-    set_unc(source,UncertaintyScale::Down, unc_down);
 }
 
 } // namespace bbtautau
