@@ -31,8 +31,8 @@ AnaTupleWriter::~AnaTupleWriter()
 }
 
 void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const CategoriesFlags& categories_flags,
-                              const BTagWeights& btag_weights, const std::map<UncertaintySource,
-                              std::map<UncertaintyScale, float>>& uncs_weight_map)
+                              const BTagWeights& btag_weights,
+                              const std::map<UncertaintySource, std::map<UncertaintyScale, float>>& uncs_weight_map)
 {
     static constexpr float def_val = std::numeric_limits<float>::lowest();
     static constexpr int def_val_int = std::numeric_limits<int>::lowest();
@@ -229,7 +229,7 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
 
         tuple().weight_btag_IterativeFit = btag_weights.iter_weight;
         tuple().weight_btag_IterativeFit_withJES = btag_weights.iter_weight_with_jes ?
-                                                   *btag_weights.iter_weight_with_jes : 1.;
+                                                   *btag_weights.iter_weight_with_jes : def_val;
 
         #define FILL_UNC(r, _, name) \
            FillUncWeightVec(uncs_weight_map.at(UncertaintySource::name), nullptr, \

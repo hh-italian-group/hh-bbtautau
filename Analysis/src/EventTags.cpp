@@ -49,7 +49,11 @@ std::pair<float, VBF_Category> EventTagCreator::FindVBFCategory(float dnn_score_
     };
     return *std::max_element(category_and_dnn.begin(), category_and_dnn.end());
 }
-//std::set<UncertaintySource> btag_uncs = {};
+static std::set<UncertaintySource> btag_uncs = {
+    UncertaintySource::btag_lf, UncertaintySource::btag_hf, UncertaintySource::btag_hfstats1,
+    UncertaintySource::btag_hfstats2, UncertaintySource::btag_lfstats1,
+    UncertaintySource::btag_lfstats2, UncertaintySource::btag_cferr1, UncertaintySource::btag_cferr2
+};
 
 EventTags EventTagCreator::CreateEventTags(const DataId& dataId_base, float weight, bool is_data,
         float weight_btag_Loose, float weight_btag_Medium, float weight_btag_Tight, float weight_btag_IterativeFit,
@@ -98,7 +102,7 @@ EventTags EventTagCreator::CreateEventTags(const DataId& dataId_base, float weig
             evt_tags.weights.push_back(cat_weight);
             if(!is_data && dataId_base.Get<UncertaintySource>()==UncertaintySource::None) {
                 for(const auto& [key, weight_shift] : unc_map) {
-                    //if(!category.HasBtagConstraint() && btag_uncs.Count(key.first)) continue;
+                    if(!category.HasBtagConstraint() && btag_uncs.count(key.first)) continue;
                     const auto dataId_scaled = dataId.Set(key.first).Set(key.second);
                     evt_tags.dataIds.push_back(dataId_scaled);
                     evt_tags.weights.push_back(cat_weight * weight_shift);

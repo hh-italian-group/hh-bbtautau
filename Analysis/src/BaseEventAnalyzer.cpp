@@ -147,7 +147,6 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
     std::map<UncertaintySource, std::map<UncertaintyScale, float>>  uncs_weight_map;
     std::vector<DiscriminatorWP> btag_wps = { DiscriminatorWP::Loose, DiscriminatorWP::Medium,
                                               DiscriminatorWP::Tight };
-    bbtautau::AnaTupleWriter::BTagWeights btag_weights;
     if(ana_setup.trigger_vbf.count(channelId))
         vbf_triggers = ana_setup.trigger_vbf.at(channelId);
     const auto summary = std::make_shared<SummaryInfo>(prod_summary, channelId, ana_setup.trigger_path,
@@ -161,7 +160,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
     for(const auto& tupleEvent : *tuple) {
         if(!signalObjectSelector.PassMETfilters(tupleEvent,ana_setup.period,is_data)) continue;
         if(!signalObjectSelector.PassLeptonVetoSelection(tupleEvent)) continue;
-
+        bbtautau::AnaTupleWriter::BTagWeights btag_weights;
         for(const auto& [unc_source, unc_scale] : unc_variations) {
             auto event = EventInfo::Create(tupleEvent, signalObjectSelector, *bTagger, DiscriminatorWP::Medium,
                                            summary, unc_source, unc_scale);
@@ -220,7 +219,7 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                  };
 
                 for(const auto wp : btag_wps){
-                    btag_weights.weights[wp][UncertaintyScale::Central] = static_cast<float>(   
+                    btag_weights.weights[wp][UncertaintyScale::Central] = static_cast<float>(
                         btag_weight_provider->Get(*event, wp, false, unc_source, unc_scale, false));
                     if(unc_source == UncertaintySource::None) {
                         for(const auto scale : {UncertaintyScale::Up, UncertaintyScale::Down})

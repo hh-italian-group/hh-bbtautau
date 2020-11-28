@@ -194,8 +194,8 @@ public:
                    bool _allow_calc_svFit);
     ~AnaTupleWriter();
     void AddEvent(EventInfo& event, const DataIdMap& dataIds, const CategoriesFlags& categories_flags,
-                  const BTagWeights& btag_weights, const std::map<UncertaintySource,
-                  std::map<UncertaintyScale, float>>& uncs_weight_map);
+                  const BTagWeights& btag_weights,
+                  const std::map<UncertaintySource, std::map<UncertaintyScale, float>>& uncs_weight_map);
 
 private:
     static void FillUncWeightVec(const std::map<UncertaintyScale, float>& weights_in,
