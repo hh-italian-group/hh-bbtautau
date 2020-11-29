@@ -19,6 +19,11 @@ set_source_files_properties(${HTT_UTILITIES_SRC} PROPERTIES COMPILE_FLAGS "-w")
 file(GLOB_RECURSE TauAnalysisTool_SRC "${CMSSW_BASE_SRC}/TauAnalysisTools/TauTriggerSFs/src/*.cc")
 add_library(TauAnalysisTools STATIC ${TauAnalysisTool_SRC})
 
+file(GLOB_RECURSE VBFTriggerSFs_SRC "${CMSSW_BASE_SRC}/VBFTriggerSFs/*.cc")
+add_library(VBFTriggerSFs STATIC ${VBFTriggerSFs_SRC})
+target_include_directories(VBFTriggerSFs PRIVATE "${CMSSW_BASE_SRC}/VBFTriggerSFs/VBFTriggerSFs/interface")
+set_source_files_properties(${VBFTriggerSFs_SRC} PROPERTIES COMPILE_FLAGS "-w")
+
 file(GLOB_RECURSE TauPOG_SRC "${CMSSW_BASE_SRC}/TauPOG/TauIDSFs/src/*.cc")
 add_library(TauPOG STATIC ${TauPOG_SRC})
 set_source_files_properties(${TauPOG_SRC} PROPERTIES COMPILE_FLAGS "-w")
@@ -65,7 +70,7 @@ endif()
 add_library("hh-bbtautau" STATIC ${SOURCE_LIST})
 
 foreach(exe_name ${EXE_LIST})
-    target_link_libraries("${exe_name}" hh-bbtautau h-tautau AnalysisTools HTT-utilities SVfit HHKinFit2 TauAnalysisTools TauPOG)
+    target_link_libraries("${exe_name}" hh-bbtautau h-tautau AnalysisTools HTT-utilities SVfit HHKinFit2 TauAnalysisTools VBFTriggerSFs TauPOG)
 endforeach()
 
 set_target_properties(LimitConfigurationProducer BjetSelectionStudy BjetEffSF KinFitStudy SMWeight_t PROPERTIES EXCLUDE_FROM_ALL 1)
