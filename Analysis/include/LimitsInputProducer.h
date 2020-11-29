@@ -21,6 +21,8 @@ public:
     static std::string FullDataCardName(std::string datacard_name, UncertaintySource unc_source,
                                         UncertaintyScale unc_scale, Period period);
     static std::string EventRegionSuffix(EventRegion region);
+    static std::string UncSourceSuffix(UncertaintySource unc_source, Period period);
+    std::pair<std::string,std::string> ProdCatSuffix(std::string category);
 
     template<typename ...Args>
     LimitsInputProducer(AnaDataCollection& _anaDataCollection, Args&&... sample_descriptors) :

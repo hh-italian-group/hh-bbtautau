@@ -123,7 +123,10 @@ public:
                 }
             }
         }
-
+        std::set<UncertaintySource> unc_sources_total;
+        std::set_union(ana_setup.norm_unc_sources.begin(), ana_setup.norm_unc_sources.end(),
+                        unc_sources_group.begin(), unc_sources_group.end(),
+                        std::inserter(unc_sources_total, unc_sources_total.begin()));
         if(args.shapes()) {
             std::cout << "\tProducing inputs for limits..." << std::endl;
             LimitsInputProducer limitsInputProducer(anaDataCollection, sample_descriptors,
@@ -132,7 +135,7 @@ public:
                 std::cout << "\t\tsetup_name: " << limit_setup.first <<  std::endl;
                 for(const auto& subCategory : subCategories)
                     limitsInputProducer.Produce(args.output(), limit_setup.first, limit_setup.second, subCategory,
-                                                unc_sources_group, ana_setup.regions, mva_sel_aliases,
+                                                unc_sources_total, ana_setup.regions, mva_sel_aliases,
                                                 args.period());
             }
         }
