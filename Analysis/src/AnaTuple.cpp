@@ -31,8 +31,8 @@ AnaTupleWriter::~AnaTupleWriter()
 }
 
 void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const CategoriesFlags& categories_flags,
-        const std::map<std::pair<DiscriminatorWP, bool>, std::map<UncertaintyScale, float>>& btag_weights,
-        const std::map<UncertaintySource, std::map<UncertaintyScale, float>>& uncs_weight_map)
+                              const BTagWeights& btag_weights,
+                              const std::map<UncertaintySource, std::map<UncertaintyScale, float>>& uncs_weight_map)
 {
     static constexpr float def_val = std::numeric_limits<float>::lowest();
     static constexpr int def_val_int = std::numeric_limits<int>::lowest();
@@ -218,23 +218,24 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
     tuple().jets_nTotal_hadronFlavour_c = event->jets_nTotal_hadronFlavour_c;
 
     if(!event->isData) {
-        #define FILL_BTAG(wp, suffix, is_iterative) \
-            FillUncWeightVec(btag_weights.at(std::make_pair(DiscriminatorWP::wp, is_iterative)), \
-                                &tuple().weight_btag_##suffix, &tuple().unc_btag_##suffix##_Up, \
-                                &tuple().unc_btag_##suffix##_Down)
-
-        FILL_BTAG(Loose, Loose, false);
-        FILL_BTAG(Medium, Medium, false);
-        FILL_BTAG(Tight, Tight, false);
-        FILL_BTAG(Medium, IterativeFit, true);
+        #define FILL_BTAG(wp, suffix) \
+            FillUncWeightVec(btag_weights.weights.at(DiscriminatorWP::wp), &tuple().weight_btag_##suffix, \
+                             &tuple().unc_btag_##suffix##_Up, &tuple().unc_btag_##suffix##_Down)
+        FILL_BTAG(Loose, Loose);
+        FILL_BTAG(Medium, Medium);
+        FILL_BTAG(Tight, Tight);
 
         #undef FILL_BTAG
 
+        tuple().weight_btag_IterativeFit = btag_weights.iter_weight;
+        tuple().weight_btag_IterativeFit_withJES = btag_weights.iter_weight_with_jes ?
+                                                   *btag_weights.iter_weight_with_jes : def_val;
+
         #define FILL_UNC(r, _, name) \
-            FillUncWeightVec(uncs_weight_map.at(UncertaintySource::name), nullptr, \
-                &tuple().BOOST_PP_CAT(BOOST_PP_CAT(unc_, name), _Up), \
-                &tuple().BOOST_PP_CAT(BOOST_PP_CAT(unc_, name), _Down) );
-        #define FILL_UNC_LIST(_, ...) BOOST_PP_SEQ_FOR_EACH(FILL_UNC, _, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
+           FillUncWeightVec(uncs_weight_map.at(UncertaintySource::name), nullptr, \
+               &tuple().BOOST_PP_CAT(BOOST_PP_CAT(unc_, name), _Up), \
+               &tuple().BOOST_PP_CAT(BOOST_PP_CAT(unc_, name), _Down) );
+       #define FILL_UNC_LIST(_, ...) BOOST_PP_SEQ_FOR_EACH(FILL_UNC, _, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
 
         if(event.GetEventCandidate().GetUncSource() == UncertaintySource::None){
             FILL_UNC_LIST(float,
@@ -247,7 +248,9 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
                 TauVSmuSF_etaGt1p7,
                 EleIdIsoUnc, MuonIdIsoUnc,
                 TopPt, L1_prefiring, PileUp, PileUpJetId_eff, PileUpJetId_mistag,
-                TauCustomSF_DM0, TauCustomSF_DM1, TauCustomSF_DM10, TauCustomSF_DM11
+                TauCustomSF_DM0, TauCustomSF_DM1, TauCustomSF_DM10, TauCustomSF_DM11, VBFTriggerUnc_jets,
+                VBFTauTriggerUnc_DM0, VBFTauTriggerUnc_DM1, VBFTauTriggerUnc_3prong, btag_lf, btag_hf, btag_hfstats1,
+                btag_hfstats2, btag_lfstats1, btag_lfstats2, btag_cferr1, btag_cferr2
             )
         }
         #undef FILL_UNC
@@ -288,9 +291,8 @@ void AnaTupleWriter::FillUncWeightVec(const std::map<UncertaintyScale, float>& w
         if(output) {
             float w = def_val;
             auto iter = weights_in.find(scale);
-            if(iter != weights_in.end()) {
+            if(iter != weights_in.end())
                 w = iter->second / central_w;
-            }
             *output = w;
         }
     };
