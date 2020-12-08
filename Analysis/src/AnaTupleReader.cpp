@@ -101,10 +101,14 @@ std::vector<std::shared_ptr<TTree>> AnaTupleReader::ReadTrees(Channel channel,
                                                               const std::vector<std::shared_ptr<TFile>>& files)
 {
     std::vector<std::shared_ptr<TTree>> trees;
+    int i=1;
     for(const auto& file : files) {
         trees.emplace_back(root_ext::ReadObject<TTree>(*file, ToString(channel)));
         if(trees.size() > 1)
-            trees.front()->AddFriend(trees.back().get());
+            {
+                trees.front()->AddFriend(trees.back().get(),("friend"+std::to_string(i)).c_str());
+                i++;
+            }
     }
     return trees;
 }
@@ -276,7 +280,7 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
             "_hh_vbf_c2v", "_hh_vbf_sm"
         };
         for(const auto& score_name : mdnn_score_names) {
-            const std::string branch = "mdnn_" + mdnn_version + score_name;
+            const std::string branch = "friend2.mdnn_" + mdnn_version + score_name;
             mdnn_branches.push_back(branch);
         }
         const auto vbf_cat = make_function(&EventTagCreator::FindVBFCategory);

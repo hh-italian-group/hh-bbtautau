@@ -19,7 +19,8 @@ struct AnalyzerArguments : CoreAnalyzerArguments {
     OPT_ARG(bool, shapes, true);
     OPT_ARG(bool, draw, true);
     OPT_ARG(std::string, vars, "");
-    run::Argument<std::vector<std::string>> input_friends{"input_friends", "", {}};
+    OPT_ARG(std::string, input_friends, "");
+    //run::Argument<std::vector<std::string>> input_friends{"input_friends", "", {}};
 };
 
 class ProcessAnaTuple : public EventAnalyzerCore {
@@ -43,12 +44,7 @@ public:
             config_reader.ReadConfig(FullPath(ana_setup.unc_cfg));
         }
 
-        if(!args.input_friends().empty()) {
-            std::cout << "Input TTree friends:\n";
-            for(const std::string& file_name : args.input_friends())
-                std::cout << '\t' << file_name << '\n';
-            std::cout << std::endl;
-        }
+
     }
 
     void Run()
@@ -66,12 +62,18 @@ public:
         const EventSubCategorySet& subCategories = sub_categories_to_process;
 
         std::vector<std::string> unc_sources = SplitValueList(args.unc_sources_groups(),false, ",", true);
+        std::vector<std::string> input_friends = SplitValueList(args.input_friends(),false, ",", true);
         for (auto& unc_source : unc_sources){
             std::string input_file = args.input();
-            boost::replace_all(input_file, "{UNC_SOURCE}", unc_source);
-            std::vector<std::string> input_friends = args.input_friends();
+            boost::replace_all(input_file, "{UNC_GROUP}", unc_source);
             for (auto& f: input_friends) {
-                boost::replace_all(f, "{UNC_SOURCE}", unc_source);
+                boost::replace_all(f, "{UNC_GROUP}", unc_source);
+            }
+            if(!input_friends.empty()) {
+                std::cout << "Input TTree friends:\n";
+                for(const std::string& file_name : input_friends)
+                    std::cout << '\t' << file_name << '\n';
+                std::cout << std::endl;
             }
             std::cout<< "\n \t input file " << input_file << std::endl;
             bbtautau::AnaTupleReader tupleReader(input_file, args.channel(), activeVariables, input_friends, eventTagger,
