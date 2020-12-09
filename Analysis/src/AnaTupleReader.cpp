@@ -101,13 +101,18 @@ std::vector<std::shared_ptr<TTree>> AnaTupleReader::ReadTrees(Channel channel,
                                                               const std::vector<std::shared_ptr<TFile>>& files)
 {
     std::vector<std::shared_ptr<TTree>> trees;
-    int i=1;
+    //int i=1;
     for(const auto& file : files) {
         trees.emplace_back(root_ext::ReadObject<TTree>(*file, ToString(channel)));
         if(trees.size() > 1)
             {
-                trees.front()->AddFriend(trees.back().get(),("friend"+std::to_string(i)).c_str());
-                i++;
+                std::string friend_nickname= (file.get()->GetName());
+                std::size_t fin = friend_nickname.find("HH");
+                friend_nickname.erase(0, fin-2);
+                friend_nickname.erase(4, std::string::npos); 
+                std::cout << friend_nickname << std::endl;
+                trees.front()->AddFriend(trees.back().get(),("friend_"+friend_nickname).c_str());
+                //i++;
             }
     }
     return trees;
@@ -280,7 +285,7 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
             "_hh_vbf_c2v", "_hh_vbf_sm"
         };
         for(const auto& score_name : mdnn_score_names) {
-            const std::string branch = "friend2.mdnn_" + mdnn_version + score_name;
+            const std::string branch = "friend_qqHH.mdnn_" + mdnn_version + score_name;
             mdnn_branches.push_back(branch);
         }
         const auto vbf_cat = make_function(&EventTagCreator::FindVBFCategory);
