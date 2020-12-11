@@ -98,6 +98,18 @@ std::string LimitsInputProducer::UncSourceSuffix(UncertaintySource unc_source, P
         { UncertaintySource::TauCustomSF_DM1, "hhbbtautau_eff_t_dm1"},
         { UncertaintySource::TauCustomSF_DM10, "hhbbtautau_eff_t_dm10"},
         { UncertaintySource::TauCustomSF_DM11, "hhbbtautau_eff_t_dm11"},
+        { UncertaintySource::VBFTriggerUnc_jets, "hhbbtautau_eff_VBFtrigger_j" },
+        { UncertaintySource::VBFTauTriggerUnc_DM0, "hhbbtautau_eff_VBFtrigger_t_DM0" },
+        { UncertaintySource::VBFTauTriggerUnc_DM1, "hhbbtautau_eff_VBFtrigger_t_DM1" },
+        { UncertaintySource::VBFTauTriggerUnc_3prong, "hhbbtautau_eff_VBFtrigger_t_3prong" },
+        { UncertaintySource::btag_lf, "btag_LF" },
+        { UncertaintySource::btag_hf, "btag_HF" },
+        { UncertaintySource::btag_hfstats1, "btag_hfstats1" },
+        { UncertaintySource::btag_hfstats2, "btag_hfstats2" },
+        { UncertaintySource::btag_lfstats1, "btag_lfstats1" },
+        { UncertaintySource::btag_lfstats2, "btag_lfstats2" },
+        { UncertaintySource::btag_cferr1, "btag_cferr1" },
+        { UncertaintySource::btag_cferr2, "btag_cferr2" }, 
     };
     if(period==Period::Run2016){
         unc_sources.emplace(UncertaintySource::JetReduced_Absolute_year , "JES_Abs_2016");
@@ -141,7 +153,7 @@ std::pair<std::string,std::string> LimitsInputProducer::ProdCatSuffix(std::strin
         {"2j1b+_VBF_ttH", {"qqHH", "classttH"}},
         {"2j1b+_VBF_DY", {"qqHH", "classDY"}},
     };
-    
+
     if(categories.count(category))
         return categories.at(category);
     else

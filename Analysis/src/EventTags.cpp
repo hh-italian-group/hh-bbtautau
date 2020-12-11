@@ -3,6 +3,9 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include "hh-bbtautau/Analysis/include/EventTags.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_Run2.h"
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
+
 
 namespace analysis {
 namespace bbtautau {
@@ -10,27 +13,28 @@ namespace bbtautau {
 EventTagCreator::EventTagCreator(const EventCategorySet& _categories, const EventSubCategorySet& _subCategories,
                                   const std::set<UncertaintySource>& _event_unc_sources,
                                   const std::set<UncertaintySource>& _norm_unc_sources,
-                                  bool _use_IterativeFit, Channel _channel, Period _period) :
+                                  bool _use_IterativeFit, std::string _file_name) :
         categories(_categories), subCategories(_subCategories), event_unc_sources(_event_unc_sources),
-        norm_unc_sources(_norm_unc_sources), use_IterativeFit(_use_IterativeFit), channel(_channel), period(_period)
+        norm_unc_sources(_norm_unc_sources), use_IterativeFit(_use_IterativeFit), file_name(_file_name)
 {
+
+    std::size_t in = file_name.find("/201"); // --> in order to remove all the path before the file name
+    file_name.erase(0,in+1);
+    std::size_t fin = file_name.find(".root"); // --> to remove the last part of the file
+    file_name.erase(fin);
+    std::vector<std::string> file= SplitValueList(file_name, false, "_", true);
     if(use_IterativeFit) {
-        static const std::map<std::pair<Channel, Period>, float> iterativeFit_corrections = {
-            {{Channel::ETau, Period::Run2016}, 1.0120f}, // 1.01203715762
-            {{Channel::MuTau, Period::Run2016}, 1.013f}, // 1.01296331792
-            {{Channel::TauTau, Period::Run2016}, 1.0101f}, // 1.01010364517
-            {{Channel::ETau, Period::Run2017}, 0.9949f}, // 0.994930642536
-            {{Channel::MuTau, Period::Run2017}, 0.9993f}, // 0.999263715405
-            {{Channel::TauTau, Period::Run2017}, 0.9547f}, // 0.954725518543
-            {{Channel::ETau, Period::Run2018}, 1.0004f}, // 1.0003768284
-            {{Channel::MuTau, Period::Run2018}, 1.0039f}, // 1.00388888346
-            {{Channel::TauTau, Period::Run2018}, 0.9795f}, // 0.97949255088
-        };
-        auto iter = iterativeFit_corrections.find({channel, period});
-        if(iter == iterativeFit_corrections.end())
-            throw exception("Normalization correction for iterative fit is not available for %1% %2%")
-                    % period % channel;
-        iterativeFit_correction = iter->second;
+        boost::property_tree::ptree loadPtreeRoot;
+        boost::property_tree::read_json("r_factors.json", loadPtreeRoot);
+        boost::property_tree::ptree temp ;
+        if(loadPtreeRoot.get_child(file_name).template get_value<float>()==0)
+            throw exception("Normalization correction for iterative fit is not available for %")
+                    % file_name;
+
+        else
+            iterativeFit_correction = loadPtreeRoot.get_child(file_name).template get_value<float>();
+        //std::cout << iterativeFit_correction << std::endl;
+
     }
 }
 

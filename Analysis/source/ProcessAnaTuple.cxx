@@ -31,8 +31,8 @@ public:
 
     ProcessAnaTuple(const AnalyzerArguments& _args) :
         EventAnalyzerCore(_args, _args.channel(), false), args(_args), activeVariables(ParseVarSet(args.vars())),
-        eventTagger(ana_setup.categories, sub_categories_to_process, unc_sources_group, ana_setup.norm_unc_sources,
-                    ana_setup.use_IterativeFit, args.channel(), args.period()),
+        //eventTagger(ana_setup.categories, sub_categories_to_process, unc_sources_group, ana_setup.norm_unc_sources,
+                    //ana_setup.use_IterativeFit, args.channel(), args.period()),
         outputFile(root_ext::CreateRootFile(args.output() + "_full.root", ROOT::kLZMA, 9))
     {
         histConfig.Parse(FullPath(ana_setup.hist_cfg));
@@ -63,7 +63,10 @@ public:
 
         std::vector<std::string> unc_sources = SplitValueList(args.unc_sources_groups(),false, ",", true);
         std::vector<std::string> input_friends = SplitValueList(args.input_friends(),false, ",", true);
+        std::set<UncertaintySource> unc_sources_g;
         for (auto& unc_source : unc_sources){
+            if(!unc_sources_g.empty())
+                unc_sources_g.erase(unc_sources_g.begin(), unc_sources_g.end());
             std::string input_file = args.input();
             boost::replace_all(input_file, "{UNC_GROUP}", unc_source);
             for (auto& f: input_friends) {
@@ -75,7 +78,9 @@ public:
                     std::cout << '\t' << file_name << '\n';
                 std::cout << std::endl;
             }
-            std::cout<< "\n \t input file " << input_file << std::endl;
+            unc_sources_g.insert(ana_setup.unc_sources.at(unc_source).begin(), ana_setup.unc_sources.at(unc_source).end());
+            bbtautau::EventTagCreator eventTagger(ana_setup.categories, sub_categories_to_process, unc_sources_g, ana_setup.norm_unc_sources,
+                        ana_setup.use_IterativeFit, input_file);
             bbtautau::AnaTupleReader tupleReader(input_file, args.channel(), activeVariables, input_friends, eventTagger,
                                                     ana_setup.mdnn_version, ana_setup.norm_unc_sources);
 
@@ -462,7 +467,7 @@ private:
 private:
     AnalyzerArguments args;
     std::set<std::string> activeVariables, limitVariables;
-    bbtautau::EventTagCreator eventTagger;
+    //bbtautau::EventTagCreator eventTagger;
     std::shared_ptr<TFile> outputFile;
     PropertyConfigReader histConfig;
     std::shared_ptr<ModellingUncertaintyCollection> unc_collection;

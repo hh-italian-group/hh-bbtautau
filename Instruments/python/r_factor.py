@@ -56,6 +56,7 @@ for file,tree in zip(files,trees):
     w_after = d.Define( "den", "weight*weight_btag_IterativeFit").Sum('den')
     r_factor=w_before.GetValue()/w_after.GetValue()
     r_factors[file.strip('.root')]=r_factor
+    print r_factors
     print r_factor
 
 with open("r_factors.json", "w") as write_file:

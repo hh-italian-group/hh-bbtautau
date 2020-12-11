@@ -23,7 +23,7 @@ public:
     EventTagCreator(const EventCategorySet& _categories, const EventSubCategorySet& _subCategories,
                     const std::set<UncertaintySource>& _event_unc_sources,
                     const std::set<UncertaintySource>& _norm_unc_sources, bool _use_IterativeFit,
-                    Channel _channel, Period _period);
+                    std::string _file_name);
 
     static std::pair<float, VBF_Category> FindVBFCategory(float dnn_score_TT_dl, float dnn_score_TT_sl, float dnn_score_TT_lep,
                                                             float dnn_score_TT_FH, float dnn_score_DY, float dnn_score_ggHH,
@@ -40,9 +40,8 @@ private:
     const EventCategorySet& categories;
     const EventSubCategorySet& subCategories;
     const std::set<UncertaintySource>& event_unc_sources, norm_unc_sources;
-    const bool use_IterativeFit;
-    const Channel channel;
-    const Period period;
+    const bool use_IterativeFit; 
+    std::string file_name;
     float iterativeFit_correction;
 };
 

@@ -109,7 +109,7 @@ std::vector<std::shared_ptr<TTree>> AnaTupleReader::ReadTrees(Channel channel,
                 std::string friend_nickname= (file.get()->GetName());
                 std::size_t fin = friend_nickname.find("HH");
                 friend_nickname.erase(0, fin-2);
-                friend_nickname.erase(4, std::string::npos); 
+                friend_nickname.erase(4, std::string::npos);
                 std::cout << friend_nickname << std::endl;
                 trees.front()->AddFriend(trees.back().get(),("friend_"+friend_nickname).c_str());
                 //i++;
