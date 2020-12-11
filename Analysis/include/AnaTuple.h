@@ -110,6 +110,7 @@ namespace analysis {
                     n_selected_gen_jets, n_selected_gen_bjets, genJets_nTotal, \
                     jets_nTotal_hadronFlavour_b, jets_nTotal_hadronFlavour_c) /* other global event quantities */ \
     WVAR_LIST(_, btag_Loose, btag_Medium, btag_Tight) \
+    VAR(bool, is_TuneCP5) \
     VAR_LIST(float, weight_btag_IterativeFit, weight_btag_IterativeFit_withJES) \
              /* btag weights for various working points estimated by different algorithms and their unc variations */ \
     UNC_VAR_LIST(_, \
@@ -187,6 +188,7 @@ public:
         std::map<DiscriminatorWP, std::map<UncertaintyScale, float>> weights;
         float iter_weight;
         boost::optional<float> iter_weight_with_jes;
+        bool is_TuneCP5;
     };
 
 

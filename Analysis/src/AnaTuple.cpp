@@ -230,7 +230,7 @@ void AnaTupleWriter::AddEvent(EventInfo& event, const DataIdMap& dataIds, const 
         tuple().weight_btag_IterativeFit = btag_weights.iter_weight;
         tuple().weight_btag_IterativeFit_withJES = btag_weights.iter_weight_with_jes ?
                                                    *btag_weights.iter_weight_with_jes : def_val;
-
+        tuple().is_TuneCP5 = btag_weights.is_TuneCP5;                                           
         #define FILL_UNC(r, _, name) \
            FillUncWeightVec(uncs_weight_map.at(UncertaintySource::name), nullptr, \
                &tuple().BOOST_PP_CAT(BOOST_PP_CAT(unc_, name), _Up), \
