@@ -25,7 +25,8 @@ EventTagCreator::EventTagCreator(const EventCategorySet& _categories, const Even
     std::vector<std::string> file= SplitValueList(file_name, false, "_", true);
     if(use_IterativeFit) {
         boost::property_tree::ptree loadPtreeRoot;
-        boost::property_tree::read_json("r_factors.json", loadPtreeRoot);
+        std::string path_to_json_file = "r_factors.json";
+        boost::property_tree::read_json(path_to_json_file, loadPtreeRoot);
         boost::property_tree::ptree temp ;
         if(loadPtreeRoot.get_child(file_name).template get_value<float>()==0)
             throw exception("Normalization correction for iterative fit is not available for %")

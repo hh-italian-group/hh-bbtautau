@@ -62,13 +62,16 @@ public:
         const EventSubCategorySet& subCategories = sub_categories_to_process;
 
         std::vector<std::string> unc_sources = SplitValueList(args.unc_sources_groups(),false, ",", true);
-        std::vector<std::string> input_friends = SplitValueList(args.input_friends(),false, ",", true);
+        //std::vector<std::string> input_friends = SplitValueList(args.input_friends(),false, ",", true);
         std::set<UncertaintySource> unc_sources_g;
         for (auto& unc_source : unc_sources){
             if(!unc_sources_g.empty())
                 unc_sources_g.erase(unc_sources_g.begin(), unc_sources_g.end());
             std::string input_file = args.input();
             boost::replace_all(input_file, "{UNC_GROUP}", unc_source);
+            std::cout << "\n input file \t " ;
+            std::cout << input_file << std::endl;
+            std::vector<std::string> input_friends = SplitValueList(args.input_friends(),false, ",", true);
             for (auto& f: input_friends) {
                 boost::replace_all(f, "{UNC_GROUP}", unc_source);
             }
