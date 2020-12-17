@@ -118,6 +118,10 @@ std::vector<std::shared_ptr<TTree>> AnaTupleReader::ReadTrees(Channel channel,
     return trees;
 }
 
+std::string Full_branch_name(int friend_number, std::string branch_name){
+    std::string full_name = "friend_"+
+    return full_name
+}
 
 AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names,
                                const std::vector<std::string>& input_friends, const EventTagCreator& event_tagger,

@@ -29,7 +29,9 @@ public:
         EventAnalyzerCore(_args, _args.channel(), false), args(_args), activeVariables(ParseVarSet(args.vars())),
         inputFile(root_ext::OpenRootFile(args.input() + "_full.root"))
     {
-        histConfig.Parse(FullPath(ana_setup.hist_cfg));
+        for (auto& hist_config : ana_setup.hist_cfg)
+            histConfig.Parse(FullPath(hist_config));
+        //histConfig.Parse(FullPath(ana_setup.hist_cfg));
         if(!ana_setup.unc_cfg.empty()) {
             ConfigReader config_reader;
             unc_collection = std::make_shared<ModellingUncertaintyCollection>();

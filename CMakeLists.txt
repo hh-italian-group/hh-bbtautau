@@ -38,7 +38,7 @@ add_library(SVfit STATIC ${SVFIT_SRC})
 target_compile_definitions(SVfit PRIVATE USE_SVFITTF=1)
 set_source_files_properties(${SVFIT_SRC} PROPERTIES COMPILE_FLAGS "-w")
 
-include("${AnalysisTools_DIR}/cmake/include/tensorflow.cmake")
+#include("${AnalysisTools_DIR}/cmake/include/tensorflow.cmake")
 if(${TF_AVAILABLE})
     file(GLOB_RECURSE MulticlassInference_SRC "${CMSSW_BASE_SRC}/MulticlassInference/MulticlassInference/src/*.cc")
     add_library(MulticlassInference STATIC ${MulticlassInference_SRC})
