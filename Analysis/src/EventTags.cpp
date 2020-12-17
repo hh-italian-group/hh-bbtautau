@@ -14,11 +14,11 @@ for btag related unc, you should multiply by both sf and unc up/down correction
 
 namespace analysis {
 namespace bbtautau {
-
+namespace{
 std::string get_name(UncertaintySource unc_source, UncertaintyScale unc_scale){
     std::string complete_name;
     if(unc_scale!= UncertaintyScale::Central && unc_scale!= UncertaintyScale::Up && unc_scale!= UncertaintyScale::Down)
-        throw exception("Incorrect uncertainty scale")
+        throw exception("Incorrect uncertainty scale");
 
     if(unc_source==UncertaintySource::None){
         if(unc_scale==UncertaintyScale::Central)
@@ -28,13 +28,14 @@ std::string get_name(UncertaintySource unc_source, UncertaintyScale unc_scale){
     }
     else{
         if(unc_scale!=UncertaintyScale::Central)
-            complete_name=EnumToString(unc_source)+"_"+EnumToString(unc_scale);
+            complete_name=ToString(unc_source)+"_"+ToString(unc_scale);
         else{
-            complete_name=EnumToString(unc_source);
+            complete_name=ToString(unc_source);
         }
     }
     return complete_name;
 
+}
 }
 
 EventTagCreator::EventTagCreator(const EventCategorySet& _categories, const EventSubCategorySet& _subCategories,
@@ -43,34 +44,32 @@ EventTagCreator::EventTagCreator(const EventCategorySet& _categories, const Even
                                   bool _use_IterativeFit, std::string _json_file)  :
         categories(_categories), subCategories(_subCategories), event_unc_sources(_event_unc_sources),
         norm_unc_sources(_norm_unc_sources), use_IterativeFit(_use_IterativeFit),
-        json_file(_json_file),
+        json_file(_json_file)
 {
-
-
     if(use_IterativeFit) {
         boost::property_tree::ptree loadPtreeRoot;
         boost::property_tree::read_json(json_file, loadPtreeRoot);
-
+        /*
         std::map<std::pair<UncertaintySource, UncertaintyScale>, float> iterativeFit_corrections{
             {{UncertaintySource::None, UncertaintyScale::Central}, loadPtreeRoot.get_child(get_name(UncertaintySource::None, UncertaintyScale::Central)).template get_value<float>()},
             {{UncertaintySource::btag_lf, UncertaintyScale::Up}, loadPtreeRoot.get_child(get_name(UncertaintySource::btag_lf, UncertaintyScale::Up)).template get_value<float>()},
             {{UncertaintySource::btag_lf, UncertaintyScale::Down}, loadPtreeRoot.get_child(get_name(UncertaintySource::btag_lf, UncertaintyScale::Down)).template get_value<float>()},
-            {{UncertaintySource::btag_lf_stats1, UncertaintyScale::Up}, loadPtreeRoot.get_child(get_name(UncertaintySource::btag_lf_stats1, UncertaintyScale::Up)).template get_value<float>()},
-            {{UncertaintySource::btag_lf_stats1, UncertaintyScale::Down}, loadPtreeRoot.get_child(get_name(UncertaintySource::btag_lf_stats1, UncertaintyScale::Down)).template get_value<float>()},
-            {{UncertaintySource::btag_lf_stats2, UncertaintyScale::Up}, loadPtreeRoot.get_child(get_name(UncertaintySource::btag_lf_stats2, UncertaintyScale::Up)).template get_value<float>()},
-            {{UncertaintySource::btag_lf_stats2, UncertaintyScale::Down}, loadPtreeRoot.get_child(get_name(UncertaintySource::btag_lf_stats2, UncertaintyScale::Down)).template get_value<float>()},
+            {{UncertaintySource::btag_lfstats1, UncertaintyScale::Up}, loadPtreeRoot.get_child(get_name(UncertaintySource::btag_lfstats1, UncertaintyScale::Up)).template get_value<float>()},
+            {{UncertaintySource::btag_lfstats1, UncertaintyScale::Down}, loadPtreeRoot.get_child(get_name(UncertaintySource::btag_lfstats1, UncertaintyScale::Down)).template get_value<float>()},
+            {{UncertaintySource::btag_lfstats2, UncertaintyScale::Up}, loadPtreeRoot.get_child(get_name(UncertaintySource::btag_lfstats2, UncertaintyScale::Up)).template get_value<float>()},
+            {{UncertaintySource::btag_lfstats2, UncertaintyScale::Down}, loadPtreeRoot.get_child(get_name(UncertaintySource::btag_lfstats2, UncertaintyScale::Down)).template get_value<float>()},
             {{UncertaintySource::btag_hf, UncertaintyScale::Up}, loadPtreeRoot.get_child(get_name(UncertaintySource::btag_hf, UncertaintyScale::Up)).template get_value<float>()},
             {{UncertaintySource::btag_hf, UncertaintyScale::Down}, loadPtreeRoot.get_child(get_name(UncertaintySource::btag_hf, UncertaintyScale::Down)).template get_value<float>()},
-            {{UncertaintySource::btag_hf_stats1, UncertaintyScale::Up}, loadPtreeRoot.get_child(get_name(UncertaintySource::btag_hf_stats1, UncertaintyScale::Up)).template get_value<float>()},
-            {{UncertaintySource::btag_hf_stats1, UncertaintyScale::Down}, loadPtreeRoot.get_child(get_name(UncertaintySource::btag_hf_stats1, UncertaintyScale::Down)).template get_value<float>()},
-            {{UncertaintySource::btag_hf_stats2, UncertaintyScale::Up}, loadPtreeRoot.get_child(get_name(UncertaintySource::btag_hf_stats2, UncertaintyScale::Up)).template get_value<float>()},
-            {{UncertaintySource::btag_hf_stats2, UncertaintyScale::Down}, loadPtreeRoot.get_child(get_name(UncertaintySource::btag_hf_stats2, UncertaintyScale::Down)).template get_value<float>()},
+            {{UncertaintySource::btag_hfstats1, UncertaintyScale::Up}, loadPtreeRoot.get_child(get_name(UncertaintySource::btag_hfstats1, UncertaintyScale::Up)).template get_value<float>()},
+            {{UncertaintySource::btag_hfstats1, UncertaintyScale::Down}, loadPtreeRoot.get_child(get_name(UncertaintySource::btag_hfstats1, UncertaintyScale::Down)).template get_value<float>()},
+            {{UncertaintySource::btag_hfstats2, UncertaintyScale::Up}, loadPtreeRoot.get_child(get_name(UncertaintySource::btag_hfstats2, UncertaintyScale::Up)).template get_value<float>()},
+            {{UncertaintySource::btag_hfstats2, UncertaintyScale::Down}, loadPtreeRoot.get_child(get_name(UncertaintySource::btag_hfstats2, UncertaintyScale::Down)).template get_value<float>()},
             {{UncertaintySource::btag_cferr1, UncertaintyScale::Up}, loadPtreeRoot.get_child(get_name(UncertaintySource::btag_cferr1, UncertaintyScale::Up)).template get_value<float>()},
             {{UncertaintySource::btag_cferr1, UncertaintyScale::Down}, loadPtreeRoot.get_child(get_name(UncertaintySource::btag_cferr1, UncertaintyScale::Down)).template get_value<float>()},
             {{UncertaintySource::btag_cferr2, UncertaintyScale::Up}, loadPtreeRoot.get_child(get_name(UncertaintySource::btag_cferr2, UncertaintyScale::Up)).template get_value<float>()},
             {{UncertaintySource::btag_cferr2, UncertaintyScale::Down}, loadPtreeRoot.get_child(get_name(UncertaintySource::btag_cferr2, UncertaintyScale::Down)).template get_value<float>()},
-        }
-        /*
+        };
+
         if(loadPtreeRoot.get_child(json_file).template get_value<float>()==0)
             throw exception("Normalization correction for iterative fit is not available for %")
                     % json_file;
@@ -78,7 +77,6 @@ EventTagCreator::EventTagCreator(const EventCategorySet& _categories, const Even
         else
             iterativeFit_correction = loadPtreeRoot.get_child(file_name).template get_value<float>();
         //std::cout << iterativeFit_correction << std::endl;*/
-
     }
 }
 
@@ -123,11 +121,11 @@ EventTags EventTagCreator::CreateEventTags(const DataId& dataId_base, float weig
     };
     const auto get_weight_btag = [&](DiscriminatorWP wp, UncertaintySource unc_source, UncertaintyScale unc_scale) {
         if(use_IterativeFit) {
-            if(iterativeFit_corrections.count((unc_source, unc_scale))){
-                return weight_btag_IterativeFit * iterativeFit_corrections.at((unc_source, unc_scale));
-            }
-            else
-                return weight_btag_IterativeFit * iterativeFit_corrections.at((UncertaintySource::None, UncertaintyScale::Central))
+            //if(iterativeFit_corrections.find((unc_source, unc_scale))){
+            //    return weight_btag_IterativeFit ; //* iterativeFit_corrections.at((unc_source, unc_scale));
+            //}
+            //else
+                return weight_btag_IterativeFit ; //* iterativeFit_corrections.at((UncertaintySource::None, UncertaintyScale::Central))
         }
         return btag_weights.at(wp);
     };
@@ -141,10 +139,9 @@ EventTags EventTagCreator::CreateEventTags(const DataId& dataId_base, float weig
         if(!category.Contains(static_cast<size_t>(num_central_jets), bjet_counts, is_vbf, is_boosted, vbf_cat.second))
             continue;
         EventSubCategory evtSubCategory;
-        const float btag_sf=1.f;
-
         const float btag_sf = category.HasBtagConstraint() && !is_data ? get_weight_btag(category.BtagWP(), dataId_base.Get<UncertaintySource>(), dataId_base.Get<UncertaintyScale>()) : 1.f;
-        const float cat_weight = btag_uncs.count(dataId_base.Get<UncertaintySource>())? weight * btag_sf * unc_map.at(ategory.BtagWP(), dataId_base.Get<UncertaintySource>(), dataId_base.Get<UncertaintyScale>()) : weight * btag_sf ;
+        const float cat_weight = weight * btag_sf;
+        //const float cat_weight = btag_uncs.count(dataId_base.Get<UncertaintySource>())? weight * btag_sf * unc_map.at(category.BtagWP()) : weight * btag_sf ;
 
         if(has_b_pair) {
             const EllipseParameters& window = category.HasBoostConstraint() && category.IsBoosted()
@@ -161,12 +158,12 @@ EventTags EventTagCreator::CreateEventTags(const DataId& dataId_base, float weig
                 for(const auto& [key, weight_shift] : unc_map) {
                     if(!category.HasBtagConstraint() && btag_uncs.count(key.first)) continue;
                     const auto dataId_scaled = dataId.Set(key.first).Set(key.second);
-                    const float btag_sf_scaled = category.HasBtagConstraint() && !is_data ? get_weight_btag(category.BtagWP(), dataId_scaled.Get<UncertaintySource>(), dataId_scaled.Get<UncertaintyScale>()) : 1.f;
+                    /*const float btag_sf_scaled = category.HasBtagConstraint() && !is_data ? get_weight_btag(category.BtagWP(), dataId_scaled.Get<UncertaintySource>(), dataId_scaled.Get<UncertaintyScale>()) : 1.f;
 
                     const float cat_weight_scaled = btag_uncs(dataId_scaled.Get<UncertaintySource>())? weight * btag_sf * unc_map.at(ategory.BtagWP(), dataId_scaled.Get<UncertaintySource>(), dataId_scaled.Get<UncertaintyScale>()) : weight * btag_sf ;
-
+                    */
                     evt_tags.dataIds.push_back(dataId_scaled);
-                    evt_tags.weights.push_back(cat_weight_scaled);
+                    evt_tags.weights.push_back(cat_weight *weight_shift);
                 }
             }
         }

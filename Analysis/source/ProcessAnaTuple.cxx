@@ -31,10 +31,7 @@ public:
     ProcessAnaTuple(const AnalyzerArguments& _args) :
         EventAnalyzerCore(_args, _args.channel(), false), args(_args), activeVariables(ParseVarSet(args.vars())),
         outputFile(root_ext::CreateRootFile(args.output() + "_full.root", ROOT::kLZMA, 9))
-        std::set<UncertaintySource> unc_sources_total;
-        std::set_union(ana_setup.norm_unc_sources.begin(), ana_setup.norm_unc_sources.end(),
-                        unc_sources_group.begin(), unc_sources_group.end(),
-                        std::inserter(unc_sources_total, unc_sources_total.begin()));
+
     {
         for (auto& hist_config : ana_setup.hist_cfg)
             histConfig.Parse(FullPath(hist_config));
@@ -46,6 +43,9 @@ public:
             config_reader.AddEntryReader("UNC", unc_reader, true);
             config_reader.ReadConfig(FullPath(ana_setup.unc_cfg));
         }
+        std::set_union(ana_setup.norm_unc_sources.begin(), ana_setup.norm_unc_sources.end(),
+                        unc_sources_group.begin(), unc_sources_group.end(),
+                        std::inserter(unc_sources_total, unc_sources_total.begin()));
 
 
     }
@@ -81,7 +81,7 @@ public:
                     std::cout << '\t' << file_name << '\n';
                 std::cout << std::endl;
             }
-            bbtautau::EventTagCreator eventTagger(ana_setup.categories, sub_categories_to_process, unc_sources_total, ana_setup.norm_unc_sources,ana_setup.use_IterativeFit, ana_setup.r_factors_file.at(args.channel));
+            bbtautau::EventTagCreator eventTagger(ana_setup.categories, sub_categories_to_process, unc_sources_total, ana_setup.norm_unc_sources,ana_setup.use_IterativeFit, ana_setup.r_factors_file.at(args.channel()));
             bbtautau::AnaTupleReader tupleReader(input_file, args.channel(), activeVariables, input_friends, eventTagger,
                                                     ana_setup.mdnn_version, ana_setup.norm_unc_sources);
 
@@ -467,6 +467,7 @@ private:
     std::shared_ptr<TFile> outputFile;
     PropertyConfigReader histConfig;
     std::shared_ptr<ModellingUncertaintyCollection> unc_collection;
+    std::set<UncertaintySource> unc_sources_total;
 };
 
 } // namespace analysis

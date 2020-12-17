@@ -101,27 +101,19 @@ std::vector<std::shared_ptr<TTree>> AnaTupleReader::ReadTrees(Channel channel,
                                                               const std::vector<std::shared_ptr<TFile>>& files)
 {
     std::vector<std::shared_ptr<TTree>> trees;
-    //int i=1;
+    int i=0;
     for(const auto& file : files) {
         trees.emplace_back(root_ext::ReadObject<TTree>(*file, ToString(channel)));
         if(trees.size() > 1)
             {
-                std::string friend_nickname= (file.get()->GetName());
-                std::size_t fin = friend_nickname.find("HH");
-                friend_nickname.erase(0, fin-2);
-                friend_nickname.erase(4, std::string::npos);
-                std::cout << friend_nickname << std::endl;
-                trees.front()->AddFriend(trees.back().get(),("friend_"+friend_nickname).c_str());
-                //i++;
+                trees.front()->AddFriend(trees.back().get(),("friend_"+std::to_string(i)).c_str());
+                i++;
             }
     }
     return trees;
 }
 
-std::string Full_branch_name(int friend_number, std::string branch_name){
-    std::string full_name = "friend_"+
-    return full_name
-}
+
 
 AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names,
                                const std::vector<std::string>& input_friends, const EventTagCreator& event_tagger,
@@ -158,6 +150,7 @@ AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, Na
                 active_var_names.insert(column);
         }
     }
+
 
     std::mutex mutex;
     auto extract_names = [&](const std::vector<unsigned>& hashes, const std::vector<std::string>& names,
@@ -271,12 +264,29 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
     DefineP4(df, "VBF1");
     DefineP4(df, "VBF2");
 
+
+
+
     const auto convertToDataId = [&](unsigned dataset, unsigned event_region, int unc_source, int unc_scale) {
         return DataId(GetDatasetByHash(dataset), GetRegionByHash(event_region),
                       static_cast<UncertaintySource>(unc_source), static_cast<UncertaintyScale>(unc_scale));
     };
     Define(df, "dataId", convertToDataId, { "dataset", "event_region", "unc_source", "unc_scale" }, true);
 
+    const auto Full_branch_name=[&](std::string branch_name){
+        std::string full_name;
+        std::vector<std::string> columns =  df.GetColumnNames();
+        if(std::find(columns.begin(), columns.end(), branch_name) != columns.end() ) {
+            full_name= branch_name;
+        }
+        else{
+            for(unsigned int i=0; i<files.size(); i++){
+                if(std::find(columns.begin(), columns.end(), "friend_"+std::to_string(i)+"."+branch_name) != columns.end() )
+                        full_name="friend_"+std::to_string(i)+"."+branch_name;
+            }
+        }
+        return full_name;
+    };
 
     if(mdnn_version.empty()){
         auto fake_vbf_cat = [](){return std::make_pair(-1.f, analysis::VBF_Category::None);};
@@ -289,7 +299,8 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
             "_hh_vbf_c2v", "_hh_vbf_sm"
         };
         for(const auto& score_name : mdnn_score_names) {
-            const std::string branch = "friend_qqHH.mdnn_" + mdnn_version + score_name;
+            //const std::string branch = "mdnn_" + mdnn_version + score_name;
+            std::string branch = Full_branch_name("mdnn_" + mdnn_version + score_name);
             mdnn_branches.push_back(branch);
         }
         const auto vbf_cat = make_function(&EventTagCreator::FindVBFCategory);

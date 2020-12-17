@@ -2,343 +2,112 @@ import ROOT
 import argparse
 import json
 from numpy import *
+uncertainty_dictionary =  {"None": 0, "TauES": 1, "JetFull_Total": 2, "TopPt": 3, "JetFull_AbsoluteStat": 4, "JetFull_AbsoluteScale": 5,
+    "JetFull_AbsoluteMPFBias": 6, "JetFull_AbsoluteFlavMap": 7, "JetFull_Fragmentation": 8, "JetFull_SinglePionECAL": 9,
+    "JetFull_SinglePionHCAL": 10, "JetFull_FlavorQCD": 11, "JetFull_FlavorZJet": 12, "JetFull_FlavorPhotonJet": 13,
+    "JetFull_FlavorPureGluon": 14, "JetFull_FlavorPureQuark": 15, "JetFull_FlavorPureCharm": 16,
+    "JetFull_FlavorPureBottom": 17, "JetFull_TimePtEta": 18, "JetFull_RelativeJEREC1": 19, "JetFull_RelativeJEREC2": 20,
+    "JetFull_RelativeJERHF": 21, "JetFull_RelativePtBB": 22, "JetFull_RelativePtEC1": 23, "JetFull_RelativePtEC2": 24,
+    "JetFull_RelativePtHF": 25, "JetFull_RelativeBal": 26, "JetFull_RelativeFSR": 27, "JetFull_PileUpDataMC": 28,
+    "JetFull_PileUpPtRef": 29, "JetFull_PileUpPtBB": 30, "JetFull_PileUpPtEC1": 31, "JetFull_PileUpPtEC2": 32,
+    "JetFull_PileUpPtHF": 33, "JetFull_SubTotalPileUp": 34, "JetFull_SubTotalRelative": 35, "JetFull_SubTotalPt": 36,
+    "JetFull_SubTotalScale": 37, "JetFull_SubTotalAbsolute": 38, "JetFull_SubTotalMC": 39, "JetFull_TotalNoFlavor": 40,
+    "JetFull_TotalNoTime": 41, "JetFull_TotalNoFlavorNoTime": 42, "EleFakingTauES": 43, "JetReduced_Absolute": 44,
+    "JetReduced_Absolute_year": 45, "JetReduced_BBEC1": 46, "JetReduced_BBEC1_year": 47, "JetReduced_EC2": 48,
+    "JetReduced_EC2_year": 49, "JetReduced_FlavorQCD": 50, "JetReduced_HF": 51, "JetReduced_HF_year": 52,
+    "JetReduced_RelativeBal": 53, "JetReduced_RelativeSample_year": 54, "JetReduced_Total": 55,
+    "Lumi": 56, "QCDscale_W": 57, "QCDscale_WW": 58, "QCDscale_WZ": 59, "QCDscale_ZZ": 60, "QCDscale_EWK": 61,
+    "QCDscale_ttbar": 62, "QCDscale_tW": 63, "QCDscale_ZH": 64, "QCDscale_ggHH": 65, "pdf_ggHH": 66, "BR_SM_H_bb": 67,
+    "BR_SM_H_tautau": 68, "Eff_b": 69, "Eff_e": 70, "Eff_m": 71, "DY_0b_vLowPt": 72, "DY_0b_LowPt": 73, "DY_0b_Med1Pt": 74,
+    "DY_0b_Med2Pt": 75, "DY_0b_HighPt": 76, "DY_0b_vHighPt": 77, "DY_1b_vLowPt": 78, "DY_1b_LowPt": 79, "DY_1b_Med1Pt": 80,
+    "DY_1b_Med2Pt": 81, "DY_1b_HighPt": 82, "DY_1b_vHighPt": 83, "DY_2b_vLowPt": 84, "DY_2b_LowPt": 85, "DY_2b_Med1Pt": 86,
+    "DY_2b_Med2Pt": 87, "DY_2b_HighPt": 88, "DY_2b_vHighPt": 89, "Qcd_norm": 90, "Qcd_sf_stat_unc": 91,
+    "Qcd_sf_extrap_unc": 92, "TauTriggerUnc": 93, "EleTriggerUnc": 94, "MuonTriggerUnc": 95, "TauES_DM0": 96,
+    "TauES_DM1": 97, "TauES_DM10": 98, "TauES_DM11": 99, "TauVSjetSF_DM0": 100, "TauVSjetSF_DM1": 101,
+    "TauVSjetSF_3prong": 102, "TauVSjetSF_pt20to25": 103, "TauVSjetSF_pt25to30": 104, "TauVSjetSF_pt30to35": 105,
+    "TauVSjetSF_pt35to40": 106, "TauVSjetSF_ptgt40": 107, "EleFakingTauES_DM0": 108, "EleFakingTauES_DM1": 109,
+    "EleFakingTauES_3prong": 110, "TauVSeSF_barrel": 111, "TauVSeSF_endcap": 112, "MuFakingTauES_DM0": 113,
+    "MuFakingTauES_DM1": 114, "MuFakingTauES_3prong": 115, "TauVSmuSF_etaLt0p4": 116, "TauVSmuSF_eta0p4to0p8": 117,
+    "TauVSmuSF_eta0p8to1p2": 118, "TauVSmuSF_eta1p2to1p7": 119, "TauVSmuSF_etaGt1p7": 120, "MuFakingTauES": 121,
+    "EleIdIsoUnc": 122, "MuonIdIsoUnc": 123, "TauTriggerUnc_DM0": 124, "TauTriggerUnc_DM1": 125, "TauTriggerUnc_DM10": 126,
+    "TauTriggerUnc_DM11": 127, "L1_prefiring": 128, "PileUp": 129, "PileUpJetId_eff" : 130, "PileUpJetId_mistag" : 131,
+    "TauCustomSF_DM0": 132, "TauCustomSF_DM1": 133, "TauCustomSF_DM10": 134, "TauCustomSF_DM11": 135,
+    "VBFTriggerUnc_jets": 139, "VBFTauTriggerUnc_DM0": 140, "VBFTauTriggerUnc_DM1": 141, "VBFTauTriggerUnc_3prong": 142,
+    "btag_lf": 143, "btag_hf": 144, "btag_hfstats1": 145, "btag_hfstats2": 146,
+    "btag_lfstats1": 147, "btag_lfstats2": 148, "btag_cferr1": 149, "btag_cferr2": 150}
+variation_dictionary = { "Central" : 0, "Up" : 1, "Down" : -1 }
 
+ 
+btag_unc_sources=["btag_lf","btag_hf","btag_hfstats1","btag_hfstats2","btag_lfstats1","btag_lfstats2","btag_cferr1","btag_cferr2"]
+jes_unc_sources=["JetReduced_Absolute","JetReduced_Absolute_year","JetReduced_BBEC1","JetReduced_BBEC1_year","JetReduced_EC2","JetReduced_EC2_year","JetReduced_FlavorQCD","JetReduced_HF","JetReduced_HF_year","JetReduced_RelativeBal","JetReduced_RelativeSample_year","JetReduced_Total","JetReduced_Total_withJES"]
+les_unc_sources=["TauES", "TauES_DM0", "TauES_DM1", "TauES_DM10", "TauES_DM11", "EleFakingTauES_DM0", "EleFakingTauES_DM1", "MuFakingTauES"]
+unc_variations=['Up', 'Down']
 
-
-def add_dic(r_factor, r_factor_name, r_factors):
-    print ("r factor related to %s is %.4f " % (r_factor_name ,r_factor))
+def add_dic(r_factor, unc_source,unc_scale, r_factors_dict):
+    print ("r factor related to %s and %s  is %.10f " % (unc_source, unc_scale,r_factor))
     if isnan(r_factor):
         r_factor = 1
-    r_factors[r_factor_name]=r_factor
+    r_factors_dict[unc_source][unc_scale]=r_factor
 
-def evaluate_r(input_dir,channel, year, unc_source, r_factors):
-    file = input_dir+year+"_"+channel+"_"+unc_source+".root"
+def evaluate_r_Central(file,channel, unc_sources, unc_scales, r_factors_dict, isTune5):
+    print file
     d = ROOT.RDataFrame(channel, file)
     not_data = '! is_data'
     d=d.Filter(not_data)
-    if(unc_source == "Central"):
-        print "\n ******** Central ********* \n"
-        w_central_before = d.Define( "num", "weight").Sum('num')
-        w_central_after = d.Define( "den", "weight*weight_btag_IterativeFit").Sum('den')
-        r_factor=w_central_before.GetValue()/w_central_after.GetValue()
-        add_dic(r_factor, "Central",r_factors)
-
-        w_btag_lf_Up_before = d.Define( "num_btag_lf_Up", "weight*unc_btag_lf_Up").Sum('num_btag_lf_Up')
-        w_btag_lf_Up_after = d.Define( "den_btag_lf_Up", "weight*unc_btag_lf_Up*weight_btag_IterativeFit*unc_btag_lf_Up").Sum('den_btag_lf_Up')
-        r_factor_btag_lf_Up = w_btag_lf_Up_before.GetValue()/w_btag_lf_Up_after.GetValue()
-        add_dic(r_factor_btag_lf_Up, "btag_lf_Up",r_factors)
-
-        w_btag_lf_Down_before = d.Define( "num_btag_lf_Down", "weight*unc_btag_lf_Down").Sum('num_btag_lf_Down')
-        w_btag_lf_Down_after = d.Define( "den_btag_lf_Down", "weight*unc_btag_lf_Down*weight_btag_IterativeFit*unc_btag_lf_Down").Sum('den_btag_lf_Down')
-        r_factor_btag_lf_Down = w_btag_lf_Down_before.GetValue()/w_btag_lf_Down_after.GetValue()
-        add_dic(r_factor_btag_lf_Down, "btag_lf_Down",r_factors)
-
-        w_btag_hf_Up_before = d.Define( "num_btag_hf_Up", "weight*unc_btag_hf_Up").Sum('num_btag_hf_Up')
-        w_btag_hf_Up_after = d.Define( "den_btag_hf_Up", "weight*unc_btag_hf_Up*weight_btag_IterativeFit*unc_btag_hf_Up").Sum('den_btag_hf_Up')
-        r_factor_btag_hf_Up = w_btag_hf_Up_before.GetValue()/w_btag_hf_Up_after.GetValue()
-        add_dic(r_factor_btag_hf_Up, "btag_hf_Up",r_factors)
-
-        w_btag_hf_Down_before = d.Define( "num_btag_hf_Down", "weight*unc_btag_hf_Down").Sum('num_btag_hf_Down')
-        w_btag_hf_Down_after = d.Define( "den_btag_hf_Down", "weight*unc_btag_hf_Down*weight_btag_IterativeFit*unc_btag_hf_Down").Sum('den_btag_hf_Down')
-        r_factor_btag_hf_Down = w_btag_hf_Down_before.GetValue()/w_btag_hf_Down_after.GetValue()
-        add_dic(r_factor_btag_hf_Down, "btag_hf_Down",r_factors)
-
-        w_btag_hfstats1_Up_before = d.Define( "num_btag_hfstats1_Up", "weight*unc_btag_hfstats1_Up").Sum('num_btag_hfstats1_Up')
-        w_btag_hfstats1_Up_after = d.Define( "den_btag_hfstats1_Up", "weight*unc_btag_hfstats1_Up*weight_btag_IterativeFit*unc_btag_hfstats1_Up").Sum('den_btag_hfstats1_Up')
-        r_factor_btag_hfstats1_Up = w_btag_hfstats1_Up_before.GetValue()/w_btag_hfstats1_Up_after.GetValue()
-        add_dic(r_factor_btag_hfstats1_Up, "btag_hfstats1_Up",r_factors)
-
-        w_btag_hfstats1_Down_before = d.Define( "num_btag_hfstats1_Down", "weight*unc_btag_hfstats1_Down").Sum('num_btag_hfstats1_Down')
-        w_btag_hfstats1_Down_after = d.Define( "den_btag_hfstats1_Down", "weight*unc_btag_hfstats1_Down*weight_btag_IterativeFit*unc_btag_hfstats1_Down").Sum('den_btag_hfstats1_Down')
-        r_factor_btag_hfstats1_Down = w_btag_hfstats1_Down_before.GetValue()/w_btag_hfstats1_Down_after.GetValue()
-        add_dic(r_factor_btag_hfstats1_Down, "btag_hfstats1_Down",r_factors)
-
-        w_btag_hfstats2_Up_before = d.Define( "num_btag_hfstats2_Up", "weight*unc_btag_hfstats2_Up").Sum('num_btag_hfstats2_Up')
-        w_btag_hfstats2_Up_after = d.Define( "den_btag_hfstats2_Up", "weight*unc_btag_hfstats2_Up*weight_btag_IterativeFit*unc_btag_hfstats2_Up").Sum('den_btag_hfstats2_Up')
-        r_factor_btag_hfstats2_Up = w_btag_hfstats2_Up_before.GetValue()/w_btag_hfstats2_Up_after.GetValue()
-        add_dic(r_factor_btag_hfstats2_Up, "btag_hfstats2_Up",r_factors)
-
-        w_btag_hfstats2_Down_before = d.Define( "num_btag_hfstats2_Down", "weight*unc_btag_hfstats2_Down").Sum('num_btag_hfstats2_Down')
-        w_btag_hfstats2_Down_after = d.Define( "den_btag_hfstats2_Down", "weight*unc_btag_hfstats2_Down*weight_btag_IterativeFit*unc_btag_hfstats2_Down").Sum('den_btag_hfstats2_Down')
-        r_factor_btag_hfstats2_Down = w_btag_hfstats2_Down_before.GetValue()/w_btag_hfstats2_Down_after.GetValue()
-        add_dic(r_factor_btag_hfstats2_Down, "btag_hfstats2_Down",r_factors)
-
-        w_btag_lfstats1_Up_before = d.Define( "num_btag_lfstats1_Up", "weight*unc_btag_lfstats1_Up").Sum('num_btag_lfstats1_Up')
-        w_btag_lfstats1_Up_after = d.Define( "den_btag_lfstats1_Up", "weight*unc_btag_lfstats1_Up*weight_btag_IterativeFit*unc_btag_lfstats1_Up").Sum('den_btag_lfstats1_Up')
-        r_factor_btag_lfstats1_Up = w_btag_lfstats1_Up_before.GetValue()/w_btag_lfstats1_Up_after.GetValue()
-        add_dic(r_factor_btag_lfstats1_Up, "btag_lfstats1_Up",r_factors)
-
-        w_btag_lfstats1_Down_before = d.Define( "num_btag_lfstats1_Down", "weight*unc_btag_lfstats1_Down").Sum('num_btag_lfstats1_Down')
-        w_btag_lfstats1_Down_after = d.Define( "den_btag_lfstats1_Down", "weight*unc_btag_lfstats1_Down*weight_btag_IterativeFit*unc_btag_lfstats1_Down").Sum('den_btag_lfstats1_Down')
-        r_factor_btag_lfstats1_Down = w_btag_lfstats1_Down_before.GetValue()/w_btag_lfstats1_Down_after.GetValue()
-        add_dic(r_factor_btag_lfstats1_Down, "btag_lfstats1_Down",r_factors)
-
-        w_btag_lfstats2_Up_before = d.Define( "num_btag_lfstats2_Up", "weight*unc_btag_lfstats2_Up").Sum('num_btag_lfstats2_Up')
-        w_btag_lfstats2_Up_after = d.Define( "den_btag_lfstats2_Up", "weight*unc_btag_lfstats2_Up*weight_btag_IterativeFit*unc_btag_lfstats2_Up").Sum('den_btag_lfstats2_Up')
-        r_factor_btag_lfstats2_Up = w_btag_lfstats2_Up_before.GetValue()/w_btag_lfstats2_Up_after.GetValue()
-        add_dic(r_factor_btag_lfstats2_Up, "btag_lfstats2_Up",r_factors)
-
-        w_btag_lfstats2_Down_before = d.Define( "num_btag_lfstats2_Down", "weight*unc_btag_lfstats2_Down").Sum('num_btag_lfstats2_Down')
-        w_btag_lfstats2_Down_after = d.Define( "den_btag_lfstats2_Down", "weight*unc_btag_lfstats2_Down*weight_btag_IterativeFit*unc_btag_lfstats2_Down").Sum('den_btag_lfstats2_Down')
-        r_factor_btag_lfstats2_Down = w_btag_lfstats2_Down_before.GetValue()/w_btag_lfstats2_Down_after.GetValue()
-        add_dic(r_factor_btag_lfstats2_Down, "btag_lfstats2_Down",r_factors)
-
-        w_btag_cferr1_Up_before = d.Define( "num_btag_cferr1_Up", "weight*unc_btag_cferr1_Up").Sum('num_btag_cferr1_Up')
-        w_btag_cferr1_Up_after = d.Define( "den_btag_cferr1_Up", "weight*unc_btag_cferr1_Up*weight_btag_IterativeFit*unc_btag_cferr1_Up").Sum('den_btag_cferr1_Up')
-        r_factor_btag_cferr1_Up = w_btag_cferr1_Up_before.GetValue()/w_btag_cferr1_Up_after.GetValue()
-        add_dic(r_factor_btag_cferr1_Up, "btag_cferr1_Up",r_factors)
-
-        w_btag_cferr1_Down_before = d.Define( "num_btag_cferr1_Down", "weight*unc_btag_cferr1_Down").Sum('num_btag_cferr1_Down')
-        w_btag_cferr1_Down_after = d.Define( "den_btag_cferr1_Down", "weight*unc_btag_cferr1_Down*weight_btag_IterativeFit*unc_btag_cferr1_Down").Sum('den_btag_cferr1_Down')
-        r_factor_btag_cferr1_Down = w_btag_cferr1_Down_before.GetValue()/w_btag_cferr1_Down_after.GetValue()
-        add_dic(r_factor_btag_cferr1_Down, "btag_cferr1_Down",r_factors)
-
-        w_btag_cferr2_Up_before = d.Define( "num_btag_cferr2_Up", "weight*unc_btag_cferr2_Up").Sum('num_btag_cferr2_Up')
-        w_btag_cferr2_Up_after = d.Define( "den_btag_cferr2_Up", "weight*unc_btag_cferr2_Up*weight_btag_IterativeFit*unc_btag_cferr2_Up").Sum('den_btag_cferr2_Up')
-        r_factor_btag_cferr2_Up = w_btag_cferr2_Up_before.GetValue()/w_btag_cferr2_Up_after.GetValue()
-        add_dic(r_factor_btag_cferr2_Up, "btag_cferr2_Up",r_factors)
-
-        w_btag_cferr2_Down_before = d.Define( "num_btag_cferr2_Down", "weight*unc_btag_cferr2_Down").Sum('num_btag_cferr2_Down')
-        w_btag_cferr2_Down_after = d.Define( "den_btag_cferr2_Down", "weight*unc_btag_cferr2_Down*weight_btag_IterativeFit*unc_btag_cferr2_Down").Sum('den_btag_cferr2_Down')
-        r_factor_btag_cferr2_Down = w_btag_cferr2_Down_before.GetValue()/w_btag_cferr2_Down_after.GetValue()
-        add_dic(r_factor_btag_cferr2_Down, "btag_cferr2_Down",r_factors)
-
-    if(unc_source=="JES"):
-        print "\n ******** JES ********* \n"
-        w_before_JetReduced_Absolute_Up= d.Filter("unc_source==44").Filter("unc_scale==+1").Define("num_JetReduced_Absolute_Up", "weight").Sum('num_JetReduced_Absolute_Up')
-        w_after_JetReduced_Absolute_Up= d.Filter("unc_source==44").Filter("unc_scale==+1").Define( "den_JetReduced_Absolute_Up", "weight*weight_btag_IterativeFit").Sum('den_JetReduced_Absolute_Up')
-        r_factor_JetReduced_Absolute_Up=w_before_JetReduced_Absolute_Up.GetValue()/w_after_JetReduced_Absolute_Up.GetValue()
-        add_dic(r_factor_JetReduced_Absolute_Up, "JetReduced_Absolute_Up",r_factors)
-
-        w_before_JetReduced_Absolute_Down = d.Filter("unc_source==44").Filter("unc_scale==-1").Define("num_JetReduced_Absolute_Down", "weight").Sum('num_JetReduced_Absolute_Down')
-        w_after_JetReduced_Absolute_Down = d.Filter("unc_source==44").Filter("unc_scale==-1").Define( "den_JetReduced_Absolute_Down", "weight*weight_btag_IterativeFit").Sum('den_JetReduced_Absolute_Down')
-        r_factor_JetReduced_Absolute_Down=w_before_JetReduced_Absolute_Down.GetValue()/w_after_JetReduced_Absolute_Down.GetValue()
-        add_dic(r_factor_JetReduced_Absolute_Down, "JetReduced_Absolute_Down",r_factors)
-
-
-        w_before_JetReduced_Absolute_year_Up= d.Filter("unc_source==45").Filter("unc_scale==+1").Define("num_JetReduced_Absolute_year_Up", "weight").Sum('num_JetReduced_Absolute_year_Up')
-        w_after_JetReduced_Absolute_year_Up= d.Filter("unc_source==45").Filter("unc_scale==+1").Define( "den_JetReduced_Absolute_year_Up", "weight*weight_btag_IterativeFit").Sum('den_JetReduced_Absolute_year_Up')
-        r_factor_JetReduced_Absolute_year_Up=w_before_JetReduced_Absolute_year_Up.GetValue()/w_after_JetReduced_Absolute_year_Up.GetValue()
-        add_dic(r_factor_JetReduced_Absolute_year_Up, "JetReduced_Absolute_year_Up",r_factors)
-
-        w_before_JetReduced_Absolute_year_Down = d.Filter("unc_source==45").Filter("unc_scale==-1").Define("num_JetReduced_Absolute_year_Down", "weight").Sum('num_JetReduced_Absolute_year_Down')
-        w_after_JetReduced_Absolute_year_Down = d.Filter("unc_source==45").Filter("unc_scale==-1").Define( "den_JetReduced_Absolute_year_Down", "weight*weight_btag_IterativeFit").Sum('den_JetReduced_Absolute_year_Down')
-        r_factor_JetReduced_Absolute_year_Down=w_before_JetReduced_Absolute_year_Down.GetValue()/w_after_JetReduced_Absolute_year_Down.GetValue()
-        add_dic(r_factor_JetReduced_Absolute_year_Down, "JetReduced_Absolute_year_Down",r_factors)
-
-
-        w_before_JetReduced_BBEC1_Up= d.Filter("unc_source==46").Filter("unc_scale==+1").Define("num_JetReduced_BBEC1_Up", "weight").Sum('num_JetReduced_BBEC1_Up')
-        w_after_JetReduced_BBEC1_Up= d.Filter("unc_source==46").Filter("unc_scale==+1").Define( "den_JetReduced_BBEC1_Up", "weight*weight_btag_IterativeFit").Sum('den_JetReduced_BBEC1_Up')
-        r_factor_JetReduced_BBEC1_Up=w_before_JetReduced_BBEC1_Up.GetValue()/w_after_JetReduced_BBEC1_Up.GetValue()
-        add_dic(r_factor_JetReduced_BBEC1_Up, "JetReduced_BBEC1_Up",r_factors)
-
-        w_before_JetReduced_BBEC1_Down = d.Filter("unc_source==46").Filter("unc_scale==-1").Define("num_JetReduced_BBEC1_Down", "weight").Sum('num_JetReduced_BBEC1_Down')
-        w_after_JetReduced_BBEC1_Down = d.Filter("unc_source==46").Filter("unc_scale==-1").Define( "den_JetReduced_BBEC1_Down", "weight*weight_btag_IterativeFit").Sum('den_JetReduced_BBEC1_Down')
-        r_factor_JetReduced_BBEC1_Down=w_before_JetReduced_BBEC1_Down.GetValue()/w_after_JetReduced_BBEC1_Down.GetValue()
-        add_dic(r_factor_JetReduced_BBEC1_Down, "JetReduced_BBEC1_Down",r_factors)
-
-
-        w_before_JetReduced_BBEC1_year_Up= d.Filter("unc_source==47").Filter("unc_scale==+1").Define("num_JetReduced_BBEC1_year_Up", "weight").Sum('num_JetReduced_BBEC1_year_Up')
-        w_after_JetReduced_BBEC1_year_Up= d.Filter("unc_source==47").Filter("unc_scale==+1").Define( "den_JetReduced_BBEC1_year_Up", "weight*weight_btag_IterativeFit").Sum('den_JetReduced_BBEC1_year_Up')
-        r_factor_JetReduced_BBEC1_year_Up=w_before_JetReduced_BBEC1_year_Up.GetValue()/w_after_JetReduced_BBEC1_year_Up.GetValue()
-        add_dic(r_factor_JetReduced_BBEC1_year_Up, "JetReduced_BBEC1_year_Up",r_factors)
-
-        w_before_JetReduced_BBEC1_year_Down = d.Filter("unc_source==47").Filter("unc_scale==-1").Define("num_JetReduced_BBEC1_year_Down", "weight").Sum('num_JetReduced_BBEC1_year_Down')
-        w_after_JetReduced_BBEC1_year_Down = d.Filter("unc_source==47").Filter("unc_scale==-1").Define( "den_JetReduced_BBEC1_year_Down", "weight*weight_btag_IterativeFit").Sum('den_JetReduced_BBEC1_year_Down')
-        r_factor_JetReduced_BBEC1_year_Down=w_before_JetReduced_BBEC1_year_Down.GetValue()/w_after_JetReduced_BBEC1_year_Down.GetValue()
-        add_dic(r_factor_JetReduced_BBEC1_year_Down, "JetReduced_BBEC1_year_Down",r_factors)
-
-
-
-        w_before_JetReduced_EC2_Up= d.Filter("unc_source==48").Filter("unc_scale==+1").Define("num_JetReduced_EC2_Up", "weight").Sum('num_JetReduced_EC2_Up')
-        w_after_JetReduced_EC2_Up= d.Filter("unc_source==48").Filter("unc_scale==+1").Define( "den_JetReduced_EC2_Up", "weight*weight_btag_IterativeFit").Sum('den_JetReduced_EC2_Up')
-        r_factor_JetReduced_EC2_Up=w_before_JetReduced_EC2_Up.GetValue()/w_after_JetReduced_EC2_Up.GetValue()
-        add_dic(r_factor_JetReduced_EC2_Up, "JetReduced_EC2_Up",r_factors)
-
-        w_before_JetReduced_EC2_Down = d.Filter("unc_source==48").Filter("unc_scale==-1").Define("num_JetReduced_EC2_Down", "weight").Sum('num_JetReduced_EC2_Down')
-        w_after_JetReduced_EC2_Down = d.Filter("unc_source==48").Filter("unc_scale==-1").Define( "den_JetReduced_EC2_Down", "weight*weight_btag_IterativeFit").Sum('den_JetReduced_EC2_Down')
-        r_factor_JetReduced_EC2_Down=w_before_JetReduced_EC2_Down.GetValue()/w_after_JetReduced_EC2_Down.GetValue()
-        add_dic(r_factor_JetReduced_EC2_Down, "JetReduced_EC2_Down",r_factors)
-
-
-        w_before_JetReduced_EC2_year_Up= d.Filter("unc_source==49").Filter("unc_scale==+1").Define("num_JetReduced_EC2_year_Up", "weight").Sum('num_JetReduced_EC2_year_Up')
-        w_after_JetReduced_EC2_year_Up= d.Filter("unc_source==49").Filter("unc_scale==+1").Define( "den_JetReduced_EC2_year_Up", "weight*weight_btag_IterativeFit").Sum('den_JetReduced_EC2_year_Up')
-        r_factor_JetReduced_EC2_year_Up=w_before_JetReduced_EC2_year_Up.GetValue()/w_after_JetReduced_EC2_year_Up.GetValue()
-        add_dic(r_factor_JetReduced_EC2_year_Up, "JetReduced_EC2_year_Up",r_factors)
-
-        w_before_JetReduced_EC2_year_Down = d.Filter("unc_source==49").Filter("unc_scale==-1").Define("num_JetReduced_EC2_year_Down", "weight").Sum('num_JetReduced_EC2_year_Down')
-        w_after_JetReduced_EC2_year_Down = d.Filter("unc_source==49").Filter("unc_scale==-1").Define( "den_JetReduced_EC2_year_Down", "weight*weight_btag_IterativeFit").Sum('den_JetReduced_EC2_year_Down')
-        r_factor_JetReduced_EC2_year_Down=w_before_JetReduced_EC2_year_Down.GetValue()/w_after_JetReduced_EC2_year_Down.GetValue()
-        add_dic(r_factor_JetReduced_EC2_year_Down, "JetReduced_EC2_year_Down",r_factors)
-
-
-        w_before_JetReduced_FlavorQCD_Up= d.Filter("unc_source==50").Filter("unc_scale==+1").Define("num_JetReduced_FlavorQCD_Up", "weight").Sum('num_JetReduced_FlavorQCD_Up')
-        w_after_JetReduced_FlavorQCD_Up= d.Filter("unc_source==50").Filter("unc_scale==+1").Define( "den_JetReduced_FlavorQCD_Up", "weight*weight_btag_IterativeFit").Sum('den_JetReduced_FlavorQCD_Up')
-        r_factor_JetReduced_FlavorQCD_Up=w_before_JetReduced_FlavorQCD_Up.GetValue()/w_after_JetReduced_FlavorQCD_Up.GetValue()
-        add_dic(r_factor_JetReduced_FlavorQCD_Up, "JetReduced_FlavorQCD_Up",r_factors)
-
-        w_before_JetReduced_FlavorQCD_Down = d.Filter("unc_source==50").Filter("unc_scale==-1").Define("num_JetReduced_FlavorQCD_Down", "weight").Sum('num_JetReduced_FlavorQCD_Down')
-        w_after_JetReduced_FlavorQCD_Down = d.Filter("unc_source==50").Filter("unc_scale==-1").Define( "den_JetReduced_FlavorQCD_Down", "weight*weight_btag_IterativeFit").Sum('den_JetReduced_FlavorQCD_Down')
-        r_factor_JetReduced_FlavorQCD_Down=w_before_JetReduced_FlavorQCD_Down.GetValue()/w_after_JetReduced_FlavorQCD_Down.GetValue()
-        add_dic(r_factor_JetReduced_FlavorQCD_Down, "JetReduced_FlavorQCD_Down",r_factors)
-
-
-        w_before_JetReduced_HF_Up= d.Filter("unc_source==51").Filter("unc_scale==+1").Define("num_JetReduced_HF_Up", "weight").Sum('num_JetReduced_HF_Up')
-        w_after_JetReduced_HF_Up= d.Filter("unc_source==51").Filter("unc_scale==+1").Define( "den_JetReduced_HF_Up", "weight*weight_btag_IterativeFit").Sum('den_JetReduced_HF_Up')
-        r_factor_JetReduced_HF_Up=w_before_JetReduced_HF_Up.GetValue()/w_after_JetReduced_HF_Up.GetValue()
-        add_dic(r_factor_JetReduced_HF_Up, "JetReduced_HF_Up",r_factors)
-
-        w_before_JetReduced_HF_Down = d.Filter("unc_source==51").Filter("unc_scale==-1").Define("num_JetReduced_HF_Down", "weight").Sum('num_JetReduced_HF_Down')
-        w_after_JetReduced_HF_Down = d.Filter("unc_source==51").Filter("unc_scale==-1").Define( "den_JetReduced_HF_Down", "weight*weight_btag_IterativeFit").Sum('den_JetReduced_HF_Down')
-        r_factor_JetReduced_HF_Down=w_before_JetReduced_HF_Down.GetValue()/w_after_JetReduced_HF_Down.GetValue()
-        add_dic(r_factor_JetReduced_HF_Down, "JetReduced_HF_Down",r_factors)
-
-
-        w_before_JetReduced_HF_year_Up= d.Filter("unc_source==52").Filter("unc_scale==+1").Define("num_JetReduced_HF_year_Up", "weight").Sum('num_JetReduced_HF_year_Up')
-        w_after_JetReduced_HF_year_Up= d.Filter("unc_source==52").Filter("unc_scale==+1").Define( "den_JetReduced_HF_year_Up", "weight*weight_btag_IterativeFit").Sum('den_JetReduced_HF_year_Up')
-        r_factor_JetReduced_HF_year_Up=w_before_JetReduced_HF_year_Up.GetValue()/w_after_JetReduced_HF_year_Up.GetValue()
-        add_dic(r_factor_JetReduced_HF_year_Up, "JetReduced_HF_year_Up",r_factors)
-
-        w_before_JetReduced_HF_year_Down = d.Filter("unc_source==52").Filter("unc_scale==-1").Define("num_JetReduced_HF_year_Down", "weight").Sum('num_JetReduced_HF_year_Down')
-        w_after_JetReduced_HF_year_Down = d.Filter("unc_source==52").Filter("unc_scale==-1").Define( "den_JetReduced_HF_year_Down", "weight*weight_btag_IterativeFit").Sum('den_JetReduced_HF_year_Down')
-        r_factor_JetReduced_HF_year_Down=w_before_JetReduced_HF_year_Down.GetValue()/w_after_JetReduced_HF_year_Down.GetValue()
-        add_dic(r_factor_JetReduced_HF_year_Down, "JetReduced_HF_year_Down",r_factors)
-
-
-        w_before_JetReduced_RelativeBal_Up= d.Filter("unc_source==53").Filter("unc_scale==+1").Define("num_JetReduced_RelativeBal_Up", "weight").Sum('num_JetReduced_RelativeBal_Up')
-        w_after_JetReduced_RelativeBal_Up= d.Filter("unc_source==53").Filter("unc_scale==+1").Define( "den_JetReduced_RelativeBal_Up", "weight*weight_btag_IterativeFit").Sum('den_JetReduced_RelativeBal_Up')
-        r_factor_JetReduced_RelativeBal_Up=w_before_JetReduced_RelativeBal_Up.GetValue()/w_after_JetReduced_RelativeBal_Up.GetValue()
-        add_dic(r_factor_JetReduced_RelativeBal_Up, "JetReduced_RelativeBal_Up",r_factors)
-
-        w_before_JetReduced_RelativeBal_Down = d.Filter("unc_source==53").Filter("unc_scale==-1").Define("num_JetReduced_RelativeBal_Down", "weight").Sum('num_JetReduced_RelativeBal_Down')
-        w_after_JetReduced_RelativeBal_Down = d.Filter("unc_source==53").Filter("unc_scale==-1").Define( "den_JetReduced_RelativeBal_Down", "weight*weight_btag_IterativeFit").Sum('den_JetReduced_RelativeBal_Down')
-        r_factor_JetReduced_RelativeBal_Down=w_before_JetReduced_RelativeBal_Down.GetValue()/w_after_JetReduced_RelativeBal_Down.GetValue()
-        add_dic(r_factor_JetReduced_RelativeBal_Down, "JetReduced_RelativeBal_Down",r_factors)
-
-
-        w_before_JetReduced_RelativeSample_year_Up= d.Filter("unc_source==54").Filter("unc_scale==+1").Define("num_JetReduced_RelativeSample_year_Up", "weight").Sum('num_JetReduced_RelativeSample_year_Up')
-        w_after_JetReduced_RelativeSample_year_Up= d.Filter("unc_source==54").Filter("unc_scale==+1").Define( "den_JetReduced_RelativeSample_year_Up", "weight*weight_btag_IterativeFit").Sum('den_JetReduced_RelativeSample_year_Up')
-        r_factor_JetReduced_RelativeSample_year_Up=w_before_JetReduced_RelativeSample_year_Up.GetValue()/w_after_JetReduced_RelativeSample_year_Up.GetValue()
-        add_dic(r_factor_JetReduced_RelativeSample_year_Up, "JetReduced_RelativeSample_year_Up",r_factors)
-
-        w_before_JetReduced_RelativeSample_year_Down = d.Filter("unc_source==54").Filter("unc_scale==-1").Define("num_JetReduced_RelativeSample_year_Down", "weight").Sum('num_JetReduced_RelativeSample_year_Down')
-        w_after_JetReduced_RelativeSample_year_Down = d.Filter("unc_source==54").Filter("unc_scale==-1").Define( "den_JetReduced_RelativeSample_year_Down", "weight*weight_btag_IterativeFit").Sum('den_JetReduced_RelativeSample_year_Down')
-        r_factor_JetReduced_RelativeSample_year_Down=w_before_JetReduced_RelativeSample_year_Down.GetValue()/w_after_JetReduced_RelativeSample_year_Down.GetValue()
-        add_dic(r_factor_JetReduced_RelativeSample_year_Down, "JetReduced_RelativeSample_year_Down",r_factors)
-
-        w_before_JetReduced_Total_Up= d.Filter("unc_source==55").Filter("unc_scale==+1").Define("num_JetReduced_Total_Up", "weight").Sum('num_JetReduced_Total_Up')
-        w_after_JetReduced_Total_Up= d.Filter("unc_source==55").Filter("unc_scale==+1").Define( "den_JetReduced_Total_Up", "weight*weight_btag_IterativeFit").Sum('den_JetReduced_Total_Up')
-        r_factor_JetReduced_Total_Up=w_before_JetReduced_Total_Up.GetValue()/w_after_JetReduced_Total_Up.GetValue()
-        add_dic(r_factor_JetReduced_Total_Up, "JetReduced_Total_Up",r_factors)
-
-        w_before_JetReduced_Total_Down = d.Filter("unc_source==55").Filter("unc_scale==-1").Define("num_JetReduced_Total_Down", "weight").Sum('num_JetReduced_Total_Down')
-        w_after_JetReduced_Total_Down = d.Filter("unc_source==55").Filter("unc_scale==-1").Define( "den_JetReduced_Total_Down", "weight*weight_btag_IterativeFit").Sum('den_JetReduced_Total_Down')
-        r_factor_JetReduced_Total_Down=w_before_JetReduced_Total_Down.GetValue()/w_after_JetReduced_Total_Down.GetValue()
-        add_dic(r_factor_JetReduced_Total_Down, "JetReduced_Total_Down",r_factors)
-
-
-        w_before_JetReduced_Total_withJES_Up= d.Filter("unc_source==55").Filter("unc_scale==+1").Define("num_JetReduced_Total_withJES_Up", "weight").Sum('num_JetReduced_Total_withJES_Up')
-        w_after_JetReduced_Total_withJES_Up= d.Filter("unc_source==55").Filter("unc_scale==+1").Define( "den_JetReduced_Total_withJES_Up", "weight*weight_btag_IterativeFit_withJES").Sum('den_JetReduced_Total_withJES_Up')
-        r_factor_JetReduced_Total_withJES_Up=w_before_JetReduced_Total_withJES_Up.GetValue()/w_after_JetReduced_Total_withJES_Up.GetValue()
-        add_dic(r_factor_JetReduced_Total_withJES_Up, "JetReduced_Total_withJES_Up",r_factors)
-
-        w_before_JetReduced_Total_withJES_Down = d.Filter("unc_source==55").Filter("unc_scale==-1").Define("num_JetReduced_Total_withJES_Down", "weight").Sum('num_JetReduced_Total_withJES_Down')
-        w_after_JetReduced_Total_withJES_Down = d.Filter("unc_source==55").Filter("unc_scale==-1").Define( "den_JetReduced_Total_withJES_Down", "weight*weight_btag_IterativeFit_withJES").Sum('den_JetReduced_Total_withJES_Down')
-        r_factor_JetReduced_Total_withJES_Down=w_before_JetReduced_Total_withJES_Down.GetValue()/w_after_JetReduced_Total_withJES_Down.GetValue()
-        add_dic(r_factor_JetReduced_Total_withJES_Down, "JetReduced_Total_withJES_Down",r_factors)
-
-    if(unc_source=="LES"):
-
-        print "\n ******** LES ********* \n"
-
-        w_before_TauES_Up= d.Filter("unc_source==1").Filter("unc_scale==+1").Define("num_TauES_Up", "weight").Sum('num_TauES_Up')
-        w_after_TauES_Up= d.Filter("unc_source==1").Filter("unc_scale==+1").Define( "den_TauES_Up", "weight*weight_btag_IterativeFit").Sum('den_TauES_Up')
-        r_factor_TauES_Up=w_before_TauES_Up.GetValue()/w_after_TauES_Up.GetValue()
-        add_dic(r_factor_TauES_Up, "TauES_Up",r_factors)
-
-        w_before_TauES_Down = d.Filter("unc_source==1").Filter("unc_scale==-1").Define("num_TauES_Down", "weight").Sum('num_TauES_Down')
-        w_after_TauES_Down = d.Filter("unc_source==1").Filter("unc_scale==-1").Define( "den_TauES_Down", "weight*weight_btag_IterativeFit").Sum('den_TauES_Down')
-        r_factor_TauES_Down=w_before_TauES_Down.GetValue()/w_after_TauES_Down.GetValue()
-        add_dic(r_factor_TauES_Down, "TauES_Down",r_factors)
-
-
-        w_before_TauES_DM0_Up= d.Filter("unc_source==96").Filter("unc_scale==+1").Define("num_TauES_DM0_Up", "weight").Sum('num_TauES_DM0_Up')
-        w_after_TauES_DM0_Up= d.Filter("unc_source==96").Filter("unc_scale==+1").Define( "den_TauES_DM0_Up", "weight*weight_btag_IterativeFit").Sum('den_TauES_DM0_Up')
-        r_factor_TauES_DM0_Up=w_before_TauES_DM0_Up.GetValue()/w_after_TauES_DM0_Up.GetValue()
-        add_dic(r_factor_TauES_DM0_Up, "TauES_DM0_Up",r_factors)
-
-        w_before_TauES_DM0_Down = d.Filter("unc_source==96").Filter("unc_scale==-1").Define("num_TauES_DM0_Down", "weight").Sum('num_TauES_DM0_Down')
-        w_after_TauES_DM0_Down = d.Filter("unc_source==96").Filter("unc_scale==-1").Define( "den_TauES_DM0_Down", "weight*weight_btag_IterativeFit").Sum('den_TauES_DM0_Down')
-        r_factor_TauES_DM0_Down=w_before_TauES_DM0_Down.GetValue()/w_after_TauES_DM0_Down.GetValue()
-        add_dic(r_factor_TauES_DM0_Down, "TauES_DM0_Down",r_factors)
-
-
-        w_before_TauES_DM1_Up= d.Filter("unc_source==97").Filter("unc_scale==+1").Define("num_TauES_DM1_Up", "weight").Sum('num_TauES_DM1_Up')
-        w_after_TauES_DM1_Up= d.Filter("unc_source==97").Filter("unc_scale==+1").Define( "den_TauES_DM1_Up", "weight*weight_btag_IterativeFit").Sum('den_TauES_DM1_Up')
-        r_factor_TauES_DM1_Up=w_before_TauES_DM1_Up.GetValue()/w_after_TauES_DM1_Up.GetValue()
-        add_dic(r_factor_TauES_DM1_Up, "TauES_DM1_Up",r_factors)
-
-        w_before_TauES_DM1_Down = d.Filter("unc_source==97").Filter("unc_scale==-1").Define("num_TauES_DM1_Down", "weight").Sum('num_TauES_DM1_Down')
-        w_after_TauES_DM1_Down = d.Filter("unc_source==97").Filter("unc_scale==-1").Define( "den_TauES_DM1_Down", "weight*weight_btag_IterativeFit").Sum('den_TauES_DM1_Down')
-        r_factor_TauES_DM1_Down=w_before_TauES_DM1_Down.GetValue()/w_after_TauES_DM1_Down.GetValue()
-        add_dic(r_factor_TauES_DM1_Down, "TauES_DM1_Down",r_factors)
-
-        w_before_TauES_DM10_Up= d.Filter("unc_source==98").Filter("unc_scale==+1").Define("num_TauES_DM10_Up", "weight").Sum('num_TauES_DM10_Up')
-        w_after_TauES_DM10_Up= d.Filter("unc_source==98").Filter("unc_scale==+1").Define( "den_TauES_DM10_Up", "weight*weight_btag_IterativeFit").Sum('den_TauES_DM10_Up')
-        r_factor_TauES_DM10_Up=w_before_TauES_DM10_Up.GetValue()/w_after_TauES_DM10_Up.GetValue()
-        add_dic(r_factor_TauES_DM10_Up, "TauES_DM10_Up",r_factors)
-
-        w_before_TauES_DM10_Down = d.Filter("unc_source==98").Filter("unc_scale==-1").Define("num_TauES_DM10_Down", "weight").Sum('num_TauES_DM10_Down')
-        w_after_TauES_DM10_Down = d.Filter("unc_source==98").Filter("unc_scale==-1").Define( "den_TauES_DM10_Down", "weight*weight_btag_IterativeFit").Sum('den_TauES_DM10_Down')
-        r_factor_TauES_DM10_Down=w_before_TauES_DM10_Down.GetValue()/w_after_TauES_DM10_Down.GetValue()
-        add_dic(r_factor_TauES_DM10_Down, "TauES_DM10_Down",r_factors)
-
-        w_before_TauES_DM11_Up= d.Filter("unc_source==99").Filter("unc_scale==+1").Define("num_TauES_DM11_Up", "weight").Sum('num_TauES_DM11_Up')
-        w_after_TauES_DM11_Up= d.Filter("unc_source==99").Filter("unc_scale==+1").Define( "den_TauES_DM11_Up", "weight*weight_btag_IterativeFit").Sum('den_TauES_DM11_Up')
-        r_factor_TauES_DM11_Up=w_before_TauES_DM11_Up.GetValue()/w_after_TauES_DM11_Up.GetValue()
-        add_dic(r_factor_TauES_DM11_Up, "TauES_DM11_Up",r_factors)
-
-        w_before_TauES_DM11_Down = d.Filter("unc_source==99").Filter("unc_scale==-1").Define("num_TauES_DM11_Down", "weight").Sum('num_TauES_DM11_Down')
-        w_after_TauES_DM11_Down = d.Filter("unc_source==99").Filter("unc_scale==-1").Define( "den_TauES_DM11_Down", "weight*weight_btag_IterativeFit").Sum('den_TauES_DM11_Down')
-        r_factor_TauES_DM11_Down=w_before_TauES_DM11_Down.GetValue()/w_after_TauES_DM11_Down.GetValue()
-        add_dic(r_factor_TauES_DM11_Down, "TauES_DM11_Down",r_factors)
-
-        w_before_EleFakingTauES_DM0_Up= d.Filter("unc_source==108").Filter("unc_scale==+1").Define("num_EleFakingTauES_DM0_Up", "weight").Sum('num_EleFakingTauES_DM0_Up')
-        w_after_EleFakingTauES_DM0_Up= d.Filter("unc_source==108").Filter("unc_scale==+1").Define( "den_EleFakingTauES_DM0_Up", "weight*weight_btag_IterativeFit").Sum('den_EleFakingTauES_DM0_Up')
-        r_factor_EleFakingTauES_DM0_Up=w_before_EleFakingTauES_DM0_Up.GetValue()/w_after_EleFakingTauES_DM0_Up.GetValue()
-        add_dic(r_factor_EleFakingTauES_DM0_Up, "EleFakingTauES_DM0_Up",r_factors)
-
-        w_before_EleFakingTauES_DM0_Down = d.Filter("unc_source==108").Filter("unc_scale==-1").Define("num_EleFakingTauES_DM0_Down", "weight").Sum('num_EleFakingTauES_DM0_Down')
-        w_after_EleFakingTauES_DM0_Down = d.Filter("unc_source==108").Filter("unc_scale==-1").Define( "den_EleFakingTauES_DM0_Down", "weight*weight_btag_IterativeFit").Sum('den_EleFakingTauES_DM0_Down')
-        r_factor_EleFakingTauES_DM0_Down=w_before_EleFakingTauES_DM0_Down.GetValue()/w_after_EleFakingTauES_DM0_Down.GetValue()
-        add_dic(r_factor_EleFakingTauES_DM0_Down, "EleFakingTauES_DM0_Down",r_factors)
-
-        w_before_EleFakingTauES_DM1_Up= d.Filter("unc_source==109").Filter("unc_scale==+1").Define("num_EleFakingTauES_DM1_Up", "weight").Sum('num_EleFakingTauES_DM1_Up')
-        w_after_EleFakingTauES_DM1_Up= d.Filter("unc_source==109").Filter("unc_scale==+1").Define( "den_EleFakingTauES_DM1_Up", "weight*weight_btag_IterativeFit").Sum('den_EleFakingTauES_DM1_Up')
-        r_factor_EleFakingTauES_DM1_Up=w_before_EleFakingTauES_DM1_Up.GetValue()/w_after_EleFakingTauES_DM1_Up.GetValue()
-        add_dic(r_factor_EleFakingTauES_DM1_Up, "EleFakingTauES_DM1_Up",r_factors)
-
-        w_before_EleFakingTauES_DM1_Down = d.Filter("unc_source==109").Filter("unc_scale==-1").Define("num_EleFakingTauES_DM1_Down", "weight").Sum('num_EleFakingTauES_DM1_Down')
-        w_after_EleFakingTauES_DM1_Down = d.Filter("unc_source==109").Filter("unc_scale==-1").Define( "den_EleFakingTauES_DM1_Down", "weight*weight_btag_IterativeFit").Sum('den_EleFakingTauES_DM1_Down')
-        r_factor_EleFakingTauES_DM1_Down=w_before_EleFakingTauES_DM1_Down.GetValue()/w_after_EleFakingTauES_DM1_Down.GetValue()
-        add_dic(r_factor_EleFakingTauES_DM1_Down, "EleFakingTauES_DM1_Down",r_factors)
-
-        w_before_MuFAkingTauES_Up= d.Filter("unc_source==108").Filter("unc_scale==+1").Define("num_MuFAkingTauES_Up", "weight").Sum('num_MuFAkingTauES_Up')
-        w_after_MuFAkingTauES_Up= d.Filter("unc_source==108").Filter("unc_scale==+1").Define( "den_MuFAkingTauES_Up", "weight*weight_btag_IterativeFit").Sum('den_MuFAkingTauES_Up')
-        r_factor_MuFAkingTauES_Up=w_before_MuFAkingTauES_Up.GetValue()/w_after_MuFAkingTauES_Up.GetValue()
-        add_dic(r_factor_MuFAkingTauES_Up, "MuFAkingTauES_Up",r_factors)
-
-        w_before_MuFAkingTauES_Down = d.Filter("unc_source==108").Filter("unc_scale==-1").Define("num_MuFAkingTauES_Down", "weight").Sum('num_MuFAkingTauES_Down')
-        w_after_MuFAkingTauES_Down = d.Filter("unc_source==108").Filter("unc_scale==-1").Define( "den_MuFAkingTauES_Down", "weight*weight_btag_IterativeFit").Sum('den_MuFAkingTauES_Down')
-        r_factor_MuFAkingTauES_Down=w_before_MuFAkingTauES_Down.GetValue()/w_after_MuFAkingTauES_Down.GetValue()
-        add_dic(r_factor_MuFAkingTauES_Down, "MuFAkingTauES_Down",r_factors)
-
+    if isTune5 == True:
+        d=d.Filter("is_TuneCP5==1")
+    for unc_source in unc_sources:
+        for unc_scale in unc_scales:
+            num = "num_"+unc_source+"_"+unc_scale
+            den = "den_"+unc_source+"_"+unc_scale
+            weight_num = "weight"
+            if unc_source=="None":
+                weight_den = "weight*weight_btag_IterativeFit"
+            else:
+                weight_den = "weight*weight_btag_IterativeFit*unc_"+unc_source+"_"+unc_scale
+            w_central_before = d.Define(num, weight_num).Sum(num)
+            print w_central_before.GetValue()
+            w_central_after = d.Define(den, weight_den).Sum(den)
+            print w_central_after.GetValue()
+            r_factor=w_central_before.GetValue()/w_central_after.GetValue()
+            add_dic(r_factor, unc_source, unc_scale ,r_factors_dict)
+
+
+def evaluate_r_JESLES(file,channel, unc_sources, unc_scales, r_factors_dict, is_withJES, isTune5):
+    print file
+    d = ROOT.RDataFrame(channel, file)
+    not_data = '! is_data'
+    d=d.Filter(not_data)
+    if isTune5 == True:
+        d=d.Filter("is_TuneCP5==1")
+    for unc_source in unc_sources:
+        for unc_scale in unc_scales:
+            filter_unc_source= "unc_source=="+str(uncertainty_dictionary[unc_source])
+            filter_unc_scale= "unc_scale=="+str(variation_dictionary[unc_scale])
+            num = "num_"+unc_source+"_"+unc_scale
+            den = "den_"+unc_source+"_"+unc_scale
+            weight_num = "weight"
+            weight_den = "weight*weight_btag_IterativeFit"
+            w_central_before = d.Filter(filter_unc_source).Filter(filter_unc_scale).Define(num, weight_num).Sum(num)
+            w_central_after = d.Filter(filter_unc_source).Filter(filter_unc_scale).Define(den, weight_den).Sum(den)
+            r_factor=w_central_before.GetValue()/w_central_after.GetValue()
+            add_dic(r_factor, unc_source, unc_scale ,r_factors_dict)
+            if is_withJES and unc_source== "JetReduced_Total":
+                num = "num_"+unc_source+"_"+unc_scale+"_withJES"
+                den = "den_"+unc_source+"_"+unc_scale+"_withJES"
+                weight_num = "weight"
+                weight_den = "weight*weight_btag_IterativeFit_withJES"
+                w_central_before = d.Filter(filter_unc_source).Filter(filter_unc_scale).d.Define(num, weight_num).Sum(num)
+                w_central_after = d.Filter(filter_unc_source).Filter(filter_unc_scale).Define(den, weight_den).Sum(den)
+                r_factor=w_central_before.GetValue()/w_central_after.GetValue()
+                add_dic(r_factor, unc_source+" withJES", unc_scale ,r_factors_dict)
 
 parser = argparse.ArgumentParser(description='Create bash command')
 parser.add_argument('--ch', required=False, type=str, default= "all", help= "channel")
 parser.add_argument('--year', required=False, type=str, default= "all", help= "year")
 parser.add_argument('--unc_sources_group', required=False, type=str, default= "all", help="unc sources groups")
 parser.add_argument('--input-dir', required=False, type=str, default="/mnt/data/Dottorato/anaTuples/2020-12-01/", help=" anatUples directory")
+parser.add_argument('--tune', required=False, type=bool, default=False, help=" use isTune5")
 parser.add_argument('-n', required=False, type=bool, default=False, help=" don't write the file")
 
 args = parser.parse_args()
@@ -368,13 +137,35 @@ else:
       unc_sources.append("LES")
       unc_sources.append("JES")
 
-files = []
-trees = []
+central_unc_sources =['None']
+central_variations = ['Central']
+
+
+r_factors_d={}
+for i in central_unc_sources:
+    for j in central_variations:
+        r_factors_d[i]={j : 1.}
+for i in btag_unc_sources:
+    for j in unc_variations:
+        r_factors_d[i]={j : 1.}
+
+for i in jes_unc_sources:
+    for j in unc_variations:
+        r_factors_d[i]={j : 1.}
+for i in les_unc_sources:
+    for j in unc_variations:
+        r_factors_d[i]={j : 1.}
+
+print r_factors_d
 for year in years:
     for channel in channels:
-        r_factors={}
-        for unc in unc_sources:
-            evaluate_r(args.input_dir,channel,year,unc,r_factors)
+        file = args.input_dir+year+"_"+channel+"_Central.root"
+        evaluate_r_Central(file,channel,central_unc_sources, central_variations, r_factors_d, args.tune)
+        evaluate_r_Central(file,channel,btag_unc_sources, unc_variations, r_factors_d, args.tune)
+        file = args.input_dir+year+"_"+channel+"_JES.root"
+        evaluate_r_JESLES(file,channel,jes_unc_sources, unc_variations, r_factors_d, True, args.tune)
+        file = args.input_dir+year+"_"+channel+"_LES.root"
+        evaluate_r_JESLES(file,channel,les_unc_sources, unc_variations, r_factors_d, False, args.tune)
         if(args.n==False):
             with open("btag_correction_factors_"+channel+"_"+year+".json", "w") as write_file:
-                json.dump(r_factors, write_file)
+                json.dump(r_factors_d, write_file)

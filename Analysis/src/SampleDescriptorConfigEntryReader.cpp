@@ -33,7 +33,7 @@ void AnalyzerConfigEntryReader::EndEntry()
     CheckReadParamCounts("draw_sequence", 1, Condition::less_equal);
     CheckReadParamCounts("mva_setup", 1, Condition::less_equal);
     CheckReadParamCounts("hist_cfg", 1, Condition::less_equal);
-    CheckReadParamCounts("r_factors_file", 1, Condition::less_equal);
+    CheckReadParamCounts("r_factors_file", 0, Condition::greater_equal);
     CheckReadParamCounts("trigger_path", 1, Condition::less_equal);
     CheckReadParamCounts("syncDataIds", 1, Condition::less_equal);
     CheckReadParamCounts("plot_cfg", 1, Condition::less_equal);
