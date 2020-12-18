@@ -43,7 +43,7 @@ private:
     const bool use_IterativeFit;
     std::string json_file;
     //float iterativeFit_correction;
-    std::map<std::pair<UncertaintySource, UncertaintyScale>, float> iterativeFit_corrections;
+    std::map<std::pair<UncertaintySource,UncertaintyScale>,float> iterativeFit_corrections;
 };
 
 } // namespace bbtautau
