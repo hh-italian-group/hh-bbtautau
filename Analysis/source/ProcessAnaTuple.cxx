@@ -33,7 +33,8 @@ public:
         outputFile(root_ext::CreateRootFile(args.output() + "_full.root", ROOT::kLZMA, 9))
 
     {
-        for (auto& hist_config : ana_setup.hist_cfg)
+        std::vector<std::string> histograms= SplitValueList(ana_setup.hist_cfg,false, ",", true);
+        for (auto& hist_config : histograms)
             histConfig.Parse(FullPath(hist_config));
         //histConfig.Parse(FullPath(ana_setup.hist_cfg));
         if(!ana_setup.unc_cfg.empty()) {

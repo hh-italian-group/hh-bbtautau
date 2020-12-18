@@ -25,7 +25,8 @@ public:
         vars(ParseVarSet(args.vars()))
     {
 
-        for (auto& hist_config : ana_setup.hist_cfg)
+            std::vector<std::string> histograms= SplitValueList(ana_setup.hist_cfg,false, ",", true);
+            for (auto& hist_config : histograms)
             histConfig.Parse((hist_config));
         //histConfig.Parse((ana_setup.hist_cfg));
 

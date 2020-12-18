@@ -37,9 +37,9 @@ uncertainty_dictionary =  {"None": 0, "TauES": 1, "JetFull_Total": 2, "TopPt": 3
     "btag_lfstats1": 147, "btag_lfstats2": 148, "btag_cferr1": 149, "btag_cferr2": 150}
 variation_dictionary = { "Central" : 0, "Up" : 1, "Down" : -1 }
 
- 
-btag_unc_sources=["btag_lf","btag_hf","btag_hfstats1","btag_hfstats2","btag_lfstats1","btag_lfstats2","btag_cferr1","btag_cferr2"]
-jes_unc_sources=["JetReduced_Absolute","JetReduced_Absolute_year","JetReduced_BBEC1","JetReduced_BBEC1_year","JetReduced_EC2","JetReduced_EC2_year","JetReduced_FlavorQCD","JetReduced_HF","JetReduced_HF_year","JetReduced_RelativeBal","JetReduced_RelativeSample_year","JetReduced_Total","JetReduced_Total_withJES"]
+
+btag_unc_sources=["btag_lf","btag_hf","btag_hfstats1","btag_hfstats2","btag_lfstats1","btag_lfstats2"]#,"btag_cferr1","btag_cferr2"]
+jes_unc_sources=["JetReduced_Absolute","JetReduced_Absolute_year","JetReduced_BBEC1","JetReduced_BBEC1_year","JetReduced_EC2","JetReduced_EC2_year","JetReduced_FlavorQCD","JetReduced_HF","JetReduced_HF_year","JetReduced_RelativeBal","JetReduced_RelativeSample_year","JetReduced_Total"]
 les_unc_sources=["TauES", "TauES_DM0", "TauES_DM1", "TauES_DM10", "TauES_DM11", "EleFakingTauES_DM0", "EleFakingTauES_DM1", "MuFakingTauES"]
 unc_variations=['Up', 'Down']
 
@@ -50,12 +50,14 @@ def add_dic(r_factor, unc_source,unc_scale, r_factors_dict):
     r_factors_dict[unc_source][unc_scale]=r_factor
 
 def evaluate_r_Central(file,channel, unc_sources, unc_scales, r_factors_dict, isTune5):
-    print file
+    #print file
     d = ROOT.RDataFrame(channel, file)
     not_data = '! is_data'
     d=d.Filter(not_data)
-    if isTune5 == True:
+    if isTune5 == 1:
         d=d.Filter("is_TuneCP5==1")
+    elif isTune5 == 2:
+        d=d.Filter("is_TuneCP5==0")
     for unc_source in unc_sources:
         for unc_scale in unc_scales:
             num = "num_"+unc_source+"_"+unc_scale
@@ -66,15 +68,16 @@ def evaluate_r_Central(file,channel, unc_sources, unc_scales, r_factors_dict, is
             else:
                 weight_den = "weight*weight_btag_IterativeFit*unc_"+unc_source+"_"+unc_scale
             w_central_before = d.Define(num, weight_num).Sum(num)
-            print w_central_before.GetValue()
             w_central_after = d.Define(den, weight_den).Sum(den)
-            print w_central_after.GetValue()
-            r_factor=w_central_before.GetValue()/w_central_after.GetValue()
+            numerator= w_central_before.GetValue()
+            denominator= w_central_after.GetValue()
+            #print ("numerator is %.10f \n denominator is %.10f" %(numerator, denominator))
+            r_factor=numerator/denominator
             add_dic(r_factor, unc_source, unc_scale ,r_factors_dict)
 
 
 def evaluate_r_JESLES(file,channel, unc_sources, unc_scales, r_factors_dict, is_withJES, isTune5):
-    print file
+    #print file
     d = ROOT.RDataFrame(channel, file)
     not_data = '! is_data'
     d=d.Filter(not_data)
@@ -97,7 +100,7 @@ def evaluate_r_JESLES(file,channel, unc_sources, unc_scales, r_factors_dict, is_
                 den = "den_"+unc_source+"_"+unc_scale+"_withJES"
                 weight_num = "weight"
                 weight_den = "weight*weight_btag_IterativeFit_withJES"
-                w_central_before = d.Filter(filter_unc_source).Filter(filter_unc_scale).d.Define(num, weight_num).Sum(num)
+                w_central_before = d.Filter(filter_unc_source).Filter(filter_unc_scale).Define(num, weight_num).Sum(num)
                 w_central_after = d.Filter(filter_unc_source).Filter(filter_unc_scale).Define(den, weight_den).Sum(den)
                 r_factor=w_central_before.GetValue()/w_central_after.GetValue()
                 add_dic(r_factor, unc_source+" withJES", unc_scale ,r_factors_dict)
@@ -107,7 +110,7 @@ parser.add_argument('--ch', required=False, type=str, default= "all", help= "cha
 parser.add_argument('--year', required=False, type=str, default= "all", help= "year")
 parser.add_argument('--unc_sources_group', required=False, type=str, default= "all", help="unc sources groups")
 parser.add_argument('--input-dir', required=False, type=str, default="/mnt/data/Dottorato/anaTuples/2020-12-01/", help=" anatUples directory")
-parser.add_argument('--tune', required=False, type=bool, default=False, help=" use isTune5")
+parser.add_argument('--tune', required=False, type=int, default=0, help=" 0 = use all, 1 = use isTune5 , 2= don't use tune5 ")
 parser.add_argument('-n', required=False, type=bool, default=False, help=" don't write the file")
 
 args = parser.parse_args()
@@ -155,6 +158,9 @@ for i in jes_unc_sources:
 for i in les_unc_sources:
     for j in unc_variations:
         r_factors_d[i]={j : 1.}
+
+for j in unc_variations:
+    r_factors_d["JetReduced_Total withJES"]={j : 1.}
 
 print r_factors_d
 for year in years:
