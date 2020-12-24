@@ -38,7 +38,7 @@ uncertainty_dictionary =  {"None": 0, "TauES": 1, "JetFull_Total": 2, "TopPt": 3
 variation_dictionary = { "Central" : 0, "Up" : 1, "Down" : -1 }
 
 
-btag_unc_sources=["btag_lf","btag_hf","btag_hfstats1","btag_hfstats2","btag_lfstats1","btag_lfstats2"]#,"btag_cferr1","btag_cferr2"]
+btag_unc_sources=["btag_lf","btag_hf","btag_hfstats1","btag_hfstats2","btag_lfstats1","btag_lfstats2","btag_cferr1","btag_cferr2"]
 jes_unc_sources=["JetReduced_Absolute","JetReduced_Absolute_year","JetReduced_BBEC1","JetReduced_BBEC1_year","JetReduced_EC2","JetReduced_EC2_year","JetReduced_FlavorQCD","JetReduced_HF","JetReduced_HF_year","JetReduced_RelativeBal","JetReduced_RelativeSample_year","JetReduced_Total"]
 les_unc_sources=["TauES", "TauES_DM0", "TauES_DM1", "TauES_DM10", "TauES_DM11", "EleFakingTauES_DM0", "EleFakingTauES_DM1", "MuFakingTauES"]
 unc_variations=['Up', 'Down']
@@ -106,12 +106,14 @@ def evaluate_r_JESLES(file,channel, unc_sources, unc_scales, r_factors_dict, is_
                 add_dic(r_factor, unc_source+" withJES", unc_scale ,r_factors_dict)
 
 parser = argparse.ArgumentParser(description='Create bash command')
+parser.add_argument('machine', type=str, default="pccms65", choices=['pccms65', 'local', 'gridui'])
 parser.add_argument('--ch', required=False, type=str, default= "all", help= "channel")
 parser.add_argument('--year', required=False, type=str, default= "all", help= "year")
 parser.add_argument('--unc_sources_group', required=False, type=str, default= "all", help="unc sources groups")
-parser.add_argument('--input-dir', required=False, type=str, default="/mnt/data/Dottorato/anaTuples/2020-12-01/", help=" anatUples directory")
+parser.add_argument('--input-dir', required=False, type=str, default="", help=" anatUples directory")
 parser.add_argument('--tune', required=False, type=int, default=0, help=" 0 = use all, 1 = use isTune5 , 2= don't use tune5 ")
 parser.add_argument('-n', required=False, type=bool, default=False, help=" don't write the file")
+
 
 args = parser.parse_args()
 channels=[]
@@ -162,15 +164,27 @@ for i in les_unc_sources:
 for j in unc_variations:
     r_factors_d["JetReduced_Total withJES"]={j : 1.}
 
-print r_factors_d
+
+input_dir = ""
+output = ""
+if args.machine == "pccms65":
+    input_dir = pccms65_dir
+    output = "/data/store/cms-it-hh-bbtautau//anaTuples/2020-12-01/"
+elif args.machine == "local":
+    input_dir = "/mnt/data/Dottorato/anaTuples/2020-12-01/"
+elif args.machine == "gridui":
+    input_dir = "/gpfs/ddn/cms/user/androsov/store/cms-it-hh-bbtautau/anaTuples/2020-12-01/"
+else:
+    print "unknown input dir"
+
 for year in years:
     for channel in channels:
-        file = args.input_dir+year+"_"+channel+"_Central.root"
+        file = input_dir+year+"_"+channel+"_Central.root"
         evaluate_r_Central(file,channel,central_unc_sources, central_variations, r_factors_d, args.tune)
         evaluate_r_Central(file,channel,btag_unc_sources, unc_variations, r_factors_d, args.tune)
-        file = args.input_dir+year+"_"+channel+"_JES.root"
+        file = input_dir+year+"_"+channel+"_JES.root"
         evaluate_r_JESLES(file,channel,jes_unc_sources, unc_variations, r_factors_d, True, args.tune)
-        file = args.input_dir+year+"_"+channel+"_LES.root"
+        file = input_dir+year+"_"+channel+"_LES.root"
         evaluate_r_JESLES(file,channel,les_unc_sources, unc_variations, r_factors_d, False, args.tune)
         if(args.n==False):
             with open("btag_correction_factors_"+channel+"_"+year+".json", "w") as write_file:
