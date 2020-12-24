@@ -228,17 +228,18 @@ void BaseEventAnalyzer::ProcessDataSource(const SampleDescriptor& sample, const 
                     }
                 }
                 btag_weights.iter_weight = static_cast<float>(btag_weight_provider->Get(*event, DiscriminatorWP::Medium,
-                                                              true, unc_source, unc_scale, false));
+                                                              true, unc_source, unc_scale, false, sample.is_TuneCP5));
+                btag_weights.is_TuneCP5 = sample.is_TuneCP5;
                 if(unc_source == UncertaintySource::JetFull_Total || unc_source == UncertaintySource::JetReduced_Total)
                     btag_weights.iter_weight_with_jes = static_cast<float>(btag_weight_provider->Get(*event,
-                        DiscriminatorWP::Medium, true, unc_source, unc_scale, true));
+                        DiscriminatorWP::Medium, true, unc_source, unc_scale, true, sample.is_TuneCP5));
 
                 if(unc_source == UncertaintySource::None) {
                     for(auto btag_source : btag_sources) {
                         uncs_weight_map[btag_source][UncertaintyScale::Central] = btag_weights.iter_weight;
                         for(const auto scale : {UncertaintyScale::Up, UncertaintyScale::Down}) {
                             uncs_weight_map[btag_source][scale] = static_cast<float>(btag_weight_provider->Get(*event,
-                                DiscriminatorWP::Medium, true, btag_source, scale, false));
+                                DiscriminatorWP::Medium, true, btag_source, scale, false, sample.is_TuneCP5));
                         }
                     }
                 }

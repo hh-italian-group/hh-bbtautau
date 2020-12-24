@@ -22,6 +22,7 @@ add_library(TauAnalysisTools STATIC ${TauAnalysisTool_SRC})
 file(GLOB_RECURSE VBFTriggerSFs_SRC "${CMSSW_BASE_SRC}/VBFTriggerSFs/*.cc")
 add_library(VBFTriggerSFs STATIC ${VBFTriggerSFs_SRC})
 target_include_directories(VBFTriggerSFs PRIVATE "${CMSSW_BASE_SRC}/VBFTriggerSFs/VBFTriggerSFs/interface")
+target_include_directories(VBFTriggerSFs PRIVATE "${CMSSW_BASE_SRC}/VBFTriggerSFs/")
 set_source_files_properties(${VBFTriggerSFs_SRC} PROPERTIES COMPILE_FLAGS "-w")
 
 file(GLOB_RECURSE TauPOG_SRC "${CMSSW_BASE_SRC}/TauPOG/TauIDSFs/src/*.cc")
