@@ -71,7 +71,7 @@ class r_factor_calc:
 
     def add_dic(self):
         for (r_factor, unc_source, unc_scale) in zip (self.r_factors, self.unc_sources_vector, self.unc_scales_vector):
-            #print ("r factor related to %s and %s  is %.10f " % (unc_source, unc_scale,r_factor))
+            print ("r factor related to %s and %s  is %.10f " % (unc_source, unc_scale,r_factor))
             if isnan(r_factor):
                 print("warning, r-factor related to %s %s is nan" %(unc_source, unc_scale))
             if unc_source in self.r_factors_d:
@@ -85,9 +85,9 @@ class r_factor_calc:
         d = self.open_dataframe()
         self.unc_sources_vector.append("None")
         self.unc_scales_vector.append("Central")
-        print "processig None"
         w_before = d.Define("num", self.weight_num).Sum("num")
         w_after = d.Define("den", self.weight_den).Sum("den")
+        #print(" r factor for None Central is %.10f " %(w_before.GetValue()/w_after.GetValue()))
         self.r_factors.append(w_before.GetValue()/w_after.GetValue())
         for unc_source in self.unc_sources_dict[self.unc_group]:
             for unc_scale in self.unc_variations:
@@ -96,6 +96,7 @@ class r_factor_calc:
                 self.unc_scales_vector.append(unc_scale)
                 w_before = d.Define("num", self.weight_num).Sum("num")
                 w_after = d.Define("den", self.weight_den).Sum("den")
+                #print(" r factor for %s %s is %.10f " %(unc_source, unc_scale, w_before.GetValue()/w_after.GetValue()))
                 self.r_factors.append(w_before.GetValue()/w_after.GetValue())
         self.add_dic()
 
@@ -113,9 +114,13 @@ class r_factor_calc:
                 if(unc_source == "JetReduced_Total"):
                     self.weight_den = "weight*weight_btag_IterativeFit_withJES"
                     w_after = d.Filter(filter_unc_source).Filter(filter_unc_scale).Define("den", self.weight_den).Sum("den")
-                    self.r_factors.append(w_before.GetValue()/w_after.GetValue())
-                    self.unc_sources_vector.append("JetReduced_Total_JES")
-                    self.unc_scales_vector.append(unc_scale)
+                    #self.r_factors.append(w_before.GetValue()/w_after.GetValue())
+                    #self.unc_sources_vector.append("JetReduced_Total_JES")
+                    #self.unc_scales_vector.append(unc_scale)
+                    print(" r factor with jes for %s %s is %.10f " %(unc_source, unc_scale, w_before.GetValue()/w_after.GetValue()))
+
+
+
 
     def evaluate_r(self):
         if(self.unc_group=="Central"):
@@ -123,6 +128,7 @@ class r_factor_calc:
         else:
             self.evaluate_r_event()
         self.add_dic()
+
 
 parser = argparse.ArgumentParser(description='Create bash command')
 parser.add_argument('machine', type=str, default="pccms65", choices=['pccms65', 'local', 'gridui', 'other'])
@@ -132,6 +138,7 @@ parser.add_argument('--unc_sources_group', required=False, type=str, default= "a
 parser.add_argument('--input-dir', required=False, type=str, default="", help=" anatUples directory")
 parser.add_argument('--tune', required=False, type=int, default=0, help=" 0 = use all, 1 = use isTune5 , 2= don't use tune5 ")
 parser.add_argument('-n', required=False, type=bool, default=False, help=" don't write the file")
+
 
 args = parser.parse_args()
 channels=[]
