@@ -63,8 +63,7 @@ public:
                                             false, bkg_names, unc_collection);
         const EventSubCategorySet& subCategories = sub_categories_to_process;
 
-        std::vector<std::string> unc_sources = SplitValueList(args.unc_sources_groups(),false, ",", true);
-        //std::vector<std::string> input_friends = SplitValueList(args.input_friends(),false, ",", true);
+        std::vector<std::string> unc_sources = SplitValueList(args.unc_sources_groups(),false, ",", true); 
         for (auto& unc_source : unc_sources){
             std::string input_file = args.input();
             boost::replace_all(input_file, "{UNC_GROUP}", unc_source);
