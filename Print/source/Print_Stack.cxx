@@ -25,10 +25,11 @@ public:
         vars(ParseVarSet(args.vars()))
     {
 
-            std::vector<std::string> histograms= SplitValueList(ana_setup.hist_cfg,false, ",", true);
-            for (auto& hist_config : histograms)
+        //std::vector<std::string> histograms= SplitValueList(ana_setup.hist_cfg,false, ",", true);
+        for (auto& hist_config : ana_setup.hist_cfg)
             histConfig.Parse((hist_config));
         //histConfig.Parse((ana_setup.hist_cfg));
+
 
         std::shared_ptr<ModellingUncertaintyCollection> unc_collection;
         std::set<std::string> bkg_names;

@@ -28,11 +28,9 @@ public:
     CreatePlots(const AnalyzerArguments& _args) :
         EventAnalyzerCore(_args, _args.channel(), false), args(_args), activeVariables(ParseVarSet(args.vars())),
         inputFile(root_ext::OpenRootFile(args.input() + "_full.root"))
-    {
-        std::vector<std::string> histograms= SplitValueList(ana_setup.hist_cfg,false, ",", true);
-        for (auto& hist_config : histograms)
+    { 
+        for (auto& hist_config : ana_setup.hist_cfg)
             histConfig.Parse(FullPath(hist_config));
-        //histConfig.Parse(FullPath(ana_setup.hist_cfg));
         if(!ana_setup.unc_cfg.empty()) {
             ConfigReader config_reader;
             unc_collection = std::make_shared<ModellingUncertaintyCollection>();

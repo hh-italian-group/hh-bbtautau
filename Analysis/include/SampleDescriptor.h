@@ -37,9 +37,9 @@ struct AnalyzerSetup {
     std::vector<std::string> data, signals, backgrounds, cmb_samples;
     std::vector<std::string> draw_sequence;
     std::map<EventCategory, std::string> limit_categories;
-    std::string mva_setup, trigger_path;
-    std::string hist_cfg;
+    std::string mva_setup, trigger_path; 
     std::vector<std::string> syncDataIds;
+    std::vector<std::string> hist_cfg;
     std::string plot_cfg, plot_page_opt, unc_cfg;
     std::map<Channel, std::string> r_factors_file;
     BTaggerKind jet_ordering;

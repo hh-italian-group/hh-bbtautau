@@ -14,28 +14,7 @@ for btag related unc, you should multiply by both sf and unc up/down correction
 
 namespace analysis {
 namespace bbtautau {
-/*namespace{
-std::string get_name(UncertaintySource unc_source, UncertaintyScale unc_scale){
-    std::string complete_name;
-    if(unc_scale!= UncertaintyScale::Central && unc_scale!= UncertaintyScale::Up && unc_scale!= UncertaintyScale::Down)
-        throw exception("Incorrect uncertainty scale");
 
-    if(unc_source==UncertaintySource::None){
-        if(unc_scale==UncertaintyScale::Central)
-            complete_name="Central";
-        else
-            throw exception("Central Value can't have different scales");
-    }
-    else{
-        if(unc_scale!=UncertaintyScale::Central)
-            complete_name=ToString(unc_source)+"_"+ToString(unc_scale);
-        else{
-            complete_name=ToString(unc_source);
-        }
-    }
-    return complete_name;
-
-}*/
 
 
 EventTagCreator::EventTagCreator(const EventCategorySet& _categories, const EventSubCategorySet& _subCategories,
@@ -50,24 +29,13 @@ EventTagCreator::EventTagCreator(const EventCategorySet& _categories, const Even
         std::vector<UncertaintyScale> unc_scales= {UncertaintyScale::Central, UncertaintyScale::Up, UncertaintyScale::Down};
         boost::property_tree::ptree loadPtreeRoot;
         boost::property_tree::read_json(json_file, loadPtreeRoot);
-        for(UncertaintySource unc_source:event_unc_sources){
-            boost::property_tree::ptree::const_assoc_iterator it = loadPtreeRoot.find(ToString(unc_source));
-            if( it == loadPtreeRoot.not_found() ) continue;
-            auto unc_source_s = loadPtreeRoot.get_child(ToString(unc_source));
-                for (UncertaintyScale unc_scale: unc_scales ){
-                    boost::property_tree::ptree::const_assoc_iterator it2 = unc_source_s.find(ToString(unc_scale));
-                    if( it2 == unc_source_s.not_found() ) continue;
-                        std::string btag_corr_to_find= ToString(unc_source)+"."+ToString(unc_scale);
-                        float btag_corr_value = loadPtreeRoot.get<float>((btag_corr_to_find).c_str());
-                        //std::cout << typeid(unc_source).name() << std::endl;
-                        //std::cout << typeid(unc_scale).name() << std::endl;
-                        //std::cout << typeid(btag_corr_value).name() << std::endl;
-                        std::pair<UncertaintySource, UncertaintyScale> pair = std::make_pair(unc_source,unc_scale);
-                        iterativeFit_corrections.insert(std::pair<std::pair<UncertaintySource, UncertaintyScale>, float> (pair,btag_corr_value));
-
-                    }
+        for (auto &unc_source : loadPtreeRoot) {
+            for(auto &unc_scale : loadPtreeRoot.get_child(unc_source.first)){
+                float btag_corr_value= analysis::Parse<float>(unc_scale.second.data());
+                std::pair<UncertaintySource, UncertaintyScale> pair = std::make_pair(analysis::Parse<UncertaintySource>(unc_source.first), analysis::Parse<UncertaintyScale>(unc_scale.first) ) ;
+                iterativeFit_corrections[pair]=btag_corr_value;
+            }
         }
-
     }
 }
 
@@ -115,9 +83,8 @@ EventTags EventTagCreator::CreateEventTags(const DataId& dataId_base, float weig
             if(iterativeFit_corrections.count(std::make_pair(unc_source, unc_scale))){
                 return weight_btag_IterativeFit * iterativeFit_corrections.at({unc_source, unc_scale});
             }
-
             else
-                return weight_btag_IterativeFit ; //* iterativeFit_corrections.at((UncertaintySource::None, UncertaintyScale::Central))
+                return weight_btag_IterativeFit*iterativeFit_corrections.at({UncertaintySource::None, UncertaintyScale::Central});
         }
         return btag_weights.at(wp);
     };
@@ -132,7 +99,6 @@ EventTags EventTagCreator::CreateEventTags(const DataId& dataId_base, float weig
             continue;
         EventSubCategory evtSubCategory;
         const float btag_sf = category.HasBtagConstraint() && !is_data ? get_weight_btag(category.BtagWP(), dataId_base.Get<UncertaintySource>(), dataId_base.Get<UncertaintyScale>()) : 1.f;
-        //const float cat_weight = weight * btag_sf;
         const float cat_weight = weight * btag_sf ;
 
         if(has_b_pair) {

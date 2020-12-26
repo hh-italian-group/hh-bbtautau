@@ -264,9 +264,6 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
     DefineP4(df, "VBF1");
     DefineP4(df, "VBF2");
 
-
-
-
     const auto convertToDataId = [&](unsigned dataset, unsigned event_region, int unc_source, int unc_scale) {
         return DataId(GetDatasetByHash(dataset), GetRegionByHash(event_region),
                       static_cast<UncertaintySource>(unc_source), static_cast<UncertaintyScale>(unc_scale));
