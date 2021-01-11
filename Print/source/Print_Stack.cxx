@@ -24,7 +24,13 @@ public:
         EventAnalyzerCore(_args, _args.channel(),false), args(_args), inputFile(root_ext::OpenRootFile(args.input())),
         vars(ParseVarSet(args.vars()))
     {
-        histConfig.Parse(ana_setup.hist_cfg);
+
+        //std::vector<std::string> histograms= SplitValueList(ana_setup.hist_cfg,false, ",", true);
+        for (auto& hist_config : ana_setup.hist_cfg)
+            histConfig.Parse((hist_config));
+        //histConfig.Parse((ana_setup.hist_cfg));
+
+
         std::shared_ptr<ModellingUncertaintyCollection> unc_collection;
         std::set<std::string> bkg_names;
         anaDataCollection = std::make_shared<AnaDataCollection>(inputFile, args.channel(), vars, histConfig.GetItems(),

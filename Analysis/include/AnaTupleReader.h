@@ -41,7 +41,7 @@ private:
 
 private:
     std::vector<std::shared_ptr<TFile>> files;
-    std::vector<std::shared_ptr<TTree>> trees;
+    std::vector<std::shared_ptr<TTree>> trees; 
     ROOT::RDataFrame dataFrame;
     RDF df;
     std::list<RDF> skimmed_df;

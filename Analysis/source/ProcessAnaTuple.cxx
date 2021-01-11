@@ -19,7 +19,7 @@ struct AnalyzerArguments : CoreAnalyzerArguments {
     OPT_ARG(bool, shapes, true);
     OPT_ARG(bool, draw, true);
     OPT_ARG(std::string, vars, "");
-    run::Argument<std::vector<std::string>> input_friends{"input_friends", "", {}};
+    OPT_ARG(std::string, input_friends, "");
 };
 
 class ProcessAnaTuple : public EventAnalyzerCore {
@@ -30,11 +30,11 @@ public:
 
     ProcessAnaTuple(const AnalyzerArguments& _args) :
         EventAnalyzerCore(_args, _args.channel(), false), args(_args), activeVariables(ParseVarSet(args.vars())),
-        eventTagger(ana_setup.categories, sub_categories_to_process, unc_sources_group, ana_setup.norm_unc_sources,
-                    ana_setup.use_IterativeFit, args.channel(), args.period()),
         outputFile(root_ext::CreateRootFile(args.output() + "_full.root", ROOT::kLZMA, 9))
+
     {
-        histConfig.Parse(FullPath(ana_setup.hist_cfg));
+        for (auto& hist_config : ana_setup.hist_cfg)
+            histConfig.Parse(FullPath(hist_config));
         if(!ana_setup.unc_cfg.empty()) {
             ConfigReader config_reader;
             unc_collection = std::make_shared<ModellingUncertaintyCollection>();
@@ -42,13 +42,11 @@ public:
             config_reader.AddEntryReader("UNC", unc_reader, true);
             config_reader.ReadConfig(FullPath(ana_setup.unc_cfg));
         }
+        std::set_union(ana_setup.norm_unc_sources.begin(), ana_setup.norm_unc_sources.end(),
+                        unc_sources_group.begin(), unc_sources_group.end(),
+                        std::inserter(unc_sources_total, unc_sources_total.begin()));
 
-        if(!args.input_friends().empty()) {
-            std::cout << "Input TTree friends:\n";
-            for(const std::string& file_name : args.input_friends())
-                std::cout << '\t' << file_name << '\n';
-            std::cout << std::endl;
-        }
+
     }
 
     void Run()
@@ -65,15 +63,23 @@ public:
                                             false, bkg_names, unc_collection);
         const EventSubCategorySet& subCategories = sub_categories_to_process;
 
-        std::vector<std::string> unc_sources = SplitValueList(args.unc_sources_groups(),false, ",", true);
+        std::vector<std::string> unc_sources = SplitValueList(args.unc_sources_groups(),false, ",", true); 
         for (auto& unc_source : unc_sources){
             std::string input_file = args.input();
-            boost::replace_all(input_file, "{UNC_SOURCE}", unc_source);
-            std::vector<std::string> input_friends = args.input_friends();
+            boost::replace_all(input_file, "{UNC_GROUP}", unc_source);
+            std::cout << "\n input file \t " ;
+            std::cout << input_file << std::endl;
+            std::vector<std::string> input_friends = SplitValueList(args.input_friends(),false, ",", true);
             for (auto& f: input_friends) {
-                boost::replace_all(f, "{UNC_SOURCE}", unc_source);
+                boost::replace_all(f, "{UNC_GROUP}", unc_source);
             }
-            std::cout<< "\n \t input file " << input_file << std::endl;
+            if(!input_friends.empty()) {
+                std::cout << "Input TTree friends:\n";
+                for(const std::string& file_name : input_friends)
+                    std::cout << '\t' << file_name << '\n';
+                std::cout << std::endl;
+            }
+            bbtautau::EventTagCreator eventTagger(ana_setup.categories, sub_categories_to_process, unc_sources_total, ana_setup.norm_unc_sources,ana_setup.use_IterativeFit, ana_setup.r_factors_file.at(args.channel()));
             bbtautau::AnaTupleReader tupleReader(input_file, args.channel(), activeVariables, input_friends, eventTagger,
                                                     ana_setup.mdnn_version, ana_setup.norm_unc_sources);
 
@@ -123,7 +129,6 @@ public:
                 }
             }
         }
-
         if(args.shapes()) {
             std::cout << "\tProducing inputs for limits..." << std::endl;
             LimitsInputProducer limitsInputProducer(anaDataCollection, sample_descriptors,
@@ -132,7 +137,7 @@ public:
                 std::cout << "\t\tsetup_name: " << limit_setup.first <<  std::endl;
                 for(const auto& subCategory : subCategories)
                     limitsInputProducer.Produce(args.output(), limit_setup.first, limit_setup.second, subCategory,
-                                                unc_sources_group, ana_setup.regions, mva_sel_aliases,
+                                                unc_sources_total, ana_setup.regions, mva_sel_aliases,
                                                 args.period());
             }
         }
@@ -457,10 +462,10 @@ private:
 private:
     AnalyzerArguments args;
     std::set<std::string> activeVariables, limitVariables;
-    bbtautau::EventTagCreator eventTagger;
     std::shared_ptr<TFile> outputFile;
     PropertyConfigReader histConfig;
     std::shared_ptr<ModellingUncertaintyCollection> unc_collection;
+    std::set<UncertaintySource> unc_sources_total;
 };
 
 } // namespace analysis

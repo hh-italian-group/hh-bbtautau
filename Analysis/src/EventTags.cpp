@@ -3,34 +3,39 @@ This file is part of https://github.com/hh-italian-group/hh-bbtautau. */
 
 #include "hh-bbtautau/Analysis/include/EventTags.h"
 #include "h-tautau/Cuts/include/hh_bbtautau_Run2.h"
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
+/*
+
+1. in the constructor you load json into std::map<std::pair<UncSource, UncScale>, float> ---> Fatto
+2. when you calculate btag weight you know what is uncSource and uncScale -> multiply it by the value from the map
+for btag related unc, you should multiply by both sf and unc up/down correction
+*/
 
 namespace analysis {
 namespace bbtautau {
 
+
+
 EventTagCreator::EventTagCreator(const EventCategorySet& _categories, const EventSubCategorySet& _subCategories,
                                   const std::set<UncertaintySource>& _event_unc_sources,
                                   const std::set<UncertaintySource>& _norm_unc_sources,
-                                  bool _use_IterativeFit, Channel _channel, Period _period) :
+                                  bool _use_IterativeFit, std::string _json_file)  :
         categories(_categories), subCategories(_subCategories), event_unc_sources(_event_unc_sources),
-        norm_unc_sources(_norm_unc_sources), use_IterativeFit(_use_IterativeFit), channel(_channel), period(_period)
+        norm_unc_sources(_norm_unc_sources), use_IterativeFit(_use_IterativeFit),
+        json_file(_json_file)
 {
     if(use_IterativeFit) {
-        static const std::map<std::pair<Channel, Period>, float> iterativeFit_corrections = {
-            {{Channel::ETau, Period::Run2016}, 1.0120f}, // 1.01203715762
-            {{Channel::MuTau, Period::Run2016}, 1.013f}, // 1.01296331792
-            {{Channel::TauTau, Period::Run2016}, 1.0101f}, // 1.01010364517
-            {{Channel::ETau, Period::Run2017}, 0.9949f}, // 0.994930642536
-            {{Channel::MuTau, Period::Run2017}, 0.9993f}, // 0.999263715405
-            {{Channel::TauTau, Period::Run2017}, 0.9547f}, // 0.954725518543
-            {{Channel::ETau, Period::Run2018}, 1.0004f}, // 1.0003768284
-            {{Channel::MuTau, Period::Run2018}, 1.0039f}, // 1.00388888346
-            {{Channel::TauTau, Period::Run2018}, 0.9795f}, // 0.97949255088
-        };
-        auto iter = iterativeFit_corrections.find({channel, period});
-        if(iter == iterativeFit_corrections.end())
-            throw exception("Normalization correction for iterative fit is not available for %1% %2%")
-                    % period % channel;
-        iterativeFit_correction = iter->second;
+        std::vector<UncertaintyScale> unc_scales= {UncertaintyScale::Central, UncertaintyScale::Up, UncertaintyScale::Down};
+        boost::property_tree::ptree loadPtreeRoot;
+        boost::property_tree::read_json(json_file, loadPtreeRoot);
+        for (auto &unc_source : loadPtreeRoot) {
+            for(auto &unc_scale : loadPtreeRoot.get_child(unc_source.first)){
+                float btag_corr_value= analysis::Parse<float>(unc_scale.second.data());
+                std::pair<UncertaintySource, UncertaintyScale> pair = std::make_pair(analysis::Parse<UncertaintySource>(unc_source.first), analysis::Parse<UncertaintyScale>(unc_scale.first) ) ;
+                iterativeFit_corrections[pair]=btag_corr_value;
+            }
+        }
     }
 }
 
@@ -42,18 +47,19 @@ std::pair<float, VBF_Category> EventTagCreator::FindVBFCategory(float dnn_score_
     std::vector<std::pair<float, VBF_Category>> category_and_dnn = {
         { dnn_score_qqHH_sm + dnn_score_qqHH + dnn_score_qqHH_vbf_c2v, VBF_Category::qqHH },
         { dnn_score_ggHH , VBF_Category::ggHH},
-        { dnn_score_TT_dl + dnn_score_TT_lep + dnn_score_TT_sl , VBF_Category::TT_L },
-        { dnn_score_TT_FH, VBF_Category::TT_FH},
+        { dnn_score_TT_dl + dnn_score_TT_lep + dnn_score_TT_sl+dnn_score_TT_FH, VBF_Category::TT},
         { dnn_score_ttH + dnn_score_ttH_tautau + dnn_score_tth_bb, VBF_Category::ttH},
         { dnn_score_DY, VBF_Category::DY},
     };
     return *std::max_element(category_and_dnn.begin(), category_and_dnn.end());
 }
+
 static std::set<UncertaintySource> btag_uncs = {
     UncertaintySource::btag_lf, UncertaintySource::btag_hf, UncertaintySource::btag_hfstats1,
     UncertaintySource::btag_hfstats2, UncertaintySource::btag_lfstats1,
     UncertaintySource::btag_lfstats2, UncertaintySource::btag_cferr1, UncertaintySource::btag_cferr2
 };
+
 
 EventTags EventTagCreator::CreateEventTags(const DataId& dataId_base, float weight, bool is_data,
         float weight_btag_Loose, float weight_btag_Medium, float weight_btag_Tight, float weight_btag_IterativeFit,
@@ -72,8 +78,14 @@ EventTags EventTagCreator::CreateEventTags(const DataId& dataId_base, float weig
         { DiscriminatorWP::Medium, weight_btag_Medium },
         { DiscriminatorWP::Tight, weight_btag_Tight },
     };
-    const auto get_weight_btag = [&](DiscriminatorWP wp) {
-        if(use_IterativeFit) return weight_btag_IterativeFit * iterativeFit_correction;
+    const auto get_weight_btag = [&](DiscriminatorWP wp, UncertaintySource unc_source, UncertaintyScale unc_scale) {
+        if(use_IterativeFit) {
+            if(iterativeFit_corrections.count(std::make_pair(unc_source, unc_scale))){
+                return weight_btag_IterativeFit * iterativeFit_corrections.at({unc_source, unc_scale});
+            }
+            else
+                return weight_btag_IterativeFit*iterativeFit_corrections.at({UncertaintySource::None, UncertaintyScale::Central});
+        }
         return btag_weights.at(wp);
     };
 
@@ -86,8 +98,8 @@ EventTags EventTagCreator::CreateEventTags(const DataId& dataId_base, float weig
         if(!category.Contains(static_cast<size_t>(num_central_jets), bjet_counts, is_vbf, is_boosted, vbf_cat.second))
             continue;
         EventSubCategory evtSubCategory;
-        const float btag_sf = category.HasBtagConstraint() && !is_data ? get_weight_btag(category.BtagWP()) : 1.f;
-        const float cat_weight = weight * btag_sf;
+        const float btag_sf = category.HasBtagConstraint() && !is_data ? get_weight_btag(category.BtagWP(), dataId_base.Get<UncertaintySource>(), dataId_base.Get<UncertaintyScale>()) : 1.f;
+        const float cat_weight = weight * btag_sf ;
 
         if(has_b_pair) {
             const EllipseParameters& window = category.HasBoostConstraint() && category.IsBoosted()
@@ -104,8 +116,10 @@ EventTags EventTagCreator::CreateEventTags(const DataId& dataId_base, float weig
                 for(const auto& [key, weight_shift] : unc_map) {
                     if(!category.HasBtagConstraint() && btag_uncs.count(key.first)) continue;
                     const auto dataId_scaled = dataId.Set(key.first).Set(key.second);
+                    const float btag_sf_scaled = category.HasBtagConstraint() && !is_data ? get_weight_btag(category.BtagWP(), dataId_scaled.Get<UncertaintySource>(), dataId_scaled.Get<UncertaintyScale>()) : 1.f;
+                    const float cat_weight_shifted = weight_shift * weight * btag_sf_scaled ;
                     evt_tags.dataIds.push_back(dataId_scaled);
-                    evt_tags.weights.push_back(cat_weight * weight_shift);
+                    evt_tags.weights.push_back(cat_weight_shifted);
                 }
             }
         }

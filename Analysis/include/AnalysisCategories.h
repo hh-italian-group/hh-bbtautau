@@ -36,10 +36,10 @@ ENUM_NAMES(DYFitModel) = {
     { DYFitModel::NbjetBins_ptBins, "NbjetBins_ptBins"}, { DYFitModel::Htt, "Htt"}
 };
 
-enum class VBF_Category {None=-1, qqHH = 0, ggHH = 1, TT_L = 2, TT_FH = 3,  ttH = 4, DY = 5};
+enum class VBF_Category {None=-1, qqHH = 0, ggHH = 1, TT_L = 2, TT_FH = 3, TT = 4, ttH = 5, DY = 6};
 ENUM_NAMES(VBF_Category) = {
     { VBF_Category::None, "NoCategory"}, { VBF_Category::qqHH, "qqHH"},
-    { VBF_Category::ggHH, "ggHH"}, { VBF_Category::TT_L, "TT_L"},
+    { VBF_Category::ggHH, "ggHH"}, { VBF_Category::TT_L, "TT_L"},  { VBF_Category::TT, "TT"},
     { VBF_Category::TT_FH, "TT_FH"}, { VBF_Category::ttH, "ttH"}, { VBF_Category::DY, "DY"}
 };
 
