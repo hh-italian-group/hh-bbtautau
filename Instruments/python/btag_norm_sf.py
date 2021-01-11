@@ -170,17 +170,21 @@ else:
 
 r_factors_dict={}
 input_dir = ""
+out_dir = ""
 if args.machine == "pccms65":
     input_dir = pccms65_dir
     output = "/data/store/cms-it-hh-bbtautau//anaTuples/2020-12-01/"
+    #out_dir = "/home/valeria/CMSSW_11_1_0_pre6/src/hh-bbtautau/"
 elif args.machine == "local":
-    #input_dir = "/mnt/data/Dottorato/anaTuples/2020-12-01/"
-    input_dir = "/home/Valeria/Desktop/Dottorato/2020-12-22/"
+    #out_dir = "/home/Valeria/Desktop/Dottorato/framework_in_local/bbtautau/hh-bbtautau/"  # to change if you want to run it in local
+    input_dir = "/home/Valeria/Desktop/Dottorato/2020-12-22/" # to change if you want to run it in local
 elif args.machine == "gridui":
     input_dir = "/gpfs/ddn/cms/user/androsov/store/cms-it-hh-bbtautau/anaTuples/2020-12-01/"
+    #out_dir =  "/home/users/damante/CMSSW_11_1_0_pre6/src/hh-bbtautau/"
 else:
     input_dir = args.input_dir
 
+out_dir = "../../McCorrections/data/"
 for year in years:
     for channel in channels:
         for unc_source in unc_sources:
@@ -189,11 +193,11 @@ for year in years:
             calculate_r_factors.evaluate_r()
         if(args.n==False):
             if(args.tune==1):
-                with open("btag_correction_factors_"+channel+"_"+year+"_TuneCP5.json", "w") as write_file:
+                with open(out_dir+"btag_correction_factors_"+channel+"_"+year+"_TuneCP5.json", "w") as write_file:
                     json.dump(r_factors_dict, write_file)
             elif(args.tune==0):
-                with open("btag_correction_factors_"+channel+"_"+year+"_TuneCUETP8M1.json", "w") as write_file:
+                with open(out_dir+"btag_correction_factors_"+channel+"_"+year+"_TuneCUETP8M1.json", "w") as write_file:
                     json.dump(r_factors_dict, write_file)
             else:
-                with open("btag_correction_factors_"+channel+"_"+year+".json", "w") as write_file:
+                with open(out_dir+"btag_correction_factors_"+channel+"_"+year+".json", "w") as write_file:
                     json.dump(r_factors_dict, write_file)
