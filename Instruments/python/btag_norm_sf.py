@@ -88,7 +88,10 @@ class r_factor_calc:
         w_before = d.Define("num", self.weight_num).Sum("num")
         w_after = d.Define("den", self.weight_den).Sum("den")
         #print(" r factor for None Central is %.10f " %(w_before.GetValue()/w_after.GetValue()))
-        self.r_factors.append(w_before.GetValue()/w_after.GetValue())
+        if w_after.GetValue() != 0:
+            self.r_factors.append(w_before.GetValue()/w_after.GetValue())
+        else:
+            self.r_factors.append(0)
         for unc_source in self.unc_sources_dict[self.unc_group]:
             for unc_scale in self.unc_variations:
                 self.weight_den = self.weight_den+"*unc_"+unc_source+"_"+unc_scale
@@ -96,8 +99,11 @@ class r_factor_calc:
                 self.unc_scales_vector.append(unc_scale)
                 w_before = d.Define("num", self.weight_num).Sum("num")
                 w_after = d.Define("den", self.weight_den).Sum("den")
+                if w_after.GetValue() != 0:
+                    self.r_factors.append(w_before.GetValue()/w_after.GetValue())
+                else:
+                    self.r_factors.append(0)
                 #print(" r factor for %s %s is %.10f " %(unc_source, unc_scale, w_before.GetValue()/w_after.GetValue()))
-                self.r_factors.append(w_before.GetValue()/w_after.GetValue())
         self.add_dic()
 
     def evaluate_r_event(self):
@@ -108,9 +114,12 @@ class r_factor_calc:
                 filter_unc_scale= "unc_scale=="+str(self.variation_dictionary[unc_scale])
                 w_before = d.Filter(filter_unc_source).Filter(filter_unc_scale).Define("num", self.weight_num).Sum("num")
                 w_after = d.Filter(filter_unc_source).Filter(filter_unc_scale).Define("den", self.weight_den).Sum("den")
-                self.r_factors.append(w_before.GetValue()/w_after.GetValue())
                 self.unc_sources_vector.append(unc_source)
                 self.unc_scales_vector.append(unc_scale)
+                if w_after.GetValue() != 0:
+                    self.r_factors.append(w_before.GetValue()/w_after.GetValue())
+                else:
+                    self.r_factors.append(0)
                 if(unc_source == "JetReduced_Total"):
                     self.weight_den = "weight*weight_btag_IterativeFit_withJES"
                     w_after = d.Filter(filter_unc_source).Filter(filter_unc_scale).Define("den", self.weight_den).Sum("den")
@@ -172,19 +181,16 @@ r_factors_dict={}
 input_dir = ""
 out_dir = ""
 if args.machine == "pccms65":
-    input_dir = pccms65_dir
-    output = "/data/store/cms-it-hh-bbtautau//anaTuples/2020-12-01/"
-    #out_dir = "/home/valeria/CMSSW_11_1_0_pre6/src/hh-bbtautau/"
+    input_dir = '/data/store/cms-it-hh-bbtautau//anaTuples/2020-12-01/'
+    #output = "/data/store/cms-it-hh-bbtautau//anaTuples/2020-12-01/"
 elif args.machine == "local":
-    #out_dir = "/home/Valeria/Desktop/Dottorato/framework_in_local/bbtautau/hh-bbtautau/"  # to change if you want to run it in local
     input_dir = "/home/Valeria/Desktop/Dottorato/2020-12-22/" # to change if you want to run it in local
 elif args.machine == "gridui":
     input_dir = "/gpfs/ddn/cms/user/androsov/store/cms-it-hh-bbtautau/anaTuples/2020-12-01/"
-    #out_dir =  "/home/users/damante/CMSSW_11_1_0_pre6/src/hh-bbtautau/"
 else:
     input_dir = args.input_dir
 
-out_dir = "../../McCorrections/data/"
+out_dir = "hh-bbtautau/McCorrections/data/"
 for year in years:
     for channel in channels:
         for unc_source in unc_sources:
