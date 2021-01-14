@@ -2,6 +2,7 @@ import ROOT
 import argparse
 import json
 from numpy import *
+import getDataIdHash as g
 
 
 class r_factor_calc:
@@ -44,12 +45,14 @@ class r_factor_calc:
     jes_unc_sources=["JetReduced_Absolute","JetReduced_Absolute_year","JetReduced_BBEC1","JetReduced_BBEC1_year","JetReduced_EC2","JetReduced_EC2_year","JetReduced_FlavorQCD","JetReduced_HF","JetReduced_HF_year","JetReduced_RelativeBal","JetReduced_RelativeSample_year","JetReduced_Total"]
     les_unc_sources=["TauES", "TauES_DM0", "TauES_DM1", "TauES_DM10", "TauES_DM11", "EleFakingTauES_DM0", "EleFakingTauES_DM1", "MuFakingTauES"]
     unc_sources_dict={"Central": norm_unc_sources, "JES" : jes_unc_sources, "LES" : les_unc_sources}
-    tune = 2
+    hastune = 0
     weight_num = "weight"
     weight_den = "weight*weight_btag_IterativeFit"
     unc_sources_vector=[]
     unc_scales_vector=[]
     r_factors = []
+    dataIds = []
+    datasets_tuneCP5= ["TTTo2L2Nu", "TTToSemiLeptonic", "TTToHadronic", "ST_tW_antitop", "ST_tW_top", "ST_t-channel_antitop", "ST_t-channel_top"]
 
     def __init__(self, input_dir, year, channel, unc_group, r_factors_d):
         self.input_dir = input_dir
@@ -57,37 +60,60 @@ class r_factor_calc:
         self.channel = channel
         self.unc_group = unc_group
         self.r_factors_d = r_factors_d
+        self.file = self.input_dir + "/"+self.year+"_"+self.channel+"_"+self.unc_group+".root"
 
     def open_dataframe(self):
-        file = self.input_dir + "/"+self.year+"_"+self.channel+"_"+self.unc_group+".root"
-        dataframe = ROOT.RDataFrame(self.channel, file)
+        dataframe = ROOT.RDataFrame(self.channel, self.file)
         not_data = '! is_data'
         dataframe=dataframe.Filter(not_data)
-        if self.tune == 1:
-            dataframe=dataframe.Filter("is_TuneCP5==1")
-        elif self.tune == 0:
-            dataframe=dataframe.Filter("is_TuneCP5==0")
         return dataframe
 
-    def add_dic(self):
+    def condition_for_tune(self, d):
+        dataIds = [] #ROOT.std.vector('int')()
+        id_collections = ['dataset' ] #, 'sample']
+        data_frames = g.LoadIdFrames(self.file, id_collections)
+        for col in id_collections:
+            df = data_frames[col]
+            for i in self.datasets_tuneCP5:
+                dataIds.append(g.GetDataIdHash(df, i, False)[i])
+        cond_str = " double tune = ("
+        cmp_str = ['dataset == {}'.format(i) for i in dataIds]
+        cond_str = cond_str + ' || '.join(cmp_str)
+        cond_str = cond_str + ") ? 1 : 0 ; return tune; "
+        return cond_str
+
+    def filter_tune(self, d, tune):
+        if(self.hastune==1):
+            d.Filter("is_TuneCP5=="+tune)
+        else:
+            cond_str =  self.condition_for_tune(d)
+            d = d.Define("isTuneCP5", cond_str)
+            d.Filter("is_TuneCP5=="+tune)
+
+
+    def add_dic(self, tune):
         for (r_factor, unc_source, unc_scale) in zip (self.r_factors, self.unc_sources_vector, self.unc_scales_vector):
-            print ("r factor related to %s and %s  is %.10f " % (unc_source, unc_scale,r_factor))
+            #print ("r factor related to %s and %s with tuneCP5 %s is %.10f " % (unc_source, unc_scale, tune,r_factor))
             if isnan(r_factor):
                 print("warning, r-factor related to %s %s is nan" %(unc_source, unc_scale))
             if unc_source in self.r_factors_d:
                 pass
             else:
                 self.r_factors_d[unc_source]={}
-            self.r_factors_d[unc_source][unc_scale]=r_factor
+            self.r_factors_d[unc_source][unc_scale]={}
+            self.r_factors_d[unc_source][unc_scale][tune] = r_factor
         return self.r_factors_d
 
-    def evaluate_r_norm(self):
+
+
+    def evaluate_r_norm(self, tune):
         d = self.open_dataframe()
+        self.filter_tune(d, tune)
         self.unc_sources_vector.append("None")
         self.unc_scales_vector.append("Central")
         w_before = d.Define("num", self.weight_num).Sum("num")
         w_after = d.Define("den", self.weight_den).Sum("den")
-        #print(" r factor for None Central is %.10f " %(w_before.GetValue()/w_after.GetValue()))
+        #print(" r factor for None Central tune %s is %.10f " %(tune, w_before.GetValue()/w_after.GetValue()))
         if w_after.GetValue() != 0:
             self.r_factors.append(w_before.GetValue()/w_after.GetValue())
         else:
@@ -103,11 +129,11 @@ class r_factor_calc:
                     self.r_factors.append(w_before.GetValue()/w_after.GetValue())
                 else:
                     self.r_factors.append(0)
-                #print(" r factor for %s %s is %.10f " %(unc_source, unc_scale, w_before.GetValue()/w_after.GetValue()))
-        self.add_dic()
+                #print(" r factor for %s %s tune %s is %.10f " %(unc_source, unc_scale, tune,  w_before.GetValue()/w_after.GetValue()))
 
-    def evaluate_r_event(self):
+    def evaluate_r_event(self, tune):
         d = self.open_dataframe()
+        self.filter_tune(d, tune)
         for unc_source in self.unc_sources_dict[self.unc_group]:
             for unc_scale in self.unc_variations:
                 filter_unc_source= "unc_source=="+str(self.uncertainty_dictionary[unc_source])
@@ -120,23 +146,22 @@ class r_factor_calc:
                     self.r_factors.append(w_before.GetValue()/w_after.GetValue())
                 else:
                     self.r_factors.append(0)
+                #print(" r factor for %s %s tune %s is %.10f " %(unc_source, unc_scale, tune, w_before.GetValue()/w_after.GetValue()))
                 if(unc_source == "JetReduced_Total"):
                     self.weight_den = "weight*weight_btag_IterativeFit_withJES"
                     w_after = d.Filter(filter_unc_source).Filter(filter_unc_scale).Define("den", self.weight_den).Sum("den")
                     #self.r_factors.append(w_before.GetValue()/w_after.GetValue())
                     #self.unc_sources_vector.append("JetReduced_Total_JES")
                     #self.unc_scales_vector.append(unc_scale)
-                    print(" r factor with jes for %s %s is %.10f " %(unc_source, unc_scale, w_before.GetValue()/w_after.GetValue()))
-
-
-
+                    print(" r factor with jes for %s %s tune %s is %.10f " %(unc_source, unc_scale, tune, w_before.GetValue()/w_after.GetValue()))
 
     def evaluate_r(self):
-        if(self.unc_group=="Central"):
-            self.evaluate_r_norm()
-        else:
-            self.evaluate_r_event()
-        self.add_dic()
+        for tune in ["0","1"]:
+            if(self.unc_group=="Central"):
+                self.evaluate_r_norm(tune)
+            else:
+                self.evaluate_r_event(tune)
+            self.add_dic(tune)
 
 
 parser = argparse.ArgumentParser(description='Create bash command')
@@ -145,7 +170,7 @@ parser.add_argument('--ch', required=False, type=str, default= "all", help= "cha
 parser.add_argument('--year', required=False, type=str, default= "all", help= "year")
 parser.add_argument('--unc_sources_group', required=False, type=str, default= "all", help="unc sources groups")
 parser.add_argument('--input-dir', required=False, type=str, default="", help=" anatUples directory")
-parser.add_argument('--tune', required=False, type=int, default=0, help=" 0 = use all, 1 = use isTune5 , 2= don't use tune5 ")
+parser.add_argument('--hastune', required=False, type=int, default=1, choices=[0,1], help=" 0 = does not have TuneCP5, 1 = has Tune CP5 ")
 parser.add_argument('-n', required=False, type=bool, default=False, help=" don't write the file")
 
 
@@ -190,20 +215,15 @@ elif args.machine == "gridui":
 else:
     input_dir = args.input_dir
 
+
+
 out_dir = "hh-bbtautau/McCorrections/data/"
 for year in years:
     for channel in channels:
         for unc_source in unc_sources:
             calculate_r_factors= r_factor_calc(input_dir, year, channel, unc_source, r_factors_dict)
-            calculate_r_factors.tune=args.tune
+            calculate_r_factors.hastune=args.hastune
             calculate_r_factors.evaluate_r()
         if(args.n==False):
-            if(args.tune==1):
-                with open(out_dir+"btag_correction_factors_"+channel+"_"+year+"_TuneCP5.json", "w") as write_file:
-                    json.dump(r_factors_dict, write_file)
-            elif(args.tune==0):
-                with open(out_dir+"btag_correction_factors_"+channel+"_"+year+"_TuneCUETP8M1.json", "w") as write_file:
-                    json.dump(r_factors_dict, write_file)
-            else:
-                with open(out_dir+"btag_correction_factors_"+channel+"_"+year+".json", "w") as write_file:
-                    json.dump(r_factors_dict, write_file)
+            with open(out_dir+"btag_correction_factors_"+channel+"_"+year+".json", "w") as write_file:
+                json.dump(r_factors_dict, write_file)
