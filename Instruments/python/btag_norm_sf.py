@@ -83,17 +83,17 @@ class r_factor_calc:
         return cond_str
 
     def filter_tune(self, d, tune):
-        if self.year==2016:
+        if self.year=="2016":
             if self.hastune==1:
                 d = d.Filter("is_TuneCP5=="+tune)
             else:
                 cond_str =  self.condition_for_tune(d)
-                d = d.Define("isTuneCP5", cond_str)
+                d = d.Define("is_TuneCP5", cond_str)
                 d = d.Filter("is_TuneCP5=="+tune)
         else:
-            d = d.Define("isTuneCP5", "0")
+            d = d.Define("is_TuneCP5", "0")
             d = d.Filter("is_TuneCP5=="+tune)
-
+        return d
 
     def add_dic(self, tune):
         for (r_factor, unc_source, unc_scale) in zip (self.r_factors, self.unc_sources_vector, self.unc_scales_vector):
@@ -108,11 +108,9 @@ class r_factor_calc:
             self.r_factors_d[unc_source][unc_scale][tune] = r_factor
         return self.r_factors_d
 
-
-
     def evaluate_r_norm(self, tune):
         d = self.open_dataframe()
-        self.filter_tune(d, tune)
+        d = self.filter_tune(d, tune)
         self.unc_sources_vector.append("None")
         self.unc_scales_vector.append("Central")
         w_before = d.Define("num", self.weight_num).Sum("num")
@@ -137,7 +135,7 @@ class r_factor_calc:
 
     def evaluate_r_event(self, tune):
         d = self.open_dataframe()
-        self.filter_tune(d, tune)
+        d = self.filter_tune(d, tune)
         for unc_source in self.unc_sources_dict[self.unc_group]:
             for unc_scale in self.unc_variations:
                 filter_unc_source= "unc_source=="+str(self.uncertainty_dictionary[unc_source])
@@ -160,7 +158,7 @@ class r_factor_calc:
                     print(" r factor with jes for %s %s tune %s is %.10f " %(unc_source, unc_scale, tune, w_before.GetValue()/w_after.GetValue()))
 
     def evaluate_r(self):
-        if self.year==2016:
+        if self.year=="2016":
             for tune in ["0","1"]:
                 if(self.unc_group=="Central"):
                     self.evaluate_r_norm(tune)
@@ -218,7 +216,6 @@ input_dir = ""
 out_dir = ""
 if args.machine == "pccms65":
     input_dir = '/data/store/cms-it-hh-bbtautau//anaTuples/2020-12-01/'
-    #output = "/data/store/cms-it-hh-bbtautau//anaTuples/2020-12-01/"
 elif args.machine == "local":
     input_dir = "/home/Valeria/Desktop/Dottorato/2020-12-22/" # to change if you want to run it in local
 elif args.machine == "gridui":
