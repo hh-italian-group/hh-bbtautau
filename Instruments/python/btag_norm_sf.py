@@ -85,14 +85,14 @@ class r_factor_calc:
     def filter_tune(self, d, tune):
         if self.year==2016:
             if self.hastune==1:
-                d.Filter("is_TuneCP5=="+tune)
+                d = d.Filter("is_TuneCP5=="+tune)
             else:
                 cond_str =  self.condition_for_tune(d)
                 d = d.Define("isTuneCP5", cond_str)
-                d.Filter("is_TuneCP5=="+tune)
+                d = d.Filter("is_TuneCP5=="+tune)
         else:
             d = d.Define("isTuneCP5", "0")
-            d.Filter("is_TuneCP5=="+tune)
+            d = d.Filter("is_TuneCP5=="+tune)
 
 
     def add_dic(self, tune):
