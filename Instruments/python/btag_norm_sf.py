@@ -83,11 +83,15 @@ class r_factor_calc:
         return cond_str
 
     def filter_tune(self, d, tune):
-        if(self.hastune==1):
-            d.Filter("is_TuneCP5=="+tune)
+        if self.year==2016:
+            if self.hastune==1:
+                d.Filter("is_TuneCP5=="+tune)
+            else:
+                cond_str =  self.condition_for_tune(d)
+                d = d.Define("isTuneCP5", cond_str)
+                d.Filter("is_TuneCP5=="+tune)
         else:
-            cond_str =  self.condition_for_tune(d)
-            d = d.Define("isTuneCP5", cond_str)
+            d = d.Define("isTuneCP5", "0")
             d.Filter("is_TuneCP5=="+tune)
 
 
@@ -156,12 +160,19 @@ class r_factor_calc:
                     print(" r factor with jes for %s %s tune %s is %.10f " %(unc_source, unc_scale, tune, w_before.GetValue()/w_after.GetValue()))
 
     def evaluate_r(self):
-        for tune in ["0","1"]:
+        if self.year==2016:
+            for tune in ["0","1"]:
+                if(self.unc_group=="Central"):
+                    self.evaluate_r_norm(tune)
+                else:
+                    self.evaluate_r_event(tune)
+                self.add_dic(tune)
+        else:
             if(self.unc_group=="Central"):
-                self.evaluate_r_norm(tune)
+                self.evaluate_r_norm("0")
             else:
-                self.evaluate_r_event(tune)
-            self.add_dic(tune)
+                self.evaluate_r_event("0")
+            self.add_dic("0")
 
 
 parser = argparse.ArgumentParser(description='Create bash command')
