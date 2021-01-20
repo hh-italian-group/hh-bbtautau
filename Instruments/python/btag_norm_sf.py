@@ -41,8 +41,7 @@ class r_factor_calc:
         "btag_lfstats1": 147, "btag_lfstats2": 148, "btag_cferr1": 149, "btag_cferr2": 150}
     variation_dictionary = { "Central" : 0, "Up" : 1, "Down" : -1 }
     unc_variations=["Up", "Down"]
-    #norm_unc_sources=["btag_lf","btag_hf","btag_hfstats1","btag_hfstats2","btag_lfstats1","btag_lfstats2","btag_cferr1","btag_cferr2"]
-    norm_unc_sources=["btag_lf"]
+    norm_unc_sources=["btag_lf","btag_hf","btag_hfstats1","btag_hfstats2","btag_lfstats1","btag_lfstats2","btag_cferr1","btag_cferr2"]
     jes_unc_sources=["JetReduced_Absolute","JetReduced_Absolute_year","JetReduced_BBEC1","JetReduced_BBEC1_year","JetReduced_EC2","JetReduced_EC2_year","JetReduced_FlavorQCD","JetReduced_HF","JetReduced_HF_year","JetReduced_RelativeBal","JetReduced_RelativeSample_year","JetReduced_Total"]
     les_unc_sources=["TauES", "TauES_DM0", "TauES_DM1", "TauES_DM10", "TauES_DM11", "EleFakingTauES_DM0", "EleFakingTauES_DM1", "MuFakingTauES"]
     unc_sources_dict={"Central": norm_unc_sources, "JES" : jes_unc_sources, "LES" : les_unc_sources}
