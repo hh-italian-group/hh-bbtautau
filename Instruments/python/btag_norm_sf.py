@@ -42,7 +42,9 @@ class r_factor_calc:
     variation_dictionary = { "Central" : 0, "Up" : 1, "Down" : -1 }
     unc_variations=["Up", "Down"]
     norm_unc_sources=["btag_lf","btag_hf","btag_hfstats1","btag_hfstats2","btag_lfstats1","btag_lfstats2","btag_cferr1","btag_cferr2"]
+    #norm_unc_sources=["btag_lf"]
     jes_unc_sources=["JetReduced_Absolute","JetReduced_Absolute_year","JetReduced_BBEC1","JetReduced_BBEC1_year","JetReduced_EC2","JetReduced_EC2_year","JetReduced_FlavorQCD","JetReduced_HF","JetReduced_HF_year","JetReduced_RelativeBal","JetReduced_RelativeSample_year","JetReduced_Total"]
+    #jes_unc_sources=["JetReduced_Absolute"]
     les_unc_sources=["TauES", "TauES_DM0", "TauES_DM1", "TauES_DM10", "TauES_DM11", "EleFakingTauES_DM0", "EleFakingTauES_DM1", "MuFakingTauES"]
     unc_sources_dict={"Central": norm_unc_sources, "JES" : jes_unc_sources, "LES" : les_unc_sources}
     hastune = 0
@@ -141,10 +143,6 @@ class r_factor_calc:
                 else:
                     print "warning, denominator is 0 for %s %s tune %s " %(unc_source, unc_scale, tune )
                     self.r_factors.append(0.)
-        #for i,j,k in zip(self.unc_sources_vector, self.unc_scales_vector, self.r_factors):
-        #    print "unc source %s, unc scale %s, r_factor %.10f" %(i, j, k)
-
-
 
     def evaluate_r_event(self, tune):
         d = self.open_dataframe()
@@ -172,20 +170,21 @@ class r_factor_calc:
                     #self.r_factors.append(w_before.GetValue()/w_after.GetValue())
                     #self.unc_sources_vector.append("JetReduced_Total_JES")
                     #self.unc_scales_vector.append(unc_scale)
-                    print(" r factor with jes for %s %s tune %s is %.10f " %(unc_source, unc_scale, tune, w_before.GetValue()/w_after.GetValue()))
+                    if w_after.GetValue() != 0.:
+                        print(" r factor with jes for %s %s tune %s is %.10f " %(unc_source, unc_scale, tune, w_before.GetValue()/w_after.GetValue()))
 
     def evaluate_r(self):
         if self.year=="2016":
             for tune in ["1","0"]:
                 self.r_factors=[]
+                self.unc_sources_vector=[]
+                self.unc_scales_vector=[]
                 if(self.unc_group=="Central"):
                     self.evaluate_r_norm(tune)
-                    self.add_dic(tune)
-                    print self.r_factors_d
+                    self.add_dic(tune) 
                 else:
                     self.evaluate_r_event(tune)
                     self.add_dic(tune)
-                    #print self.r_factors_d
         else:
             self.r_factors=[]
             self.r_factors_d["0"]={}

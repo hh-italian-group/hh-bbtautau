@@ -37,7 +37,7 @@ struct AnalyzerSetup {
     std::vector<std::string> data, signals, backgrounds, cmb_samples;
     std::vector<std::string> draw_sequence;
     std::map<EventCategory, std::string> limit_categories;
-    std::string mva_setup, trigger_path; 
+    std::string mva_setup, trigger_path;
     std::vector<std::string> syncDataIds;
     std::vector<std::string> hist_cfg;
     std::string plot_cfg, plot_page_opt, unc_cfg;
@@ -46,6 +46,7 @@ struct AnalyzerSetup {
     double qcd_ss_os_sf{0};
     double qcd_ss_os_err{0};
     std::string mdnn_version;
+    int hastune{0};
     std::map<Channel, std::vector<std::string>> trigger;
     std::map<Channel, std::vector<std::string>> trigger_vbf;
     std::map<SelectionCut,analysis::EllipseParameters> massWindowParams;

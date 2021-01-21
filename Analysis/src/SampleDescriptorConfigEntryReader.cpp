@@ -47,6 +47,7 @@ void AnalyzerConfigEntryReader::EndEntry()
     CheckReadParamCounts("qcd_ss_os_sf",1,Condition::less_equal);
     CheckReadParamCounts("qcd_ss_os_err",1, Condition::less_equal);
     CheckReadParamCounts("mdnn_version",1, Condition::less_equal);
+    CheckReadParamCounts("hastune",1, Condition::less_equal);
     current.CreateLimitSetups();
     ConfigEntryReaderT<AnalyzerSetup>::EndEntry();
 }
@@ -95,6 +96,7 @@ void AnalyzerConfigEntryReader::ReadParameter(const std::string& /*param_name*/,
     ParseEntry("qcd_ss_os_sf",current.qcd_ss_os_sf);
     ParseEntry("qcd_ss_os_err",current.qcd_ss_os_err);
     ParseEntry("mdnn_version",current.mdnn_version);
+    ParseEntry("hastune",current.hastune);
 }
 
 void MvaReaderSetupEntryReader::EndEntry()

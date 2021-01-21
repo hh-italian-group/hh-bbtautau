@@ -22,10 +22,11 @@ public:
 
     AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names,
                    const std::vector<std::string>& input_friends, const EventTagCreator& event_tagger, const std::string& _mdnn_version,
-                    std::set<UncertaintySource>& _norm_unc_sources);
+                    std::set<UncertaintySource>& _norm_unc_sources, int& hastune);
     size_t GetNumberOfEntries() const;
     const std::string& GetDatasetByHash(unsigned hash) const;
     const EventRegion& GetRegionByHash(unsigned hash) const;
+    const unsigned& GetHashByDataset(std::string dataset_name) const;
     const RDF& GetDataFrame() const;
     const std::list<RDF>& GetSkimmedDataFrames() const;
     const std::map<std::string, std::set<std::string>>& GetParametricVariables() const;
@@ -41,7 +42,7 @@ private:
 
 private:
     std::vector<std::shared_ptr<TFile>> files;
-    std::vector<std::shared_ptr<TTree>> trees; 
+    std::vector<std::shared_ptr<TTree>> trees;
     ROOT::RDataFrame dataFrame;
     RDF df;
     std::list<RDF> skimmed_df;
@@ -51,6 +52,7 @@ private:
     std::map<std::string, std::string> branch_types;
     std::string mdnn_version;
     std::set<UncertaintySource> norm_unc;
+    int hastune;
 };
 
 struct HyperPoint {
