@@ -121,37 +121,6 @@ AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, Na
         files(OpenFiles(file_name, input_friends)), trees(ReadTrees(channel, files)), dataFrame(*trees.front()),
         df(dataFrame), mdnn_version(_mdnn_version), norm_unc(_norm_unc_sources), hastune(_hastune)
 {
-    for(const auto& column : df.GetColumnNames())
-        branch_types[column] = df.GetColumnType(column);
-
-    DefineBranches(active_var_names, active_var_names.empty(), event_tagger);
-    if(active_var_names.empty()) {
-        std::vector<std::vector<std::string>> names = {
-            df.GetColumnNames(),
-        };
-        for(auto& other_df : skimmed_df)
-            names.push_back(other_df.GetColumnNames());
-        for(const auto& name_set : names) {
-            active_var_names.insert(name_set.begin(), name_set.end());
-        }
-    } else {
-        for(const auto& var_name : active_var_names) {
-            if(var_name.back() == '+') {
-                const std::string name = var_name.substr(0, var_name.size() - 1);
-                for(const auto& column : df.GetColumnNames()) {
-                    if(column.rfind(name, 0) == 0)
-                        parametric_vars[name].insert(column);
-                }
-            }
-        }
-        for(const auto& [name, columns] : parametric_vars) {
-            active_var_names.erase(name + "+");
-            for(const auto& column : columns)
-                active_var_names.insert(column);
-        }
-    }
-
-
     std::mutex mutex;
     auto extract_names = [&](const std::vector<unsigned>& hashes, const std::vector<std::string>& names,
                              DatasetBiMap& name_map) -> bool {
@@ -186,6 +155,36 @@ AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, Na
 
     for(const auto& [region_str, hash] : known_regions_str.left)
         known_regions.insert({Parse<EventRegion>(region_str), hash});
+
+    for(const auto& column : df.GetColumnNames())
+        branch_types[column] = df.GetColumnType(column);
+
+    DefineBranches(active_var_names, active_var_names.empty(), event_tagger);
+    if(active_var_names.empty()) {
+        std::vector<std::vector<std::string>> names = {
+            df.GetColumnNames(),
+        };
+        for(auto& other_df : skimmed_df)
+            names.push_back(other_df.GetColumnNames());
+        for(const auto& name_set : names) {
+            active_var_names.insert(name_set.begin(), name_set.end());
+        }
+    } else {
+        for(const auto& var_name : active_var_names) {
+            if(var_name.back() == '+') {
+                const std::string name = var_name.substr(0, var_name.size() - 1);
+                for(const auto& column : df.GetColumnNames()) {
+                    if(column.rfind(name, 0) == 0)
+                        parametric_vars[name].insert(column);
+                }
+            }
+        }
+        for(const auto& [name, columns] : parametric_vars) {
+            active_var_names.erase(name + "+");
+            for(const auto& column : columns)
+                active_var_names.insert(column);
+        }
+    }
 }
 
 void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, const EventTagCreator& event_tagger)
@@ -308,29 +307,24 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
            {"vbf_cat"}, true);
 
 
-    if(hastune==0){ // 2016, but does not have tuneCP5
+    if(hastune==1){ // 2016, but does not have tuneCP5
             std::vector<std::string> datasets_tuneCP5 = {"TTTo2L2Nu", "TTToSemiLeptonic", "TTToHadronic", "ST_tW_antitop", "ST_tW_top", "ST_t-channel_antitop", "ST_t-channel_top"};
             std::vector<unsigned> datasets_tuneCP5_ids;
-            //for(auto& dataset : datasets_tuneCP5){
-                //auto k = GetHashByDataset(dataset);
-                //datasets_tuneCP5_ids.push_back(GetHashByDataset(dataset));
-                //std::cout << dataset<< std::endl;
-                //std::cout << known_datasets.left.at(dataset)<< std::endl;
-            //}
-            //int dataset = 1;
-            //std::cout (std::find(datasets_tuneCP5_ids.begin(), datasets_tuneCP5_ids.end(), dataset) ) << std::endl;
-            /*
+            for(auto& dataset : datasets_tuneCP5){
+                datasets_tuneCP5_ids.push_back(known_datasets.left.at(dataset));
+            }
             const auto GetTune = [&](unsigned dataset){
-                int is_TuneCP5;
-                std_::cout (std::find(datasets_tuneCP5_ids.begin(), datasets_tuneCP5_ids.end(), dataset) ) << std::endl// != datasets_tuneCP5.end())
-                    is_TuneCP5=1 ;
-                else
-                    is_TuneCP5= 0 ;
+                int count_dataset=0;
+                for(auto& k: datasets_tuneCP5_ids){
+                    if(k==dataset)
+                        count_dataset+=1;
+                }
+                int is_TuneCP5 = (count_dataset>0) ? 1 : 0 ;
                 return is_TuneCP5;
             };
-            Define(df, "isTune_CP5", GetTune, {"dataset"}, true);*/
+            Define(df, "isTune_CP5", GetTune, {"dataset"}, true);
     }
-    if(hastune==2) { // year>2016 --> create a column with tune == 0
+    if(hastune==2) {
         auto fake_is_TuneCP5 = [](){return 0;};
         Define(df, "is_TuneCP5", fake_is_TuneCP5, {}, true);
     }
@@ -434,19 +428,6 @@ const std::string& AnaTupleReader::GetDatasetByHash(unsigned hash) const
     const auto iter = known_datasets.right.find(hash);
     if(iter == known_datasets.right.end())
         throw exception("Dataset not found for hash = %1%") % hash;
-    return iter->second;
-}
-
-const unsigned& AnaTupleReader::GetHashByDataset(std::string dataset_name) const
-{
-    const auto iter = known_datasets.left.find(dataset_name);
-    //for (auto l : known_datasets)
-    //    std::cout<< l.left << std::endl;
-    std::cout << dataset_name<< std::endl;
-    if(iter == known_datasets.left.end())
-        throw exception("Dataset not found for %1%") % dataset_name;
-    else
-        std::cout << known_datasets.left.at(dataset_name)<< std::endl;
     return iter->second;
 }
 

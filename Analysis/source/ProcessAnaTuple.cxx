@@ -78,10 +78,9 @@ public:
                 for(const std::string& file_name : input_friends)
                     std::cout << '\t' << file_name << '\n';
                 std::cout << std::endl;
-            }
-            std::cout<< ana_setup.hastune << std::endl;
+            } 
             bbtautau::EventTagCreator eventTagger(ana_setup.categories, sub_categories_to_process, unc_sources_total, ana_setup.norm_unc_sources,ana_setup.use_IterativeFit, ana_setup.r_factors_file.at(args.channel()));
-            
+
             bbtautau::AnaTupleReader tupleReader(input_file, args.channel(), activeVariables, input_friends, eventTagger,
                                                     ana_setup.mdnn_version, ana_setup.norm_unc_sources, ana_setup.hastune);
 
