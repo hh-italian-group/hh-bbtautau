@@ -51,7 +51,7 @@ std::pair<float, VBF_Category> EventTagCreator::FindVBFCategory(float dnn_score_
         float dnn_score_qqHH_sm)
 {
     std::vector<std::pair<float, VBF_Category>> category_and_dnn = {
-        { dnn_score_qqHH_sm + dnn_score_qqHH + dnn_score_qqHH_vbf_c2v, VBF_Category::qqHH },
+        { dnn_score_qqHH_sm + dnn_score_qqHH + dnn_score_qqHH_vbf_c2v, VBF_Category::qqHH},
         { dnn_score_ggHH , VBF_Category::ggHH},
         { dnn_score_TT_dl + dnn_score_TT_lep + dnn_score_TT_sl+dnn_score_TT_FH, VBF_Category::TT},
         { dnn_score_ttH + dnn_score_ttH_tautau + dnn_score_tth_bb, VBF_Category::ttH},
