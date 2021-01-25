@@ -18,11 +18,14 @@ struct EventTags {
 struct btag_corrections{
     UncertaintySource unc_source;
     UncertaintyScale unc_scale;
-    bool tune; /*
-    constexpr bool operator<(const btag_corrections & rhs) const
+    bool tune;
+    constexpr bool operator<(const btag_corrections & other) const
     {
-      return unc_source < rhs.unc_source && unc_scale < rhs.unc_scale && tune<rhs.tune;
-    }Non */
+        if(unc_source != other.unc_source) return unc_source < other.unc_source;
+        if(unc_scale != other.unc_scale) return unc_scale < other.unc_scale;
+        if(tune != other.tune) return tune < other.tune;
+        return unc_source<other.unc_source;
+    }
 };
 
 class EventTagCreator {
