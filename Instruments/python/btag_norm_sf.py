@@ -239,7 +239,7 @@ out_dir = ""
 if args.machine == "pccms65":
     input_dir = '/data/store/cms-it-hh-bbtautau//anaTuples/2020-12-01/'
 elif args.machine == "local":
-    input_dir = "/home/Valeria/Desktop/Dottorato/2020-12-22/" # to change if you want to run it in local
+    input_dir = "/Users/valeriadamante/Desktop/Dottorato/2020-12-22/" # to change if you want to run it in local
 elif args.machine == "gridui":
     input_dir = "/gpfs/ddn/cms/user/androsov/store/cms-it-hh-bbtautau/anaTuples/2020-12-01/"
 else:

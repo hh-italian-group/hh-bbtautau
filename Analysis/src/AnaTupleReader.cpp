@@ -307,7 +307,7 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
            {"vbf_cat"}, true);
 
 
-    if(hastune==1){ // 2016, but does not have tuneCP5
+    if(hastune==2){ // 2016, but does not have tuneCP5
             std::vector<std::string> datasets_tuneCP5 = {"TTTo2L2Nu", "TTToSemiLeptonic", "TTToHadronic", "ST_tW_antitop", "ST_tW_top", "ST_t-channel_antitop", "ST_t-channel_top"};
             std::vector<unsigned> datasets_tuneCP5_ids;
             for(auto& dataset : datasets_tuneCP5){
@@ -324,7 +324,7 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
             };
             Define(df, "isTune_CP5", GetTune, {"dataset"}, true);
     }
-    if(hastune==2) {
+    else if(hastune==0) {
         auto fake_is_TuneCP5 = [](){return 0;};
         Define(df, "is_TuneCP5", fake_is_TuneCP5, {}, true);
     }
