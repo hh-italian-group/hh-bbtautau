@@ -181,7 +181,7 @@ class r_factor_calc:
                 self.unc_scales_vector=[]
                 if(self.unc_group=="Central"):
                     self.evaluate_r_norm(tune)
-                    self.add_dic(tune) 
+                    self.add_dic(tune)
                 else:
                     self.evaluate_r_event(tune)
                     self.add_dic(tune)
@@ -236,18 +236,28 @@ else:
 r_factors_dict={}
 input_dir = ""
 out_dir = ""
-if args.machine == "pccms65":
-    input_dir = '/data/store/cms-it-hh-bbtautau//anaTuples/2020-12-01/'
-elif args.machine == "local":
-    input_dir = "/Users/valeriadamante/Desktop/Dottorato/2020-12-22/" # to change if you want to run it in local
-elif args.machine == "gridui":
-    input_dir = "/gpfs/ddn/cms/user/androsov/store/cms-it-hh-bbtautau/anaTuples/2020-12-01/"
-else:
-    input_dir = args.input_dir
+
+# ************* DIRECTORIES UTILI *******************
+
+dir_dict = {}
+dir_dict["pccms65"]={}
+dir_dict["pccms65"]["input"]="/data/store/cms-it-hh-bbtautau/anaTuples/2020-12-01/"
+dir_dict["pccms65"]["output"]="hh-bbtautau/McCorrections/data/"
+
+dir_dict["local"]={}
+dir_dict["local"]["input"]="/Users/valeriadamante/Desktop/Dottorato/2020-12-22/"
+dir_dict["local"]["output"]="hh-bbtautau/McCorrections/data/"
+
+dir_dict["gridui"]={}
+dir_dict["gridui"]["input"]="/gpfs/ddn/cms/user/androsov/store/cms-it-hh-bbtautau/"
+dir_dict["gridui"]["output"]="hh-bbtautau/McCorrections/data/"
 
 
+# ************* Input and output directories *********************
+input_dir = dir_dict[args.machine]["input"]
+input_tree= input_dir+"/${YEAR}_${CH}_{UNC_GROUP}.root"
+out_dir = dir_dict[args.machine]["output"]
 
-out_dir = "hh-bbtautau/McCorrections/data/"
 for year in years:
     for channel in channels:
         for unc_source in unc_sources:

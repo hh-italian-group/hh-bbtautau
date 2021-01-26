@@ -46,7 +46,6 @@ struct AnalyzerSetup {
     double qcd_ss_os_sf{0};
     double qcd_ss_os_err{0};
     std::string mdnn_version;
-    int hastune{0};
     std::map<Channel, std::vector<std::string>> trigger;
     std::map<Channel, std::vector<std::string>> trigger_vbf;
     std::map<SelectionCut,analysis::EllipseParameters> massWindowParams;
