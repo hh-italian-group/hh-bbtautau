@@ -139,11 +139,12 @@ public:
             for(const auto& limit_setup : ana_setup.limit_setup) {
                 std::cout << "\t\tsetup_name: " << limit_setup.first <<  std::endl;
                 for(const auto& subCategory : subCategories){
-                EventRegionSet regions_forlimits={EventRegion::OS_Isolated()};
-                //regions_forlimits instead of ana_setup.regions
+                    EventRegionSet regions_forlimits={EventRegion::OS_Isolated()};
+                    //regions_forlimits instead of ana_setup.regions
                     limitsInputProducer.Produce(args.output(), limit_setup.first, limit_setup.second, subCategory,
                                                 unc_sources_total, regions_forlimits, mva_sel_aliases,
-                                                args.period());}
+                                                args.period());
+                }
             }
         }
         if(args.draw()) {

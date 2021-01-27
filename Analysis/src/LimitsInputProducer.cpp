@@ -168,8 +168,8 @@ void LimitsInputProducer::Produce(const std::string& outputFileNamePrefix, const
                                   const EventRegionSet& eventRegions, const std::map<SelectionCut,
                                   std::string>& sel_aliases, Period period)
 {
-    // static constexpr double tiny_value = 1e-9;
-    // static constexpr double tiny_value_error = tiny_value;
+    //static constexpr double tiny_value = 1e-9;
+    //static constexpr double tiny_value_error = tiny_value;
     //productionmode_decaychannel_year_channel_category
     // e.g. ggHH_hbbhtt_2016_muTau_res1b
     static const std::string dirNamePrefix = boost::str(boost::format("_hbbhtt_%1%_%2%_")
@@ -198,12 +198,12 @@ void LimitsInputProducer::Produce(const std::string& outputFileNamePrefix, const
         const auto& anaData = anaDataCollection->Get(anaDataId);
         auto& hist_entry = anaData.GetEntryEx<TH1D>(eventCategories.at(anaDataId.Get<EventCategory>()));
         std::shared_ptr<TH1D> hist;
-        if(hist_entry.GetHistograms().count(""))
+        if(hist_entry.GetHistograms().count("")|| sampleWP.datacard_name == "data_obs")
             hist = std::make_shared<TH1D>(hist_entry());
         if(hist)
             hist->Scale(sampleWP.datacard_sf);
         if(!hist || hist->Integral() == 0.) continue;
-        // {
+        //{
         //     bool print_warning;
         //     if(CanHaveEmptyHistogram(anaDataId, print_warning)) continue;
         //     if(print_warning)
@@ -213,7 +213,7 @@ void LimitsInputProducer::Produce(const std::string& outputFileNamePrefix, const
         //     const Int_t central_bin = hist->GetNbinsX() / 2;
         //     hist->SetBinContent(central_bin, tiny_value);
         //     hist->SetBinError(central_bin, tiny_value_error);
-        // }
+        //}
         const auto datacard_name = FullDataCardName(sampleWP.datacard_name, metaId.Get<UncertaintySource>(),
                                                     metaId.Get<UncertaintyScale>(), period);
         root_ext::WriteObject(*hist, directory, datacard_name);

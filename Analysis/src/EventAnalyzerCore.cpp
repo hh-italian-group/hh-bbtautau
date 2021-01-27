@@ -51,7 +51,7 @@ EventAnalyzerCore::EventAnalyzerCore(const CoreAnalyzerArguments& args, Channel 
     if(!ana_setup.xs_cfg.empty())
         crossSectionProvider = std::make_shared<tuple_skimmer::CrossSectionProvider>(ana_setup.xs_cfg);
 
-    std::vector<std::string> unc_sources_group_string = SplitValueList(args.unc_sources_groups(),false, ",", true); 
+    std::vector<std::string> unc_sources_group_string = SplitValueList(args.unc_sources_groups(),false, ",", true);
     for (auto& s : unc_sources_group_string){
         unc_sources_group.insert(ana_setup.unc_sources.at(s).begin(), ana_setup.unc_sources.at(s).end());
     }

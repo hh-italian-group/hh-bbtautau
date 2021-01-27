@@ -4,9 +4,22 @@ import json
 from numpy import *
 import getDataIdHash as g
 
+def add_dic(tunes, unc_sources, unc_scales, r_factors, dictionary):
+    for (tune, unc_source, unc_scale, r_factor) in zip (tunes, unc_sources, unc_scales, r_factors):
+        #print ("r factor related to %s and %s with tuneCP5 %s is %.10f " % (unc_source, unc_scale, tune,r_factor))
+        if isnan(r_factor):
+            print("warning, r-factor related to %s %s is nan" %(unc_source, unc_scale))
+        if not unc_source in dictionary:
+            dictionary[unc_source]={}
+        if not unc_scale in dictionary[unc_source]:
+            dictionary[unc_source][unc_scale]={}
+        dictionary[unc_source][unc_scale][tune] = r_factor
+    return dictionary
+
 
 class r_factor_calc:
-    uncertainty_dictionary =  {"None": 0, "TauES": 1, "JetFull_Total": 2, "TopPt": 3, "JetFull_AbsoluteStat": 4, "JetFull_AbsoluteScale": 5,
+    uncertainty_dictionary =  {
+        "None": 0, "TauES": 1, "JetFull_Total": 2, "TopPt": 3, "JetFull_AbsoluteStat": 4, "JetFull_AbsoluteScale": 5,
         "JetFull_AbsoluteMPFBias": 6, "JetFull_AbsoluteFlavMap": 7, "JetFull_Fragmentation": 8, "JetFull_SinglePionECAL": 9,
         "JetFull_SinglePionHCAL": 10, "JetFull_FlavorQCD": 11, "JetFull_FlavorZJet": 12, "JetFull_FlavorPhotonJet": 13,
         "JetFull_FlavorPureGluon": 14, "JetFull_FlavorPureQuark": 15, "JetFull_FlavorPureCharm": 16,
@@ -42,26 +55,24 @@ class r_factor_calc:
     variation_dictionary = { "Central" : 0, "Up" : 1, "Down" : -1 }
     unc_variations=["Up", "Down"]
     norm_unc_sources=["btag_lf","btag_hf","btag_hfstats1","btag_hfstats2","btag_lfstats1","btag_lfstats2","btag_cferr1","btag_cferr2"]
-    #norm_unc_sources=["btag_lf"]
     jes_unc_sources=["JetReduced_Absolute","JetReduced_Absolute_year","JetReduced_BBEC1","JetReduced_BBEC1_year","JetReduced_EC2","JetReduced_EC2_year","JetReduced_FlavorQCD","JetReduced_HF","JetReduced_HF_year","JetReduced_RelativeBal","JetReduced_RelativeSample_year","JetReduced_Total"]
-    #jes_unc_sources=["JetReduced_Absolute"]
     les_unc_sources=["TauES", "TauES_DM0", "TauES_DM1", "TauES_DM10", "TauES_DM11", "EleFakingTauES_DM0", "EleFakingTauES_DM1", "MuFakingTauES"]
+    #norm_unc_sources=["btag_lf"]
+    #jes_unc_sources=["JetReduced_Absolute"]
+    #les_unc_sources=["TauES"]
     unc_sources_dict={"Central": norm_unc_sources, "JES" : jes_unc_sources, "LES" : les_unc_sources}
-    hastune = 0
-    weight_num = "weight"
-    weight_den = "weight*weight_btag_IterativeFit"
-    unc_sources_vector=[]
-    unc_scales_vector=[]
-    r_factors = []
+    unc_sources_list=[]
+    unc_scales_list=[]
+    tunes_list = []
     dataIds = []
     datasets_tuneCP5= ["TTTo2L2Nu", "TTToSemiLeptonic", "TTToHadronic", "ST_tW_antitop", "ST_tW_top", "ST_t-channel_antitop", "ST_t-channel_top"]
 
-    def __init__(self, input_dir, year, channel, unc_group, r_factors_d):
+    def __init__(self, input_dir, year, channel, unc_group, hastune):
         self.input_dir = input_dir
         self.year = year
         self.channel = channel
         self.unc_group = unc_group
-        self.r_factors_d = r_factors_d
+        self.hastune = hastune
         self.file = self.input_dir + "/"+self.year+"_"+self.channel+"_"+self.unc_group+".root"
 
     def open_dataframe(self):
@@ -71,8 +82,8 @@ class r_factor_calc:
         return dataframe
 
     def condition_for_tune(self, d):
-        dataIds = [] #ROOT.std.vector('int')()
-        id_collections = ['dataset' ] #, 'sample']
+        dataIds = []
+        id_collections = ['dataset' ]
         data_frames = g.LoadIdFrames(self.file, id_collections)
         for col in id_collections:
             df = data_frames[col]
@@ -85,114 +96,102 @@ class r_factor_calc:
         return cond_str
 
     def filter_tune(self, d, tune):
-        if self.year=="2016":
-            if self.hastune==1:
-                d = d.Filter("is_TuneCP5=="+tune)
-            else:
-                cond_str =  self.condition_for_tune(d)
-                d = d.Define("isTuneCP5", cond_str)
-                d = d.Filter("isTuneCP5=="+tune)
+        if self.hastune==1:
+            d = d.Filter("is_TuneCP5=="+tune)
         else:
-            d = d.Define("isTuneCP5", "0")
+            cond_str =  self.condition_for_tune(d)
+            d = d.Define("isTuneCP5", cond_str)
             d = d.Filter("isTuneCP5=="+tune)
         return d
 
-    def add_dic(self, tune):
-        for (r_factor, unc_source, unc_scale) in zip (self.r_factors, self.unc_sources_vector, self.unc_scales_vector):
-            #print ("r factor related to %s and %s with tuneCP5 %s is %.10f " % (unc_source, unc_scale, tune,r_factor))
-            if isnan(r_factor):
-                print("warning, r-factor related to %s %s is nan" %(unc_source, unc_scale))
-            if unc_source in self.r_factors_d:
-                pass
-            else:
-                self.r_factors_d[unc_source]={}
-            if unc_scale in self.r_factors_d[unc_source]:
-                pass
-            else:
-                self.r_factors_d[unc_source][unc_scale]={}
-            self.r_factors_d[unc_source][unc_scale][tune] = r_factor
-        return self.r_factors_d
-
-    def evaluate_r_norm(self, tune):
+    #must return the r_factor list and stop
+    def evaluate_r(self, r_factor_list):
+        weight_num = "weight"
+        weight_den = "weight*weight_btag_IterativeFit"
         d = self.open_dataframe()
-        d = self.filter_tune(d, tune)
-        self.unc_sources_vector.append("None")
-        self.unc_scales_vector.append("Central")
-        w_before_central = d.Define("num", self.weight_num).Sum("num")
-        w_after_central = d.Define("den", self.weight_den).Sum("den")
-        #print "numerator %.10f" % w_before_central.GetValue()
-        #print "denominator %.10f" % w_after_central.GetValue()
-        if w_after_central.GetValue() != 0.:
-            self.r_factors.append(w_before_central.GetValue()/w_after_central.GetValue())
-            #print(" r factor for None Central tune %s is %.10f " %(tune, w_before_central.GetValue()/w_after_central.GetValue()))
-        else:
-            print "warning, denominator is 0 for Central None tune %s " %(tune )
-            self.r_factors.append(0.)
+        # split two dicts for two tunes
+        d_tune0 = self.filter_tune(d, "0")
+        d_tune0 = d_tune0.Range(100)
+        tune_0_times = 0
+        if self.unc_group == "Central":
+            self.unc_sources_list.append("None")
+            self.unc_scales_list.append("Central")
+            self.tunes_list.append("0")
+            w_before_central_tune0 = d_tune0.Define("num", weight_num).Sum("num")
+            w_after_central_tune0 = d_tune0.Define("den", weight_den).Sum("den")
+            if w_after_central_tune0.GetValue() != 0.:
+                r_factor_list.append(w_before_central_tune0.GetValue()/w_after_central_tune0.GetValue())
+                #print(" r factor for None Central tune 0 is %.10f " %(w_before_central_tune0.GetValue()/w_after_central_tune0.GetValue()))
+            else:
+                print "warning, denominator is 0 for Central None tune 0"
+                r_factor_list.append(0.)
         for unc_source in self.unc_sources_dict[self.unc_group]:
             for unc_scale in self.unc_variations:
-                weight_den = self.weight_den+"*unc_"+unc_source+"_"+unc_scale
-                self.unc_sources_vector.append(unc_source)
-                self.unc_scales_vector.append(unc_scale)
-                w_before = d.Define("num_"+unc_source+"_"+unc_scale, self.weight_num).Sum("num_"+unc_source+"_"+unc_scale)
-                w_after = d.Define("den_"+unc_source+"_"+unc_scale, weight_den).Sum("den_"+unc_source+"_"+unc_scale)
+                tune_0_times = tune_0_times + 1
+                #print "Tune = 0 ; unc_source = %s ; unc_scale = %s" %(unc_source,unc_scale)
+                if self.unc_group != "Central" :
+                    filter_unc_source= "unc_source=="+str(self.uncertainty_dictionary[unc_source])
+                    filter_unc_scale= "unc_scale=="+str(self.variation_dictionary[unc_scale])
+                    d_tune0 = d_tune0.Filter(filter_unc_source).Filter(filter_unc_scale)
+                else:
+                    weight_den = weight_den+"*unc_"+unc_source+"_"+unc_scale
+                w_before_tune0 = d_tune0.Define("num_"+unc_source+"_"+unc_scale, weight_num).Sum("num_"+unc_source+"_"+unc_scale)
+                w_after_tune0 = d_tune0.Define("den_"+unc_source+"_"+unc_scale, weight_den).Sum("den_"+unc_source+"_"+unc_scale)
+                self.unc_sources_list.append(unc_source)
+                self.unc_scales_list.append(unc_scale)
+                self.tunes_list.append("0")
                 #print "numerator %.10f" % w_before.GetValue()
                 #print "denominator %.10f" % w_after.GetValue()
-                if w_after.GetValue() != 0.:
-                    self.r_factors.append(w_before.GetValue()/w_after.GetValue())
-                    #print(" r factor for %s %s tune %s is %.10f " %(unc_source, unc_scale, tune,  w_before.GetValue()/w_after.GetValue()))
+                if w_after_tune0.GetValue() != 0.:
+                    r_factor_list.append(w_before_tune0.GetValue()/w_after_tune0.GetValue())
+                    #print(" r factor for %s %s tune 0 is %.10f " %(unc_source, unc_scale, w_before_tune0.GetValue()/w_after_tune0.GetValue()))
                 else:
-                    print "warning, denominator is 0 for %s %s tune %s " %(unc_source, unc_scale, tune )
-                    self.r_factors.append(0.)
+                    print("warning, denominator for %s %s tune 0 is 0" %(unc_source, unc_scale))
+                    r_factor_list.append(0.)
+        tune_1_times = 0
+        if self.year=="2016" and self.channel != "muTau":
+            # split two dicts for two tunes
+            d_tune1 = self.filter_tune(d, "1")
+            d_tune1 = d_tune1.Range(100)
+            if self.unc_group == "Central":
+                self.unc_sources_list.append("None")
+                self.unc_scales_list.append("Central")
+                self.tunes_list.append("1")
+                w_before_central_tune1 = d_tune1.Define("num", weight_num).Sum("num")
+                w_after_central_tune1 = d_tune1.Define("den", weight_den).Sum("den")
+                if w_after_central_tune1.GetValue() != 0.:
+                    r_factor_list.append(w_before_central_tune1.GetValue()/w_after_central_tune1.GetValue())
+                    #print(" r factor for None Central tune 1 is %.10f " %(w_before_central_tune1.GetValue()/w_after_central_tune1.GetValue()))
+                else:
+                    print "warning, denominator is 0 for Central None tune 1"
+                    r_factor_list.append(0.)
+            for unc_source in self.unc_sources_dict[self.unc_group]:
+                for unc_scale in self.unc_variations:
+                    #print "Tune = 1 ; unc_source = %s ; unc_scale = %s" %(unc_source,unc_scale)
+                    tune_1_times = tune_1_times + 1
+                    if self.unc_group != "Central" :
+                        filter_unc_source= "unc_source=="+str(self.uncertainty_dictionary[unc_source])
+                        filter_unc_scale= "unc_scale=="+str(self.variation_dictionary[unc_scale])
+                        d_tune1 = d_tune1.Filter(filter_unc_source).Filter(filter_unc_scale)
+                    else:
+                        weight_den = weight_den+"*unc_"+unc_source+"_"+unc_scale
+                    w_before_tune1 = d_tune1.Define("num_"+unc_source+"_"+unc_scale, weight_num).Sum("num_"+unc_source+"_"+unc_scale)
+                    w_after_tune1 = d_tune1.Define("den_"+unc_source+"_"+unc_scale, weight_den).Sum("den_"+unc_source+"_"+unc_scale)
+                    self.unc_sources_list.append(unc_source)
+                    self.unc_scales_list.append(unc_scale)
+                    self.tunes_list.append("1")
+                    #print "numerator %.10f" % w_before.GetValue()
+                    #print "denominator %.10f" % w_after.GetValue()
+                    if w_after_tune1.GetValue() != 0.:
+                        r_factor_list.append(w_before_tune1.GetValue()/w_after_tune1.GetValue())
+                        #print(" r factor for %s %s tune 1 is %.10f " %(unc_source, unc_scale, w_before_tune1.GetValue()/w_after_tune1.GetValue()))
+                    else:
+                        print("warning, denominator for %s %s tune 1 is 0" %(unc_source, unc_scale))
+                        r_factor_list.append(0.)
 
-    def evaluate_r_event(self, tune):
-        d = self.open_dataframe()
-        d = self.filter_tune(d, tune)
-        for unc_source in self.unc_sources_dict[self.unc_group]:
-            for unc_scale in self.unc_variations:
-                filter_unc_source= "unc_source=="+str(self.uncertainty_dictionary[unc_source])
-                filter_unc_scale= "unc_scale=="+str(self.variation_dictionary[unc_scale])
-                self.unc_sources_vector.append(unc_source)
-                self.unc_scales_vector.append(unc_scale)
-                w_before = d.Filter(filter_unc_source).Filter(filter_unc_scale).Define("num_"+unc_source+"_"+unc_scale, self.weight_num).Sum("num_"+unc_source+"_"+unc_scale)
-                w_after = d.Filter(filter_unc_source).Filter(filter_unc_scale).Define("den_"+unc_source+"_"+unc_scale, self.weight_den).Sum("den_"+unc_source+"_"+unc_scale)
-                #print "numerator %.10f" % w_before.GetValue()
-                #print "denominator %.10f" % w_after.GetValue()
-                if w_after.GetValue() != 0.:
-                    self.r_factors.append(w_before.GetValue()/w_after.GetValue())
-                    #print(" r factor for %s %s tune %s is %.10f " %(unc_source, unc_scale, tune,  w_before.GetValue()/w_after.GetValue()))
-                else:
-                    print "warning, denominator is 0 for %s %s tune %s " %(unc_source, unc_scale, tune )
-                    self.r_factors.append(0.)
-                if(unc_source == "JetReduced_Total"):
-                    weight_den_jes = "weight*weight_btag_IterativeFit_withJES"
-                    w_before = d.Filter(filter_unc_source).Filter(filter_unc_scale).Define("num_"+unc_source+"_"+unc_scale, self.weight_num).Sum("num_"+unc_source+"_"+unc_scale)
-                    w_after = d.Filter(filter_unc_source).Filter(filter_unc_scale).Define("den_"+unc_source+"_"+unc_scale, weight_den_jes).Sum("den_"+unc_source+"_"+unc_scale)
-                    #self.r_factors.append(w_before.GetValue()/w_after.GetValue())
-                    #self.unc_sources_vector.append("JetReduced_Total_JES")
-                    #self.unc_scales_vector.append(unc_scale)
-                    if w_after.GetValue() != 0.:
-                        print(" r factor with jes for %s %s tune %s is %.10f " %(unc_source, unc_scale, tune, w_before.GetValue()/w_after.GetValue()))
-
-    def evaluate_r(self):
-        if self.year=="2016":
-            for tune in ["1","0"]:
-                self.r_factors=[]
-                self.unc_sources_vector=[]
-                self.unc_scales_vector=[]
-                if(self.unc_group=="Central"):
-                    self.evaluate_r_norm(tune)
-                    self.add_dic(tune)
-                else:
-                    self.evaluate_r_event(tune)
-                    self.add_dic(tune)
-        else:
-            self.r_factors=[]
-            self.r_factors_d["0"]={}
-            if(self.unc_group=="Central"):
-                self.evaluate_r_norm("0")
-            else:
-                self.evaluate_r_event("0")
-            self.add_dic("0")
+        print "tune 0 = %d" % tune_0_times
+        print "tune 1 = %d" % tune_1_times
+        return r_factor_list
 
 
 parser = argparse.ArgumentParser(description='Create bash command')
@@ -202,7 +201,7 @@ parser.add_argument('--year', required=False, type=str, default= "all", help= "y
 parser.add_argument('--unc_sources_group', required=False, type=str, default= "all", help="unc sources groups")
 parser.add_argument('--input-dir', required=False, type=str, default="", help=" anatUples directory")
 parser.add_argument('--hastune', required=False, type=int, default=1, choices=[0,1], help=" 0 = does not have TuneCP5, 1 = has Tune CP5 ")
-parser.add_argument('-n', required=False, type=bool, default=False, help=" don't write the file")
+parser.add_argument('-n', required=False, type=bool, default=True, help=" don't write the file")
 
 
 args = parser.parse_args()
@@ -233,7 +232,7 @@ else:
       unc_sources.append("JES")
 
 
-r_factors_dict={}
+
 input_dir = ""
 out_dir = ""
 
@@ -257,7 +256,23 @@ dir_dict["gridui"]["output"]="hh-bbtautau/McCorrections/data/"
 input_dir = dir_dict[args.machine]["input"]
 input_tree= input_dir+"/${YEAR}_${CH}_{UNC_GROUP}.root"
 out_dir = dir_dict[args.machine]["output"]
+r_factors_dict={}
+r_factors_list= []
 
+for year in years:
+    for channel in channels:
+        for unc_source in unc_sources:
+            print year, channel, unc_source
+            calculate_r_factors= r_factor_calc(input_dir, year, channel, unc_source, args.hastune)
+            calculate_r_factors.evaluate_r(r_factors_list)
+        r_factors_dict = add_dic(calculate_r_factors.tunes_list, calculate_r_factors.unc_sources_list,
+                                calculate_r_factors.unc_scales_list, r_factors_list, r_factors_dict)
+        print "\n"
+        print r_factors_dict
+
+
+
+'''
 for year in years:
     for channel in channels:
         for unc_source in unc_sources:
@@ -268,3 +283,4 @@ for year in years:
         if(args.n==False):
             with open(out_dir+"btag_correction_factors_"+channel+"_"+year+".json", "w") as write_file:
                 json.dump(r_factors_dict, write_file)
+'''

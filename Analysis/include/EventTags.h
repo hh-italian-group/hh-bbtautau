@@ -23,8 +23,7 @@ struct btag_corrections{
     {
         if(unc_source != other.unc_source) return unc_source < other.unc_source;
         if(unc_scale != other.unc_scale) return unc_scale < other.unc_scale;
-        if(tune != other.tune) return tune < other.tune;
-        return unc_source<other.unc_source;
+        return tune < other.tune;
     }
 };
 

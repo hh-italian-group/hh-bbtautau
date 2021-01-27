@@ -32,8 +32,8 @@ EventTagCreator::EventTagCreator(const EventCategorySet& _categories, const Even
         float btag_corr_factor;
         btag_corrections parameters;
         for (auto &unc_source : loadPtreeRoot) {
-            for(auto &unc_scale : loadPtreeRoot.get_child(unc_source.first)){
-                for(auto &tune : loadPtreeRoot.get_child(unc_source.first).get_child(unc_scale.first)){
+            for(const auto &unc_scale : unc_source.second){
+                for(const auto &tune : unc_scale.second){
                     parameters.unc_source = analysis::Parse<UncertaintySource>(unc_source.first);
                     parameters.unc_scale = analysis::Parse<UncertaintyScale>(unc_scale.first);
                     parameters.tune = boost::lexical_cast<bool>(tune.first);
@@ -85,7 +85,7 @@ EventTags EventTagCreator::CreateEventTags(const DataId& dataId_base, float weig
         { DiscriminatorWP::Tight, weight_btag_Tight },
     };
 
-    const auto get_weight_btag = [&](DiscriminatorWP wp, UncertaintySource unc_source, UncertaintyScale unc_scale, bool tune) {
+    const auto get_weight_btag = [&](DiscriminatorWP wp, UncertaintySource unc_source, UncertaintyScale unc_scale) {
         if(use_IterativeFit) {
             btag_corrections parameters;
             parameters.unc_source = unc_source;
@@ -111,7 +111,7 @@ EventTags EventTagCreator::CreateEventTags(const DataId& dataId_base, float weig
         if(!category.Contains(static_cast<size_t>(num_central_jets), bjet_counts, is_vbf, is_boosted, vbf_cat.second))
             continue;
         EventSubCategory evtSubCategory;
-        const float btag_sf = category.HasBtagConstraint() && !is_data ? get_weight_btag(category.BtagWP(), dataId_base.Get<UncertaintySource>(), dataId_base.Get<UncertaintyScale>(), tune) : 1.f;
+        const float btag_sf = category.HasBtagConstraint() && !is_data ? get_weight_btag(category.BtagWP(), dataId_base.Get<UncertaintySource>(), dataId_base.Get<UncertaintyScale>()) : 1.f;
         const float cat_weight = weight * btag_sf ;
 
         if(has_b_pair) {
@@ -129,7 +129,7 @@ EventTags EventTagCreator::CreateEventTags(const DataId& dataId_base, float weig
                 for(const auto& [key, weight_shift] : unc_map) {
                     if(!category.HasBtagConstraint() && btag_uncs.count(key.first)) continue;
                     const auto dataId_scaled = dataId.Set(key.first).Set(key.second);
-                    const float btag_sf_scaled = category.HasBtagConstraint() && !is_data ? get_weight_btag(category.BtagWP(), dataId_scaled.Get<UncertaintySource>(), dataId_scaled.Get<UncertaintyScale>(), tune) : 1.f;
+                    const float btag_sf_scaled = category.HasBtagConstraint() && !is_data ? get_weight_btag(category.BtagWP(), dataId_scaled.Get<UncertaintySource>(), dataId_scaled.Get<UncertaintyScale>()) : 1.f;
                     const float cat_weight_shifted = weight_shift * weight * btag_sf_scaled ;
                     evt_tags.dataIds.push_back(dataId_scaled);
                     evt_tags.weights.push_back(cat_weight_shifted);
