@@ -54,6 +54,7 @@ unc_sources_dict={"Central": norm_unc_sources, "JES" : jes_unc_sources, "LES" : 
 def add_dic(r_factor_list, dictionary):
     for r_factor in r_factor_list:
         #print ("r factor related to %s and %s with tuneCP5 %s is %.10f " % (unc_source, unc_scale, tune,r_factor))
+        r_factor.value = r_factor.GetRFactor()
         if isnan(r_factor.value):
             print("warning, r-factor related to %s %s is nan" %(unc_source, unc_scale))
         if not r_factor.unc_source in dictionary:
@@ -137,13 +138,13 @@ class r_factor_calc:
         if unc_source == "JetReduced_Total":
             pass
             #implement printing of r_factor with jes
-        r_factor.value = r_factor.GetRFactor()
+        #r_factor.value = r_factor.GetRFactor()
         return r_factor
 
     def evaluate_r(self, r_factor_list):
         d = self.open_dataframe()
         d_tune0 = self.filter_tune(d, "0")
-        #d_tune0 = d_tune0.Range(100)
+        #d_tune0 = d_tune0.Range(100) # for tests
         for unc_source in unc_sources_dict[self.unc_group]:
             if unc_source == "None":
                 r_factor_list.append(self.calculate_r(d_tune0, "0", unc_source, "Central"))
@@ -151,9 +152,8 @@ class r_factor_calc:
                 for unc_scale in unc_variations:
                     r_factor_list.append(self.calculate_r(d_tune0, "0", unc_source, unc_scale))
         if self.year=="2016" and self.channel != "muTau":
-            tune1_count=0
             d_tune1 = self.filter_tune(d, "1")
-            #d_tune1 = d_tune1.Range(100)
+            #d_tune1 = d_tune1.Range(100) # for tests 
             for unc_source in unc_sources_dict[self.unc_group]:
                 if unc_source == "None":
                     r_factor_list.append(self.calculate_r(d_tune1, "1", unc_source, "Central"))
@@ -168,7 +168,7 @@ parser.add_argument('machine', type=str, default="pccms65", choices=['pccms65', 
 parser.add_argument('--ch', required=False, type=str, default= "all", help= "channel")
 parser.add_argument('--year', required=False, type=str, default= "all", help= "year")
 parser.add_argument('--unc_sources_group', required=False, type=str, default= "all", help="unc sources groups")
-parser.add_argument('-n', required=False, type=bool, default=True, help=" don't write the file")
+parser.add_argument('-n', required=False, type=bool, default=False, help=" don't write the file")
 args = parser.parse_args()
 
 # ************ Fill the channels, years, and unc groups **************
@@ -232,4 +232,4 @@ for year in years:
             r_factors_dict = add_dic(r_factors_list, r_factors_dict)
 if(args.n==False):
     with open(out_dir+"btag_correction_factors_"+channel+"_"+year+".json", "w") as write_file:
-        json.dump(r_factors_dict, write_file)
+        json.dump(r_factors_dict, write_file, indent=2)
