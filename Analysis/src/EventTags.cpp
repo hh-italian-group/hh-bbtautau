@@ -87,16 +87,17 @@ EventTags EventTagCreator::CreateEventTags(const DataId& dataId_base, float weig
 
     const auto get_weight_btag = [&](DiscriminatorWP wp, UncertaintySource unc_source, UncertaintyScale unc_scale) {
         if(use_IterativeFit) {
-            btag_corrections parameters;
-            parameters.unc_source = unc_source;
-            parameters.unc_scale = unc_scale;
-            parameters.tune = tune;
-            if(!iterativeFit_corrections.count(parameters)){
-                parameters.unc_source = UncertaintySource::None;
-                parameters.unc_scale = UncertaintyScale::Central;
-                parameters.tune = 0;
-            }
-            return weight_btag_IterativeFit*iterativeFit_corrections.at(parameters);
+          btag_corrections parameters;
+          parameters.unc_source = unc_source;
+          parameters.unc_scale = unc_scale;
+          parameters.tune = tune;
+          if(!iterativeFit_corrections.count(parameters)){
+              parameters.unc_source = UncertaintySource::None;
+              parameters.unc_scale = UncertaintyScale::Central;
+              if(!iterativeFit_corrections.count(parameters))
+                  parameters.tune = false;
+          }
+          return weight_btag_IterativeFit*iterativeFit_corrections.at(parameters);
         }
         else
             return btag_weights.at(wp);

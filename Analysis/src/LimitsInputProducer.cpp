@@ -190,6 +190,7 @@ void LimitsInputProducer::Produce(const std::string& outputFileNamePrefix, const
         if(!GetActiveUncertaintyScales(metaId.Get<UncertaintySource>()).count(metaId.Get<UncertaintyScale>()))
             continue;
         const SampleWP& sampleWP = sampleWorkingPoints.at(metaId.Get<std::string>());
+        if(sampleWP.datacard_name.empty()) continue;
         const std::string directoryName = ProdCatSuffix(ToString(metaId.Get<EventCategory>())).first+ dirNamePrefix + ProdCatSuffix(ToString(metaId.Get<EventCategory>())).second+
                                           EventRegionSuffix(metaId.Get<EventRegion>());
 
@@ -202,7 +203,7 @@ void LimitsInputProducer::Produce(const std::string& outputFileNamePrefix, const
             hist = std::make_shared<TH1D>(hist_entry());
         if(hist)
             hist->Scale(sampleWP.datacard_sf);
-        if(!hist || hist->Integral() == 0.) continue;
+        if(!(hist && (hist->Integral() > 0. || sampleWP.datacard_name == "data_obs"))) continue;
         //{
         //     bool print_warning;
         //     if(CanHaveEmptyHistogram(anaDataId, print_warning)) continue;
