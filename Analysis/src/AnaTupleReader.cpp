@@ -117,10 +117,45 @@ std::vector<std::shared_ptr<TTree>> AnaTupleReader::ReadTrees(Channel channel,
 
 AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, NameSet& active_var_names,
                                const std::vector<std::string>& input_friends, const EventTagCreator& event_tagger,
-                               const std::string& _mdnn_version, std::set<UncertaintySource>& _norm_unc_sources) :
+                               const std::string& _mdnn_version, std::set<UncertaintySource>& _norm_unc_sources, int& _hastune) :
         files(OpenFiles(file_name, input_friends)), trees(ReadTrees(channel, files)), dataFrame(*trees.front()),
-        df(dataFrame), mdnn_version(_mdnn_version), norm_unc(_norm_unc_sources)
+        df(dataFrame), mdnn_version(_mdnn_version), norm_unc(_norm_unc_sources), hastune(_hastune)
 {
+    std::mutex mutex;
+    auto extract_names = [&](const std::vector<unsigned>& hashes, const std::vector<std::string>& names,
+                             DatasetBiMap& name_map) -> bool {
+        std::lock_guard<std::mutex> lock(mutex);
+        const size_t N = hashes.size();
+        if(names.size() != N)
+            throw exception("Inconsistent info in AnaAux tuple.");
+        for(size_t n = 0; n < N; ++n) {
+            const auto hash = hashes.at(n);
+            const auto& name = names.at(n);
+            if(name_map.right.count(hash) || name_map.left.count(name)) {
+                if(name_map.right.count(hash) && name_map.right.at(hash) != name)
+                    throw exception("Duplicated hash = %1% in AnaAux tuple for name = %2%.\n"
+                                    "This hash is already assigned to %3%") % hash % name % name_map.right.at(hash);
+                if(name_map.left.count(name) && name_map.left.at(name) != hash)
+                    throw exception("Duplicated name = '%1%' in AnaAux tuple.") % name;
+            } else {
+                name_map.insert({name, hash});
+            }
+            //std::cout << names.at(n) << std::endl;
+        }
+        return true;
+    };
+
+    //using namespace std::placeholders;
+    ROOT::RDataFrame aux_df("aux", files.front().get());
+    aux_df.Foreach([&](const std::vector<unsigned>& hashes, const std::vector<std::string>& names) {
+                   extract_names(hashes, names, known_datasets); }, { "dataset_hashes", "dataset_names" });
+    DatasetBiMap known_regions_str;
+    aux_df.Foreach([&](const std::vector<unsigned>& hashes, const std::vector<std::string>& names) {
+                   extract_names(hashes, names, known_regions_str); }, { "region_hashes", "region_names" });
+
+    for(const auto& [region_str, hash] : known_regions_str.left)
+        known_regions.insert({Parse<EventRegion>(region_str), hash});
+
     for(const auto& column : df.GetColumnNames())
         branch_types[column] = df.GetColumnType(column);
 
@@ -150,41 +185,6 @@ AnaTupleReader::AnaTupleReader(const std::string& file_name, Channel channel, Na
                 active_var_names.insert(column);
         }
     }
-
-
-    std::mutex mutex;
-    auto extract_names = [&](const std::vector<unsigned>& hashes, const std::vector<std::string>& names,
-                             DatasetBiMap& name_map) -> bool {
-        std::lock_guard<std::mutex> lock(mutex);
-        const size_t N = hashes.size();
-        if(names.size() != N)
-            throw exception("Inconsistent info in AnaAux tuple.");
-        for(size_t n = 0; n < N; ++n) {
-            const auto hash = hashes.at(n);
-            const auto& name = names.at(n);
-            if(name_map.right.count(hash) || name_map.left.count(name)) {
-                if(name_map.right.count(hash) && name_map.right.at(hash) != name)
-                    throw exception("Duplicated hash = %1% in AnaAux tuple for name = %2%.\n"
-                                    "This hash is already assigned to %3%") % hash % name % name_map.right.at(hash);
-                if(name_map.left.count(name) && name_map.left.at(name) != hash)
-                    throw exception("Duplicated name = '%1%' in AnaAux tuple.") % name;
-            } else {
-                name_map.insert({name, hash});
-            }
-        }
-        return true;
-    };
-
-    //using namespace std::placeholders;
-    ROOT::RDataFrame aux_df("aux", files.front().get());
-    aux_df.Foreach([&](const std::vector<unsigned>& hashes, const std::vector<std::string>& names) {
-                   extract_names(hashes, names, known_datasets); }, { "dataset_hashes", "dataset_names" });
-    DatasetBiMap known_regions_str;
-    aux_df.Foreach([&](const std::vector<unsigned>& hashes, const std::vector<std::string>& names) {
-                   extract_names(hashes, names, known_regions_str); }, { "region_hashes", "region_names" });
-
-    for(const auto& [region_str, hash] : known_regions_str.left)
-        known_regions.insert({Parse<EventRegion>(region_str), hash});
 }
 
 void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, const EventTagCreator& event_tagger)
@@ -202,7 +202,10 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
     const auto FilterInt = [](RDF& target_df, const std::string& var) -> RDF {
         return target_df.Filter([](int flag) -> bool { return flag; }, {var});
     };
-
+    const auto Find = [](RDF& target_df, std::string& name){
+      std::vector<std::string> columns =  target_df.GetColumnNames();
+      return std::find(columns.begin(), columns.end(), name) != columns.end() ;
+    };
     const auto Sum = [](float a, float b) -> float { return a + b; };
     const auto Delta = [](float a, float b) -> float { return a - b; };
 
@@ -278,7 +281,8 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
         }
         else{
             for(unsigned int i=0; i<files.size(); i++){
-                if(std::find(columns.begin(), columns.end(), "friend_"+std::to_string(i)+"."+branch_name) != columns.end() )
+              std::string name = "friend_"+std::to_string(i)+"."+branch_name;
+                if(Find(df, name))
                         full_name="friend_"+std::to_string(i)+"."+branch_name;
             }
         }
@@ -306,6 +310,53 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
     Define(df, "mdnn_score", [](const std::pair<float, analysis::VBF_Category>& vbf_cat) { return vbf_cat.first; },
            {"vbf_cat"}, true);
 
+    const auto GetTune = [&](unsigned dataset){
+      bool is_TuneCP5=0;
+      if(hastune==2){
+        std::vector<std::string> datasets_tuneCP5 = {"TTTo2L2Nu", "TTToSemiLeptonic", "TTToHadronic", "ST_tW_antitop", "ST_tW_top", "ST_t-channel_antitop", "ST_t-channel_top"};
+        std::vector<unsigned> datasets_tuneCP5_ids;
+        for(auto& dataset : datasets_tuneCP5){
+            datasets_tuneCP5_ids.push_back(known_datasets.left.at(dataset));
+        }
+        int count_dataset=0;
+        for(auto& k: datasets_tuneCP5_ids){
+            if(k==dataset)
+            count_dataset+=1;
+        }
+        is_TuneCP5 = (count_dataset>0) ? 1 : 0 ;
+      }
+      else if(hastune==0){
+        is_TuneCP5 = 0;
+      }
+      return is_TuneCP5;
+    };
+    std::vector<std::string> columns =  df.GetColumnNames();
+    if(std::find(columns.begin(), columns.end(), "is_TuneCP5")!=columns.end()) {
+        hastune=1;
+    }
+    if (hastune==0 || hastune == 2 )
+      Define(df, "is_TuneCP5", GetTune, {"dataset"}, true);
+    /*
+    if(hastune==2){ // 2016, but does not have tuneCP5
+            std::vector<std::string> datasets_tuneCP5 = {"TTTo2L2Nu", "TTToSemiLeptonic", "TTToHadronic", "ST_tW_antitop", "ST_tW_top", "ST_t-channel_antitop", "ST_t-channel_top"};
+            std::vector<unsigned> datasets_tuneCP5_ids;
+            for(auto& dataset : datasets_tuneCP5){
+                datasets_tuneCP5_ids.push_back(known_datasets.left.at(dataset));
+            }
+            const auto GetTune = [&](unsigned dataset){
+                int count_dataset=0;
+                for(auto& k: datasets_tuneCP5_ids){
+                    if(k==dataset)
+                        count_dataset+=1;
+                }
+                int is_TuneCP5 = (count_dataset>0) ? 1 : 0 ;
+                return is_TuneCP5;
+            };
+    }
+    else if(hastune==0) {
+        auto fake_is_TuneCP5 = [](){return 0;};
+        Define(df, "is_TuneCP5", fake_is_TuneCP5, {}, true);
+    }*/
 
     const std::vector<UncertaintySource> norm_unc_sources(norm_unc.begin(),norm_unc.end());
 
@@ -320,7 +371,7 @@ void AnaTupleReader::DefineBranches(const NameSet& active_var_names, bool all, c
     Define(df, "event_tags", create_event_tags,
            { "dataId", "weight", "is_data", "weight_btag_Loose", "weight_btag_Medium", "weight_btag_Tight",
              "weight_btag_IterativeFit", "num_central_jets", "has_b_pair", "num_btag_Loose", "num_btag_Medium",
-             "num_btag_Tight", "is_vbf", "is_boosted", "vbf_cat", "SVfit_p4", "unc_map", "m_bb", "m_tt_vis",
+             "num_btag_Tight", "is_vbf", "is_boosted", "is_TuneCP5", "vbf_cat", "SVfit_p4", "unc_map", "m_bb", "m_tt_vis",
              "kinFit_convergence", "SVfit_valid" }, true);
 
 

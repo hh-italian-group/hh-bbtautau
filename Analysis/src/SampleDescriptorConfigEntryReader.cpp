@@ -46,7 +46,7 @@ void AnalyzerConfigEntryReader::EndEntry()
     CheckReadParamCounts("limit_setup", 0, Condition::greater_equal);
     CheckReadParamCounts("qcd_ss_os_sf",1,Condition::less_equal);
     CheckReadParamCounts("qcd_ss_os_err",1, Condition::less_equal);
-    CheckReadParamCounts("mdnn_version",1, Condition::less_equal);
+    CheckReadParamCounts("mdnn_version",1, Condition::less_equal); 
     current.CreateLimitSetups();
     ConfigEntryReaderT<AnalyzerSetup>::EndEntry();
 }

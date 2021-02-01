@@ -94,14 +94,14 @@ std::string LimitsInputProducer::UncSourceSuffix(UncertaintySource unc_source, P
         { UncertaintySource::PileUp, "PU"},
         { UncertaintySource::PileUpJetId_eff, "PUJET_ID_eff"},
         { UncertaintySource::PileUpJetId_mistag, "PUJET_ID_mistag"},
-        { UncertaintySource::TauCustomSF_DM0,  "hhbbtautau_eff_t_dm0"},
-        { UncertaintySource::TauCustomSF_DM1, "hhbbtautau_eff_t_dm1"},
-        { UncertaintySource::TauCustomSF_DM10, "hhbbtautau_eff_t_dm10"},
-        { UncertaintySource::TauCustomSF_DM11, "hhbbtautau_eff_t_dm11"},
-        { UncertaintySource::VBFTriggerUnc_jets, "hhbbtautau_eff_VBFtrigger_j" },
-        { UncertaintySource::VBFTauTriggerUnc_DM0, "hhbbtautau_eff_VBFtrigger_t_DM0" },
-        { UncertaintySource::VBFTauTriggerUnc_DM1, "hhbbtautau_eff_VBFtrigger_t_DM1" },
-        { UncertaintySource::VBFTauTriggerUnc_3prong, "hhbbtautau_eff_VBFtrigger_t_3prong" },
+        { UncertaintySource::TauCustomSF_DM0,  "hbbhtt_eff_t_dm0"},
+        { UncertaintySource::TauCustomSF_DM1, "hbbhtt_eff_t_dm1"},
+        { UncertaintySource::TauCustomSF_DM10, "hbbhtt_eff_t_dm10"},
+        { UncertaintySource::TauCustomSF_DM11, "hbbhtt_eff_t_dm11"},
+        { UncertaintySource::VBFTriggerUnc_jets, "hbbhtt_eff_VBFtrigger_j" },
+        { UncertaintySource::VBFTauTriggerUnc_DM0, "hbbhtt_eff_VBFtrigger_t_DM0" },
+        { UncertaintySource::VBFTauTriggerUnc_DM1, "hbbhtt_eff_VBFtrigger_t_DM1" },
+        { UncertaintySource::VBFTauTriggerUnc_3prong, "hbbhtt_eff_VBFtrigger_t_3prong" },
         { UncertaintySource::btag_lf, "btag_LF" },
         { UncertaintySource::btag_hf, "btag_HF" },
         { UncertaintySource::btag_hfstats1, "btag_hfstats1" },
@@ -109,7 +109,7 @@ std::string LimitsInputProducer::UncSourceSuffix(UncertaintySource unc_source, P
         { UncertaintySource::btag_lfstats1, "btag_lfstats1" },
         { UncertaintySource::btag_lfstats2, "btag_lfstats2" },
         { UncertaintySource::btag_cferr1, "btag_cferr1" },
-        { UncertaintySource::btag_cferr2, "btag_cferr2" }, 
+        { UncertaintySource::btag_cferr2, "btag_cferr2" },
     };
     if(period==Period::Run2016){
         unc_sources.emplace(UncertaintySource::JetReduced_Absolute_year , "JES_Abs_2016");
@@ -168,11 +168,11 @@ void LimitsInputProducer::Produce(const std::string& outputFileNamePrefix, const
                                   const EventRegionSet& eventRegions, const std::map<SelectionCut,
                                   std::string>& sel_aliases, Period period)
 {
-    // static constexpr double tiny_value = 1e-9;
-    // static constexpr double tiny_value_error = tiny_value;
+    //static constexpr double tiny_value = 1e-9;
+    //static constexpr double tiny_value_error = tiny_value;
     //productionmode_decaychannel_year_channel_category
-    // e.g. ggHH_hbbhtautau_2016_muTau_res1b
-    static const std::string dirNamePrefix = boost::str(boost::format("_hbbhtautau_%1%_%2%_")
+    // e.g. ggHH_hbbhtt_2016_muTau_res1b
+    static const std::string dirNamePrefix = boost::str(boost::format("_hbbhtt_%1%_%2%_")
             %  anaDataCollection->ChannelId() % static_cast<int>(period));
 
     std::ostringstream s_file_name;
@@ -180,7 +180,7 @@ void LimitsInputProducer::Produce(const std::string& outputFileNamePrefix, const
     if(eventSubCategory != EventSubCategory::NoCuts())
         s_file_name << "_" << eventSubCategory.ToString(sel_aliases);
     const std::string file_name = s_file_name.str();
-    auto outputFile = root_ext::CreateRootFile(file_name + ".root");
+    auto outputFile = root_ext::CreateRootFile(file_name + ".root",  ROOT::kLZMA, 9);
     std::set<EventAnalyzerDataId> empty_histograms;
 
     for(const EventAnalyzerDataId& metaId : EventAnalyzerDataId::MetaLoop(eventCategories, uncertaintySources,
@@ -190,6 +190,7 @@ void LimitsInputProducer::Produce(const std::string& outputFileNamePrefix, const
         if(!GetActiveUncertaintyScales(metaId.Get<UncertaintySource>()).count(metaId.Get<UncertaintyScale>()))
             continue;
         const SampleWP& sampleWP = sampleWorkingPoints.at(metaId.Get<std::string>());
+        if(sampleWP.datacard_name.empty()) continue;
         const std::string directoryName = ProdCatSuffix(ToString(metaId.Get<EventCategory>())).first+ dirNamePrefix + ProdCatSuffix(ToString(metaId.Get<EventCategory>())).second+
                                           EventRegionSuffix(metaId.Get<EventRegion>());
 
@@ -198,12 +199,12 @@ void LimitsInputProducer::Produce(const std::string& outputFileNamePrefix, const
         const auto& anaData = anaDataCollection->Get(anaDataId);
         auto& hist_entry = anaData.GetEntryEx<TH1D>(eventCategories.at(anaDataId.Get<EventCategory>()));
         std::shared_ptr<TH1D> hist;
-        if(hist_entry.GetHistograms().count(""))
+        if(hist_entry.GetHistograms().count("")|| sampleWP.datacard_name == "data_obs")
             hist = std::make_shared<TH1D>(hist_entry());
         if(hist)
             hist->Scale(sampleWP.datacard_sf);
-        if(!hist || hist->Integral() == 0.) continue;
-        // {
+        if(!(hist && (hist->Integral() > 0. || sampleWP.datacard_name == "data_obs"))) continue;
+        //{
         //     bool print_warning;
         //     if(CanHaveEmptyHistogram(anaDataId, print_warning)) continue;
         //     if(print_warning)
@@ -213,7 +214,7 @@ void LimitsInputProducer::Produce(const std::string& outputFileNamePrefix, const
         //     const Int_t central_bin = hist->GetNbinsX() / 2;
         //     hist->SetBinContent(central_bin, tiny_value);
         //     hist->SetBinError(central_bin, tiny_value_error);
-        // }
+        //}
         const auto datacard_name = FullDataCardName(sampleWP.datacard_name, metaId.Get<UncertaintySource>(),
                                                     metaId.Get<UncertaintyScale>(), period);
         root_ext::WriteObject(*hist, directory, datacard_name);

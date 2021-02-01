@@ -15,6 +15,18 @@ struct EventTags {
     std::vector<float> weights;
 };
 
+struct btag_corrections{
+    UncertaintySource unc_source;
+    UncertaintyScale unc_scale;
+    bool tune;
+    constexpr bool operator<(const btag_corrections & other) const
+    {
+        if(unc_source != other.unc_source) return unc_source < other.unc_source;
+        if(unc_scale != other.unc_scale) return unc_scale < other.unc_scale;
+        return tune < other.tune;
+    }
+};
+
 class EventTagCreator {
 public:
     using DataId = EventTags::DataId;
@@ -32,7 +44,7 @@ public:
 
     EventTags CreateEventTags(const DataId& dataId_base, float weight, bool is_data, float weight_btag_Loose,
             float weight_btag_Medium, float weight_btag_Tight, float weight_btag_IterativeFit, int num_central_jets,
-            bool has_b_pair, int num_btag_loose, int num_btag_medium, int num_btag_tight, bool is_vbf, bool is_boosted,
+            bool has_b_pair, int num_btag_loose, int num_btag_medium, int num_btag_tight, bool is_vbf, bool is_boosted, bool tune,
             const std::pair<float,VBF_Category>& vbf_cat, const LorentzVectorM& SVfit_p4, const UncMap& unc_map, float m_bb, float m_tt_vis,
             int kinFit_convergence, int SVfit_valid) const;
 
@@ -43,7 +55,7 @@ private:
     const bool use_IterativeFit;
     std::string json_file;
     //float iterativeFit_correction;
-    std::map<std::pair<UncertaintySource,UncertaintyScale>,float> iterativeFit_corrections;
+    std::map<btag_corrections, float> iterativeFit_corrections;
 };
 
 } // namespace bbtautau
