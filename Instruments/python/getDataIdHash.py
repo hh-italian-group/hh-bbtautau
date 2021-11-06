@@ -52,7 +52,7 @@ if __name__ == '__main__':
     parser.add_argument('dataId', type=str, help="dataId")
     args = parser.parse_args()
 
-    id_collections = ['dataset' ] #, 'sample']
+    id_collections = ['dataset', 'region' ]
     data_frames = LoadIdFrames(args.input, id_collections)
     id_found = False
     for col in id_collections:
